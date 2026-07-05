@@ -1,0 +1,4 @@
+# Werkzeuge für die lokale Entwicklung.
+# Installation: https://github.com/rojo-rbx/rokit  →  danach `rokit install`
+[tools]
+rojo = "rojo-rbx/rojo@7.4.4"

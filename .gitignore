@@ -1,0 +1,17 @@
+# Roblox-Builds
+*.rbxl
+*.rbxlx
+*.rbxm
+*.rbxmx
+*.rbxl.lock
+*.rbxlx.lock
+
+# Rojo / Tooling
+sourcemap.json
+/Packages
+/ServerPackages
+/DevPackages
+
+# Betriebssystem
+.DS_Store
+Thumbs.db

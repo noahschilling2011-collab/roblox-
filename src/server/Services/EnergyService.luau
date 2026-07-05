@@ -1,0 +1,193 @@
+--!strict
+-- EnergyService: autoritative Energie-Ökonomie von Planet Forge.
+-- Verwaltet Guthaben (energy) und Lebenszeit-Statistik (lifetimeEnergy),
+-- das manuelle Einsammeln (CollectEnergy) und das passive Biom-Einkommen.
+-- Alle Beträge werden serverseitig validiert; der Client meldet nur Wünsche.
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Types = require(ReplicatedStorage.Shared.Types)
+local Remotes = require(ReplicatedStorage.Shared.Remotes)
+local GameConfig = require(ReplicatedStorage.Shared.Config.GameConfig)
+local BiomeConfig = require(ReplicatedStorage.Shared.Config.BiomeConfig)
+
+local DataService = require(script.Parent.DataService)
+local GlobalEventService = require(script.Parent.GlobalEventService)
+
+local EnergyService = {}
+
+-- Zeitpunkt (os.clock) des letzten manuellen Einsammelns pro Spieler.
+local lastCollectAt: { [Player]: number } = {}
+
+local energyChangedEvent: RemoteEvent? = nil
+
+-- Prüft, ob ein Betrag eine nicht-negative, endliche Zahl ist.
+local function isValidAmount(amount: any): boolean
+	return typeof(amount) == "number"
+		and amount == amount -- filtert NaN
+		and amount ~= math.huge -- filtert +unendlich (>= 0 filtert -unendlich)
+		and amount >= 0
+end
+
+-- Informiert den Besitzer über seinen aktuellen Energiestand.
+local function fireEnergyChanged(player: Player, profile: Types.PlayerProfile)
+	local event = energyChangedEvent
+	if event == nil then
+		event = Remotes.getEvent("EnergyChanged")
+		energyChangedEvent = event
+	end
+	event:FireClient(player, profile.energy, profile.lifetimeEnergy)
+end
+
+-- Aktuelles Guthaben; 0 solange das Profil noch nicht geladen ist.
+function EnergyService.getEnergy(player: Player): number
+	local profile: Types.PlayerProfile? = DataService.getProfile(player)
+	if profile == nil then
+		return 0
+	end
+	return profile.energy
+end
+
+-- Schreibt Energie MIT Event-Multiplikator gut und erhöht auch lifetimeEnergy.
+-- Rundet nach dem Multiplikator ab (mindestens 1, wenn baseAmount >= 1).
+-- Gibt den tatsächlich gutgeschriebenen Betrag zurück (0 bei Fehlern).
+function EnergyService.grantEnergy(player: Player, baseAmount: number): number
+	local profile: Types.PlayerProfile? = DataService.getProfile(player)
+	if profile == nil or not isValidAmount(baseAmount) then
+		return 0
+	end
+
+	local multiplier = GlobalEventService.getEnergyMultiplier()
+	if not isValidAmount(multiplier) or multiplier <= 0 then
+		multiplier = 1
+	end
+
+	local amount = math.floor(baseAmount * multiplier)
+	if baseAmount >= 1 then
+		amount = math.max(amount, 1)
+	end
+	if amount <= 0 then
+		return 0
+	end
+
+	profile.energy += amount
+	profile.lifetimeEnergy += amount
+	DataService.markDirty(player)
+	fireEnergyChanged(player, profile)
+	return amount
+end
+
+-- Schreibt Energie OHNE Multiplikator und OHNE lifetimeEnergy gut
+-- (z. B. für Handel oder Erstattungen).
+function EnergyService.addRaw(player: Player, amount: number)
+	local profile: Types.PlayerProfile? = DataService.getProfile(player)
+	if profile == nil or not isValidAmount(amount) then
+		return
+	end
+
+	local rounded = math.floor(amount)
+	if rounded <= 0 then
+		return
+	end
+
+	profile.energy += rounded
+	DataService.markDirty(player)
+	fireEnergyChanged(player, profile)
+end
+
+-- Prüft das Guthaben und zieht den Betrag ab. true = erfolgreich abgebucht.
+function EnergyService.trySpend(player: Player, amount: number): boolean
+	local profile: Types.PlayerProfile? = DataService.getProfile(player)
+	if profile == nil or not isValidAmount(amount) then
+		return false
+	end
+
+	local cost = math.floor(amount)
+	if profile.energy < cost then
+		return false
+	end
+
+	profile.energy -= cost
+	DataService.markDirty(player)
+	fireEnergyChanged(player, profile)
+	return true
+end
+
+-- Summiert das Biom-Einkommen (Energie pro Minute) eines Profils.
+local function computeIncomePerMinute(profile: Types.PlayerProfile): number
+	local perMinute = 0
+	for _, placed in profile.biomes do
+		local def = BiomeConfig.Biomes[placed.biomeId]
+		if def ~= nil then
+			perMinute += def.baseEnergyPerMinute * placed.level
+		end
+	end
+	return perMinute
+end
+
+function EnergyService.init()
+	energyChangedEvent = Remotes.getEvent("EnergyChanged")
+
+	-- Manuelles Einsammeln: fester Betrag mit Cooldown pro Spieler.
+	local collectFunction = Remotes.getFunction("CollectEnergy")
+	collectFunction.OnServerInvoke = function(player: Player): (boolean, any?)
+		local profile: Types.PlayerProfile? = DataService.getProfile(player)
+		if profile == nil then
+			return false, "Dein Spielstand wird noch geladen."
+		end
+
+		local now = os.clock()
+		local last = lastCollectAt[player]
+		if last ~= nil then
+			local remaining = GameConfig.COLLECT_COOLDOWN_SECONDS - (now - last)
+			if remaining > 0 then
+				return false, `Noch {string.format("%.1f", remaining)} Sekunden Abklingzeit.`
+			end
+		end
+
+		lastCollectAt[player] = now
+		local granted = EnergyService.grantEnergy(player, GameConfig.COLLECT_AMOUNT)
+		return true, granted
+	end
+
+	-- Initialen Energiestand senden, sobald das Profil geladen ist,
+	-- damit die UI von Anfang an korrekte Werte zeigt.
+	local function onPlayerAdded(player: Player)
+		task.spawn(function()
+			local profile: Types.PlayerProfile? = DataService.waitForProfile(player)
+			if profile ~= nil and player.Parent ~= nil then
+				fireEnergyChanged(player, profile)
+			end
+		end)
+	end
+
+	Players.PlayerAdded:Connect(onPlayerAdded)
+	for _, player in Players:GetPlayers() do
+		onPlayerAdded(player)
+	end
+
+	Players.PlayerRemoving:Connect(function(player: Player)
+		lastCollectAt[player] = nil
+	end)
+
+	-- Passives Biom-Einkommen: alle PASSIVE_INCOME_INTERVAL_SECONDS wird das
+	-- Minuten-Einkommen anteilig auf das Intervall skaliert und gutgeschrieben.
+	task.spawn(function()
+		local intervalMinutes = GameConfig.PASSIVE_INCOME_INTERVAL_SECONDS / 60
+		while true do
+			task.wait(GameConfig.PASSIVE_INCOME_INTERVAL_SECONDS)
+			for _, player in Players:GetPlayers() do
+				local profile: Types.PlayerProfile? = DataService.getProfile(player)
+				if profile ~= nil then
+					local income = computeIncomePerMinute(profile) * intervalMinutes
+					if income > 0 then
+						EnergyService.grantEnergy(player, income)
+					end
+				end
+			end
+		end
+	end)
+end
+
+return EnergyService
