@@ -47,6 +47,7 @@ local UIController = {}
 local toastContainer: Frame? = nil
 local toastOrder = 0
 local lootPopupGeneration = 0
+local activeLootTween: Tween? = nil
 
 -- 1234567 -> "1.234.567" (deutsche Tausendertrennung mit Punkt).
 local function formatNumber(value: number): string
@@ -377,6 +378,14 @@ function UIController.init()
 		-- vorzeitig ausblenden.
 		lootPopupGeneration += 1
 		local generation = lootPopupGeneration
+
+		-- Einen noch laufenden Fade-Out-Tween abbrechen, sonst blendet er das
+		-- gerade neu gezeigte Popup Frame für Frame wieder aus.
+		if activeLootTween ~= nil then
+			activeLootTween:Cancel()
+			activeLootTween = nil
+		end
+
 		refs.lootPopup.GroupTransparency = 0
 		refs.lootPopup.Visible = true
 
@@ -385,8 +394,12 @@ function UIController.init()
 				return
 			end
 			local tween = TweenService:Create(refs.lootPopup, TweenInfo.new(FADE_SECONDS), { GroupTransparency = 1 })
+			activeLootTween = tween
 			tween:Play()
 			tween.Completed:Once(function()
+				if activeLootTween == tween then
+					activeLootTween = nil
+				end
 				if generation == lootPopupGeneration then
 					refs.lootPopup.Visible = false
 				end

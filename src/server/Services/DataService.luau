@@ -194,12 +194,25 @@ function DataService.init()
 	end
 
 	-- Autosave-Schleife: sichert regelmäßig nur veränderte Profile.
+	-- Die dirty-Einträge werden erst ohne Yield eingesammelt: saveProfile yieldet
+	-- (UpdateAsync), und ein während der Iteration beitretender Spieler würde
+	-- `sessions` mitten in der Schleife verändern (undefiniertes Verhalten).
 	task.spawn(function()
 		while true do
 			task.wait(GameConfig.AUTOSAVE_INTERVAL_SECONDS)
+
+			local toSave = {}
 			for player, entry in sessions do
 				if entry.dirty then
-					saveProfile(player, entry)
+					table.insert(toSave, { player = player, entry = entry })
+				end
+			end
+
+			for _, item in toSave do
+				-- Nur speichern, wenn der Spieler noch da ist (sonst hat
+				-- PlayerRemoving bereits gesichert und aufgeräumt).
+				if sessions[item.player] == item.entry then
+					saveProfile(item.player, item.entry)
 				end
 			end
 		end
