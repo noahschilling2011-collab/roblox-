@@ -1,11 +1,13 @@
 --!strict
 -- TutorialController: geführte First-Time Experience für den Sammel-Loop.
 --
--- Vier Schritte mit Textbox und pulsierendem Highlight am richtigen Ort:
---   1  Sammle 5 Objekte        (die eigene Wiesen-Zone leuchtet)
---   2  Verkaufe am 💰-Pad      (das Verkaufs-Pad leuchtet)
---   3  Kauf ein Insel-Upgrade  (das "Biome"-Menü pulsiert)
+-- Sechs Schritte mit Textbox und pulsierendem Highlight am richtigen Ort:
+--   1  Sammle 5 Objekte          (die eigene Wiesen-Zone leuchtet)
+--   2  Verkaufe am 💰-Pad        (das Verkaufs-Pad leuchtet)
+--   3  Kauf ein Insel-Upgrade    (das "Biome"-Menü pulsiert)
 --   4  Schalte eine 2. Zone frei (das "Biome"-Menü pulsiert)
+--   5  Wirf einen Fund-Wurf      (der "Fund suchen"-Button pulsiert)
+--   6  Erreiche 500 Gesamt-Energie (freies Spielen bis zum Ziel)
 --
 -- Der Fortschritt liegt im Profil (TutorialService validiert autoritativ);
 -- das Tutorial erscheint deshalb nur einmal. Skip-Button für Rückkehrer.
@@ -43,7 +45,7 @@ local PULSE_INFO = TweenInfo.new(0.7, Enum.EasingStyle.Sine, Enum.EasingDirectio
 
 type StepDef = {
 	text: string,
-	target: "zone" | "sellpad" | "biomeButton",
+	target: "zone" | "sellpad" | "biomeButton" | "lootButton" | "none",
 	arrowText: string?,
 }
 
@@ -52,6 +54,8 @@ local STEPS: { StepDef } = {
 	{ text = "Stell dich auf das goldene Pad und verkaufe deine Beute! 💰", target = "sellpad", arrowText = "⬇ Hier verkaufen!" },
 	{ text = 'Kauf dein erstes Insel-Upgrade: Öffne links „Biome"! 🧲', target = "biomeButton", arrowText = nil },
 	{ text = 'Schalte eine zweite Zone frei: Kauf ein Biom im „Biome"-Menü! 🌍', target = "biomeButton", arrowText = nil },
+	{ text = 'Versuch dein Glück: Drück unten auf „Fund suchen"! 🎲', target = "lootButton", arrowText = nil },
+	{ text = "Sammle und verkaufe weiter, bis du 500 Gesamt-Energie hast! ⚡", target = "none", arrowText = nil },
 }
 
 local TutorialController = {}
@@ -66,6 +70,8 @@ local collectedCount = 0
 local soldOnce = false
 local upgradeCount = 0
 local biomeCount = 0
+local lootCount = 0
+local lifetimeEnergy = 0
 local wieseSlot = 1 -- Slot der ersten eigenen Zone (für das Highlight)
 
 local tutorialFrame: Frame? = nil
@@ -199,7 +205,16 @@ local function applyStepHighlight(step: number)
 				highlightButton(target)
 			end
 		end)
+	elseif def.target == "lootButton" then
+		task.spawn(function()
+			local playerGui = localPlayer:WaitForChild("PlayerGui")
+			local target = waitForPath(playerGui, { "PlanetForgeUI", "ButtonBar", "RollLoot" }, 10)
+			if target ~= nil and currentStep == step then
+				highlightButton(target)
+			end
+		end)
 	end
+	-- target == "none": Schritt 6 kommt ohne Highlight aus (freies Spielen).
 end
 
 local function buildUI()
@@ -333,6 +348,10 @@ local function evaluateProgress()
 		requestAdvance()
 	elseif currentStep == 4 and biomeCount >= 2 then
 		requestAdvance()
+	elseif currentStep == 5 and lootCount >= 1 then
+		requestAdvance()
+	elseif currentStep == 6 and lifetimeEnergy >= 500 then
+		requestAdvance()
 	end
 end
 
@@ -355,6 +374,18 @@ function TutorialController.init()
 	Remotes.getEvent("SoldBackpack").OnClientEvent:Connect(function()
 		soldOnce = true
 		evaluateProgress()
+	end)
+
+	Remotes.getEvent("LootObtained").OnClientEvent:Connect(function()
+		lootCount += 1
+		evaluateProgress()
+	end)
+
+	Remotes.getEvent("EnergyChanged").OnClientEvent:Connect(function(_energy: any, lifetime: any)
+		if typeof(lifetime) == "number" then
+			lifetimeEnergy = lifetime
+			evaluateProgress()
+		end
 	end)
 
 	Remotes.getEvent("UpgradesUpdated").OnClientEvent:Connect(function(levels: any)

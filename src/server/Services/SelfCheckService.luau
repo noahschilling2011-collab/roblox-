@@ -271,8 +271,21 @@ local function checkHarvest()
 			check(harvest.value > 0, `Harvest {biomeId}: value muss > 0 sein`)
 			check(harvest.maxActive >= 1, `Harvest {biomeId}: maxActive muss >= 1 sein`)
 			check(harvest.respawnSeconds > 0, `Harvest {biomeId}: respawnSeconds muss > 0 sein`)
+			if harvest.meltSeconds ~= nil then
+				check(
+					(harvest.meltSeconds :: number) > harvest.respawnSeconds,
+					`Harvest {biomeId}: meltSeconds muss > respawnSeconds sein`
+				)
+			end
+			if harvest.hotSeconds ~= nil then
+				check((harvest.hotSeconds :: number) > 0, `Harvest {biomeId}: hotSeconds muss > 0 sein`)
+			end
 		end
 	end
+
+	-- Biom-Spezialmechaniken (Eiswelt schmilzt, Vulkan glüht) sind Canon.
+	check(BiomeConfig.Harvest["eiswelt"].meltSeconds ~= nil, "Eiswelt braucht die Schmelz-Mechanik")
+	check(BiomeConfig.Harvest["vulkan"].hotSeconds ~= nil, "Vulkan braucht die Glut-Mechanik")
 	check(GameConfig.BASE_MAGNET_RADIUS > 0, "BASE_MAGNET_RADIUS muss > 0 sein")
 	check(GameConfig.BASE_BACKPACK_CAPACITY >= 5, "BASE_BACKPACK_CAPACITY muss >= 5 sein")
 
@@ -313,10 +326,16 @@ local function checkProgression()
 end
 
 local function checkTutorial()
-	check(GameConfig.TUTORIAL_STEP_COUNT == 4, "TUTORIAL_STEP_COUNT muss 4 sein")
+	check(GameConfig.TUTORIAL_STEP_COUNT == 6, "TUTORIAL_STEP_COUNT muss 6 sein")
 	check(
 		#GameConfig.TUTORIAL_STEP_REWARDS == GameConfig.TUTORIAL_STEP_COUNT,
 		"TUTORIAL_STEP_REWARDS braucht einen Eintrag pro Schritt"
+	)
+	check(GameConfig.TUTORIAL_LIFETIME_GOAL > 0, "TUTORIAL_LIFETIME_GOAL muss > 0 sein")
+	-- Schritt 5 (Fund-Wurf) muss mit den Belohnungen bis dahin bezahlbar sein.
+	check(
+		GameConfig.TUTORIAL_STEP_REWARDS[4] >= GameConfig.LOOT_ROLL_COST,
+		"Tutorial-Ökonomie: Fund-Wurf in Schritt 5 nicht sicher bezahlbar"
 	)
 
 	-- Tutorial-Ökonomie: Jeder Schritt muss mit Start-Energie, Belohnungen

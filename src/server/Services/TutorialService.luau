@@ -11,7 +11,9 @@
 --   2  Verkaufe am 💰-Pad               (stats.sales >= 1)
 --   3  Kauf ein Insel-Upgrade           (Magnet- + Rucksack-Level >= 1)
 --   4  Schalte eine zweite Zone frei    (mindestens 2 Biome)
---   5  = abgeschlossen (kommt nie wieder)
+--   5  Wirf einen Fund-Wurf             (mindestens 1 Sammelobjekt)
+--   6  Erreiche das Gesamt-Energie-Ziel (TUTORIAL_LIFETIME_GOAL)
+--   7  = abgeschlossen (kommt nie wieder)
 --
 -- Jeder abgeschlossene Schritt gibt eine Energie-Belohnung
 -- (GameConfig.TUTORIAL_STEP_REWARDS), damit der Ablauf nie am Preis des
@@ -43,6 +45,10 @@ local function isStepFulfilled(profile: Types.PlayerProfile, step: number): bool
 		return profile.upgrades.magnet + profile.upgrades.backpack >= 1
 	elseif step == 4 then
 		return #profile.biomes >= 2
+	elseif step == 5 then
+		return #profile.collectibles >= 1
+	elseif step == 6 then
+		return profile.lifetimeEnergy >= GameConfig.TUTORIAL_LIFETIME_GOAL
 	end
 	return false
 end

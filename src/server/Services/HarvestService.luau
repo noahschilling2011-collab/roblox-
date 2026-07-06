@@ -13,6 +13,7 @@
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TweenService = game:GetService("TweenService")
 
 local Types = require(ReplicatedStorage.Shared.Types)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
@@ -27,11 +28,20 @@ local PlanetService = require(script.Parent.PlanetService)
 
 local SELL_COOLDOWN_SECONDS = 1.5 -- Mindestabstand zwischen zwei Verkäufen
 
+-- Performance: außerhalb dieses Radius um die eigene Insel (Villa, Besuch
+-- bei anderen) wird die Sammel-/Verkaufs-Prüfung komplett übersprungen.
+local ISLAND_ACTIVITY_RADIUS = 110
+
+-- Glut-Optik für Vulkan-Objekte, solange sie zu heiß zum Anfassen sind.
+local HOT_COLOR = Color3.fromRGB(255, 176, 70)
+
 -- Ein aktives Sammel-Objekt auf einer Insel.
 type ActiveObject = {
 	part: BasePart,
 	value: number,
 	color: Color3,
+	meltAt: number?, -- Eiswelt: os.clock()-Zeitpunkt, an dem es schmilzt
+	hotUntil: number?, -- Vulkan: bis dahin glühend heiß (nicht sammelbar)
 }
 
 -- Spawn-Zustand pro Spieler und Zone.
@@ -136,8 +146,56 @@ local function createObjectPart(zonePart: BasePart, harvest: BiomeConfig.Harvest
 			* CFrame.Angles(0, rng:NextNumber() * 2 * math.pi, 0)
 	end
 
+	-- Vulkan-Mechanik: frisch gespawnte Glutsteine glühen sichtbar und
+	-- sind erst nach dem Abkühlen sammelbar (Timing statt Schaden).
+	if harvest.hotSeconds ~= nil then
+		part.Material = Enum.Material.Neon
+		part.Color = HOT_COLOR
+		local heat = Instance.new("PointLight")
+		heat.Name = "HeatLight"
+		heat.Color = HOT_COLOR
+		heat.Range = 7
+		heat.Brightness = 1
+		heat.Parent = part
+	end
+
 	part.Parent = zonePart
 	return part
+end
+
+-- Biom-Spezialmechaniken pro Takt: Glutsteine kühlen sichtbar ab,
+-- Eis-Objekte schmelzen nach ihrer Lebenszeit (kurzes Schrumpfen).
+local function updateSpecialObjects(state: ZoneSpawnState, harvest: BiomeConfig.HarvestDef, now: number)
+	for index = #state.objects, 1, -1 do
+		local object = state.objects[index]
+		if object.part.Parent == nil then
+			continue -- räumt pruneObjects auf
+		end
+
+		if object.hotUntil ~= nil and now >= object.hotUntil then
+			object.hotUntil = nil
+			object.part.Material = Enum.Material.Slate
+			object.part.Color = harvest.color
+			local heat = object.part:FindFirstChild("HeatLight")
+			if heat ~= nil then
+				heat:Destroy()
+			end
+		end
+
+		if object.meltAt ~= nil and now >= object.meltAt then
+			table.remove(state.objects, index)
+			local part = object.part
+			local tween = TweenService:Create(
+				part,
+				TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
+				{ Size = part.Size * 0.05, Transparency = 1 }
+			)
+			tween:Play()
+			tween.Completed:Once(function()
+				part:Destroy()
+			end)
+		end
+	end
 end
 
 -- Räumt zerstörte Parts aus einer Objektliste.
@@ -177,6 +235,7 @@ local function spawnTick(player: Player)
 		end
 
 		pruneObjects(state.objects)
+		updateSpecialObjects(state, harvest, now)
 
 		local maxActive = BiomeConfig.getMaxActive(placed.biomeId, placed.level)
 		if #state.objects >= maxActive then
@@ -196,6 +255,8 @@ local function spawnTick(player: Player)
 			part = createObjectPart(zonePart, harvest),
 			value = harvest.value,
 			color = harvest.color,
+			meltAt = if harvest.meltSeconds ~= nil then now + harvest.meltSeconds :: number else nil,
+			hotUntil = if harvest.hotSeconds ~= nil then now + harvest.hotSeconds :: number else nil,
 		})
 	end
 end
@@ -220,6 +281,13 @@ local function collectTick(player: Player)
 		return
 	end
 	local playerPosition = (root :: BasePart).Position
+
+	-- Performance: Wer gar nicht auf seiner Insel ist (Spawn-Villa, Besuch
+	-- bei anderen), braucht weder Verkaufs- noch Distanz-Prüfungen.
+	local plotOrigin = PlanetService.getPlotOrigin(player)
+	if plotOrigin == nil or (playerPosition - plotOrigin.Position).Magnitude > ISLAND_ACTIVITY_RADIUS then
+		return
+	end
 
 	-- Verkaufs-Zone: Rucksack zu Energie machen.
 	local padPosition = PlanetService.getSellPadPosition(player)
@@ -260,11 +328,16 @@ local function collectTick(player: Player)
 	local radius = HarvestService.getMagnetRadius(profile)
 
 	local collectedAny = false
+	local now = os.clock()
 	for _, state in states do
 		for index = #state.objects, 1, -1 do
 			local object = state.objects[index]
 			if object.part.Parent == nil then
 				table.remove(state.objects, index)
+				continue
+			end
+			-- Vulkan-Mechanik: glühende Objekte sind noch nicht sammelbar.
+			if object.hotUntil ~= nil and now < object.hotUntil then
 				continue
 			end
 			if (object.part.Position - playerPosition).Magnitude > radius then
@@ -311,11 +384,16 @@ local function autoCollectOne(player: Player)
 		return
 	end
 
+	local now = os.clock()
 	for _, state in states do
 		for index = #state.objects, 1, -1 do
 			local object = state.objects[index]
 			if object.part.Parent == nil then
 				table.remove(state.objects, index)
+				continue
+			end
+			-- Auch der Auto-Sammler muss abgekühlte Glutsteine abwarten.
+			if object.hotUntil ~= nil and now < object.hotUntil then
 				continue
 			end
 

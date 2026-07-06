@@ -69,8 +69,10 @@ local GameConfig = {
 	PLANET_NAME_MAX_LENGTH = 24,
 
 	-- Tutorial (First-Time Experience, neuer Loop)
-	TUTORIAL_STEP_COUNT = 4, -- Schritte: 5 sammeln, verkaufen, Upgrade kaufen, Biom freischalten
-	TUTORIAL_STEP_REWARDS = { 25, 25, 60, 100 }, -- Energie-Belohnung je Schritt (stockt nie)
+	-- Schritte: 5 sammeln, verkaufen, Upgrade, 2. Biom, Fund-Wurf, 500 Gesamt-Energie
+	TUTORIAL_STEP_COUNT = 6,
+	TUTORIAL_STEP_REWARDS = { 25, 25, 60, 100, 150, 250 }, -- Energie-Belohnung je Schritt (stockt nie)
+	TUTORIAL_LIFETIME_GOAL = 500, -- Ziel von Schritt 6 (Gesamt-Energie)
 	TUTORIAL_HINT_LIFETIME_LIMIT = 100, -- Einsteiger-Hinweise verschwinden ab dieser Lifetime-Energie
 
 	-- Sound (Client): zentrale Lautstärke der PlanetForge-Soundgruppe (0..1)

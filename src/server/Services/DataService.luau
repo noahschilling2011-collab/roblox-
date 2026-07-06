@@ -17,6 +17,8 @@ local GameConfig = require(ReplicatedStorage.Shared.Config.GameConfig)
 local KEY_PREFIX = "player_"
 local MAX_LOAD_ATTEMPTS = 3
 local LOAD_BACKOFF_SECONDS = { 1, 2, 4 } -- Wartezeit nach dem 1./2./3. Fehlversuch
+local MAX_SAVE_ATTEMPTS = 3
+local SAVE_RETRY_SECONDS = 2 -- Wartezeit zwischen zwei Speicherversuchen
 local WAIT_POLL_SECONDS = 0.1
 
 -- Ein Session-Eintrag pro eingeloggtem Spieler.
@@ -158,18 +160,25 @@ local function saveProfile(player: Player, entry: SessionEntry): boolean
 	-- Tiefe Kopie, damit spätere Änderungen den laufenden Schreibvorgang nicht stören.
 	local snapshot = deepCopy(entry.profile)
 
-	local ok, err = pcall(function()
-		dataStore:UpdateAsync(key, function()
-			return snapshot
+	-- Mit Wiederholung: ein einzelner DataStore-Schluckauf darf keinen
+	-- Spielstand kosten (besonders wichtig beim Verlassen/Shutdown).
+	for attempt = 1, MAX_SAVE_ATTEMPTS do
+		local ok, err = pcall(function()
+			dataStore:UpdateAsync(key, function()
+				return snapshot
+			end)
 		end)
-	end)
 
-	if ok then
-		entry.dirty = false
-		return true
+		if ok then
+			entry.dirty = false
+			return true
+		end
+
+		warn(`[PlanetForge] Speichern fehlgeschlagen für {player.Name} (Versuch {attempt}/{MAX_SAVE_ATTEMPTS}): {err}`)
+		if attempt < MAX_SAVE_ATTEMPTS then
+			task.wait(SAVE_RETRY_SECONDS)
+		end
 	end
-
-	warn(`[PlanetForge] Speichern fehlgeschlagen für {player.Name}: {err}`)
 	return false
 end
 

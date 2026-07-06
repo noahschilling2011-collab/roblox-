@@ -111,7 +111,7 @@ BiomeConfig.Biomes = {
 	eiswelt = {
 		id = "eiswelt",
 		displayName = "Eiswelt",
-		description = "Glitzernde Gletscher und ewiger Frost – eiskalt, aber wunderschön.",
+		description = "Glitzernde Gletscher und ewiger Frost. Eissplitter schmelzen schnell – sei flink!",
 		baseCost = 2500,
 		upgradeCostMultiplier = UPGRADE_COST_MULTIPLIER,
 		baseEnergyPerMinute = 30,
@@ -122,7 +122,7 @@ BiomeConfig.Biomes = {
 	vulkan = {
 		id = "vulkan",
 		displayName = "Vulkan",
-		description = "Brodelnde Lava und rauchende Krater. Rohe Energie direkt aus dem Planetenkern.",
+		description = "Brodelnde Lava und rauchende Krater. Glutsteine musst du erst abkühlen lassen!",
 		baseCost = 5000,
 		upgradeCostMultiplier = UPGRADE_COST_MULTIPLIER,
 		baseEnergyPerMinute = 60,
@@ -168,6 +168,13 @@ BiomeConfig.Biomes = {
 -- Sammel-Objekte, die in der Zone eines Bioms spawnen (physischer Loop):
 -- Spawn-Rate (respawnSeconds) und Max-Anzahl (maxActive + Level-Bonus) sind
 -- hier der Canon, nicht in den Services.
+--
+-- Biom-Spezialmechaniken (optional, macht die Biome spielerisch verschieden):
+--   meltSeconds - Objekt schmilzt nach dieser Zeit und verschwindet (Eiswelt:
+--                 wer schnell ist, kriegt mehr; der Wert ist dafür höher).
+--   hotSeconds  - Objekt ist nach dem Spawn so lange glühend heiß und kann
+--                 NICHT eingesammelt werden (Vulkan: Timing statt Schaden,
+--                 bewusst kinderfreundlich).
 export type HarvestDef = {
 	label: string, -- Anzeigename des Sammel-Objekts
 	value: number, -- Rucksack-Wert pro Objekt
@@ -175,6 +182,8 @@ export type HarvestDef = {
 	respawnSeconds: number, -- Mindestabstand zwischen zwei Spawns
 	orb: boolean, -- true = schwebender Energie-Orb, false = Boden-Objekt
 	color: Color3,
+	meltSeconds: number?, -- Eis-Mechanik: Lebenszeit bis zum Schmelzen
+	hotSeconds: number?, -- Vulkan-Mechanik: Abkühlzeit bis sammelbar
 }
 
 BiomeConfig.Harvest = {
@@ -183,8 +192,8 @@ BiomeConfig.Harvest = {
 	wueste = { label = "Sandkristall", value = 4, maxActive = 5, respawnSeconds = 4, orb = false, color = Color3.fromRGB(235, 205, 130) },
 	ozean = { label = "Muschel", value = 8, maxActive = 5, respawnSeconds = 5, orb = false, color = Color3.fromRGB(200, 225, 240) },
 	dschungel = { label = "Dschungelfrucht", value = 15, maxActive = 5, respawnSeconds = 5, orb = false, color = Color3.fromRGB(240, 150, 50) },
-	eiswelt = { label = "Eissplitter", value = 30, maxActive = 4, respawnSeconds = 6, orb = false, color = Color3.fromRGB(180, 230, 250) },
-	vulkan = { label = "Glutstein", value = 60, maxActive = 4, respawnSeconds = 6, orb = false, color = Color3.fromRGB(255, 110, 40) },
+	eiswelt = { label = "Eissplitter", value = 30, maxActive = 4, respawnSeconds = 6, orb = false, color = Color3.fromRGB(180, 230, 250), meltSeconds = 12 },
+	vulkan = { label = "Glutstein", value = 60, maxActive = 4, respawnSeconds = 6, orb = false, color = Color3.fromRGB(255, 110, 40), hotSeconds = 4 },
 	pilzwald = { label = "Leuchtpilz", value = 120, maxActive = 4, respawnSeconds = 7, orb = false, color = Color3.fromRGB(200, 120, 230) },
 	kristallfelder = { label = "Kristall-Orb", value = 250, maxActive = 3, respawnSeconds = 8, orb = true, color = Color3.fromRGB(110, 235, 225) },
 	kosmische_ebene = { label = "Sternen-Orb", value = 600, maxActive = 3, respawnSeconds = 9, orb = true, color = Color3.fromRGB(255, 235, 150) },
@@ -667,8 +676,10 @@ local GameConfig = {
 	PLANET_NAME_MAX_LENGTH = 24,
 
 	-- Tutorial (First-Time Experience, neuer Loop)
-	TUTORIAL_STEP_COUNT = 4, -- Schritte: 5 sammeln, verkaufen, Upgrade kaufen, Biom freischalten
-	TUTORIAL_STEP_REWARDS = { 25, 25, 60, 100 }, -- Energie-Belohnung je Schritt (stockt nie)
+	-- Schritte: 5 sammeln, verkaufen, Upgrade, 2. Biom, Fund-Wurf, 500 Gesamt-Energie
+	TUTORIAL_STEP_COUNT = 6,
+	TUTORIAL_STEP_REWARDS = { 25, 25, 60, 100, 150, 250 }, -- Energie-Belohnung je Schritt (stockt nie)
+	TUTORIAL_LIFETIME_GOAL = 500, -- Ziel von Schritt 6 (Gesamt-Energie)
 	TUTORIAL_HINT_LIFETIME_LIMIT = 100, -- Einsteiger-Hinweise verschwinden ab dieser Lifetime-Energie
 
 	-- Sound (Client): zentrale Lautstärke der PlanetForge-Soundgruppe (0..1)
@@ -2181,6 +2192,8 @@ local GameConfig = require(ReplicatedStorage.Shared.Config.GameConfig)
 local KEY_PREFIX = "player_"
 local MAX_LOAD_ATTEMPTS = 3
 local LOAD_BACKOFF_SECONDS = { 1, 2, 4 } -- Wartezeit nach dem 1./2./3. Fehlversuch
+local MAX_SAVE_ATTEMPTS = 3
+local SAVE_RETRY_SECONDS = 2 -- Wartezeit zwischen zwei Speicherversuchen
 local WAIT_POLL_SECONDS = 0.1
 
 -- Ein Session-Eintrag pro eingeloggtem Spieler.
@@ -2322,18 +2335,25 @@ local function saveProfile(player: Player, entry: SessionEntry): boolean
 	-- Tiefe Kopie, damit spätere Änderungen den laufenden Schreibvorgang nicht stören.
 	local snapshot = deepCopy(entry.profile)
 
-	local ok, err = pcall(function()
-		dataStore:UpdateAsync(key, function()
-			return snapshot
+	-- Mit Wiederholung: ein einzelner DataStore-Schluckauf darf keinen
+	-- Spielstand kosten (besonders wichtig beim Verlassen/Shutdown).
+	for attempt = 1, MAX_SAVE_ATTEMPTS do
+		local ok, err = pcall(function()
+			dataStore:UpdateAsync(key, function()
+				return snapshot
+			end)
 		end)
-	end)
 
-	if ok then
-		entry.dirty = false
-		return true
+		if ok then
+			entry.dirty = false
+			return true
+		end
+
+		warn(`[PlanetForge] Speichern fehlgeschlagen für {player.Name} (Versuch {attempt}/{MAX_SAVE_ATTEMPTS}): {err}`)
+		if attempt &lt; MAX_SAVE_ATTEMPTS then
+			task.wait(SAVE_RETRY_SECONDS)
+		end
 	end
-
-	warn(`[PlanetForge] Speichern fehlgeschlagen für {player.Name}: {err}`)
 	return false
 end
 
@@ -3424,6 +3444,7 @@ return GlobalEventService
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TweenService = game:GetService("TweenService")
 
 local Types = require(ReplicatedStorage.Shared.Types)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
@@ -3438,11 +3459,20 @@ local PlanetService = require(script.Parent.PlanetService)
 
 local SELL_COOLDOWN_SECONDS = 1.5 -- Mindestabstand zwischen zwei Verkäufen
 
+-- Performance: außerhalb dieses Radius um die eigene Insel (Villa, Besuch
+-- bei anderen) wird die Sammel-/Verkaufs-Prüfung komplett übersprungen.
+local ISLAND_ACTIVITY_RADIUS = 110
+
+-- Glut-Optik für Vulkan-Objekte, solange sie zu heiß zum Anfassen sind.
+local HOT_COLOR = Color3.fromRGB(255, 176, 70)
+
 -- Ein aktives Sammel-Objekt auf einer Insel.
 type ActiveObject = {
 	part: BasePart,
 	value: number,
 	color: Color3,
+	meltAt: number?, -- Eiswelt: os.clock()-Zeitpunkt, an dem es schmilzt
+	hotUntil: number?, -- Vulkan: bis dahin glühend heiß (nicht sammelbar)
 }
 
 -- Spawn-Zustand pro Spieler und Zone.
@@ -3547,8 +3577,56 @@ local function createObjectPart(zonePart: BasePart, harvest: BiomeConfig.Harvest
 			* CFrame.Angles(0, rng:NextNumber() * 2 * math.pi, 0)
 	end
 
+	-- Vulkan-Mechanik: frisch gespawnte Glutsteine glühen sichtbar und
+	-- sind erst nach dem Abkühlen sammelbar (Timing statt Schaden).
+	if harvest.hotSeconds ~= nil then
+		part.Material = Enum.Material.Neon
+		part.Color = HOT_COLOR
+		local heat = Instance.new("PointLight")
+		heat.Name = "HeatLight"
+		heat.Color = HOT_COLOR
+		heat.Range = 7
+		heat.Brightness = 1
+		heat.Parent = part
+	end
+
 	part.Parent = zonePart
 	return part
+end
+
+-- Biom-Spezialmechaniken pro Takt: Glutsteine kühlen sichtbar ab,
+-- Eis-Objekte schmelzen nach ihrer Lebenszeit (kurzes Schrumpfen).
+local function updateSpecialObjects(state: ZoneSpawnState, harvest: BiomeConfig.HarvestDef, now: number)
+	for index = #state.objects, 1, -1 do
+		local object = state.objects[index]
+		if object.part.Parent == nil then
+			continue -- räumt pruneObjects auf
+		end
+
+		if object.hotUntil ~= nil and now &gt;= object.hotUntil then
+			object.hotUntil = nil
+			object.part.Material = Enum.Material.Slate
+			object.part.Color = harvest.color
+			local heat = object.part:FindFirstChild("HeatLight")
+			if heat ~= nil then
+				heat:Destroy()
+			end
+		end
+
+		if object.meltAt ~= nil and now &gt;= object.meltAt then
+			table.remove(state.objects, index)
+			local part = object.part
+			local tween = TweenService:Create(
+				part,
+				TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
+				{ Size = part.Size * 0.05, Transparency = 1 }
+			)
+			tween:Play()
+			tween.Completed:Once(function()
+				part:Destroy()
+			end)
+		end
+	end
 end
 
 -- Räumt zerstörte Parts aus einer Objektliste.
@@ -3588,6 +3666,7 @@ local function spawnTick(player: Player)
 		end
 
 		pruneObjects(state.objects)
+		updateSpecialObjects(state, harvest, now)
 
 		local maxActive = BiomeConfig.getMaxActive(placed.biomeId, placed.level)
 		if #state.objects &gt;= maxActive then
@@ -3607,6 +3686,8 @@ local function spawnTick(player: Player)
 			part = createObjectPart(zonePart, harvest),
 			value = harvest.value,
 			color = harvest.color,
+			meltAt = if harvest.meltSeconds ~= nil then now + harvest.meltSeconds :: number else nil,
+			hotUntil = if harvest.hotSeconds ~= nil then now + harvest.hotSeconds :: number else nil,
 		})
 	end
 end
@@ -3631,6 +3712,13 @@ local function collectTick(player: Player)
 		return
 	end
 	local playerPosition = (root :: BasePart).Position
+
+	-- Performance: Wer gar nicht auf seiner Insel ist (Spawn-Villa, Besuch
+	-- bei anderen), braucht weder Verkaufs- noch Distanz-Prüfungen.
+	local plotOrigin = PlanetService.getPlotOrigin(player)
+	if plotOrigin == nil or (playerPosition - plotOrigin.Position).Magnitude &gt; ISLAND_ACTIVITY_RADIUS then
+		return
+	end
 
 	-- Verkaufs-Zone: Rucksack zu Energie machen.
 	local padPosition = PlanetService.getSellPadPosition(player)
@@ -3671,11 +3759,16 @@ local function collectTick(player: Player)
 	local radius = HarvestService.getMagnetRadius(profile)
 
 	local collectedAny = false
+	local now = os.clock()
 	for _, state in states do
 		for index = #state.objects, 1, -1 do
 			local object = state.objects[index]
 			if object.part.Parent == nil then
 				table.remove(state.objects, index)
+				continue
+			end
+			-- Vulkan-Mechanik: glühende Objekte sind noch nicht sammelbar.
+			if object.hotUntil ~= nil and now &lt; object.hotUntil then
 				continue
 			end
 			if (object.part.Position - playerPosition).Magnitude &gt; radius then
@@ -3722,11 +3815,16 @@ local function autoCollectOne(player: Player)
 		return
 	end
 
+	local now = os.clock()
 	for _, state in states do
 		for index = #state.objects, 1, -1 do
 			local object = state.objects[index]
 			if object.part.Parent == nil then
 				table.remove(state.objects, index)
+				continue
+			end
+			-- Auch der Auto-Sammler muss abgekühlte Glutsteine abwarten.
+			if object.hotUntil ~= nil and now &lt; object.hotUntil then
 				continue
 			end
 
@@ -7515,8 +7613,21 @@ local function checkHarvest()
 			check(harvest.value &gt; 0, `Harvest {biomeId}: value muss &gt; 0 sein`)
 			check(harvest.maxActive &gt;= 1, `Harvest {biomeId}: maxActive muss &gt;= 1 sein`)
 			check(harvest.respawnSeconds &gt; 0, `Harvest {biomeId}: respawnSeconds muss &gt; 0 sein`)
+			if harvest.meltSeconds ~= nil then
+				check(
+					(harvest.meltSeconds :: number) &gt; harvest.respawnSeconds,
+					`Harvest {biomeId}: meltSeconds muss &gt; respawnSeconds sein`
+				)
+			end
+			if harvest.hotSeconds ~= nil then
+				check((harvest.hotSeconds :: number) &gt; 0, `Harvest {biomeId}: hotSeconds muss &gt; 0 sein`)
+			end
 		end
 	end
+
+	-- Biom-Spezialmechaniken (Eiswelt schmilzt, Vulkan glüht) sind Canon.
+	check(BiomeConfig.Harvest["eiswelt"].meltSeconds ~= nil, "Eiswelt braucht die Schmelz-Mechanik")
+	check(BiomeConfig.Harvest["vulkan"].hotSeconds ~= nil, "Vulkan braucht die Glut-Mechanik")
 	check(GameConfig.BASE_MAGNET_RADIUS &gt; 0, "BASE_MAGNET_RADIUS muss &gt; 0 sein")
 	check(GameConfig.BASE_BACKPACK_CAPACITY &gt;= 5, "BASE_BACKPACK_CAPACITY muss &gt;= 5 sein")
 
@@ -7557,10 +7668,16 @@ local function checkProgression()
 end
 
 local function checkTutorial()
-	check(GameConfig.TUTORIAL_STEP_COUNT == 4, "TUTORIAL_STEP_COUNT muss 4 sein")
+	check(GameConfig.TUTORIAL_STEP_COUNT == 6, "TUTORIAL_STEP_COUNT muss 6 sein")
 	check(
 		#GameConfig.TUTORIAL_STEP_REWARDS == GameConfig.TUTORIAL_STEP_COUNT,
 		"TUTORIAL_STEP_REWARDS braucht einen Eintrag pro Schritt"
+	)
+	check(GameConfig.TUTORIAL_LIFETIME_GOAL &gt; 0, "TUTORIAL_LIFETIME_GOAL muss &gt; 0 sein")
+	-- Schritt 5 (Fund-Wurf) muss mit den Belohnungen bis dahin bezahlbar sein.
+	check(
+		GameConfig.TUTORIAL_STEP_REWARDS[4] &gt;= GameConfig.LOOT_ROLL_COST,
+		"Tutorial-Ökonomie: Fund-Wurf in Schritt 5 nicht sicher bezahlbar"
 	)
 
 	-- Tutorial-Ökonomie: Jeder Schritt muss mit Start-Energie, Belohnungen
@@ -8149,7 +8266,9 @@ return TradeService
 --   2  Verkaufe am 💰-Pad               (stats.sales &gt;= 1)
 --   3  Kauf ein Insel-Upgrade           (Magnet- + Rucksack-Level &gt;= 1)
 --   4  Schalte eine zweite Zone frei    (mindestens 2 Biome)
---   5  = abgeschlossen (kommt nie wieder)
+--   5  Wirf einen Fund-Wurf             (mindestens 1 Sammelobjekt)
+--   6  Erreiche das Gesamt-Energie-Ziel (TUTORIAL_LIFETIME_GOAL)
+--   7  = abgeschlossen (kommt nie wieder)
 --
 -- Jeder abgeschlossene Schritt gibt eine Energie-Belohnung
 -- (GameConfig.TUTORIAL_STEP_REWARDS), damit der Ablauf nie am Preis des
@@ -8181,6 +8300,10 @@ local function isStepFulfilled(profile: Types.PlayerProfile, step: number): bool
 		return profile.upgrades.magnet + profile.upgrades.backpack &gt;= 1
 	elseif step == 4 then
 		return #profile.biomes &gt;= 2
+	elseif step == 5 then
+		return #profile.collectibles &gt;= 1
+	elseif step == 6 then
+		return profile.lifetimeEnergy &gt;= GameConfig.TUTORIAL_LIFETIME_GOAL
 	end
 	return false
 end
@@ -8288,7 +8411,14 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 
 local DataService = require(script.Parent.DataService)
+local EnergyService = require(script.Parent.EnergyService)
 local PlanetService = require(script.Parent.PlanetService)
+
+-- Sozialer Anreiz: Energie-Bonus beim ERSTEN Besuch eines Planeten pro
+-- Session - für den Besucher und den Besitzer (addRaw: zählt bewusst
+-- nicht zur Gesamt-Energie, damit Besuche keine Freischaltungen farmen).
+local VISIT_BONUS_VISITOR = 25
+local VISIT_BONUS_OWNER = 50
 
 -- Versatz beim Besuch: ~20 Studs neben dem Ziel-Plot-Ursprung, leicht erhöht,
 -- damit der Charakter auf der Plaza der fremden Insel landet.
@@ -8381,6 +8511,13 @@ local function handleRequestVisit(player: Player, targetUserIdArg: unknown): (bo
 		targetProfile.visits += 1
 		DataService.markDirty(target)
 		PlanetService.sendSnapshot(target)
+
+		-- Besuchs-Bonus für beide Seiten (nur beim ersten Besuch der Session).
+		EnergyService.addRaw(player, VISIT_BONUS_VISITOR)
+		EnergyService.addRaw(target, VISIT_BONUS_OWNER)
+		notify(player, `Du besuchst den Planeten von {target.Name} (+{VISIT_BONUS_VISITOR} Energie)! 🚀`, "success")
+		notify(target, `{player.Name} besucht deinen Planeten (+{VISIT_BONUS_OWNER} Energie)! 🎉`, "success")
+		return true
 	end
 
 	notify(player, `Du besuchst den Planeten von {target.Name}.`, "info")
@@ -11865,11 +12002,13 @@ return ShopController
 <ProtectedString name="Source">--!strict
 -- TutorialController: geführte First-Time Experience für den Sammel-Loop.
 --
--- Vier Schritte mit Textbox und pulsierendem Highlight am richtigen Ort:
---   1  Sammle 5 Objekte        (die eigene Wiesen-Zone leuchtet)
---   2  Verkaufe am 💰-Pad      (das Verkaufs-Pad leuchtet)
---   3  Kauf ein Insel-Upgrade  (das "Biome"-Menü pulsiert)
+-- Sechs Schritte mit Textbox und pulsierendem Highlight am richtigen Ort:
+--   1  Sammle 5 Objekte          (die eigene Wiesen-Zone leuchtet)
+--   2  Verkaufe am 💰-Pad        (das Verkaufs-Pad leuchtet)
+--   3  Kauf ein Insel-Upgrade    (das "Biome"-Menü pulsiert)
 --   4  Schalte eine 2. Zone frei (das "Biome"-Menü pulsiert)
+--   5  Wirf einen Fund-Wurf      (der "Fund suchen"-Button pulsiert)
+--   6  Erreiche 500 Gesamt-Energie (freies Spielen bis zum Ziel)
 --
 -- Der Fortschritt liegt im Profil (TutorialService validiert autoritativ);
 -- das Tutorial erscheint deshalb nur einmal. Skip-Button für Rückkehrer.
@@ -11907,7 +12046,7 @@ local PULSE_INFO = TweenInfo.new(0.7, Enum.EasingStyle.Sine, Enum.EasingDirectio
 
 type StepDef = {
 	text: string,
-	target: "zone" | "sellpad" | "biomeButton",
+	target: "zone" | "sellpad" | "biomeButton" | "lootButton" | "none",
 	arrowText: string?,
 }
 
@@ -11916,6 +12055,8 @@ local STEPS: { StepDef } = {
 	{ text = "Stell dich auf das goldene Pad und verkaufe deine Beute! 💰", target = "sellpad", arrowText = "⬇ Hier verkaufen!" },
 	{ text = 'Kauf dein erstes Insel-Upgrade: Öffne links „Biome"! 🧲', target = "biomeButton", arrowText = nil },
 	{ text = 'Schalte eine zweite Zone frei: Kauf ein Biom im „Biome"-Menü! 🌍', target = "biomeButton", arrowText = nil },
+	{ text = 'Versuch dein Glück: Drück unten auf „Fund suchen"! 🎲', target = "lootButton", arrowText = nil },
+	{ text = "Sammle und verkaufe weiter, bis du 500 Gesamt-Energie hast! ⚡", target = "none", arrowText = nil },
 }
 
 local TutorialController = {}
@@ -11930,6 +12071,8 @@ local collectedCount = 0
 local soldOnce = false
 local upgradeCount = 0
 local biomeCount = 0
+local lootCount = 0
+local lifetimeEnergy = 0
 local wieseSlot = 1 -- Slot der ersten eigenen Zone (für das Highlight)
 
 local tutorialFrame: Frame? = nil
@@ -12063,7 +12206,16 @@ local function applyStepHighlight(step: number)
 				highlightButton(target)
 			end
 		end)
+	elseif def.target == "lootButton" then
+		task.spawn(function()
+			local playerGui = localPlayer:WaitForChild("PlayerGui")
+			local target = waitForPath(playerGui, { "PlanetForgeUI", "ButtonBar", "RollLoot" }, 10)
+			if target ~= nil and currentStep == step then
+				highlightButton(target)
+			end
+		end)
 	end
+	-- target == "none": Schritt 6 kommt ohne Highlight aus (freies Spielen).
 end
 
 local function buildUI()
@@ -12197,6 +12349,10 @@ local function evaluateProgress()
 		requestAdvance()
 	elseif currentStep == 4 and biomeCount &gt;= 2 then
 		requestAdvance()
+	elseif currentStep == 5 and lootCount &gt;= 1 then
+		requestAdvance()
+	elseif currentStep == 6 and lifetimeEnergy &gt;= 500 then
+		requestAdvance()
 	end
 end
 
@@ -12219,6 +12375,18 @@ function TutorialController.init()
 	Remotes.getEvent("SoldBackpack").OnClientEvent:Connect(function()
 		soldOnce = true
 		evaluateProgress()
+	end)
+
+	Remotes.getEvent("LootObtained").OnClientEvent:Connect(function()
+		lootCount += 1
+		evaluateProgress()
+	end)
+
+	Remotes.getEvent("EnergyChanged").OnClientEvent:Connect(function(_energy: any, lifetime: any)
+		if typeof(lifetime) == "number" then
+			lifetimeEnergy = lifetime
+			evaluateProgress()
+		end
 	end)
 
 	Remotes.getEvent("UpgradesUpdated").OnClientEvent:Connect(function(levels: any)

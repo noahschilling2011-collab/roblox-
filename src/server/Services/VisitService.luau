@@ -10,7 +10,14 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 
 local DataService = require(script.Parent.DataService)
+local EnergyService = require(script.Parent.EnergyService)
 local PlanetService = require(script.Parent.PlanetService)
+
+-- Sozialer Anreiz: Energie-Bonus beim ERSTEN Besuch eines Planeten pro
+-- Session - für den Besucher und den Besitzer (addRaw: zählt bewusst
+-- nicht zur Gesamt-Energie, damit Besuche keine Freischaltungen farmen).
+local VISIT_BONUS_VISITOR = 25
+local VISIT_BONUS_OWNER = 50
 
 -- Versatz beim Besuch: ~20 Studs neben dem Ziel-Plot-Ursprung, leicht erhöht,
 -- damit der Charakter auf der Plaza der fremden Insel landet.
@@ -103,6 +110,13 @@ local function handleRequestVisit(player: Player, targetUserIdArg: unknown): (bo
 		targetProfile.visits += 1
 		DataService.markDirty(target)
 		PlanetService.sendSnapshot(target)
+
+		-- Besuchs-Bonus für beide Seiten (nur beim ersten Besuch der Session).
+		EnergyService.addRaw(player, VISIT_BONUS_VISITOR)
+		EnergyService.addRaw(target, VISIT_BONUS_OWNER)
+		notify(player, `Du besuchst den Planeten von {target.Name} (+{VISIT_BONUS_VISITOR} Energie)! 🚀`, "success")
+		notify(target, `{player.Name} besucht deinen Planeten (+{VISIT_BONUS_OWNER} Energie)! 🎉`, "success")
+		return true
 	end
 
 	notify(player, `Du besuchst den Planeten von {target.Name}.`, "info")

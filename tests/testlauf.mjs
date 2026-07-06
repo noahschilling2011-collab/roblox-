@@ -112,6 +112,12 @@ test("Sammel-Loop: Harvest-Definition fuer jedes Biom", function()
 	expect(count == 10, "Harvest-Anzahl != 10")
 	expect(BiomeConfig.getMaxActive("wiese", 1) == 6, "getMaxActive(wiese, 1) != 6")
 	expect(BiomeConfig.getMaxActive("wiese", 5) == 14, "getMaxActive(wiese, 5) != 14")
+	-- Biom-Spezialmechaniken: Eiswelt schmilzt, Vulkan glueht (Canon).
+	local eis = BiomeConfig.Harvest["eiswelt"]
+	expect(eis.meltSeconds ~= nil and eis.meltSeconds > eis.respawnSeconds, "Eiswelt: Schmelz-Mechanik fehlt/zu kurz")
+	local vulkan = BiomeConfig.Harvest["vulkan"]
+	expect(vulkan.hotSeconds ~= nil and vulkan.hotSeconds > 0, "Vulkan: Glut-Mechanik fehlt")
+	expect(BiomeConfig.Harvest["wiese"].meltSeconds == nil, "Wiese darf nicht schmelzen (Einsteiger-Zone)")
 end)
 
 test("ProgressionConfig: Upgrade-Kosten exponentiell (Faktor 1.15-1.25)", function()
@@ -393,9 +399,12 @@ end)
 
 -- 7b) Tutorial-Oekonomie und Studio-Testmodus
 test("Tutorial: jeder Schritt bleibt bezahlbar (Spiegel der Belohnungslogik)", function()
-	expect(GameConfig.TUTORIAL_STEP_COUNT == 4, "TUTORIAL_STEP_COUNT != 4")
+	expect(GameConfig.TUTORIAL_STEP_COUNT == 6, "TUTORIAL_STEP_COUNT != 6")
 	local rewards = GameConfig.TUTORIAL_STEP_REWARDS
 	expect(#rewards == GameConfig.TUTORIAL_STEP_COUNT, "REWARDS-Anzahl != Schritte")
+	expect(GameConfig.TUTORIAL_LIFETIME_GOAL == 500, "Schritt-6-Ziel != 500 Gesamt-Energie")
+	-- Schritt 5: der Fund-Wurf (LOOT_ROLL_COST) muss nach Schritt 4 bezahlbar sein.
+	expect(rewards[4] >= GameConfig.LOOT_ROLL_COST, "Fund-Wurf in Schritt 5 nicht sicher bezahlbar")
 	-- Schritt 1+2: 5 Wiesen-Objekte sammeln und verkaufen.
 	local sellValue = 5 * BiomeConfig.Harvest["wiese"].value
 	local cheapestUpgrade = math.min(

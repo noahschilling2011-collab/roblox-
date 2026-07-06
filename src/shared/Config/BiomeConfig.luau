@@ -80,7 +80,7 @@ BiomeConfig.Biomes = {
 	eiswelt = {
 		id = "eiswelt",
 		displayName = "Eiswelt",
-		description = "Glitzernde Gletscher und ewiger Frost – eiskalt, aber wunderschön.",
+		description = "Glitzernde Gletscher und ewiger Frost. Eissplitter schmelzen schnell – sei flink!",
 		baseCost = 2500,
 		upgradeCostMultiplier = UPGRADE_COST_MULTIPLIER,
 		baseEnergyPerMinute = 30,
@@ -91,7 +91,7 @@ BiomeConfig.Biomes = {
 	vulkan = {
 		id = "vulkan",
 		displayName = "Vulkan",
-		description = "Brodelnde Lava und rauchende Krater. Rohe Energie direkt aus dem Planetenkern.",
+		description = "Brodelnde Lava und rauchende Krater. Glutsteine musst du erst abkühlen lassen!",
 		baseCost = 5000,
 		upgradeCostMultiplier = UPGRADE_COST_MULTIPLIER,
 		baseEnergyPerMinute = 60,
@@ -137,6 +137,13 @@ BiomeConfig.Biomes = {
 -- Sammel-Objekte, die in der Zone eines Bioms spawnen (physischer Loop):
 -- Spawn-Rate (respawnSeconds) und Max-Anzahl (maxActive + Level-Bonus) sind
 -- hier der Canon, nicht in den Services.
+--
+-- Biom-Spezialmechaniken (optional, macht die Biome spielerisch verschieden):
+--   meltSeconds - Objekt schmilzt nach dieser Zeit und verschwindet (Eiswelt:
+--                 wer schnell ist, kriegt mehr; der Wert ist dafür höher).
+--   hotSeconds  - Objekt ist nach dem Spawn so lange glühend heiß und kann
+--                 NICHT eingesammelt werden (Vulkan: Timing statt Schaden,
+--                 bewusst kinderfreundlich).
 export type HarvestDef = {
 	label: string, -- Anzeigename des Sammel-Objekts
 	value: number, -- Rucksack-Wert pro Objekt
@@ -144,6 +151,8 @@ export type HarvestDef = {
 	respawnSeconds: number, -- Mindestabstand zwischen zwei Spawns
 	orb: boolean, -- true = schwebender Energie-Orb, false = Boden-Objekt
 	color: Color3,
+	meltSeconds: number?, -- Eis-Mechanik: Lebenszeit bis zum Schmelzen
+	hotSeconds: number?, -- Vulkan-Mechanik: Abkühlzeit bis sammelbar
 }
 
 BiomeConfig.Harvest = {
@@ -152,8 +161,8 @@ BiomeConfig.Harvest = {
 	wueste = { label = "Sandkristall", value = 4, maxActive = 5, respawnSeconds = 4, orb = false, color = Color3.fromRGB(235, 205, 130) },
 	ozean = { label = "Muschel", value = 8, maxActive = 5, respawnSeconds = 5, orb = false, color = Color3.fromRGB(200, 225, 240) },
 	dschungel = { label = "Dschungelfrucht", value = 15, maxActive = 5, respawnSeconds = 5, orb = false, color = Color3.fromRGB(240, 150, 50) },
-	eiswelt = { label = "Eissplitter", value = 30, maxActive = 4, respawnSeconds = 6, orb = false, color = Color3.fromRGB(180, 230, 250) },
-	vulkan = { label = "Glutstein", value = 60, maxActive = 4, respawnSeconds = 6, orb = false, color = Color3.fromRGB(255, 110, 40) },
+	eiswelt = { label = "Eissplitter", value = 30, maxActive = 4, respawnSeconds = 6, orb = false, color = Color3.fromRGB(180, 230, 250), meltSeconds = 12 },
+	vulkan = { label = "Glutstein", value = 60, maxActive = 4, respawnSeconds = 6, orb = false, color = Color3.fromRGB(255, 110, 40), hotSeconds = 4 },
 	pilzwald = { label = "Leuchtpilz", value = 120, maxActive = 4, respawnSeconds = 7, orb = false, color = Color3.fromRGB(200, 120, 230) },
 	kristallfelder = { label = "Kristall-Orb", value = 250, maxActive = 3, respawnSeconds = 8, orb = true, color = Color3.fromRGB(110, 235, 225) },
 	kosmische_ebene = { label = "Sternen-Orb", value = 600, maxActive = 3, respawnSeconds = 9, orb = true, color = Color3.fromRGB(255, 235, 150) },
