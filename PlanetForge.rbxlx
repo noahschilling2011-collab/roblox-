@@ -1,9 +1,9 @@
 <roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4">
-<Item class="Workspace" referent="PF47">
+<Item class="Workspace" referent="PF49">
 <Properties>
 <string name="Name">Workspace</string>
 </Properties>
-<Item class="SpawnLocation" referent="PF46">
+<Item class="SpawnLocation" referent="PF48">
 <Properties>
 <string name="Name">SpawnLocation</string>
 <bool name="Anchored">true</bool>
@@ -11,7 +11,7 @@
 </Properties>
 </Item>
 </Item>
-<Item class="ReplicatedStorage" referent="PF48">
+<Item class="ReplicatedStorage" referent="PF50">
 <Properties>
 <string name="Name">ReplicatedStorage</string>
 </Properties>
@@ -623,7 +623,7 @@ local GameConfig = {
 	TRADE_LOCK_SECONDS = 3, -- Sicherheitspause nach beidseitigem Akzeptieren
 
 	-- Daten
-	PROFILE_SCHEMA_VERSION = 8, -- v6: Rebirths; v7: Equip; v8: PurchaseId-Log
+	PROFILE_SCHEMA_VERSION = 10, -- v8: PurchaseId-Log; v9: Offline-Earnings; v10: 2x-Boost
 	PURCHASE_LOG_LIMIT = 50, -- gemerkte PurchaseIds gegen Doppelgutschrift
 
 	-- Ausrüstung
@@ -642,8 +642,23 @@ local GameConfig = {
 	LEADERBOARD_STORE_LIKES = "PF_Rangliste_Likes_v1",
 	LEADERBOARD_STORE_ENERGY = "PF_Rangliste_Energie_v1",
 
-	-- Tagesbonus (Energie je aufeinanderfolgendem Login-Tag; Tag 7+ = letzter Wert)
-	DAILY_REWARDS = { 50, 100, 150, 250, 350, 450, 600 },
+	-- Tagesbonus (Energie je aufeinanderfolgendem Login-Tag; Tag 7+ = letzter Wert).
+	-- Tag 7 lohnt sich bewusst deutlich (Retention-Anker).
+	DAILY_REWARDS = { 50, 100, 150, 250, 400, 600, 1200 },
+
+	-- Offline-Earnings: Anteil des passiven Einkommens, das Biome
+	-- waehrend der Abwesenheit "weiterverdienen" (gedeckelt).
+	OFFLINE_EARNINGS_RATE = 0.5,
+	OFFLINE_EARNINGS_CAP_HOURS = 8,
+
+	-- Freunde-Boost: Bonus auf ALLE Energie-Einnahmen pro Freund, der
+	-- gleichzeitig im selben Server spielt (im HUD sichtbar, gedeckelt).
+	FRIEND_BOOST_PER_FRIEND = 0.10, -- +10% pro Freund
+	FRIEND_BOOST_MAX_FRIENDS = 3, -- Deckel: maximal +30%
+
+	-- Auto-Harvest (Gamepass): Takt des automatischen Einsammelns
+	-- (1 Objekt pro Takt; Verkaufen am SellPad bleibt Handarbeit).
+	AUTO_HARVEST_INTERVAL_SECONDS = 1,
 
 	-- Planetenname
 	PLANET_NAME_MAX_LENGTH = 24,
@@ -703,7 +718,8 @@ export type GamepassDef = {
 	displayName: string,
 	description: string,
 	grantsCosmetics: { Types.CosmeticId },
-	perk: ("double_mult" | "pet_slots" | "vip")?, -- dauerhafter Spielvorteil
+	perk: ("double_mult" | "pet_slots" | "vip" | "auto_harvest")?, -- dauerhafter Spielvorteil
+	suggestedRobux: number?, -- TODO: nur Preis-VORSCHLAG; der echte Preis wird im Dashboard gesetzt
 }
 
 export type ProductDef = {
@@ -713,7 +729,8 @@ export type ProductDef = {
 	description: string,
 	grantsCosmetic: Types.CosmeticId?, -- einmalige Kosmetik-Freischaltung
 	grantsEnergy: number?, -- Währungspaket (wiederholt kaufbar)
-	perk: "instant_rebirth"?, -- Sofort-Wiedergeburt (wiederholt kaufbar)
+	perk: ("instant_rebirth" | "boost_2x")?, -- Sofort-Rebirth / 20-Min-Boost (wiederholt kaufbar)
+	suggestedRobux: number?, -- TODO: nur Preis-VORSCHLAG; der echte Preis wird im Dashboard gesetzt
 }
 
 local MonetizationConfig = {}
@@ -820,117 +837,154 @@ MonetizationConfig.Cosmetics = {
 } :: { [string]: CosmeticDef }
 
 -- Gamepässe: einmaliger Kauf, dauerhafte Freischaltung (auch nach Rejoin).
+-- suggestedRobux ist NUR ein Vorschlag - TODO: echte Preise im Dashboard setzen.
 MonetizationConfig.Gamepasses = {
 	gp_kosmische_sammlung = {
 		key = "gp_kosmische_sammlung",
-		gamePassId = 0,
+		gamePassId = 0, -- TODO: echte Gamepass-ID eintragen
 		displayName = "Kosmische Sammlung",
 		description = "Galaxie-Kern-Skin und Sternenstaub-Aura für deinen Planeten.",
 		grantsCosmetics = { "skin_galaxie", "aura_sternenstaub" },
+		suggestedRobux = 149,
 	},
 	gp_wettermeister = {
 		key = "gp_wettermeister",
-		gamePassId = 0,
+		gamePassId = 0, -- TODO: echte Gamepass-ID eintragen
 		displayName = "Wettermeister",
 		description = "Aurora und Sternschnuppen als Wettereffekte.",
 		grantsCosmetics = { "wetter_aurora", "wetter_sternschnuppen" },
+		suggestedRobux = 99,
 	},
 	gp_haustier_freund = {
 		key = "gp_haustier_freund",
-		gamePassId = 0,
+		gamePassId = 0, -- TODO: echte Gamepass-ID eintragen
 		displayName = "Haustier-Freund",
 		description = "Mini-Komet und Sternenwelpe begleiten dich.",
 		grantsCosmetics = { "haustier_mini_komet", "haustier_sternenwelpe" },
+		suggestedRobux = 199,
 	},
 	gp_double_mult = {
 		key = "gp_double_mult",
-		gamePassId = 0,
+		gamePassId = 0, -- TODO: echte Gamepass-ID eintragen
 		displayName = "2x Multiplikator",
 		description = "Verdoppelt dauerhaft ALLE Energie-Einnahmen.",
 		grantsCosmetics = {},
 		perk = "double_mult",
+		suggestedRobux = 349,
 	},
 	gp_pet_slots = {
 		key = "gp_pet_slots",
-		gamePassId = 0,
+		gamePassId = 0, -- TODO: echte Gamepass-ID eintragen
 		displayName = "+2 Pet-Slots",
 		description = "Rüste 5 statt 3 Pets gleichzeitig aus.",
 		grantsCosmetics = {},
 		perk = "pet_slots",
+		suggestedRobux = 249,
+	},
+	gp_auto_harvest = {
+		key = "gp_auto_harvest",
+		gamePassId = 0, -- TODO: echte Gamepass-ID eintragen
+		displayName = "🤖 Auto-Sammler",
+		description = "Sammelt automatisch 1 Objekt pro Sekunde auf deiner Insel ein.",
+		grantsCosmetics = {},
+		perk = "auto_harvest",
+		suggestedRobux = 299,
 	},
 	gp_vip = {
 		key = "gp_vip",
-		gamePassId = 0,
+		gamePassId = 0, -- TODO: echte Gamepass-ID eintragen
 		displayName = "👑 VIP",
 		description = "Goldener VIP-Trail, [VIP]-Chat-Tag und doppelter Tagesbonus.",
 		grantsCosmetics = {},
 		perk = "vip",
+		suggestedRobux = 399,
 	},
 } :: { [string]: GamepassDef }
 
 -- Zusätzliche Pet-Slots des +2-Gamepasses.
 MonetizationConfig.PET_SLOTS_BONUS = 2
 
+-- Zeitlich begrenzter 2x-Boost (Developer Product prod_boost_2x).
+-- Mehrfachkauf verlängert die Laufzeit; überlebt Rejoins (boostUntil im Profil).
+MonetizationConfig.BOOST_DURATION_SECONDS = 20 * 60
+MonetizationConfig.BOOST_MULTIPLIER = 2
+
 -- Developer Products: schalten je eine Kosmetik dauerhaft frei.
 -- (Bereits gekaufte Produkte zeigt der Shop als "Im Besitz" an.)
 MonetizationConfig.DeveloperProducts = {
 	prod_skin_gold = {
 		key = "prod_skin_gold",
-		productId = 0,
+		productId = 0, -- TODO: echte Produkt-ID eintragen
 		displayName = "Goldener Kern",
 		description = "Schaltet den goldenen Planetenkern frei.",
 		grantsCosmetic = "skin_gold",
+		suggestedRobux = 59,
 	},
 	prod_skin_lava = {
 		key = "prod_skin_lava",
-		productId = 0,
+		productId = 0, -- TODO: echte Produkt-ID eintragen
 		displayName = "Lava-Kern",
 		description = "Schaltet den Lava-Planetenkern frei.",
 		grantsCosmetic = "skin_lava",
+		suggestedRobux = 59,
 	},
 	prod_skin_eis = {
 		key = "prod_skin_eis",
-		productId = 0,
+		productId = 0, -- TODO: echte Produkt-ID eintragen
 		displayName = "Eiskern",
 		description = "Schaltet den Eis-Planetenkern frei.",
 		grantsCosmetic = "skin_eis",
+		suggestedRobux = 49,
 	},
 	prod_aura_regenbogen = {
 		key = "prod_aura_regenbogen",
-		productId = 0,
+		productId = 0, -- TODO: echte Produkt-ID eintragen
 		displayName = "Regenbogen-Aura",
 		description = "Schaltet die Regenbogen-Aura frei.",
 		grantsCosmetic = "aura_regenbogen",
+		suggestedRobux = 79,
 	},
 	-- Währungspakete (wiederholt kaufbar; zählen NICHT zur Gesamt-Energie,
 	-- schalten also weder Biome noch Rebirths frei).
 	prod_energie_klein = {
 		key = "prod_energie_klein",
-		productId = 0,
+		productId = 0, -- TODO: echte Produkt-ID eintragen
 		displayName = "Energie-Paket S",
 		description = "1.000 Energie sofort auf dein Konto.",
 		grantsEnergy = 1000,
+		suggestedRobux = 25,
 	},
 	prod_energie_mittel = {
 		key = "prod_energie_mittel",
-		productId = 0,
+		productId = 0, -- TODO: echte Produkt-ID eintragen
 		displayName = "Energie-Paket M",
 		description = "6.000 Energie sofort auf dein Konto.",
 		grantsEnergy = 6000,
+		suggestedRobux = 99,
 	},
 	prod_energie_gross = {
 		key = "prod_energie_gross",
-		productId = 0,
+		productId = 0, -- TODO: echte Produkt-ID eintragen
 		displayName = "Energie-Paket L",
 		description = "20.000 Energie sofort auf dein Konto.",
 		grantsEnergy = 20000,
+		suggestedRobux = 249,
 	},
 	prod_instant_rebirth = {
 		key = "prod_instant_rebirth",
-		productId = 0,
+		productId = 0, -- TODO: echte Produkt-ID eintragen
 		displayName = "Sofort-Wiedergeburt",
 		description = "Löst sofort eine Wiedergeburt aus - ohne Schwelle.",
 		perk = "instant_rebirth",
+		suggestedRobux = 149,
+	},
+	prod_boost_2x = {
+		key = "prod_boost_2x",
+		productId = 0, -- TODO: echte Produkt-ID eintragen
+		displayName = "🔥 2x-Boost (20 Min.)",
+		description = "Verdoppelt 20 Minuten lang alle Energie-Einnahmen. Stapelt die Laufzeit.",
+		perk = "boost_2x",
+		suggestedRobux = 49,
 	},
 } :: { [string]: ProductDef }
 
@@ -1029,6 +1083,9 @@ ProgressionConfig.UPGRADE_BONUS_PER_LEVEL = 0.02 -- je Upgrade-Stufe (alle Upgra
 ProgressionConfig.REBIRTH_BONUS = 0.5 -- +50% pro Wiedergeburt, stapelnd
 
 -- Rebirth-Schwelle: lifetimeEnergy, ab der die nächste Wiedergeburt möglich ist.
+-- HINWEIS (Balancing-Vorschlag, bewusst NICHT eigenmächtig geändert):
+-- 25.000 ist für den ersten Rebirth in Session 1-2 vermutlich zu hoch.
+-- Empfehlung nach erstem Playtest: 5.000-8.000 als Einstiegs-Schwelle testen.
 ProgressionConfig.REBIRTH_BASE_THRESHOLD = 25000
 ProgressionConfig.REBIRTH_THRESHOLD_FACTOR = 2 -- jede weitere verdoppelt die Schwelle
 
@@ -1193,6 +1250,8 @@ return RarityConfig
 --     MultiplierChanged(info: { total, biomeBonus, upgradeBonus, petBonus,
 --       rebirthMultiplier, rebirths, nextThreshold, lifetimeEnergy })
 --     EquipmentUpdated(equipped: { pets: { uid }, trail: uid?, skin: uid?, maxPetSlots: number })
+--     OfflineEarnings(amount: number, minutes: number) -- Willkommens-Popup
+--     QuestsUpdated(quests: { { text, progress, target, reward, done } })
 --
 --   RemoteFunctions (Client -&gt; Server), geben immer (ok: boolean, payload: any?) zurück:
 --     PlaceBiome(biomeId: string, slot: number) -- schaltet eine Insel-Zone frei
@@ -1233,6 +1292,8 @@ local EVENT_NAMES = {
 	"UpgradesUpdated",
 	"MultiplierChanged",
 	"EquipmentUpdated",
+	"OfflineEarnings",
+	"QuestsUpdated",
 }
 
 local FUNCTION_NAMES = {
@@ -1353,6 +1414,8 @@ export type PlayerProfile = {
 	rebirths: number, -- Anzahl Wiedergeburten (permanenter Multiplikator)
 	equipped: EquippedItems, -- ausgerüstete Loot-Items (Pets/Trail/Skin)
 	purchaseIds: { string }, -- verarbeitete PurchaseIds (Schutz vor Doppelgutschrift)
+	lastSeenAt: number, -- Unix-Zeit des letzten Speicherns (Offline-Earnings)
+	boostUntil: number, -- Unix-Zeit, bis zu der der gekaufte 2x-Boost läuft (0 = keiner)
 }
 
 -- Ausgerüstete Loot-Items (referenzieren OwnedCollectible.uid).
@@ -1465,11 +1528,11 @@ return WeightedRandom
 </Item>
 </Item>
 </Item>
-<Item class="ServerScriptService" referent="PF49">
+<Item class="ServerScriptService" referent="PF51">
 <Properties>
 <string name="Name">ServerScriptService</string>
 </Properties>
-<Item class="Script" referent="PF31">
+<Item class="Script" referent="PF32">
 <Properties>
 <string name="Name">Server</string>
 <ProtectedString name="Source">--!strict
@@ -1501,6 +1564,7 @@ local SERVICE_STARTUP_ORDER = {
 	"MonetizationService",
 	"LeaderboardService",
 	"DailyRewardService",
+	"QuestService",
 	"TutorialService",
 	"SelfCheckService", -- immer zuletzt: prüft den fertigen Aufbau
 }
@@ -1522,7 +1586,7 @@ end
 print("[PlanetForge] Server bereit")
 </ProtectedString>
 </Properties>
-<Item class="Folder" referent="PF30">
+<Item class="Folder" referent="PF31">
 <Properties>
 <string name="Name">Services</string>
 </Properties>
@@ -1584,6 +1648,50 @@ local function newPart(
 	return part
 end
 
+-- Hellt eine Farbe um den Faktor auf bzw. dunkelt sie ab (Palette-Abstufungen).
+local function shade(color: Color3, factor: number): Color3
+	return Color3.new(
+		math.clamp(color.R * factor, 0, 1),
+		math.clamp(color.G * factor, 0, 1),
+		math.clamp(color.B * factor, 0, 1)
+	)
+end
+
+-- Subtiler Wind-Sway: Part pendelt minimal um seine Position (Endlos-Tween).
+local function addSway(part: BasePart, rng: Random)
+	local offset = Vector3.new(rng:NextNumber(-0.18, 0.18), rng:NextNumber(0.04, 0.1), rng:NextNumber(-0.18, 0.18))
+	local tween = TweenService:Create(
+		part,
+		TweenInfo.new(rng:NextNumber(2.4, 3.6), Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true),
+		{ CFrame = part.CFrame * CFrame.new(offset) }
+	)
+	tween:Play()
+end
+
+-- Unsichtbarer Anker mit ParticleEmitter für Ambient-Effekte einer Zone.
+local function addAmbientEmitter(
+	model: Model,
+	position: Vector3,
+	color: Color3,
+	rate: number,
+	speed: NumberRange,
+	size: number,
+	lightEmission: number
+): ParticleEmitter
+	local anchor = newPart(model, Enum.PartType.Block, Vector3.new(0.2, 0.2, 0.2),
+		Color3.new(1, 1, 1), Enum.Material.SmoothPlastic, CFrame.new(position), 1)
+	local emitter = Instance.new("ParticleEmitter")
+	emitter.Color = ColorSequence.new(color)
+	emitter.LightEmission = lightEmission
+	emitter.Rate = rate
+	emitter.Lifetime = NumberRange.new(1.2, 2.4)
+	emitter.Speed = speed
+	emitter.Size = NumberSequence.new(size)
+	emitter.SpreadAngle = Vector2.new(180, 180)
+	emitter.Parent = anchor
+	return emitter
+end
+
 -- Zufälliger Punkt auf der Zonen-Oberfläche (deterministisch über rng).
 local function scatter(top: Vector3, rng: Random, radius: number?): Vector3
 	local r = (radius or activeScatterRadius) * math.sqrt(rng:NextNumber())
@@ -1608,15 +1716,52 @@ local function buildTree(model: Model, base: Vector3, rng: Random, trunkHeight: 
 		Enum.Material.Wood,
 		CFrame.new(base + Vector3.new(0, trunkHeight / 2, 0)) * CFrame.Angles(0, 0, math.rad(90))
 	)
-	local crownSize = trunkHeight * 0.9 + rng:NextNumber() * 0.6
-	newPart(
-		model,
-		Enum.PartType.Ball,
-		Vector3.new(crownSize, crownSize, crownSize),
-		crownColor,
-		Enum.Material.Grass,
-		CFrame.new(base + Vector3.new(0, trunkHeight + crownSize * 0.35, 0))
-	)
+
+	-- 2-3 gestaffelte, leicht versetzte Kronen: unten dunkler, oben heller.
+	local crownCount = 2 + rng:NextInteger(0, 1)
+	local baseSize = trunkHeight * 0.95 + rng:NextNumber() * 0.5
+	local topCrown: BasePart? = nil
+	for layer = 1, crownCount do
+		local t = (layer - 1) / crownCount
+		local size = baseSize * (1 - t * 0.38)
+		local crown = newPart(
+			model,
+			Enum.PartType.Ball,
+			Vector3.new(size, size * 0.9, size),
+			shade(crownColor, 0.82 + t * 0.35),
+			Enum.Material.Grass,
+			CFrame.new(base + Vector3.new(
+				rng:NextNumber(-0.5, 0.5),
+				trunkHeight + baseSize * 0.15 + t * baseSize * 0.55,
+				rng:NextNumber(-0.5, 0.5)
+			))
+		)
+		topCrown = crown
+	end
+	if topCrown ~= nil then
+		addSway(topCrown, rng)
+	end
+end
+
+-- Felsen aus 2 ineinandergeschobenen, rotierten Blöcken.
+local function buildRock(model: Model, base: Vector3, rng: Random, scale: number, color: Color3)
+	for i = 1, 2 do
+		local size = Vector3.new(
+			scale * rng:NextNumber(0.7, 1.1),
+			scale * rng:NextNumber(0.5, 0.9),
+			scale * rng:NextNumber(0.7, 1.1)
+		)
+		newPart(
+			model,
+			Enum.PartType.Block,
+			size,
+			shade(color, 0.9 + i * 0.1),
+			Enum.Material.Slate,
+			CFrame.new(base + Vector3.new(rng:NextNumber(-0.4, 0.4), size.Y * 0.3, rng:NextNumber(-0.4, 0.4)))
+				* yaw(rng)
+				* CFrame.Angles(math.rad(rng:NextNumber(-12, 12)), 0, math.rad(rng:NextNumber(-12, 12)))
+		)
+	end
 end
 
 local function buildCactus(model: Model, base: Vector3, rng: Random)
@@ -1669,14 +1814,20 @@ BiomeVisuals.Builders = {
 
 	wald = function(model: Model, top: Vector3, level: number, rng: Random)
 		for _ = 1, objectCount(level) - 1 do
-			buildTree(model, scatter(top, rng), rng, 1.8 + rng:NextNumber() * 1.4, Color3.fromRGB(58, 125, 60))
+			buildTree(model, scatter(top, rng), rng, 1.8 + rng:NextNumber() * 1.4, Color3.fromRGB(64, 118, 62))
 		end
-		-- Ein Findling als Akzent.
-		newPart(model, Enum.PartType.Ball, Vector3.new(0.9, 0.7, 0.9),
-			Color3.fromRGB(120, 118, 112), Enum.Material.Slate, CFrame.new(scatter(top, rng)) * yaw(rng))
+		buildRock(model, scatter(top, rng), rng, 1.1, Color3.fromRGB(118, 115, 110))
+		-- Glühwürmchen ab Level 2 (sparsam, mit Licht-Schimmer).
+		if level &gt;= 2 then
+			addAmbientEmitter(model, top + Vector3.new(0, 2.2, 0), Color3.fromRGB(255, 240, 150),
+				1 + level * 0.4, NumberRange.new(0.3, 0.9), 0.18, 1)
+		end
 	end,
 
 	wueste = function(model: Model, top: Vector3, level: number, rng: Random)
+		-- Dezenter Sandwirbel über der Zone.
+		addAmbientEmitter(model, top + Vector3.new(0, 1.2, 0), Color3.fromRGB(222, 198, 150),
+			1.5, NumberRange.new(1.5, 3), 1.4, 0.1)
 		for i = 1, objectCount(level) do
 			local base = scatter(top, rng)
 			if i % 3 == 0 then
@@ -1723,7 +1874,7 @@ BiomeVisuals.Builders = {
 		end
 		-- Grosses Blatt als Unterholz-Akzent.
 		newPart(model, Enum.PartType.Block, Vector3.new(1.6, 0.1, 0.9),
-			Color3.fromRGB(52, 130, 58), Enum.Material.Grass,
+			shade(Color3.fromRGB(52, 130, 58), 1.1), Enum.Material.Grass,
 			CFrame.new(scatter(top, rng) + Vector3.new(0, 0.3, 0)) * yaw(rng) * CFrame.Angles(math.rad(20), 0, 0))
 	end,
 
@@ -1868,6 +2019,16 @@ function BiomeVisuals.build(slotPart: BasePart, biomeId: string, level: number, 
 	-- Deterministischer Seed pro Zonen-Position und Level.
 	local seed = math.floor(math.abs(slotPart.Position.X) * 7 + math.abs(slotPart.Position.Z) * 13) + level * 101
 	builder(model, top, level, Random.new(seed))
+
+	-- Höhere Level wirken prächtiger: Deko wächst pro Level leicht mit.
+	local sizeScale = 1 + (level - 1) * 0.06
+	if sizeScale &gt; 1 then
+		for _, child in model:GetDescendants() do
+			if child:IsA("BasePart") then
+				child.Size *= sizeScale
+			end
+		end
+	end
 
 	model.Parent = slotPart
 
@@ -2070,6 +2231,8 @@ local function buildDefaultProfile(): Types.PlayerProfile
 		rebirths = 0,
 		equipped = { pets = {} },
 		purchaseIds = {},
+		lastSeenAt = 0,
+		boostUntil = 0,
 	}
 end
 
@@ -2144,6 +2307,8 @@ end
 
 -- Speichert einen Session-Eintrag via UpdateAsync (Last-Writer-Wins, siehe Kopfkommentar).
 local function saveProfile(player: Player, entry: SessionEntry): boolean
+	-- Zeitstempel für Offline-Earnings: Stand des letzten Speicherns.
+	entry.profile.lastSeenAt = os.time()
 	local dataStore = store
 	if dataStore == nil or not entry.saveable then
 		return false
@@ -2354,8 +2519,9 @@ function EnergyService.grantEnergy(player: Player, baseAmount: number): number
 		multiplier = 1
 	end
 
-	-- 2x-Gamepass wirkt auf alle Einnahmen (Hook, siehe oben).
+	-- 2x-Gamepass/Boost und Freunde-Boost wirken auf alle Einnahmen.
 	multiplier *= EnergyService.getPassMultiplier(player)
+	multiplier *= EnergyService.getFriendBonus(player)
 
 	local amount = math.floor(baseAmount * multiplier)
 	if baseAmount &gt;= 1 then
@@ -2408,11 +2574,44 @@ function EnergyService.trySpend(player: Player, amount: number): boolean
 	return true
 end
 
--- Gamepass-Multiplikator auf ALLE Einnahmen (2x-Pass); der
+-- Gamepass-Multiplikator auf ALLE Einnahmen (2x-Pass, 20-Min-Boost); der
 -- MonetizationService ersetzt diese Funktion beim Start (Hook, damit
 -- keine zyklische Service-Abhängigkeit entsteht).
 EnergyService.getPassMultiplier = function(_player: Player): number
 	return 1
+end
+
+--------------------------------------------------------------------------
+-- Freunde-Boost: +10% pro Freund, der gleichzeitig im Server spielt
+-- (gedeckelt, siehe GameConfig). Die Freundschafts-Prüfung ist ein
+-- Web-Aufruf, deshalb wird das Ergebnis pro Spieler-Paar gecacht und nur
+-- bei Beitritt/Verlassen neu berechnet.
+--------------------------------------------------------------------------
+
+local friendCounts: { [Player]: number } = {}
+
+function EnergyService.getFriendBonus(player: Player): number
+	local count = math.min(friendCounts[player] or 0, GameConfig.FRIEND_BOOST_MAX_FRIENDS)
+	return 1 + count * GameConfig.FRIEND_BOOST_PER_FRIEND
+end
+
+-- Zählt für jeden Spieler die Freunde im Server neu (pcall pro Paar).
+local function refreshFriendCounts()
+	local players = Players:GetPlayers()
+	for _, player in players do
+		local count = 0
+		for _, other in players do
+			if other ~= player then
+				local ok, isFriend = pcall(function()
+					return player:IsFriendsWith(other.UserId)
+				end)
+				if ok and isFriend == true then
+					count += 1
+				end
+			end
+		end
+		friendCounts[player] = count
+	end
 end
 
 -- Schickt dem Client den aktuellen Energiestand erneut (z. B. nach einem
@@ -2441,16 +2640,51 @@ function EnergyService.init()
 
 	-- Initialen Energiestand senden, sobald das Profil geladen ist,
 	-- damit die UI von Anfang an korrekte Werte zeigt.
+	local offlineEvent = Remotes.getEvent("OfflineEarnings")
+
 	local function onPlayerAdded(player: Player)
+		-- Freunde-Boost aktualisieren (Web-Aufrufe, deshalb entkoppelt).
+		task.spawn(refreshFriendCounts)
+
 		task.spawn(function()
 			local profile: Types.PlayerProfile? = DataService.waitForProfile(player)
-			if profile ~= nil and player.Parent ~= nil then
-				fireEnergyChanged(player, profile)
+			if profile == nil or player.Parent == nil then
+				return
+			end
+			fireEnergyChanged(player, profile)
+
+			-- Offline-Earnings: Biome haben waehrend der Abwesenheit anteilig
+			-- weiterproduziert (OFFLINE_EARNINGS_RATE, gedeckelt auf CAP_HOURS).
+			if profile.lastSeenAt &gt; 0 then
+				local awayMinutes = (os.time() - profile.lastSeenAt) / 60
+				awayMinutes = math.clamp(awayMinutes, 0, GameConfig.OFFLINE_EARNINGS_CAP_HOURS * 60)
+				if awayMinutes &gt;= 1 then
+					local multiplier = ProgressionConfig.getTotalMultiplier(
+						profile.biomes,
+						profile.upgrades,
+						profile.rebirths,
+						EquipService.getPetBonus(profile)
+					)
+					local offline = math.floor(
+						computeIncomePerMinute(profile) * awayMinutes * GameConfig.OFFLINE_EARNINGS_RATE * multiplier
+					)
+					if offline &gt; 0 then
+						EnergyService.addRaw(player, offline)
+						profile.lifetimeEnergy += offline
+						DataService.markDirty(player)
+						fireEnergyChanged(player, profile)
+						offlineEvent:FireClient(player, offline, math.floor(awayMinutes))
+					end
+				end
 			end
 		end)
 	end
 
 	Players.PlayerAdded:Connect(onPlayerAdded)
+	Players.PlayerRemoving:Connect(function(player)
+		friendCounts[player] = nil
+		task.spawn(refreshFriendCounts)
+	end)
 	for _, player in Players:GetPlayers() do
 		onPlayerAdded(player)
 	end
@@ -3225,6 +3459,12 @@ local rng = Random.new()
 
 local HarvestService = {}
 
+-- Auto-Harvest-Gamepass (Hook): der MonetizationService ersetzt diese
+-- Funktion beim Start (vermeidet eine zyklische Service-Abhängigkeit).
+HarvestService.hasAutoHarvest = function(_player: Player): boolean
+	return false
+end
+
 --------------------------------------------------------------------------
 -- Abgeleitete Werte aus dem Profil
 --------------------------------------------------------------------------
@@ -3465,6 +3705,44 @@ local function collectTick(player: Player)
 	end
 end
 
+-- Auto-Harvest (Gamepass): sammelt genau EIN liegendes Objekt ein, egal
+-- wie weit es entfernt ist. Verkaufen am SellPad bleibt bewusst Handarbeit,
+-- damit der Besitzer trotzdem aktiv bleiben muss.
+local function autoCollectOne(player: Player)
+	local profile = DataService.getProfile(player)
+	local states = zoneStates[player]
+	if profile == nil or states == nil then
+		return
+	end
+	if profile.backpack.items &gt;= HarvestService.getBackpackCapacity(profile) then
+		return
+	end
+
+	for _, state in states do
+		for index = #state.objects, 1, -1 do
+			local object = state.objects[index]
+			if object.part.Parent == nil then
+				table.remove(state.objects, index)
+				continue
+			end
+
+			table.remove(state.objects, index)
+			profile.backpack.items += 1
+			profile.backpack.value += object.value
+			profile.stats.collected += 1
+
+			if objectCollectedEvent ~= nil then
+				(objectCollectedEvent :: RemoteEvent):FireClient(player, object.part.Position, object.value, object.color)
+			end
+			object.part:Destroy()
+
+			DataService.markDirty(player)
+			fireBackpackChanged(player, profile)
+			return -- pro Takt nur ein Objekt
+		end
+	end
+end
+
 --------------------------------------------------------------------------
 -- Reset (z. B. nach einer Wiedergeburt)
 --------------------------------------------------------------------------
@@ -3582,6 +3860,18 @@ function HarvestService.init()
 			task.wait(GameConfig.HARVEST_TICK_SECONDS)
 			for _, player in Players:GetPlayers() do
 				collectTick(player)
+			end
+		end
+	end)
+
+	-- Auto-Harvest-Schleife (nur Gamepass-Besitzer, 1 Objekt pro Takt).
+	task.spawn(function()
+		while true do
+			task.wait(GameConfig.AUTO_HARVEST_INTERVAL_SECONDS)
+			for _, player in Players:GetPlayers() do
+				if HarvestService.hasAutoHarvest(player) then
+					autoCollectOne(player)
+				end
 			end
 		end
 	end)
@@ -4026,6 +4316,7 @@ local GameConfig = require(ReplicatedStorage.Shared.Config.GameConfig)
 local DataService = require(script.Parent.DataService)
 local EnergyService = require(script.Parent.EnergyService)
 local EquipService = require(script.Parent.EquipService)
+local HarvestService = require(script.Parent.HarvestService)
 local PlanetService = require(script.Parent.PlanetService)
 local ProgressionService = require(script.Parent.ProgressionService)
 
@@ -4049,6 +4340,16 @@ local ownedPasses: { [Player]: { [string]: boolean } } = {}
 function MonetizationService.hasPass(player: Player, key: string): boolean
 	local passes = ownedPasses[player]
 	return passes ~= nil and passes[key] == true
+end
+
+-- Restlaufzeit des gekauften 2x-Boosts in Sekunden (0 = kein Boost aktiv).
+-- Der Ablauf steht als Unix-Zeit im Profil und überlebt so auch Rejoins.
+function MonetizationService.getBoostSecondsLeft(player: Player): number
+	local profile = DataService.getProfile(player)
+	if profile == nil then
+		return 0
+	end
+	return math.max(0, profile.boostUntil - os.time())
 end
 
 local function fireCosmeticsUpdated(player: Player)
@@ -4287,6 +4588,20 @@ local function grantProduct(player: Player, def: MonetizationConfig.ProductDef, 
 		end
 		return ok == true
 	end
+	if def.perk == "boost_2x" then
+		local profile = DataService.getProfile(player)
+		if profile == nil then
+			return false
+		end
+		-- Mehrfachkauf stapelt: die Laufzeit wird ans (Rest-)Ende angehängt.
+		local base = math.max(os.time(), profile.boostUntil)
+		profile.boostUntil = base + MonetizationConfig.BOOST_DURATION_SECONDS
+		DataService.markDirty(player)
+		ProgressionService.notifyMultiplier(player)
+		local minutes = math.floor((profile.boostUntil - os.time()) / 60)
+		notify(player, `🔥 2x-Boost aktiv! Alle Einnahmen verdoppelt für {minutes} Minuten.`, "success")
+		return true
+	end
 	warn(`[PlanetForge] Produkt {def.key} hat keine Gutschrift-Regel`)
 	return false
 end
@@ -4464,14 +4779,24 @@ function MonetizationService.init()
 		print("[PlanetForge] Studio-Testmodus für den Shop ist AKTIV (nur in Studio wirksam).")
 	end
 
-	-- Gamepass-Wirkungen als Hooks verdrahten (vermeidet Service-Zyklen):
-	-- 2x-Pass verdoppelt alle Einnahmen, +2-Pass erweitert die Pet-Slots.
+	-- Gamepass-/Produkt-Wirkungen als Hooks verdrahten (vermeidet Service-
+	-- Zyklen): 2x-Pass und 20-Min-Boost multiplizieren alle Einnahmen,
+	-- +2-Pass erweitert die Pet-Slots, Auto-Sammler aktiviert die
+	-- Auto-Harvest-Schleife, und der Boost-Rest wird im HUD angezeigt.
 	EnergyService.getPassMultiplier = function(player: Player): number
-		return if MonetizationService.hasPass(player, "gp_double_mult") then 2 else 1
+		local multiplier = if MonetizationService.hasPass(player, "gp_double_mult") then 2 else 1
+		if MonetizationService.getBoostSecondsLeft(player) &gt; 0 then
+			multiplier *= MonetizationConfig.BOOST_MULTIPLIER
+		end
+		return multiplier
 	end
 	EquipService.getBonusPetSlots = function(player: Player): number
 		return if MonetizationService.hasPass(player, "gp_pet_slots") then MonetizationConfig.PET_SLOTS_BONUS else 0
 	end
+	HarvestService.hasAutoHarvest = function(player: Player): boolean
+		return MonetizationService.hasPass(player, "gp_auto_harvest")
+	end
+	ProgressionService.getBoostSecondsLeft = MonetizationService.getBoostSecondsLeft
 
 
 	-- Gamepass-Kauf im laufenden Spiel: Kosmetik sofort gutschreiben.
@@ -5033,6 +5358,35 @@ local function buildIsland(player: Player, origin: CFrame)
 	base.Material = Enum.Material.Grass
 	base.CFrame = origin * CFrame.Angles(0, 0, math.rad(90))
 
+	-- Hub-Podest: zweistufige Plattform unter dem Kristall mit Gold-Akzenten,
+	-- damit die Inselmitte wie ein gestalteter Treffpunkt wirkt.
+	local podiumBottom = newIslandPart(folder, "PodiumBottom")
+	podiumBottom.Shape = Enum.PartType.Cylinder
+	podiumBottom.Size = Vector3.new(0.8, 26, 26)
+	podiumBottom.Color = Color3.fromRGB(168, 162, 152)
+	podiumBottom.Material = Enum.Material.SmoothPlastic
+	podiumBottom.CFrame = origin * CFrame.new(0, BASE_THICKNESS / 2 + 0.4, 0) * CFrame.Angles(0, 0, math.rad(90))
+
+	local podiumTop = newIslandPart(folder, "PodiumTop")
+	podiumTop.Shape = Enum.PartType.Cylinder
+	podiumTop.Size = Vector3.new(0.8, 18, 18)
+	podiumTop.Color = Color3.fromRGB(196, 190, 178)
+	podiumTop.Material = Enum.Material.SmoothPlastic
+	podiumTop.CFrame = origin * CFrame.new(0, BASE_THICKNESS / 2 + 1.2, 0) * CFrame.Angles(0, 0, math.rad(90))
+
+	-- Vier goldene Leuchtstreifen, die vom Podest zu den Pads zeigen.
+	for i = 0, 3 do
+		local angle = i * math.pi / 2 + math.pi / 4
+		local strip = newIslandPart(folder, `HubStrip_{i + 1}`)
+		strip.Size = Vector3.new(0.6, 0.12, 9)
+		strip.Color = Color3.fromRGB(255, 210, 90)
+		strip.Material = Enum.Material.Neon
+		strip.CanCollide = false
+		strip.CFrame = origin
+			* CFrame.Angles(0, angle, 0)
+			* CFrame.new(0, BASE_THICKNESS / 2 + 0.28, -14)
+	end
+
 	-- Insel-Kristall in der Mitte (Ziel für Skins/Auren, trägt das Namensschild).
 	local core = newIslandPart(folder, "Core")
 	core.Size = Vector3.new(3, 7, 3)
@@ -5291,50 +5645,67 @@ end
 -- Welt-Stimmung
 --------------------------------------------------------------------------
 
--- Freundliche Himmel-Insel-Stimmung: Tag, weiche Atmosphäre, dezentes Bloom.
+-- "Goldene Stunde"-Look: warmes Licht, weiche Schatten, dezentes Bloom,
+-- SunRays und leicht angehobene Sättigung (typischer Simulator-Look,
+-- bewusst subtil - kein Neon-Matsch). Idempotent.
 local function setupWorldAmbience()
 	local Lighting = game:GetService("Lighting")
 
-	Lighting.ClockTime = 13
-	Lighting.Brightness = 2.4
-	Lighting.Ambient = Color3.fromRGB(120, 130, 150)
-	Lighting.OutdoorAmbient = Color3.fromRGB(140, 150, 170)
+	Lighting.ClockTime = 16.4 -- goldene Stunde: lange, warme Schatten
+	Lighting.Brightness = 2.6
+	Lighting.GlobalShadows = true
+	Lighting.ShadowSoftness = 0.25
+	Lighting.EnvironmentDiffuseScale = 0.6
+	Lighting.EnvironmentSpecularScale = 0.6
+	Lighting.Ambient = Color3.fromRGB(118, 110, 125)
+	Lighting.OutdoorAmbient = Color3.fromRGB(160, 145, 140)
+	Lighting.ColorShift_Top = Color3.fromRGB(255, 226, 180) -- warme Sonnenseite
+	Lighting.ColorShift_Bottom = Color3.fromRGB(120, 130, 170) -- kühle Schattenseite
 
 	if Lighting:FindFirstChild("PlanetForgeSky") == nil then
 		local sky = Instance.new("Sky")
 		sky.Name = "PlanetForgeSky"
-		sky.StarCount = 1000
-		sky.SunAngularSize = 14
+		sky.StarCount = 1500
+		sky.SunAngularSize = 18
+		sky.MoonAngularSize = 12
 		sky.Parent = Lighting
 	end
 
 	if Lighting:FindFirstChild("PlanetForgeAtmosphere") == nil then
 		local atmosphere = Instance.new("Atmosphere")
 		atmosphere.Name = "PlanetForgeAtmosphere"
-		atmosphere.Density = 0.3
-		atmosphere.Color = Color3.fromRGB(200, 215, 235)
-		atmosphere.Decay = Color3.fromRGB(110, 130, 160)
-		atmosphere.Glare = 0.25
-		atmosphere.Haze = 1.6
+		atmosphere.Density = 0.32
+		atmosphere.Color = Color3.fromRGB(215, 200, 215)
+		atmosphere.Decay = Color3.fromRGB(130, 120, 160)
+		atmosphere.Glare = 0.35
+		atmosphere.Haze = 1.8
 		atmosphere.Parent = Lighting
 	end
 
 	if Lighting:FindFirstChild("PlanetForgeBloom") == nil then
 		local bloom = Instance.new("BloomEffect")
 		bloom.Name = "PlanetForgeBloom"
-		bloom.Intensity = 0.35
-		bloom.Size = 24
-		bloom.Threshold = 1.2
+		bloom.Intensity = 0.5
+		bloom.Size = 28
+		bloom.Threshold = 1.1 -- hoch genug, damit nur Neon/Sonne blüht
 		bloom.Parent = Lighting
 	end
 
 	if Lighting:FindFirstChild("PlanetForgeColor") == nil then
 		local color = Instance.new("ColorCorrectionEffect")
 		color.Name = "PlanetForgeColor"
-		color.Contrast = 0.04
-		color.Saturation = 0.1
-		color.TintColor = Color3.fromRGB(255, 250, 240)
+		color.Contrast = 0.08
+		color.Saturation = 0.18 -- "juicy", aber unterhalb der Kitsch-Grenze
+		color.TintColor = Color3.fromRGB(255, 248, 238)
 		color.Parent = Lighting
+	end
+
+	if Lighting:FindFirstChild("PlanetForgeSunRays") == nil then
+		local rays = Instance.new("SunRaysEffect")
+		rays.Name = "PlanetForgeSunRays"
+		rays.Intensity = 0.06 -- dezent: nur ein Hauch Gottesstrahlen
+		rays.Spread = 0.8
+		rays.Parent = Lighting
 	end
 end
 
@@ -5514,7 +5885,7 @@ local WATCHER_INTERVAL_SECONDS = 3 -- wie oft der Multiplikator neu geprüft wir
 local multiplierChangedEvent: RemoteEvent? = nil
 local notificationEvent: RemoteEvent? = nil
 
--- Zuletzt an den Client gemeldeter Gesamt-Multiplikator (für den Watcher).
+-- Zuletzt an den Client gemeldete Anzeige-Signatur (für den Watcher).
 local lastSentTotal: { [Player]: number } = {}
 
 local ProgressionService = {}
@@ -5522,6 +5893,12 @@ local ProgressionService = {}
 -- Pet-Bonus ausgerüsteter Pets (Produkt; 1 ohne Pets).
 ProgressionService.getPetBonus = function(profile: Types.PlayerProfile): number
 	return EquipService.getPetBonus(profile)
+end
+
+-- Restlaufzeit des gekauften 2x-Boosts (Hook): der MonetizationService
+-- ersetzt diese Funktion beim Start (vermeidet einen Service-Zyklus).
+ProgressionService.getBoostSecondsLeft = function(_player: Player): number
+	return 0
 end
 
 -- Gesamt-Multiplikator eines Spielers inklusive Pet-Bonus.
@@ -5534,6 +5911,14 @@ function ProgressionService.getTotalMultiplier(profile: Types.PlayerProfile): nu
 	)
 end
 
+-- Kennzahl für den Watcher: ändert sich, sobald sich der Multiplikator,
+-- der Freunde-Bonus oder die Boost-Restminute ändert (Minuten-Countdown
+-- im HUD ohne eigenes Update-Event).
+function ProgressionService.getDisplaySignature(player: Player, total: number): number
+	local boostMinutes = math.ceil(ProgressionService.getBoostSecondsLeft(player) / 60)
+	return total * 1000000 + EnergyService.getFriendBonus(player) * 1000 + boostMinutes
+end
+
 -- Schickt dem Client den aktuellen Multiplikator samt Aufschlüsselung.
 function ProgressionService.notifyMultiplier(player: Player)
 	local profile = DataService.getProfile(player)
@@ -5542,7 +5927,7 @@ function ProgressionService.notifyMultiplier(player: Player)
 	end
 
 	local total = ProgressionService.getTotalMultiplier(profile)
-	lastSentTotal[player] = total;
+	lastSentTotal[player] = ProgressionService.getDisplaySignature(player, total);
 	(multiplierChangedEvent :: RemoteEvent):FireClient(player, {
 		total = total,
 		biomeBonus = ProgressionConfig.getBiomeBonus(profile.biomes),
@@ -5552,6 +5937,8 @@ function ProgressionService.notifyMultiplier(player: Player)
 		rebirths = profile.rebirths,
 		nextThreshold = ProgressionConfig.getRebirthThreshold(profile.rebirths),
 		lifetimeEnergy = profile.lifetimeEnergy,
+		friendBonus = EnergyService.getFriendBonus(player),
+		boostSecondsLeft = ProgressionService.getBoostSecondsLeft(player),
 	})
 end
 
@@ -5633,10 +6020,11 @@ function ProgressionService.init()
 				local profile = DataService.getProfile(player)
 				if profile ~= nil then
 					local total = ProgressionService.getTotalMultiplier(profile)
+					local signature = ProgressionService.getDisplaySignature(player, total)
 					local last = lastSentTotal[player]
-					-- lifetimeEnergy steckt im Event (Rebirth-Fortschritt):
-					-- deshalb auch bei gleichem Multiplikator gelegentlich senden.
-					if last == nil or math.abs(total - last) &gt; 1e-6 then
+					-- Signatur statt nur Multiplikator: so aktualisiert sich das
+					-- HUD auch bei Freunde-Boost und Boost-Countdown zeitnah.
+					if last == nil or math.abs(signature - last) &gt; 1e-6 then
 						ProgressionService.notifyMultiplier(player)
 					end
 				end
@@ -5650,6 +6038,173 @@ return ProgressionService
 </Properties>
 </Item>
 <Item class="ModuleScript" referent="PF26">
+<Properties>
+<string name="Name">QuestService</string>
+<ProtectedString name="Source">--!strict
+-- QuestService: drei kleine Session-Quests, damit jede Session ein Ziel hat.
+--
+-- Die Quests sind bewusst session-basiert (kein Persistenz-Schema): Beim
+-- Beitritt werden Baselines aus dem Profil gemerkt, der Fortschritt ergibt
+-- sich aus der Differenz. Abschluss wird serverseitig erkannt und mit
+-- Energie belohnt (grantEnergy, profitiert von Multiplikatoren).
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Types = require(ReplicatedStorage.Shared.Types)
+local Remotes = require(ReplicatedStorage.Shared.Remotes)
+
+local DataService = require(script.Parent.DataService)
+local EnergyService = require(script.Parent.EnergyService)
+
+local CHECK_INTERVAL_SECONDS = 3
+
+type QuestDef = {
+	id: string,
+	text: string,
+	target: number,
+	reward: number,
+	-- Fortschritt relativ zur Session-Baseline.
+	measure: (profile: Types.PlayerProfile, baseline: { [string]: number }) -&gt; number,
+}
+
+local QUESTS: { QuestDef } = {
+	{
+		id = "sammeln",
+		text = "Sammle 60 Objekte",
+		target = 60,
+		reward = 150,
+		measure = function(profile, baseline)
+			return profile.stats.collected - baseline.collected
+		end,
+	},
+	{
+		id = "verkaufen",
+		text = "Verkaufe 5-mal",
+		target = 5,
+		reward = 200,
+		measure = function(profile, baseline)
+			return profile.stats.sales - baseline.sales
+		end,
+	},
+	{
+		id = "bauen",
+		text = "Kaufe 2 Upgrades oder Biome",
+		target = 2,
+		reward = 250,
+		measure = function(profile, baseline)
+			local builds = #profile.biomes + profile.upgrades.magnet + profile.upgrades.backpack
+			return builds - baseline.builds
+		end,
+	},
+}
+
+type SessionState = {
+	baseline: { [string]: number },
+	done: { [string]: boolean },
+	lastSent: string, -- Serialisierung des letzten Stands (nur bei Änderung senden)
+}
+
+local states: { [Player]: SessionState } = {}
+
+local questsUpdatedEvent: RemoteEvent? = nil
+local notificationEvent: RemoteEvent? = nil
+
+local QuestService = {}
+
+local function buildBaseline(profile: Types.PlayerProfile): { [string]: number }
+	return {
+		collected = profile.stats.collected,
+		sales = profile.stats.sales,
+		builds = #profile.biomes + profile.upgrades.magnet + profile.upgrades.backpack,
+	}
+end
+
+-- Prüft Fortschritt, vergibt Belohnungen und meldet Änderungen an den Client.
+local function updatePlayer(player: Player)
+	local state = states[player]
+	local profile = DataService.getProfile(player)
+	if state == nil or profile == nil then
+		return
+	end
+
+	local payload = {}
+	local serialized = ""
+	for _, quest in QUESTS do
+		local progress = math.clamp(quest.measure(profile, state.baseline), 0, quest.target)
+		local done = state.done[quest.id] == true
+
+		if not done and progress &gt;= quest.target then
+			state.done[quest.id] = true
+			done = true
+			EnergyService.grantEnergy(player, quest.reward)
+			if notificationEvent ~= nil then
+				(notificationEvent :: RemoteEvent):FireClient(
+					player,
+					`Quest geschafft: {quest.text} (+{quest.reward} ⚡)`,
+					"success"
+				)
+			end
+		end
+
+		table.insert(payload, {
+			text = quest.text,
+			progress = progress,
+			target = quest.target,
+			reward = quest.reward,
+			done = done,
+		})
+		serialized ..= `{quest.id}:{progress}:{tostring(done)};`
+	end
+
+	if serialized ~= state.lastSent and questsUpdatedEvent ~= nil then
+		state.lastSent = serialized;
+		(questsUpdatedEvent :: RemoteEvent):FireClient(player, payload)
+	end
+end
+
+function QuestService.init()
+	questsUpdatedEvent = Remotes.getEvent("QuestsUpdated")
+	notificationEvent = Remotes.getEvent("Notification")
+
+	local function onPlayerAdded(player: Player)
+		task.spawn(function()
+			local profile = DataService.waitForProfile(player)
+			if profile == nil then
+				return
+			end
+			states[player] = {
+				baseline = buildBaseline(profile),
+				done = {},
+				lastSent = "",
+			}
+			updatePlayer(player)
+		end)
+	end
+
+	Players.PlayerAdded:Connect(onPlayerAdded)
+	Players.PlayerRemoving:Connect(function(player)
+		states[player] = nil
+	end)
+	for _, player in Players:GetPlayers() do
+		onPlayerAdded(player)
+	end
+
+	task.spawn(function()
+		while true do
+			task.wait(CHECK_INTERVAL_SECONDS)
+			for _, player in Players:GetPlayers() do
+				updatePlayer(player)
+			end
+		end
+	end)
+end
+
+return QuestService
+</ProtectedString>
+</Properties>
+</Item>
+<Item class="ModuleScript" referent="PF27">
 <Properties>
 <string name="Name">SelfCheckService</string>
 <ProtectedString name="Source">--!strict
@@ -5832,11 +6387,14 @@ local function checkMonetization()
 		check(rules == 1, `Product {key}: braucht genau EINE Gutschrift-Regel (hat {rules})`)
 	end
 
-	-- Die drei Perk-Gamepässe der Kauf-Kette müssen existieren.
-	for _, key in { "gp_double_mult", "gp_pet_slots", "gp_vip" } do
+	-- Die Perk-Gamepässe der Kauf-Kette müssen existieren.
+	for _, key in { "gp_double_mult", "gp_pet_slots", "gp_vip", "gp_auto_harvest" } do
 		check(MonetizationConfig.Gamepasses[key] ~= nil, `Gamepass {key} fehlt`)
 	end
 	check(MonetizationConfig.DeveloperProducts["prod_instant_rebirth"] ~= nil, "Produkt prod_instant_rebirth fehlt")
+	check(MonetizationConfig.DeveloperProducts["prod_boost_2x"] ~= nil, "Produkt prod_boost_2x fehlt")
+	check(MonetizationConfig.BOOST_DURATION_SECONDS &gt; 0, "BOOST_DURATION_SECONDS muss &gt; 0 sein")
+	check(MonetizationConfig.BOOST_MULTIPLIER &gt; 1, "BOOST_MULTIPLIER muss &gt; 1 sein")
 	check(GameConfig.PURCHASE_LOG_LIMIT &gt;= 10, "PURCHASE_LOG_LIMIT muss &gt;= 10 sein")
 
 	-- Jede Kosmetik hat eine gültige Kategorie.
@@ -5868,6 +6426,14 @@ local function checkGameConfigAndRemotes()
 	check(GameConfig.PLANET_SLOTS == 12, "PLANET_SLOTS muss 12 sein (Canon)")
 	check(GameConfig.LOOT_ROLL_COST &gt; 0, "LOOT_ROLL_COST muss &gt; 0 sein")
 	check(#GameConfig.DAILY_REWARDS &gt;= 1, "DAILY_REWARDS darf nicht leer sein")
+	check(GameConfig.OFFLINE_EARNINGS_RATE &gt; 0 and GameConfig.OFFLINE_EARNINGS_RATE &lt;= 1, "OFFLINE_EARNINGS_RATE muss in (0,1] liegen")
+	check(GameConfig.OFFLINE_EARNINGS_CAP_HOURS &gt;= 1, "OFFLINE_EARNINGS_CAP_HOURS muss &gt;= 1 sein")
+	check(
+		GameConfig.FRIEND_BOOST_PER_FRIEND &gt; 0 and GameConfig.FRIEND_BOOST_PER_FRIEND &lt;= 0.5,
+		"FRIEND_BOOST_PER_FRIEND muss in (0, 0.5] liegen"
+	)
+	check(GameConfig.FRIEND_BOOST_MAX_FRIENDS &gt;= 1, "FRIEND_BOOST_MAX_FRIENDS muss &gt;= 1 sein")
+	check(GameConfig.AUTO_HARVEST_INTERVAL_SECONDS &gt; 0, "AUTO_HARVEST_INTERVAL_SECONDS muss &gt; 0 sein")
 	for index = 2, #GameConfig.DAILY_REWARDS do
 		check(
 			GameConfig.DAILY_REWARDS[index] &gt;= GameConfig.DAILY_REWARDS[index - 1],
@@ -5890,7 +6456,7 @@ local function checkGameConfigAndRemotes()
 				functions += 1
 			end
 		end
-		check(events == 16, `Erwartet 16 RemoteEvents, gefunden: {events}`)
+		check(events == 18, `Erwartet 18 RemoteEvents, gefunden: {events}`)
 		check(functions == 14, `Erwartet 14 RemoteFunctions, gefunden: {functions}`)
 
 		-- Kritische Einzel-Remotes (Tutorial, Sammel-Loop, Studio-Testmodus).
@@ -6043,7 +6609,7 @@ return SelfCheckService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="PF27">
+<Item class="ModuleScript" referent="PF28">
 <Properties>
 <string name="Name">TradeService</string>
 <ProtectedString name="Source">--!strict
@@ -6532,7 +7098,7 @@ return TradeService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="PF28">
+<Item class="ModuleScript" referent="PF29">
 <Properties>
 <string name="Name">TutorialService</string>
 <ProtectedString name="Source">--!strict
@@ -6672,7 +7238,7 @@ return TutorialService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="PF29">
+<Item class="ModuleScript" referent="PF30">
 <Properties>
 <string name="Name">VisitService</string>
 <ProtectedString name="Source">--!strict
@@ -6855,21 +7421,21 @@ return VisitService
 </Item>
 </Item>
 </Item>
-<Item class="Lighting" referent="PF50">
+<Item class="Lighting" referent="PF52">
 <Properties>
 <string name="Name">Lighting</string>
 <token name="Technology">4</token>
 </Properties>
 </Item>
-<Item class="StarterPlayer" referent="PF51">
+<Item class="StarterPlayer" referent="PF53">
 <Properties>
 <string name="Name">StarterPlayer</string>
 </Properties>
-<Item class="StarterPlayerScripts" referent="PF52">
+<Item class="StarterPlayerScripts" referent="PF54">
 <Properties>
 <string name="Name">StarterPlayerScripts</string>
 </Properties>
-<Item class="LocalScript" referent="PF45">
+<Item class="LocalScript" referent="PF47">
 <Properties>
 <string name="Name">Client</string>
 <ProtectedString name="Source">--!strict
@@ -6889,6 +7455,7 @@ local CONTROLLER_STARTUP_ORDER = {
 	"PlanetNameController",
 	"RebirthController",
 	"ChatTagController",
+	"QuestController",
 	"TutorialController",
 }
 
@@ -6910,11 +7477,11 @@ for _, controllerName in CONTROLLER_STARTUP_ORDER do
 end
 </ProtectedString>
 </Properties>
-<Item class="Folder" referent="PF44">
+<Item class="Folder" referent="PF46">
 <Properties>
 <string name="Name">Controllers</string>
 </Properties>
-<Item class="ModuleScript" referent="PF32">
+<Item class="ModuleScript" referent="PF33">
 <Properties>
 <string name="Name">ChatTagController</string>
 <ProtectedString name="Source">--!strict
@@ -6948,7 +7515,7 @@ return ChatTagController
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="PF33">
+<Item class="ModuleScript" referent="PF34">
 <Properties>
 <string name="Name">EffectsController</string>
 <ProtectedString name="Source">--!strict
@@ -7131,6 +7698,40 @@ function EffectsController.screenShake(intensity: number?)
 	end)
 end
 
+-- Einheitliches Button-Feedback: sanftes Hover- (1.05) und Press-Scaling (0.95).
+function EffectsController.addButtonFX(button: GuiButton)
+	local scale = Instance.new("UIScale")
+	scale.Name = "FXScale"
+	scale.Parent = button
+
+	local function tweenTo(value: number, seconds: number)
+		TweenService:Create(scale, TweenInfo.new(seconds, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+			Scale = value,
+		}):Play()
+	end
+
+	button.MouseEnter:Connect(function()
+		tweenTo(1.05, 0.12)
+	end)
+	button.MouseLeave:Connect(function()
+		tweenTo(1, 0.12)
+	end)
+	button.MouseButton1Down:Connect(function()
+		tweenTo(0.95, 0.08)
+	end)
+	button.MouseButton1Up:Connect(function()
+		tweenTo(1.05, 0.1)
+	end)
+end
+
+-- Dezenter vertikaler Verlauf für Panels/Buttons (heller oben).
+function EffectsController.addGradient(guiObject: GuiObject)
+	local gradient = Instance.new("UIGradient")
+	gradient.Rotation = 90
+	gradient.Color = ColorSequence.new(Color3.new(1, 1, 1), Color3.fromRGB(200, 200, 210))
+	gradient.Parent = guiObject
+end
+
 -- Lokales Geister-Objekt fliegt vom Sammelpunkt zum Spieler (das echte
 -- Objekt hat der Server bereits entfernt).
 function EffectsController.flyPartToCharacter(position: Vector3, color: Color3?)
@@ -7306,7 +7907,7 @@ return EffectsController
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="PF34">
+<Item class="ModuleScript" referent="PF35">
 <Properties>
 <string name="Name">EventNotifierController</string>
 <ProtectedString name="Source">--!strict
@@ -7542,7 +8143,7 @@ return EventNotifierController
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="PF35">
+<Item class="ModuleScript" referent="PF36">
 <Properties>
 <string name="Name">HarvestController</string>
 <ProtectedString name="Source">--!strict
@@ -7676,7 +8277,7 @@ return HarvestController
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="PF36">
+<Item class="ModuleScript" referent="PF37">
 <Properties>
 <string name="Name">InventoryController</string>
 <ProtectedString name="Source">--!strict
@@ -7992,6 +8593,7 @@ local function buildUI()
 	addCorner(toggleButton, 10)
 	addStroke(toggleButton, STROKE_COLOR)
 	toggleButton.Parent = screenGui
+	EffectsController.addButtonFX(toggleButton)
 
 	local frame = Instance.new("Frame")
 	frame.Name = "InventoryPanel"
@@ -8145,7 +8747,7 @@ return InventoryController
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="PF37">
+<Item class="ModuleScript" referent="PF38">
 <Properties>
 <string name="Name">LeaderboardController</string>
 <ProtectedString name="Source">--!strict
@@ -8382,7 +8984,7 @@ return LeaderboardController
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="PF38">
+<Item class="ModuleScript" referent="PF39">
 <Properties>
 <string name="Name">PlanetBuilderController</string>
 <ProtectedString name="Source">--!strict
@@ -8811,6 +9413,7 @@ local function buildGui(playerGui: PlayerGui)
 	stroke.Thickness = 1
 	stroke.Parent = toggleButton
 	toggleButton.Parent = screenGui
+	EffectsController.addButtonFX(toggleButton)
 
 	local panel = Instance.new("Frame")
 	panel.Name = "BuildPanel"
@@ -8932,7 +9535,7 @@ return PlanetBuilderController
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="PF39">
+<Item class="ModuleScript" referent="PF40">
 <Properties>
 <string name="Name">PlanetNameController</string>
 <ProtectedString name="Source">--!strict
@@ -9071,7 +9674,119 @@ return PlanetNameController
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="PF40">
+<Item class="ModuleScript" referent="PF41">
+<Properties>
+<string name="Name">QuestController</string>
+<ProtectedString name="Source">--!strict
+-- QuestController: kompaktes Session-Quest-Panel unten links.
+-- Zeigt die drei Ziele der Session mit Fortschritt; erledigte Quests
+-- bekommen einen Haken und werden ausgegraut.
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Shared = ReplicatedStorage:WaitForChild("Shared")
+
+local Remotes = require(Shared:WaitForChild("Remotes") :: ModuleScript) :: {
+	getEvent: (name: string) -&gt; RemoteEvent,
+	getFunction: (name: string) -&gt; RemoteFunction,
+}
+
+local PANEL_COLOR = Color3.fromRGB(30, 32, 44)
+local STROKE_COLOR = Color3.fromRGB(70, 75, 100)
+local TEXT_COLOR = Color3.fromRGB(235, 238, 245)
+local SUBTEXT_COLOR = Color3.fromRGB(158, 164, 186)
+local ACCENT_COLOR = Color3.fromRGB(214, 160, 72)
+local DONE_COLOR = Color3.fromRGB(76, 175, 110)
+
+local QuestController = {}
+
+local rows: { TextLabel } = {}
+
+local function addCorner(instance: Instance, radius: number)
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0, radius)
+	corner.Parent = instance
+end
+
+local function buildUI()
+	local playerGui = Players.LocalPlayer:WaitForChild("PlayerGui")
+
+	local screenGui = Instance.new("ScreenGui")
+	screenGui.Name = "PlanetForgeQuests"
+	screenGui.ResetOnSpawn = false
+	screenGui.Parent = playerGui
+
+	local panel = Instance.new("Frame")
+	panel.Name = "QuestPanel"
+	panel.AnchorPoint = Vector2.new(0, 1)
+	panel.Position = UDim2.new(0, 14, 1, -90)
+	panel.Size = UDim2.new(0, 250, 0, 96)
+	panel.BackgroundColor3 = PANEL_COLOR
+	panel.BackgroundTransparency = 0.15
+	addCorner(panel, 10)
+	local stroke = Instance.new("UIStroke")
+	stroke.Color = STROKE_COLOR
+	stroke.Parent = panel
+	panel.Parent = screenGui
+
+	local title = Instance.new("TextLabel")
+	title.BackgroundTransparency = 1
+	title.Position = UDim2.new(0, 10, 0, 6)
+	title.Size = UDim2.new(1, -20, 0, 16)
+	title.Font = Enum.Font.GothamBold
+	title.TextSize = 12
+	title.TextColor3 = ACCENT_COLOR
+	title.TextXAlignment = Enum.TextXAlignment.Left
+	title.Text = "🎯 Session-Ziele"
+	title.Parent = panel
+
+	for index = 1, 3 do
+		local row = Instance.new("TextLabel")
+		row.Name = `Quest_{index}`
+		row.BackgroundTransparency = 1
+		row.Position = UDim2.new(0, 10, 0, 8 + index * 20)
+		row.Size = UDim2.new(1, -20, 0, 18)
+		row.Font = Enum.Font.GothamMedium
+		row.TextSize = 12
+		row.TextColor3 = SUBTEXT_COLOR
+		row.TextXAlignment = Enum.TextXAlignment.Left
+		row.TextTruncate = Enum.TextTruncate.AtEnd
+		row.Text = "…"
+		row.Parent = panel
+		table.insert(rows, row)
+	end
+end
+
+function QuestController.init()
+	buildUI()
+
+	Remotes.getEvent("QuestsUpdated").OnClientEvent:Connect(function(quests: any)
+		if typeof(quests) ~= "table" then
+			return
+		end
+		for index, row in rows do
+			local quest = (quests :: { any })[index]
+			if typeof(quest) ~= "table" then
+				row.Text = ""
+				continue
+			end
+			if quest.done == true then
+				row.Text = `✓ {quest.text}`
+				row.TextColor3 = DONE_COLOR
+			else
+				row.Text = `☐ {quest.text} ({quest.progress}/{quest.target}) – +{quest.reward} ⚡`
+				row.TextColor3 = TEXT_COLOR
+			end
+		end
+	end)
+end
+
+return QuestController
+</ProtectedString>
+</Properties>
+</Item>
+<Item class="ModuleScript" referent="PF42">
 <Properties>
 <string name="Name">RebirthController</string>
 <ProtectedString name="Source">--!strict
@@ -9124,6 +9839,10 @@ local localPlayer = Players.LocalPlayer
 local rebirths = 0
 local nextThreshold = math.huge
 local lifetimeEnergy = 0
+
+-- Starter-Paket-Hinweis: einmalig nach der ERSTEN Wiedergeburt (kein Popup,
+-- nur ein dezenter Toast - und maximal einmal pro Session).
+local starterHintShown = false
 
 local dialog: Frame? = nil
 local beforeLabel: TextLabel? = nil
@@ -9208,6 +9927,7 @@ local function buildUI()
 	addCorner(toggleButton, 10)
 	addStroke(toggleButton, STROKE_COLOR)
 	toggleButton.Parent = screenGui
+	EffectsController.addButtonFX(toggleButton)
 
 	-- Bestätigungs-Dialog (zentriert).
 	local frame = Instance.new("Frame")
@@ -9336,6 +10056,9 @@ local function buildUI()
 		if remote == nil then
 			return
 		end
+		-- Vor dem Aufruf festhalten, ob das die allererste Wiedergeburt war
+		-- (rebirths wird gleich vom MultiplierChanged-Event überschrieben).
+		local wasFirstRebirth = rebirths == 0
 		task.spawn(function()
 			local ok, serverOk, payload = pcall(function()
 				return remote:InvokeServer()
@@ -9348,6 +10071,16 @@ local function buildUI()
 				EffectsController.playSound("fanfare", 0.9)
 				EffectsController.screenShake(1.2)
 				frame.Visible = false
+
+				if wasFirstRebirth and not starterHintShown then
+					starterHintShown = true
+					task.delay(3, function()
+						UIController.showToast(
+							"🎁 Starter-Tipp: Das Energie-Paket S im Shop bringt dich nach der Wiedergeburt schneller zurück ins Spiel.",
+							"info"
+						)
+					end)
+				end
 			end
 		end)
 	end)
@@ -9393,7 +10126,7 @@ return RebirthController
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="PF41">
+<Item class="ModuleScript" referent="PF43">
 <Properties>
 <string name="Name">ShopController</string>
 <ProtectedString name="Source">--!strict
@@ -9858,6 +10591,7 @@ local function buildUI()
 	addCorner(toggleButton, 10)
 	addStroke(toggleButton, STROKE_COLOR)
 	toggleButton.Parent = screenGui
+	EffectsController.addButtonFX(toggleButton)
 
 	local panel = Instance.new("Frame")
 	panel.Name = "ShopPanel"
@@ -10095,7 +10829,7 @@ return ShopController
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="PF42">
+<Item class="ModuleScript" referent="PF44">
 <Properties>
 <string name="Name">TutorialController</string>
 <ProtectedString name="Source">--!strict
@@ -10504,7 +11238,7 @@ return TutorialController
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="PF43">
+<Item class="ModuleScript" referent="PF45">
 <Properties>
 <string name="Name">UIController</string>
 <ProtectedString name="Source">--!strict
@@ -10539,6 +11273,8 @@ local EffectsController = require(script.Parent:WaitForChild("EffectsController"
 	flyEnergyToCounter: (amount: number) -&gt; (),
 	burstAtOwnPlanet: (color: Color3?) -&gt; (),
 	screenShake: (intensity: number?) -&gt; (),
+	addButtonFX: (button: GuiButton) -&gt; (),
+	addGradient: (guiObject: GuiObject) -&gt; (),
 }
 
 -- Farbschema: dunkle Panels, helle Schrift.
@@ -10573,6 +11309,9 @@ local toastContainer: Frame? = nil
 local toastOrder = 0
 local lootPopupGeneration = 0
 local activeLootTween: Tween? = nil
+
+-- Kontextueller Kaufhinweis (Energie-Pakete): maximal einmal pro Session.
+local purchaseHintShown = false
 
 -- 1234567 -&gt; "1.234.567" (deutsche Tausendertrennung mit Punkt).
 local function formatNumber(value: number): string
@@ -10661,6 +11400,16 @@ local function showToastInternal(message: string, kind: string)
 			toast:Destroy()
 		end)
 	end)
+
+	-- Kontextueller Kaufhinweis: Wenn dem Spieler Energie fehlt, GENAU EINMAL
+	-- pro Session freundlich auf die Energie-Pakete im Shop hinweisen
+	-- (bewusst dezent - keine Popups, kein Spam).
+	if not purchaseHintShown and kind == "error" and string.find(message, "Nicht genug Energie", 1, true) ~= nil then
+		purchaseHintShown = true
+		task.delay(0.8, function()
+			showToastInternal("💡 Tipp: Am blauen Shop-Pad gibt es Energie-Pakete, falls mal etwas fehlt.", "info")
+		end)
+	end
 end
 
 -- Öffentliche API für andere Controller (z. B. PlanetBuilderController).
@@ -10725,6 +11474,8 @@ local function createActionButton(
 	button.Activated:Connect(function()
 		invokeAction(functionName, onSuccess)
 	end)
+	EffectsController.addGradient(button)
+	EffectsController.addButtonFX(button)
 	button.Parent = parent
 	return button
 end
@@ -10793,6 +11544,22 @@ local function buildGui(playerGui: PlayerGui): GuiRefs
 	statsLabel.TextSize = 12
 	statsLabel.TextColor3 = SUBTEXT_COLOR
 	statsLabel.TextXAlignment = Enum.TextXAlignment.Right
+
+	-- Boost-Zeile direkt unter der Kopfleiste: zeigt Freunde-Boost und den
+	-- gekauften 2x-Boost-Countdown; unsichtbar, solange nichts aktiv ist.
+	local boostLabel = Instance.new("TextLabel")
+	boostLabel.Name = "Boosts"
+	boostLabel.AnchorPoint = Vector2.new(0.5, 0)
+	boostLabel.Position = UDim2.new(0.5, 0, 0, 56)
+	boostLabel.Size = UDim2.new(0, 520, 0, 18)
+	boostLabel.BackgroundTransparency = 1
+	boostLabel.Font = Enum.Font.GothamBold
+	boostLabel.TextSize = 13
+	boostLabel.TextColor3 = Color3.fromRGB(214, 160, 72)
+	boostLabel.TextXAlignment = Enum.TextXAlignment.Center
+	boostLabel.Text = ""
+	boostLabel.Visible = false
+	boostLabel.Parent = screenGui
 
 	-- Buttonleiste unten Mitte.
 	local buttonBar = Instance.new("Frame")
@@ -10873,6 +11640,7 @@ local function buildGui(playerGui: PlayerGui): GuiRefs
 		lifetimeLabel = lifetimeLabel,
 		backpackLabel = backpackLabel,
 		multiplierLabel = multiplierLabel,
+		boostLabel = boostLabel,
 		statsLabel = statsLabel,
 		lootPopup = lootPopup,
 		lootName = lootName,
@@ -10887,10 +11655,30 @@ function UIController.init()
 
 	local refs = buildGui(playerGui)
 
-	-- Energie-Anzeige aktuell halten.
+	-- Energie-Anzeige mit Count-Up-Animation (Zahl läuft sichtbar hoch/runter).
+	local displayedEnergy = 0
+	local energyAnimToken = 0
 	Remotes.getEvent("EnergyChanged").OnClientEvent:Connect(function(newEnergy: any, lifetimeEnergy: any)
 		if typeof(newEnergy) == "number" then
-			refs.energyLabel.Text = `Energie: {formatNumber(newEnergy)}`
+			energyAnimToken += 1
+			local token = energyAnimToken
+			local fromValue = displayedEnergy
+			task.spawn(function()
+				local duration = 0.35
+				local startedAt = os.clock()
+				while true do
+					if token ~= energyAnimToken then
+						return
+					end
+					local alpha = math.clamp((os.clock() - startedAt) / duration, 0, 1)
+					displayedEnergy = fromValue + (newEnergy - fromValue) * alpha
+					refs.energyLabel.Text = `Energie: {formatNumber(displayedEnergy)}`
+					if alpha &gt;= 1 then
+						return
+					end
+					task.wait(0.03)
+				end
+			end)
 		end
 		if typeof(lifetimeEnergy) == "number" then
 			refs.lifetimeLabel.Text = `Gesamt: {formatNumber(lifetimeEnergy)}`
@@ -10906,12 +11694,63 @@ function UIController.init()
 		end
 	end)
 
-	-- Live-Multiplikator im HUD (Komma statt Punkt, eine Nachkommastelle).
+	-- Live-Multiplikator im HUD (Komma statt Punkt, eine Nachkommastelle)
+	-- plus Boost-Zeile für Freunde-Boost und 2x-Boost-Countdown.
 	Remotes.getEvent("MultiplierChanged").OnClientEvent:Connect(function(info: any)
 		if typeof(info) == "table" and typeof(info.total) == "number" then
 			local text = string.format("×%.1f", info.total)
 			refs.multiplierLabel.Text = (string.gsub(text, "%.", ","))
+
+			local parts = {}
+			if typeof(info.friendBonus) == "number" and info.friendBonus &gt; 1.001 then
+				table.insert(parts, `👥 Freunde-Boost +{math.floor((info.friendBonus - 1) * 100 + 0.5)}%`)
+			end
+			if typeof(info.boostSecondsLeft) == "number" and info.boostSecondsLeft &gt; 0 then
+				table.insert(parts, `🔥 2x-Boost noch {math.ceil(info.boostSecondsLeft / 60)} Min.`)
+			end
+			refs.boostLabel.Text = table.concat(parts, "   ·   ")
+			refs.boostLabel.Visible = #parts &gt; 0
 		end
+	end)
+
+	-- Offline-Earnings: Willkommens-Popup mit grosser Summe (nutzt das
+	-- Loot-Popup-Layout) plus hochzaehlender Zahl am Energie-Counter.
+	Remotes.getEvent("OfflineEarnings").OnClientEvent:Connect(function(amount: any, minutes: any)
+		if typeof(amount) ~= "number" or amount &lt;= 0 then
+			return
+		end
+		local awayText = if typeof(minutes) == "number" and minutes &gt;= 60
+			then `{math.floor(minutes / 60)} Std. {minutes % 60} Min.`
+			else `{if typeof(minutes) == "number" then minutes else 0} Min.`
+
+		lootPopupGeneration += 1
+		local generation = lootPopupGeneration
+		if activeLootTween ~= nil then
+			activeLootTween:Cancel()
+			activeLootTween = nil
+		end
+		refs.lootName.Text = `+{formatNumber(amount)} ⚡`
+		refs.lootRarity.Text = `Willkommen zurück! Deine Biome haben {awayText} weitergearbeitet.`
+		refs.lootRarity.TextColor3 = SUBTEXT_COLOR
+		refs.lootStroke.Color = Color3.fromRGB(214, 160, 72)
+		refs.lootStroke.Thickness = 3
+		refs.lootPopup.GroupTransparency = 0
+		refs.lootPopup.Visible = true
+		EffectsController.playSound("fanfare", 1)
+
+		task.delay(4, function()
+			if generation ~= lootPopupGeneration then
+				return
+			end
+			local tween = TweenService:Create(refs.lootPopup, TweenInfo.new(FADE_SECONDS), { GroupTransparency = 1 })
+			activeLootTween = tween
+			tween:Play()
+			tween.Completed:Once(function()
+				if generation == lootPopupGeneration then
+					refs.lootPopup.Visible = false
+				end
+			end)
+		end)
 	end)
 
 	-- Statistikzeile (Besuche/Likes) aus dem Planeten-Snapshot.
