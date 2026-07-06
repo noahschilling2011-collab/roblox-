@@ -1,0 +1,77 @@
+# TURMFALL 🏗️💥
+
+12 Spieler bauen gleichzeitig am **selben** physikbasierten Turm. Runden dauern
+3 Minuten. Stabil bauen bringt sichere Punkte, riskant hoch bauen viele Punkte –
+und wer den Turm kollabieren lässt, verliert seinen kompletten Einsatz. Ein
+Schuld-Replay zeigt allen, wer es war.
+
+## Projektstruktur (Rojo)
+
+```
+turmfall/
+├── default.project.json      Rojo-Mapping
+├── src/
+│   ├── shared/               ReplicatedStorage.Shared
+│   │   ├── Network.luau      DAS zentrale Remote-Modul (keine verstreuten Remotes)
+│   │   ├── Types.luau        gemeinsame Typen (--!strict überall)
+│   │   ├── BlameLogic.luau   purer Schuld-Algorithmus (getestet)
+│   │   ├── ScoreLogic.luau   pure Punkteberechnung (getestet)
+│   │   └── Config/           GameConfig (Canon), PartCatalog (4 Teiltypen)
+│   ├── server/               ServerScriptService.Server
+│   │   └── Services/         Tower, Deck, Collapse, Score, Round
+│   └── client/               StarterPlayerScripts.Client
+│       └── Controllers/      UI, Placement (Ghost-Preview), Replay
+├── tests/testlauf.mjs        Logik-Tests in echter Luau-VM + Remote-Abgleich
+└── tools/build-rbxlx.mjs     baut die direkt öffnbare Turmfall.rbxlx
+```
+
+## Technische Eckpfeiler
+
+- **Server-owned Physik:** Jedes Turm-Teil bekommt `SetNetworkOwner(nil)`.
+  Ohne das könnten manipulierte Clients die Simulation naher Teile steuern
+  und die Schuldzuweisung beim Kollaps verfälschen (Details im Kopfkommentar
+  von `TowerService.luau`).
+- **Niemals dem Client trauen:** Der Client zeigt nur eine Ghost-Preview
+  (grün/rot); der Server validiert jede Platzierung komplett (Phase, Cooldown,
+  Teilbesitz, Reichweite 12 Studs, Nachbarschaft, Überlappung).
+- **Physik-Budget von Anfang an:** Maximal 400 aktive Teile. Darüber werden
+  die untersten, ruhigen Teile „versteinert" (geankert) – eingebaut ab Tag 1,
+  nicht nachgerüstet.
+- **Eine StateMachine:** `RoundService` (Lobby → Aufbau → Bauphase → Wertung)
+  ist die einzige Source of Truth; Clients spiegeln nur.
+
+## Meilenstein 1 – Kern-Loop ✅
+
+- 3-Minuten-Runden, Start ab 2 Spielern, Countdown- und Phasen-UI
+- 4 Bauteil-Typen: Schwerblock, Leichtblock, Schrägkeil (45°),
+  Federblock (PrismaticConstraint + SpringConstraint)
+- Teilvergabe alle 15 s (Hotbar max. 3, Tasten 1–3)
+- Ghost-Preview-Platzierung (R = drehen) mit voller Server-Validierung
+- Kollaps-Erkennung: Teil „gefallen" unter Plattform-Y; >30 % in 5 s → Kollaps
+- Schuld-System: Platzierer-Log + Ringpuffer (10 s, 4 Hz); das zuletzt
+  platzierte Teil mit Kontakt zur Kaskade bestimmt den Verursacher
+- Punkte = Y-Höhe der überlebenden eigenen Teile; Verursacher = 0 Punkte
+- 5-Sekunden-Schuld-Replay aus dem Ringpuffer mit Kamera-Fokus und Namen
+
+### So testest du Meilenstein 1 in Roblox Studio
+
+**Variante A – direkt öffnen (am einfachsten):**
+1. `node turmfall/tools/build-rbxlx.mjs` ausführen (oder die fertige
+   `Turmfall.rbxlx` aus dem Repo-Root nehmen).
+2. Datei in Roblox Studio öffnen.
+3. Oben **TEST → Clients and Servers → 2 Players → Start** wählen
+   (Local Server mit 2 Clients – ein Client allein bleibt in der Lobby,
+   weil Runden erst ab 2 Spielern starten).
+4. In beiden Client-Fenstern: Countdown abwarten, mit Tasten 1–3 ein Teil
+   wählen, mit der Maus zielen (grüner Ghost), klicken zum Platzieren.
+5. Kollaps provozieren (z. B. weit außen an eine Kante stapeln): Das
+   Schuld-Replay startet automatisch und zeigt den Verursacher.
+
+**Variante B – mit Rojo (für Entwicklung):**
+1. `cd turmfall && rojo serve` (Rojo 7+)
+2. In Studio mit dem Rojo-Plugin verbinden und ein leeres Baseplate syncen.
+3. Weiter wie oben ab Schritt 3.
+
+**Logik-Tests (ohne Studio):** `node turmfall/tests/testlauf.mjs` – prüft
+Schuld-Algorithmus, Punkteberechnung, Konfigurations-Canon und dass jedes
+benutzte Remote in `Network.luau` deklariert ist.

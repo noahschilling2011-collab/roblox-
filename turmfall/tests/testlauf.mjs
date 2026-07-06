@@ -1,0 +1,253 @@
+// Testlauf für TURMFALL: lädt die puren Shared-Module (Schuld-Algorithmus,
+// Punkteberechnung, Konfiguration, Teilkatalog) in eine echte Luau-VM
+// (luau-web/WASM) und prüft die Spielregeln. Zusätzlich ein statischer
+// Abgleich: Jedes im Code benutzte Remote muss in Network.luau deklariert sein.
+//
+// Ausführen (vom Repo-Root):  node turmfall/tests/testlauf.mjs
+import { LuauState } from "../../tests/node_modules/luau-web/src/index.js";
+import { readFileSync, readdirSync, statSync } from "fs";
+import { join } from "path";
+
+const ROOT = new URL("..", import.meta.url).pathname.replace(/\/$/, "");
+
+function loadModule(relPath) {
+  let src = readFileSync(`${ROOT}/${relPath}`, "utf8");
+  src = src.replace(/^--!strict\s*$/m, "");
+  src = src.replace(/^local (\w+) = require\(.+\)$/gm, 'local $1 = __deps["$1"]');
+  src = src.replace(/^export type/gm, "type");
+  return src;
+}
+
+// ---------------------------------------------------------------------------
+// Statischer Remote-Abgleich (JavaScript, kein Luau nötig)
+// ---------------------------------------------------------------------------
+
+function collectLuauFiles(dir) {
+  const files = [];
+  for (const entry of readdirSync(dir)) {
+    const full = join(dir, entry);
+    if (statSync(full).isDirectory()) {
+      files.push(...collectLuauFiles(full));
+    } else if (entry.endsWith(".luau")) {
+      files.push(full);
+    }
+  }
+  return files;
+}
+
+function extractDeclared(networkSource, listName) {
+  // Bis zur schließenden Klammer am Zeilenanfang lesen (Kommentare in der
+  // Liste dürfen selbst geschweifte Klammern enthalten).
+  const match = networkSource.match(new RegExp(`local ${listName} = \\{([\\s\\S]*?)\\n\\}`));
+  if (!match) return [];
+  return [...match[1].matchAll(/^\s*"(\w+)"/gm)].map((m) => m[1]);
+}
+
+let staticErrors = [];
+{
+  const networkSource = readFileSync(`${ROOT}/src/shared/Network.luau`, "utf8");
+  const declaredEvents = new Set(extractDeclared(networkSource, "EVENT_NAMES"));
+  const declaredFunctions = new Set(extractDeclared(networkSource, "FUNCTION_NAMES"));
+
+  for (const file of collectLuauFiles(`${ROOT}/src`)) {
+    const source = readFileSync(file, "utf8");
+    for (const m of source.matchAll(/getEvent\("(\w+)"\)/g)) {
+      if (!declaredEvents.has(m[1])) {
+        staticErrors.push(`${file}: RemoteEvent "${m[1]}" ist nicht in Network.EVENT_NAMES deklariert`);
+      }
+    }
+    for (const m of source.matchAll(/getFunction\("(\w+)"\)/g)) {
+      if (!declaredFunctions.has(m[1])) {
+        staticErrors.push(`${file}: RemoteFunction "${m[1]}" ist nicht in Network.FUNCTION_NAMES deklariert`);
+      }
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Luau-VM-Tests der puren Logik
+// ---------------------------------------------------------------------------
+
+const modules = [
+  ["Types", "src/shared/Types.luau"],
+  ["GameConfig", "src/shared/Config/GameConfig.luau"],
+  ["PartCatalog", "src/shared/Config/PartCatalog.luau"],
+  ["BlameLogic", "src/shared/BlameLogic.luau"],
+  ["ScoreLogic", "src/shared/ScoreLogic.luau"],
+];
+
+const prelude = `
+local __deps = {}
+`;
+
+let body = prelude;
+for (const [name, path] of modules) {
+  body += `\n__deps["${name}"] = (function()\n${loadModule(path)}\nend)()\n`;
+}
+
+const tests = `
+local GameConfig = __deps["GameConfig"]
+local PartCatalog = __deps["PartCatalog"]
+local BlameLogic = __deps["BlameLogic"]
+local ScoreLogic = __deps["ScoreLogic"]
+
+local results = {}
+local passed = 0
+local failed = 0
+
+local function test(name, fn)
+	local ok, err = pcall(fn)
+	if ok then
+		passed += 1
+		table.insert(results, "OK   | " .. name)
+	else
+		failed += 1
+		table.insert(results, "FAIL | " .. name .. " -> " .. tostring(err))
+	end
+end
+
+local function expect(condition, message)
+	if not condition then
+		error(message, 0)
+	end
+end
+
+-- Hilfen zum Bauen synthetischer Schuld-Szenarien.
+local function pos(x, y, z) return { x = x, y = y, z = z } end
+local function placement(pieceId, owner, at) return { pieceId = pieceId, ownerUserId = owner, placedAt = at } end
+
+-- 1) Konfigurations-Canon
+test("GameConfig: Kern-Konstanten des Konzepts", function()
+	expect(GameConfig.BUILD_SECONDS == 180, "Bauphase != 3 Minuten")
+	expect(GameConfig.LOBBY_MIN_PLAYERS == 2, "Start nicht ab 2 Spielern")
+	expect(GameConfig.PART_DROP_INTERVAL_SECONDS == 15, "Teilvergabe != alle 15 s")
+	expect(GameConfig.HOTBAR_MAX_ITEMS == 3, "Hotbar != max. 3")
+	expect(GameConfig.PLACE_REACH_STUDS == 12, "Reichweite != 12 Studs")
+	expect(GameConfig.MAX_PHYSICS_PARTS == 400, "Physik-Limit != 400")
+	expect(GameConfig.FALL_WINDOW_SECONDS == 5, "Kollaps-Fenster != 5 s")
+	expect(math.abs(GameConfig.FALL_COLLAPSE_RATIO - 0.3) < 1e-9, "Kollaps-Schwelle != 30%")
+	expect(GameConfig.RING_BUFFER_SECONDS == 10, "Ringpuffer != 10 s")
+	expect(GameConfig.RING_BUFFER_HZ == 4, "Ringpuffer != 4 Hz")
+	expect(GameConfig.REPLAY_SECONDS == 5, "Replay != 5 s")
+	expect(GameConfig.PETRIFY_TARGET_RATIO > 0 and GameConfig.PETRIFY_TARGET_RATIO < 1, "Petrify-Ziel unplausibel")
+end)
+
+-- 2) Teilkatalog
+test("PartCatalog: vier Typen mit sinnvollen Werten", function()
+	local ids = PartCatalog.getSortedIds()
+	expect(#ids == 4, "Teiltypen != 4")
+	for _, id in { "schwerblock", "leichtblock", "schraegkeil", "federblock" } do
+		local def = PartCatalog.Parts[id]
+		expect(def ~= nil, "Teiltyp fehlt: " .. id)
+		expect(def.dropWeight > 0, id .. ": dropWeight <= 0")
+		expect(def.density > 0, id .. ": density <= 0")
+		expect(def.size.x > 0 and def.size.y > 0 and def.size.z > 0, id .. ": Groesse unplausibel")
+	end
+	expect(
+		PartCatalog.Parts.schwerblock.density > PartCatalog.Parts.leichtblock.density,
+		"Schwerblock muss dichter sein als Leichtblock"
+	)
+	expect(PartCatalog.getApproxRadius("schwerblock") == 2, "Radius-Naeherung Schwerblock falsch")
+	expect(PartCatalog.getApproxRadius("unbekannt") == 2, "Fallback-Radius falsch")
+end)
+
+-- 3) Schuld-Algorithmus: Verursacher ist selbst Teil der Kaskade
+test("BlameLogic: gefallenes zuletzt platziertes Teil ist schuld", function()
+	local placements = { placement(1, 100, 10), placement(2, 200, 20), placement(3, 300, 30) }
+	local samples = { { t = 29, positions = { [1] = pos(0, 5, 0), [2] = pos(0, 8, 0), [3] = pos(0, 11, 0) } } }
+	local fallen = { [2] = true, [3] = true }
+	local radii = { [1] = 2, [2] = 2, [3] = 2 }
+	local pieceId, userId = BlameLogic.findCulprit(placements, samples, fallen, radii, 1)
+	expect(pieceId == 3, "falsches Verursacher-Teil: " .. tostring(pieceId))
+	expect(userId == 300, "falscher Verursacher: " .. tostring(userId))
+end)
+
+-- 4) Schuld-Algorithmus: Kontakt zur Kaskade ohne selbst zu fallen
+test("BlameLogic: Kontakt-Teil wird schuldig, entferntes nicht", function()
+	-- Teil 3 zuletzt platziert, aber weit weg; Teil 2 beruehrte das gefallene Teil 1.
+	local placements = { placement(1, 100, 10), placement(2, 200, 20), placement(3, 300, 30) }
+	local samples = {
+		{ t = 28, positions = { [1] = pos(0, 5, 0), [2] = pos(0, 8.5, 0), [3] = pos(50, 5, 50) } },
+		{ t = 29, positions = { [1] = pos(0, -10, 0), [2] = pos(0, 8.5, 0), [3] = pos(50, 5, 50) } },
+	}
+	local fallen = { [1] = true }
+	local radii = { [1] = 2, [2] = 2, [3] = 2 }
+	local pieceId, userId = BlameLogic.findCulprit(placements, samples, fallen, radii, 1)
+	expect(pieceId == 2, "Kontakt-Teil nicht erkannt: " .. tostring(pieceId))
+	expect(userId == 200, "falscher Besitzer: " .. tostring(userId))
+end)
+
+-- 5) Schuld-Algorithmus: Kontaktradius + Toleranz entscheidet
+test("BlameLogic: Kontakt haengt an Radien plus Toleranz", function()
+	-- Teil 1 (aelter) ist gefallen; Teil 2 (juenger) steht daneben.
+	local placements = { placement(1, 100, 10), placement(2, 200, 20) }
+	local fallen = { [1] = true }
+	local radii = { [1] = 2, [2] = 2 }
+	-- Abstand 5.5 > 2+2+1: Teil 2 hat KEINEN Kontakt -> das Kaskaden-Mitglied
+	-- selbst (Teil 1) ist der juengste Treffer der Regel.
+	local farSamples = { { t = 1, positions = { [1] = pos(0, 0, 0), [2] = pos(5.5, 0, 0) } } }
+	local farPieceId, farUserId = BlameLogic.findCulprit(placements, farSamples, fallen, radii, 1)
+	expect(farPieceId == 1 and farUserId == 100, "ohne Kontakt muss das Kaskaden-Mitglied schuld sein")
+	-- Abstand 4.8 <= 5: Teil 2 hat Kontakt und ist juenger -> Teil 2 ist schuld.
+	local nearSamples = { { t = 1, positions = { [1] = pos(0, 0, 0), [2] = pos(4.8, 0, 0) } } }
+	local nearPieceId, nearUserId = BlameLogic.findCulprit(placements, nearSamples, fallen, radii, 1)
+	expect(nearPieceId == 2 and nearUserId == 200, "Kontakt bei Abstand 4.8 nicht erkannt")
+end)
+
+-- 6) Schuld-Algorithmus: ohne Kontakt kein Verursacher
+test("BlameLogic: kein Kontakt -> niemand ist schuld", function()
+	local placements = { placement(1, 100, 10), placement(2, 200, 20) }
+	local samples = { { t = 1, positions = { [1] = pos(0, 0, 0), [2] = pos(100, 0, 100) } } }
+	local fallen = { [1] = true }
+	-- Teil 1 ist gefallen, aber Teil 1 wurde ZUERST platziert; Teil 2 hat keinen Kontakt.
+	-- Erwartung: Teil 1 selbst (Kaskaden-Mitglied) ist der juengste Treffer.
+	local pieceId, userId = BlameLogic.findCulprit(placements, samples, fallen, { [1] = 2, [2] = 2 }, 1)
+	expect(pieceId == 1 and userId == 100, "Kaskaden-Mitglied muss gefunden werden")
+	-- Und wenn NICHTS gefallen ist und nichts Kontakt hat: nil.
+	local none = BlameLogic.findCulprit(placements, samples, {}, { [1] = 2, [2] = 2 }, 1)
+	expect(none == nil, "ohne Kaskade darf es keinen Schuldigen geben")
+end)
+
+-- 7) Punkteberechnung
+test("ScoreLogic: Hoehe zaehlt, Gefallene nicht, Verursacher = 0", function()
+	local pieces = {
+		{ ownerUserId = 100, heightAboveBase = 4.9, fallen = false },
+		{ ownerUserId = 100, heightAboveBase = 10.2, fallen = false },
+		{ ownerUserId = 100, heightAboveBase = 99, fallen = true },
+		{ ownerUserId = 200, heightAboveBase = 55, fallen = false },
+		{ ownerUserId = 300, heightAboveBase = 0.2, fallen = false },
+	}
+	local scores = ScoreLogic.computeScores(pieces, { [200] = true })
+	expect(scores[100] == 4 + 10, "Spieler 100: " .. tostring(scores[100]))
+	expect(scores[200] == 0, "Verursacher muss 0 Punkte haben")
+	expect(scores[300] == 1, "Bodenteil muss mindestens 1 Punkt geben")
+end)
+
+-- 8) Punkteberechnung: Randfaelle
+test("ScoreLogic: leere Runde und nur-gefallene Teile", function()
+	local empty = ScoreLogic.computeScores({}, {})
+	expect(next(empty) == nil, "leere Runde muss leeres Ergebnis geben")
+	local onlyFallen = ScoreLogic.computeScores({ { ownerUserId = 100, heightAboveBase = 0, fallen = true } }, {})
+	expect(onlyFallen[100] == 0, "nur gefallene Teile -> 0 Punkte (aber Eintrag vorhanden)")
+end)
+
+table.insert(results, "")
+table.insert(results, "ERGEBNIS: " .. passed .. " bestanden, " .. failed .. " fehlgeschlagen (" .. (passed + failed) .. " Tests)")
+return table.concat(results, "\\n"), failed
+`;
+
+const state = await LuauState.createAsync();
+try {
+  const fn = state.loadstring(body + tests, "turmfall-tests", true);
+  const [report, failedCount] = await fn();
+  console.log(report);
+  if (staticErrors.length > 0) {
+    console.log("\nSTATISCHER REMOTE-ABGLEICH:");
+    for (const line of staticErrors) console.log("FAIL | " + line);
+  } else {
+    console.log("Remote-Abgleich: alle benutzten Remotes sind deklariert.");
+  }
+  process.exit(failedCount > 0 || staticErrors.length > 0 ? 1 : 0);
+} finally {
+  state.free?.();
+}
