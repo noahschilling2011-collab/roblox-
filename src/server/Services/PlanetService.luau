@@ -16,6 +16,7 @@ local MonetizationConfig = require(ReplicatedStorage.Shared.Config.MonetizationC
 
 local DataService = require(script.Parent.DataService)
 local EnergyService = require(script.Parent.EnergyService)
+local BiomeVisuals = require(script.Parent.BiomeVisuals)
 
 local PLOTS_FOLDER_NAME = "PlanetPlots"
 local POSITIONS_PER_RING = 12 -- Plots pro Ring; danach beginnt ein weiterer Ring
@@ -143,7 +144,7 @@ local function setSlotAppearance(part: BasePart, color: Color3, material: Enum.M
 end
 
 -- Slot-Visual an den Profilstand angleichen (placed = nil -> leerer Slot).
-local function updateSlotVisual(player: Player, slotNumber: number, placed: Types.PlacedBiome?)
+local function updateSlotVisual(player: Player, slotNumber: number, placed: Types.PlacedBiome?, withPop: boolean?)
 	local plotFolder = getPlotFolder(player)
 	if plotFolder == nil then
 		return
@@ -155,6 +156,7 @@ local function updateSlotVisual(player: Player, slotNumber: number, placed: Type
 
 	if placed == nil then
 		setSlotAppearance(slotPart, EMPTY_SLOT_COLOR, Enum.Material.Concrete, `Slot {slotNumber}`)
+		BiomeVisuals.clear(slotPart)
 		return
 	end
 
@@ -164,6 +166,8 @@ local function updateSlotVisual(player: Player, slotNumber: number, placed: Type
 		return
 	end
 	setSlotAppearance(slotPart, def.color, Enum.Material.Grass, `{def.displayName} (Lv. {placed.level})`)
+	-- Prozedurales Deko-Set (mehr Objekte pro Level); Pop-Tween nur bei Aktionen.
+	BiomeVisuals.build(slotPart, placed.biomeId, placed.level, withPop == true)
 end
 
 -- Baut Kern und leere Slot-Plattformen für einen Spieler auf.
@@ -527,7 +531,7 @@ local function handlePlaceBiome(player: Player, biomeIdArg: unknown, slotArg: un
 	}
 	table.insert(profile.biomes, placed)
 
-	updateSlotVisual(player, slot, placed)
+	updateSlotVisual(player, slot, placed, true)
 	playSlotJuice(player, slot, def.color, placed.level)
 	DataService.markDirty(player)
 	PlanetService.sendSnapshot(player)
@@ -566,7 +570,7 @@ local function handleUpgradeBiome(player: Player, slotArg: unknown): (boolean, a
 
 	placed.level += 1
 
-	updateSlotVisual(player, slot, placed)
+	updateSlotVisual(player, slot, placed, true)
 	playSlotJuice(player, slot, def.color, placed.level)
 	DataService.markDirty(player)
 	PlanetService.sendSnapshot(player)
@@ -624,7 +628,58 @@ local function onPlayerRemoving(player: Player)
 	end
 end
 
+-- Weltraum-Stimmung: Sternenhimmel, Atmosphäre, dezentes Bloom und
+-- Farbkorrektur. Idempotent - vorhandene PlanetForge-Effekte bleiben.
+local function setupWorldAmbience()
+	local Lighting = game:GetService("Lighting")
+
+	Lighting.ClockTime = 0 -- Mitternacht: Sterne sichtbar
+	Lighting.Brightness = 2
+	Lighting.Ambient = Color3.fromRGB(28, 32, 52)
+	Lighting.OutdoorAmbient = Color3.fromRGB(70, 78, 110)
+
+	if Lighting:FindFirstChild("PlanetForgeSky") == nil then
+		local sky = Instance.new("Sky")
+		sky.Name = "PlanetForgeSky"
+		sky.StarCount = 3000
+		sky.SunAngularSize = 8
+		sky.MoonAngularSize = 14
+		sky.Parent = Lighting
+	end
+
+	if Lighting:FindFirstChild("PlanetForgeAtmosphere") == nil then
+		local atmosphere = Instance.new("Atmosphere")
+		atmosphere.Name = "PlanetForgeAtmosphere"
+		atmosphere.Density = 0.25
+		atmosphere.Color = Color3.fromRGB(70, 80, 130)
+		atmosphere.Decay = Color3.fromRGB(20, 24, 44)
+		atmosphere.Glare = 0.2
+		atmosphere.Haze = 1.4
+		atmosphere.Parent = Lighting
+	end
+
+	if Lighting:FindFirstChild("PlanetForgeBloom") == nil then
+		local bloom = Instance.new("BloomEffect")
+		bloom.Name = "PlanetForgeBloom"
+		bloom.Intensity = 0.4
+		bloom.Size = 24
+		bloom.Threshold = 1.15
+		bloom.Parent = Lighting
+	end
+
+	if Lighting:FindFirstChild("PlanetForgeColor") == nil then
+		local color = Instance.new("ColorCorrectionEffect")
+		color.Name = "PlanetForgeColor"
+		color.Contrast = 0.05
+		color.Saturation = 0.08
+		color.TintColor = Color3.fromRGB(235, 240, 255)
+		color.Parent = Lighting
+	end
+end
+
 function PlanetService.init()
+	setupWorldAmbience()
+
 	planetUpdatedEvent = Remotes.getEvent("PlanetUpdated")
 
 	Remotes.getFunction("PlaceBiome").OnServerInvoke = handlePlaceBiome

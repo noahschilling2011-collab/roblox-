@@ -33,8 +33,8 @@ local PET_SIZE = 1.6
 local cosmeticsUpdatedEvent: RemoteEvent? = nil
 local notificationEvent: RemoteEvent? = nil
 
--- Aktive Haustier-Parts pro Spieler.
-local activePets: { [Player]: BasePart } = {}
+-- Aktive Haustier-Modelle pro Spieler.
+local activePets: { [Player]: Model } = {}
 
 local MonetizationService = {}
 
@@ -80,33 +80,67 @@ local function applyPet(player: Player)
 		return
 	end
 
-	local pet = Instance.new("Part")
+	-- Zusammengesetztes Mini-Model: Körper + Augen mit Pupillen; die
+	-- Schwebe-Animation (Sine-Bobbing) macht die Folgeschleife.
+	local petColor = petDef.visual.color or Color3.new(1, 1, 1)
+	local pet = Instance.new("Model")
 	pet.Name = `Pet_{player.UserId}`
-	pet.Shape = Enum.PartType.Ball
-	pet.Size = Vector3.new(PET_SIZE, PET_SIZE, PET_SIZE)
-	pet.Anchored = true
-	pet.CanCollide = false
-	pet.CanQuery = false
-	pet.Material = petDef.visual.material or Enum.Material.Neon
-	pet.Color = petDef.visual.color or Color3.new(1, 1, 1)
+
+	local function petPart(name: string, size: Vector3, color: Color3, material: Enum.Material, offset: CFrame): BasePart
+		local part = Instance.new("Part")
+		part.Name = name
+		part.Shape = Enum.PartType.Ball
+		part.Size = size
+		part.Color = color
+		part.Material = material
+		part.CFrame = offset
+		part.Anchored = true
+		part.CanCollide = false
+		part.CanQuery = false
+		part.CanTouch = false
+		part.Parent = pet
+		return part
+	end
+
+	local body = petPart(
+		"Body",
+		Vector3.new(PET_SIZE, PET_SIZE, PET_SIZE),
+		petColor,
+		petDef.visual.material or Enum.Material.Neon,
+		CFrame.new()
+	)
+	-- Augen vorn (-Z), leicht nach außen versetzt.
+	for side = -1, 1, 2 do
+		local eyeOffset = CFrame.new(side * PET_SIZE * 0.22, PET_SIZE * 0.12, -PET_SIZE * 0.38)
+		petPart(`Eye{side}`, Vector3.new(0.42, 0.42, 0.42), Color3.new(1, 1, 1), Enum.Material.SmoothPlastic, eyeOffset)
+		petPart(
+			`Pupil{side}`,
+			Vector3.new(0.2, 0.2, 0.2),
+			Color3.fromRGB(25, 25, 30),
+			Enum.Material.SmoothPlastic,
+			eyeOffset * CFrame.new(0, 0, -0.14)
+		)
+	end
 
 	if petDef.visual.glow == true then
 		local light = Instance.new("PointLight")
-		light.Color = pet.Color
+		light.Color = petColor
 		light.Range = 12
 		light.Brightness = 1
-		light.Parent = pet
+		light.Parent = body
 	end
+
+	pet.PrimaryPart = body
 
 	-- Startposition: direkt beim Charakter (falls vorhanden), sonst beim Plot.
 	local character = player.Character
 	local root = if character ~= nil then character:FindFirstChild("HumanoidRootPart") else nil
 	if root ~= nil and root:IsA("BasePart") then
-		pet.CFrame = (root :: BasePart).CFrame * CFrame.new(PET_FOLLOW_OFFSET)
+		pet:PivotTo((root :: BasePart).CFrame * CFrame.new(PET_FOLLOW_OFFSET))
 	else
 		local origin = PlanetService.getPlotOrigin(player)
 		if origin ~= nil then
-			pet.CFrame = origin * CFrame.new(PET_FOLLOW_OFFSET)
+			pet:PivotTo(origin * CFrame.new(PET_FOLLOW_OFFSET))
 		end
 	end
 
@@ -268,7 +302,8 @@ function MonetizationService.init()
 		task.spawn(onPlayerAdded, player)
 	end
 
-	-- Haustier-Folgeschleife: sanftes Nachschweben hinter dem Besitzer.
+	-- Haustier-Folgeschleife: sanftes Nachschweben hinter dem Besitzer
+	-- plus Sine-Bobbing (jedes Haustier leicht phasenversetzt).
 	task.spawn(function()
 		while true do
 			task.wait(PET_UPDATE_SECONDS)
@@ -281,8 +316,9 @@ function MonetizationService.init()
 				if root == nil or not root:IsA("BasePart") then
 					continue
 				end
-				local target = (root :: BasePart).CFrame * CFrame.new(PET_FOLLOW_OFFSET)
-				pet.CFrame = pet.CFrame:Lerp(target, PET_LERP_ALPHA)
+				local bob = math.sin(os.clock() * 2.4 + player.UserId % 7) * 0.45
+				local target = (root :: BasePart).CFrame * CFrame.new(PET_FOLLOW_OFFSET + Vector3.new(0, bob, 0))
+				pet:PivotTo(pet:GetPivot():Lerp(target, PET_LERP_ALPHA))
 			end
 		end
 	end)
