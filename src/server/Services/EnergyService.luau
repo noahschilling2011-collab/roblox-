@@ -1,7 +1,7 @@
 --!strict
 -- EnergyService: autoritative Energie-Ökonomie von Planet Forge.
 -- Verwaltet Guthaben (energy) und Lebenszeit-Statistik (lifetimeEnergy),
--- das manuelle Einsammeln (CollectEnergy) und das passive Biom-Einkommen.
+-- das passive Biom-Einkommen. Das physische Sammeln macht der HarvestService.
 -- Alle Beträge werden serverseitig validiert; der Client meldet nur Wünsche.
 
 local Players = game:GetService("Players")
@@ -18,7 +18,6 @@ local GlobalEventService = require(script.Parent.GlobalEventService)
 local EnergyService = {}
 
 -- Zeitpunkt (os.clock) des letzten manuellen Einsammelns pro Spieler.
-local lastCollectAt: { [Player]: number } = {}
 
 local energyChangedEvent: RemoteEvent? = nil
 
@@ -129,28 +128,6 @@ end
 function EnergyService.init()
 	energyChangedEvent = Remotes.getEvent("EnergyChanged")
 
-	-- Manuelles Einsammeln: fester Betrag mit Cooldown pro Spieler.
-	local collectFunction = Remotes.getFunction("CollectEnergy")
-	collectFunction.OnServerInvoke = function(player: Player): (boolean, any?)
-		local profile: Types.PlayerProfile? = DataService.getProfile(player)
-		if profile == nil then
-			return false, "Dein Spielstand wird noch geladen."
-		end
-
-		local now = os.clock()
-		local last = lastCollectAt[player]
-		if last ~= nil then
-			local remaining = GameConfig.COLLECT_COOLDOWN_SECONDS - (now - last)
-			if remaining > 0 then
-				return false, `Noch {string.format("%.1f", remaining)} Sekunden Abklingzeit.`
-			end
-		end
-
-		lastCollectAt[player] = now
-		local granted = EnergyService.grantEnergy(player, GameConfig.COLLECT_AMOUNT)
-		return true, granted
-	end
-
 	-- Initialen Energiestand senden, sobald das Profil geladen ist,
 	-- damit die UI von Anfang an korrekte Werte zeigt.
 	local function onPlayerAdded(player: Player)
@@ -166,10 +143,6 @@ function EnergyService.init()
 	for _, player in Players:GetPlayers() do
 		onPlayerAdded(player)
 	end
-
-	Players.PlayerRemoving:Connect(function(player: Player)
-		lastCollectAt[player] = nil
-	end)
 
 	-- Passives Biom-Einkommen: alle PASSIVE_INCOME_INTERVAL_SECONDS wird das
 	-- Minuten-Einkommen anteilig auf das Intervall skaliert und gutgeschrieben.

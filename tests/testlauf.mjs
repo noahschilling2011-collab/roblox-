@@ -17,6 +17,7 @@ function loadModule(relPath) {
 const modules = [
   ["Types", "src/shared/Types.luau"],
   ["GameConfig", "src/shared/Config/GameConfig.luau"],
+  ["ProgressionConfig", "src/shared/Config/ProgressionConfig.luau"],
   ["WeightedRandom", "src/shared/Util/WeightedRandom.luau"],
   ["RarityConfig", "src/shared/Config/RarityConfig.luau"],
   ["CollectibleConfig", "src/shared/Config/CollectibleConfig.luau"],
@@ -56,6 +57,7 @@ for (const [name, path] of modules) {
 
 const tests = `
 local GameConfig = __deps["GameConfig"]
+local ProgressionConfig = __deps["ProgressionConfig"]
 local WeightedRandom = __deps["WeightedRandom"]
 local RarityConfig = __deps["RarityConfig"]
 local CollectibleConfig = __deps["CollectibleConfig"]
@@ -88,11 +90,41 @@ end
 test("GameConfig: Canon-Konstanten", function()
 	expect(GameConfig.PLANET_SLOTS == 12, "PLANET_SLOTS != 12")
 	expect(GameConfig.LOOT_ROLL_COST == 25, "LOOT_ROLL_COST != 25")
-	expect(GameConfig.COLLECT_AMOUNT == 5, "COLLECT_AMOUNT != 5")
-	expect(GameConfig.COLLECT_COOLDOWN_SECONDS == 6, "COLLECT_COOLDOWN != 6")
-	expect(GameConfig.PROFILE_SCHEMA_VERSION == 4, "Schema-Version != 4")
+	expect(GameConfig.PROFILE_SCHEMA_VERSION == 5, "Schema-Version != 5")
 	expect(GameConfig.MAX_TRADE_ITEMS_PER_SIDE == 4, "Trade-Items != 4")
 	expect(GameConfig.TRADE_LOCK_SECONDS == 3, "Trade-Lock != 3")
+	expect(GameConfig.BASE_MAGNET_RADIUS > 0, "BASE_MAGNET_RADIUS <= 0")
+	expect(GameConfig.BASE_BACKPACK_CAPACITY >= 5, "BASE_BACKPACK_CAPACITY < 5")
+end)
+
+test("Sammel-Loop: Harvest-Definition fuer jedes Biom", function()
+	local count = 0
+	for biomeId in BiomeConfig.Biomes do
+		local harvest = BiomeConfig.Harvest[biomeId]
+		expect(harvest ~= nil, "Harvest fehlt: " .. biomeId)
+		expect(harvest.value > 0, biomeId .. ": value <= 0")
+		expect(harvest.maxActive >= 1, biomeId .. ": maxActive < 1")
+		expect(harvest.respawnSeconds > 0, biomeId .. ": respawnSeconds <= 0")
+		count += 1
+	end
+	expect(count == 10, "Harvest-Anzahl != 10")
+	expect(BiomeConfig.getMaxActive("wiese", 1) == 6, "getMaxActive(wiese, 1) != 6")
+	expect(BiomeConfig.getMaxActive("wiese", 5) == 14, "getMaxActive(wiese, 5) != 14")
+end)
+
+test("ProgressionConfig: Upgrade-Kosten exponentiell (Faktor 1.15-1.25)", function()
+	for upgradeId, def in ProgressionConfig.Upgrades do
+		expect(def.baseCost > 0, upgradeId .. ": baseCost <= 0")
+		expect(def.costFactor >= 1.15 and def.costFactor <= 1.25, upgradeId .. ": Faktor ausserhalb 1.15-1.25")
+		expect(
+			ProgressionConfig.getUpgradeCost(upgradeId, 0) == def.baseCost,
+			upgradeId .. ": Level-0-Kosten != baseCost"
+		)
+		expect(
+			ProgressionConfig.getUpgradeCost(upgradeId, 5) == math.floor(def.baseCost * def.costFactor ^ 5),
+			upgradeId .. ": Level-5-Formel falsch"
+		)
+	end
 end)
 
 test("GameConfig: Tagesbonus-Tabelle", function()
@@ -303,15 +335,19 @@ end)
 -- 7b) Tutorial-Oekonomie und Studio-Testmodus
 test("Tutorial: jeder Schritt bleibt bezahlbar (Spiegel der Belohnungslogik)", function()
 	expect(GameConfig.TUTORIAL_STEP_COUNT == 4, "TUTORIAL_STEP_COUNT != 4")
-	expect(GameConfig.TUTORIAL_STEP_REWARD > 0, "TUTORIAL_STEP_REWARD <= 0")
-	local wiese = BiomeConfig.Biomes["wiese"]
-	-- Nach Schritt 2: Start - Wiese + 1x Sammeln + 2 Schritt-Belohnungen.
-	local afterStep2 = GameConfig.START_ENERGY - wiese.baseCost
-		+ GameConfig.COLLECT_AMOUNT + 2 * GameConfig.TUTORIAL_STEP_REWARD
-	expect(afterStep2 >= BiomeConfig.getUpgradeCost("wiese", 1), "Upgrade in Schritt 3 nicht bezahlbar")
-	-- Nach Schritt 3 muss der Fund-Wurf bezahlbar sein.
-	local afterStep3 = afterStep2 - BiomeConfig.getUpgradeCost("wiese", 1) + GameConfig.TUTORIAL_STEP_REWARD
-	expect(afterStep3 >= GameConfig.LOOT_ROLL_COST, "Fund-Wurf in Schritt 4 nicht bezahlbar")
+	local rewards = GameConfig.TUTORIAL_STEP_REWARDS
+	expect(#rewards == GameConfig.TUTORIAL_STEP_COUNT, "REWARDS-Anzahl != Schritte")
+	-- Schritt 1+2: 5 Wiesen-Objekte sammeln und verkaufen.
+	local sellValue = 5 * BiomeConfig.Harvest["wiese"].value
+	local cheapestUpgrade = math.min(
+		ProgressionConfig.getUpgradeCost("magnet", 0),
+		ProgressionConfig.getUpgradeCost("backpack", 0)
+	)
+	local afterStep2 = GameConfig.START_ENERGY + rewards[1] + rewards[2] + sellValue
+	expect(afterStep2 >= cheapestUpgrade, "Upgrade in Schritt 3 nicht bezahlbar")
+	-- Schritt 4: zweites Biom (Wald, 100) muss bezahlbar sein.
+	local afterStep3 = afterStep2 - cheapestUpgrade + rewards[3]
+	expect(afterStep3 >= BiomeConfig.Biomes["wald"].baseCost, "Zweites Biom in Schritt 4 nicht bezahlbar")
 end)
 
 test("MonetizationConfig: Studio-Testmodus-Flag vorhanden", function()

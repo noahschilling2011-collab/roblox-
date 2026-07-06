@@ -9,9 +9,16 @@ local GameConfig = {
 
 	-- Energie
 	START_ENERGY = 50,
-	COLLECT_AMOUNT = 5, -- Energie pro manuellem Einsammeln
-	COLLECT_COOLDOWN_SECONDS = 6,
 	PASSIVE_INCOME_INTERVAL_SECONDS = 60, -- Taktung des passiven Biom-Einkommens
+
+	-- Physisches Sammeln auf der Insel
+	BASE_MAGNET_RADIUS = 6, -- Einsammel-Radius ohne Upgrades (Studs)
+	MAGNET_RADIUS_PER_LEVEL = 1.5, -- zusätzlicher Radius pro Magnet-Upgrade
+	BASE_BACKPACK_CAPACITY = 30, -- Rucksack-Plätze ohne Upgrades
+	BACKPACK_CAPACITY_PER_LEVEL = 15, -- zusätzliche Plätze pro Rucksack-Upgrade
+	HARVEST_TICK_SECONDS = 0.25, -- Takt der serverseitigen Näherungs-Prüfung
+	SPAWN_TICK_SECONDS = 1, -- Takt des Objekt-Spawners
+	SELL_PAD_RADIUS = 9, -- Reichweite der Verkaufs-Zone (Studs)
 
 	-- Loot
 	LOOT_ROLL_COST = 25, -- Energiekosten pro Fund-Wurf
@@ -21,7 +28,7 @@ local GameConfig = {
 	TRADE_LOCK_SECONDS = 3, -- Sicherheitspause nach beidseitigem Akzeptieren
 
 	-- Daten
-	PROFILE_SCHEMA_VERSION = 4, -- v2: Kosmetik; v3: Tagesbonus/Name; v4: Tutorial
+	PROFILE_SCHEMA_VERSION = 5, -- v4: Tutorial; v5: Rucksack/Upgrades/Statistiken (Insel-Loop)
 	DATASTORE_NAME = "PlanetForge_v1",
 	AUTOSAVE_INTERVAL_SECONDS = 120,
 
@@ -42,10 +49,10 @@ local GameConfig = {
 	-- Planetenname
 	PLANET_NAME_MAX_LENGTH = 24,
 
-	-- Tutorial (First-Time Experience)
-	TUTORIAL_STEP_COUNT = 4, -- Schritte: Wiese bauen, Energie sammeln, Upgrade, Fund
-	TUTORIAL_STEP_REWARD = 15, -- Energie-Belohnung pro abgeschlossenem Schritt
-	TUTORIAL_HINT_LIFETIME_LIMIT = 100, -- Hinweis-Schilder verschwinden ab dieser Lifetime-Energie
+	-- Tutorial (First-Time Experience, neuer Loop)
+	TUTORIAL_STEP_COUNT = 4, -- Schritte: 5 sammeln, verkaufen, Upgrade kaufen, Biom freischalten
+	TUTORIAL_STEP_REWARDS = { 25, 25, 60, 100 }, -- Energie-Belohnung je Schritt (stockt nie)
+	TUTORIAL_HINT_LIFETIME_LIMIT = 100, -- Einsteiger-Hinweise verschwinden ab dieser Lifetime-Energie
 
 	-- Sound (Client): zentrale Lautstärke der PlanetForge-Soundgruppe (0..1)
 	SOUND_MASTER_VOLUME = 0.5,

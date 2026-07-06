@@ -18,6 +18,8 @@ local CollectibleConfig = require(ReplicatedStorage.Shared.Config.CollectibleCon
 local EventConfig = require(ReplicatedStorage.Shared.Config.EventConfig)
 local MonetizationConfig = require(ReplicatedStorage.Shared.Config.MonetizationConfig)
 
+local ProgressionConfig = require(ReplicatedStorage.Shared.Config.ProgressionConfig)
+
 local BiomeVisuals = require(script.Parent.BiomeVisuals)
 local MonetizationService = require(script.Parent.MonetizationService)
 
@@ -207,37 +209,67 @@ local function checkGameConfigAndRemotes()
 				functions += 1
 			end
 		end
-		check(events == 10, `Erwartet 10 RemoteEvents, gefunden: {events}`)
+		check(events == 14, `Erwartet 14 RemoteEvents, gefunden: {events}`)
 		check(functions == 12, `Erwartet 12 RemoteFunctions, gefunden: {functions}`)
 
-		-- Kritische Einzel-Remotes (Tutorial + Studio-Testmodus).
-		for _, name in { "TutorialUpdated" } do
+		-- Kritische Einzel-Remotes (Tutorial, Sammel-Loop, Studio-Testmodus).
+		for _, name in { "TutorialUpdated", "ObjectCollected", "BackpackChanged", "SoldBackpack", "UpgradesUpdated" } do
 			local remote = folder:FindFirstChild(name)
 			check(remote ~= nil and remote:IsA("RemoteEvent"), `RemoteEvent {name} fehlt`)
 		end
-		for _, name in { "TutorialAction", "SimulatePurchase" } do
+		for _, name in { "TutorialAction", "SimulatePurchase", "BuyUpgrade" } do
 			local remote = folder:FindFirstChild(name)
 			check(remote ~= nil and remote:IsA("RemoteFunction"), `RemoteFunction {name} fehlt`)
 		end
 	end
 end
 
+local function checkHarvest()
+	-- Jedes Biom braucht eine Sammel-Definition mit sinnvollen Werten.
+	for biomeId in BiomeConfig.Biomes do
+		local harvest = BiomeConfig.Harvest[biomeId]
+		check(harvest ~= nil, `Biom {biomeId}: keine Harvest-Definition`)
+		if harvest ~= nil then
+			check(harvest.value > 0, `Harvest {biomeId}: value muss > 0 sein`)
+			check(harvest.maxActive >= 1, `Harvest {biomeId}: maxActive muss >= 1 sein`)
+			check(harvest.respawnSeconds > 0, `Harvest {biomeId}: respawnSeconds muss > 0 sein`)
+		end
+	end
+	check(GameConfig.BASE_MAGNET_RADIUS > 0, "BASE_MAGNET_RADIUS muss > 0 sein")
+	check(GameConfig.BASE_BACKPACK_CAPACITY >= 5, "BASE_BACKPACK_CAPACITY muss >= 5 sein")
+
+	-- Upgrade-Kosten wachsen exponentiell im Zielkorridor 1.15..1.25.
+	for upgradeId, def in ProgressionConfig.Upgrades do
+		check(def.baseCost > 0, `Upgrade {upgradeId}: baseCost muss > 0 sein`)
+		check(
+			def.costFactor >= 1.15 and def.costFactor <= 1.25,
+			`Upgrade {upgradeId}: costFactor {def.costFactor} außerhalb 1.15..1.25`
+		)
+	end
+end
+
 local function checkTutorial()
 	check(GameConfig.TUTORIAL_STEP_COUNT == 4, "TUTORIAL_STEP_COUNT muss 4 sein")
-	check(GameConfig.TUTORIAL_STEP_REWARD > 0, "TUTORIAL_STEP_REWARD muss > 0 sein")
-	check(GameConfig.TUTORIAL_HINT_LIFETIME_LIMIT > 0, "TUTORIAL_HINT_LIFETIME_LIMIT muss > 0 sein")
-	-- Schritt 3 (Upgrade der Wiese) muss mit Start-Energie + Belohnungen +
-	-- einmal Sammeln bezahlbar sein, sonst stockt das Tutorial.
-	local wiese = BiomeConfig.Biomes["wiese"]
-	if wiese ~= nil then
-		local afterStep2 = GameConfig.START_ENERGY
-			- wiese.baseCost
-			+ GameConfig.COLLECT_AMOUNT
-			+ 2 * GameConfig.TUTORIAL_STEP_REWARD
-		check(
-			afterStep2 >= BiomeConfig.getUpgradeCost("wiese", 1),
-			"Tutorial-Ökonomie: Upgrade in Schritt 3 ist mit Belohnungen nicht bezahlbar"
+	check(
+		#GameConfig.TUTORIAL_STEP_REWARDS == GameConfig.TUTORIAL_STEP_COUNT,
+		"TUTORIAL_STEP_REWARDS braucht einen Eintrag pro Schritt"
+	)
+
+	-- Tutorial-Ökonomie: Jeder Schritt muss mit Start-Energie, Belohnungen
+	-- und dem Verkauf von 5 Wiesen-Objekten bezahlbar sein.
+	local rewards = GameConfig.TUTORIAL_STEP_REWARDS
+	local wieseHarvest = BiomeConfig.Harvest["wiese"]
+	local wald = BiomeConfig.Biomes["wald"]
+	if wieseHarvest ~= nil and wald ~= nil then
+		local sellValue = 5 * wieseHarvest.value
+		local cheapestUpgrade = math.min(
+			ProgressionConfig.getUpgradeCost("magnet", 0),
+			ProgressionConfig.getUpgradeCost("backpack", 0)
 		)
+		local afterStep2 = GameConfig.START_ENERGY + rewards[1] + rewards[2] + sellValue
+		check(afterStep2 >= cheapestUpgrade, "Tutorial-Ökonomie: Upgrade in Schritt 3 nicht bezahlbar")
+		local afterStep3 = afterStep2 - cheapestUpgrade + rewards[3]
+		check(afterStep3 >= wald.baseCost, "Tutorial-Ökonomie: zweites Biom in Schritt 4 nicht bezahlbar")
 	end
 end
 
@@ -267,6 +299,7 @@ function SelfCheckService.init()
 		{ name = "Events", fn = checkEvents },
 		{ name = "Shop", fn = checkMonetization },
 		{ name = "Konfig+Remotes", fn = checkGameConfigAndRemotes },
+		{ name = "Sammeln", fn = checkHarvest },
 		{ name = "Tutorial", fn = checkTutorial },
 		{ name = "Biom-Visuals", fn = checkBiomeVisuals },
 		{ name = "Testmodus", fn = checkTestMode },

@@ -6,6 +6,7 @@
 local CONTROLLER_STARTUP_ORDER = {
 	"EffectsController", -- zuerst: stellt Sounds/Effekte für alle anderen bereit
 	"UIController",
+	"HarvestController",
 	"PlanetBuilderController",
 	"EventNotifierController",
 	"ShopController",

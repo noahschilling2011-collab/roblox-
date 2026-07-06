@@ -223,6 +223,7 @@ end
 type GuiRefs = {
 	energyLabel: TextLabel,
 	lifetimeLabel: TextLabel,
+	backpackLabel: TextLabel,
 	statsLabel: TextLabel,
 	lootPopup: CanvasGroup,
 	lootName: TextLabel,
@@ -257,9 +258,15 @@ local function buildGui(playerGui: PlayerGui): GuiRefs
 
 	local lifetimeLabel = createLabel(header, "Lifetime", "Gesamt: 0")
 	lifetimeLabel.Position = UDim2.new(0, 254, 0, 0)
-	lifetimeLabel.Size = UDim2.new(0, 170, 1, 0)
+	lifetimeLabel.Size = UDim2.new(0, 140, 1, 0)
 	lifetimeLabel.TextSize = 12
 	lifetimeLabel.TextColor3 = SUBTEXT_COLOR
+
+	local backpackLabel = createLabel(header, "Backpack", "🎒 0/30")
+	backpackLabel.Position = UDim2.new(0, 400, 0, 0)
+	backpackLabel.Size = UDim2.new(0, 120, 1, 0)
+	backpackLabel.Font = Enum.Font.GothamBold
+	backpackLabel.TextSize = 14
 
 	local statsLabel = createLabel(header, "Stats", "Besuche: 0  |  Likes: 0")
 	statsLabel.AnchorPoint = Vector2.new(1, 0)
@@ -285,17 +292,10 @@ local function buildGui(playerGui: PlayerGui): GuiRefs
 	barLayout.Padding = UDim.new(0, 10)
 	barLayout.Parent = buttonBar
 
-	-- Einsammeln mit Juice: Sound, fliegende "+N ⚡"-Zahl, Partikel am Planeten.
-	createActionButton(buttonBar, 1, "Energie sammeln", "CollectEnergy", function(payload: any)
-		local amount = if typeof(payload) == "number" then payload else 0
-		EffectsController.playSound("collect")
-		if amount > 0 then
-			EffectsController.flyEnergyToCounter(amount)
-		end
-		EffectsController.burstAtOwnPlanet(Color3.fromRGB(255, 224, 130))
-	end)
-	createActionButton(buttonBar, 2, `Fund suchen ({GameConfig.LOOT_ROLL_COST})`, "RollLoot")
-	createActionButton(buttonBar, 3, "Nach Hause", "GoHome", function()
+	-- Gesammelt wird physisch auf der Insel (HarvestService) - hier nur
+	-- noch Fund-Suche und Heimreise.
+	createActionButton(buttonBar, 1, `Fund suchen ({GameConfig.LOOT_ROLL_COST})`, "RollLoot")
+	createActionButton(buttonBar, 2, "Nach Hause", "GoHome", function()
 		EffectsController.playSound("pop", 0.9)
 	end)
 
@@ -353,6 +353,7 @@ local function buildGui(playerGui: PlayerGui): GuiRefs
 	return {
 		energyLabel = energyLabel,
 		lifetimeLabel = lifetimeLabel,
+		backpackLabel = backpackLabel,
 		statsLabel = statsLabel,
 		lootPopup = lootPopup,
 		lootName = lootName,
@@ -374,6 +375,15 @@ function UIController.init()
 		end
 		if typeof(lifetimeEnergy) == "number" then
 			refs.lifetimeLabel.Text = `Gesamt: {formatNumber(lifetimeEnergy)}`
+		end
+	end)
+
+	-- Rucksack-Anzeige (füllt sich beim Sammeln, leert sich beim Verkaufen).
+	Remotes.getEvent("BackpackChanged").OnClientEvent:Connect(function(items: any, capacity: any, value: any)
+		if typeof(items) == "number" and typeof(capacity) == "number" then
+			local valueText = if typeof(value) == "number" and value > 0 then ` (Wert {formatNumber(value)})` else ""
+			refs.backpackLabel.Text = `🎒 {items}/{capacity}{valueText}`
+			refs.backpackLabel.TextColor3 = if items >= capacity then Color3.fromRGB(214, 110, 110) else TEXT_COLOR
 		end
 	end)
 

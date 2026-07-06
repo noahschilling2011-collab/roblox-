@@ -52,7 +52,9 @@ local function buildDefaultProfile(): Types.PlayerProfile
 		version = GameConfig.PROFILE_SCHEMA_VERSION,
 		energy = GameConfig.START_ENERGY,
 		lifetimeEnergy = 0,
-		biomes = {},
+		-- Neue Spieler starten mit einer freigeschalteten Wiesen-Zone,
+		-- damit sofort etwas zum Sammeln da ist.
+		biomes = { { biomeId = "wiese", slot = 1, level = 1, placedAt = 0 } },
 		collectibles = {},
 		visits = 0,
 		likes = 0,
@@ -63,6 +65,9 @@ local function buildDefaultProfile(): Types.PlayerProfile
 		dailyStreak = 0,
 		lastDailyClaimDay = 0,
 		tutorialStep = 1,
+		backpack = { items = 0, value = 0 },
+		upgrades = { magnet = 0, backpack = 0 },
+		stats = { collected = 0, sales = 0 },
 	}
 end
 
@@ -82,6 +87,11 @@ local function migrateProfile(loaded: any): Types.PlayerProfile
 			end
 		end
 		loaded.version = GameConfig.PROFILE_SCHEMA_VERSION
+	end
+
+	-- Insel-Loop (v5): Jeder Spieler braucht mindestens eine Zone zum Sammeln.
+	if typeof(loaded.biomes) == "table" and #loaded.biomes == 0 then
+		table.insert(loaded.biomes, { biomeId = "wiese", slot = 1, level = 1, placedAt = 0 })
 	end
 
 	return loaded :: Types.PlayerProfile

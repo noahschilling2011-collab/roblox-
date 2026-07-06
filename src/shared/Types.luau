@@ -46,6 +46,27 @@ export type PlayerProfile = {
 	dailyStreak: number, -- aufeinanderfolgende Login-Tage (Tagesbonus)
 	lastDailyClaimDay: number, -- UTC-Tagesnummer des letzten Tagesbonus (os.time() / 86400)
 	tutorialStep: number, -- nächster offener Tutorial-Schritt (1..4); 5 = abgeschlossen
+	backpack: Backpack, -- gesammelte, noch nicht verkaufte Objekte
+	upgrades: IslandUpgrades, -- Level der Insel-Upgrades (Magnet, Rucksack)
+	stats: PlayerStats, -- Zähler für Tutorial und Statistiken
+}
+
+-- Rucksack: füllt sich beim Sammeln, wird an der Verkaufs-Zone geleert.
+export type Backpack = {
+	items: number, -- belegte Plätze
+	value: number, -- Gesamtwert (wird beim Verkauf mit Multiplikator zu Energie)
+}
+
+-- Level der kaufbaren Insel-Upgrades (Kosten in ProgressionConfig).
+export type IslandUpgrades = {
+	magnet: number,
+	backpack: number,
+}
+
+-- Fortschritts-Zähler (u. a. für die Tutorial-Validierung).
+export type PlayerStats = {
+	collected: number, -- insgesamt eingesammelte Objekte
+	sales: number, -- Anzahl Verkäufe an der Verkaufs-Zone
 }
 
 -- Ein aktuell laufendes globales Event.

@@ -14,17 +14,19 @@
 
 local TweenService = game:GetService("TweenService")
 
-local SLOT_TOP_OFFSET = 0.5 -- halbe Slot-Dicke: Deko steht auf der Oberfläche
-local SCATTER_RADIUS = 4.6 -- Streuradius um die Slot-Mitte
+local DEFAULT_SCATTER_RADIUS = 4.6 -- Fallback-Streuradius
 local POP_SECONDS = 0.3
 
 export type BuilderFn = (model: Model, top: Vector3, level: number, rng: Random) -> ()
 
 local BiomeVisuals = {}
 
--- Anzahl Deko-Objekte je Level (Level 1 = 3, Level 5 = 7).
+-- Wird pro build()-Aufruf aus der Zonen-Größe gesetzt (Zonen sind Rechtecke).
+local activeScatterRadius = DEFAULT_SCATTER_RADIUS
+
+-- Anzahl Deko-Objekte je Level (Level 1 = 4, Level 5 = 12).
 local function objectCount(level: number): number
-	return math.clamp(2 + level, 3, 7)
+	return math.clamp(2 + level * 2, 4, 12)
 end
 
 local function newPart(
@@ -51,9 +53,9 @@ local function newPart(
 	return part
 end
 
--- Zufälliger Punkt auf der Slot-Oberfläche (deterministisch über rng).
+-- Zufälliger Punkt auf der Zonen-Oberfläche (deterministisch über rng).
 local function scatter(top: Vector3, rng: Random, radius: number?): Vector3
-	local r = (radius or SCATTER_RADIUS) * math.sqrt(rng:NextNumber())
+	local r = (radius or activeScatterRadius) * math.sqrt(rng:NextNumber())
 	local angle = rng:NextNumber() * 2 * math.pi
 	return top + Vector3.new(math.cos(angle) * r, 0, math.sin(angle) * r)
 end
@@ -159,8 +161,9 @@ BiomeVisuals.Builders = {
 	end,
 
 	ozean = function(model: Model, top: Vector3, level: number, rng: Random)
-		-- Wasserscheibe über fast dem ganzen Slot, mit Glasglanz.
-		newPart(model, Enum.PartType.Cylinder, Vector3.new(0.35, 11, 11),
+		-- Wasserscheibe über fast der ganzen Zone, mit Glasglanz.
+		local waterSize = activeScatterRadius * 2 + 2
+		newPart(model, Enum.PartType.Cylinder, Vector3.new(0.35, waterSize, waterSize),
 			Color3.fromRGB(60, 140, 210), Enum.Material.Glass,
 			CFrame.new(top + Vector3.new(0, 0.18, 0)) * CFrame.Angles(0, 0, math.rad(90)), 0.35)
 		for _ = 1, objectCount(level) - 2 do
@@ -327,8 +330,11 @@ function BiomeVisuals.build(slotPart: BasePart, biomeId: string, level: number, 
 	local model = Instance.new("Model")
 	model.Name = "Deko"
 
-	local top = slotPart.Position + Vector3.new(0, SLOT_TOP_OFFSET, 0)
-	-- Deterministischer Seed pro Slot-Position und Level.
+	-- Streuradius aus der tatsächlichen Zonen-Größe ableiten.
+	activeScatterRadius = math.max(3, math.min(slotPart.Size.X, slotPart.Size.Z) / 2 - 2)
+
+	local top = slotPart.Position + Vector3.new(0, slotPart.Size.Y / 2, 0)
+	-- Deterministischer Seed pro Zonen-Position und Level.
 	local seed = math.floor(math.abs(slotPart.Position.X) * 7 + math.abs(slotPart.Position.Z) * 13) + level * 101
 	builder(model, top, level, Random.new(seed))
 

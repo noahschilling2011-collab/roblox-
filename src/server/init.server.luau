@@ -19,6 +19,7 @@ local SERVICE_STARTUP_ORDER = {
 	"EnergyService",
 	"LootService",
 	"GlobalEventService",
+	"HarvestService",
 	"VisitService",
 	"TradeService",
 	"MonetizationService",

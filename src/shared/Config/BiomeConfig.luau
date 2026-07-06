@@ -134,6 +134,40 @@ BiomeConfig.Biomes = {
 	},
 } :: { [string]: BiomeDef }
 
+-- Sammel-Objekte, die in der Zone eines Bioms spawnen (physischer Loop):
+-- Spawn-Rate (respawnSeconds) und Max-Anzahl (maxActive + Level-Bonus) sind
+-- hier der Canon, nicht in den Services.
+export type HarvestDef = {
+	label: string, -- Anzeigename des Sammel-Objekts
+	value: number, -- Rucksack-Wert pro Objekt
+	maxActive: number, -- gleichzeitig liegende Objekte bei Level 1
+	respawnSeconds: number, -- Mindestabstand zwischen zwei Spawns
+	orb: boolean, -- true = schwebender Energie-Orb, false = Boden-Objekt
+	color: Color3,
+}
+
+BiomeConfig.Harvest = {
+	wiese = { label = "Gras-Büschel", value = 1, maxActive = 6, respawnSeconds = 3, orb = false, color = Color3.fromRGB(110, 190, 80) },
+	wald = { label = "Waldbeere", value = 2, maxActive = 6, respawnSeconds = 4, orb = false, color = Color3.fromRGB(150, 60, 90) },
+	wueste = { label = "Sandkristall", value = 4, maxActive = 5, respawnSeconds = 4, orb = false, color = Color3.fromRGB(235, 205, 130) },
+	ozean = { label = "Muschel", value = 8, maxActive = 5, respawnSeconds = 5, orb = false, color = Color3.fromRGB(200, 225, 240) },
+	dschungel = { label = "Dschungelfrucht", value = 15, maxActive = 5, respawnSeconds = 5, orb = false, color = Color3.fromRGB(240, 150, 50) },
+	eiswelt = { label = "Eissplitter", value = 30, maxActive = 4, respawnSeconds = 6, orb = false, color = Color3.fromRGB(180, 230, 250) },
+	vulkan = { label = "Glutstein", value = 60, maxActive = 4, respawnSeconds = 6, orb = false, color = Color3.fromRGB(255, 110, 40) },
+	pilzwald = { label = "Leuchtpilz", value = 120, maxActive = 4, respawnSeconds = 7, orb = false, color = Color3.fromRGB(200, 120, 230) },
+	kristallfelder = { label = "Kristall-Orb", value = 250, maxActive = 3, respawnSeconds = 8, orb = true, color = Color3.fromRGB(110, 235, 225) },
+	kosmische_ebene = { label = "Sternen-Orb", value = 600, maxActive = 3, respawnSeconds = 9, orb = true, color = Color3.fromRGB(255, 235, 150) },
+} :: { [string]: HarvestDef }
+
+-- Maximale gleichzeitige Objekte einer Zone (steigt mit dem Biom-Level).
+function BiomeConfig.getMaxActive(biomeId: string, level: number): number
+	local harvest = BiomeConfig.Harvest[biomeId]
+	if harvest == nil then
+		return 0
+	end
+	return harvest.maxActive + (level - 1) * 2
+end
+
 -- Gibt alle Biom-IDs sortiert nach baseCost (aufsteigend) zurück.
 function BiomeConfig.getSortedIds(): { string }
 	local ids: { string } = {}

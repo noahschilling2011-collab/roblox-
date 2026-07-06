@@ -17,11 +17,15 @@
 --     LeaderboardUpdated(boards: { likes: { LBEntry }, energy: { LBEntry } })
 --       mit LBEntry = { userId: number, name: string, value: number }
 --     TutorialUpdated(step: number) -- 1..4 = offener Schritt, 5 = abgeschlossen
+--     ObjectCollected(position: Vector3, value: number, color: Color3) -- für Sammel-Effekte
+--     BackpackChanged(items: number, capacity: number, value: number)
+--     SoldBackpack(gainedEnergy: number, itemsSold: number)
+--     UpgradesUpdated(levels: { magnet: number, backpack: number })
 --
 --   RemoteFunctions (Client -> Server), geben immer (ok: boolean, payload: any?) zurück:
---     PlaceBiome(biomeId: string, slot: number)
+--     PlaceBiome(biomeId: string, slot: number) -- schaltet eine Insel-Zone frei
 --     UpgradeBiome(slot: number)
---     CollectEnergy()
+--     BuyUpgrade(upgradeId: "magnet" | "backpack")
 --     RollLoot()
 --     RequestVisit(targetUserId: number)
 --     GoHome()
@@ -49,12 +53,16 @@ local EVENT_NAMES = {
 	"CosmeticsUpdated",
 	"LeaderboardUpdated",
 	"TutorialUpdated",
+	"ObjectCollected",
+	"BackpackChanged",
+	"SoldBackpack",
+	"UpgradesUpdated",
 }
 
 local FUNCTION_NAMES = {
 	"PlaceBiome",
 	"UpgradeBiome",
-	"CollectEnergy",
+	"BuyUpgrade",
 	"RollLoot",
 	"RequestVisit",
 	"GoHome",

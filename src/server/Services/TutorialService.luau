@@ -6,15 +6,15 @@
 -- geschafft ist. Der Server bleibt autoritativ: Jeder Schritt wird gegen den
 -- echten Profilzustand validiert, erst dann wird weitergeschaltet.
 --
--- Schritte (profile.tutorialStep = nächster offener Schritt):
---   1  Platziere deine erste Wiese       (mindestens 1 Biom gebaut)
---   2  Sammle Energie ein                (lifetimeEnergy >= COLLECT_AMOUNT)
---   3  Kaufe ein Upgrade                 (mindestens 1 Biom auf Level >= 2)
---   4  Suche deinen ersten Fund          (mindestens 1 Sammelobjekt)
+-- Schritte (profile.tutorialStep = nächster offener Schritt, neuer Loop):
+--   1  Sammle 5 Objekte auf deiner Insel (stats.collected >= 5)
+--   2  Verkaufe am 💰-Pad               (stats.sales >= 1)
+--   3  Kauf ein Insel-Upgrade           (Magnet- + Rucksack-Level >= 1)
+--   4  Schalte eine zweite Zone frei    (mindestens 2 Biome)
 --   5  = abgeschlossen (kommt nie wieder)
 --
--- Jeder abgeschlossene Schritt gibt eine kleine Energie-Belohnung
--- (GameConfig.TUTORIAL_STEP_REWARD), damit der Ablauf nie am Preis des
+-- Jeder abgeschlossene Schritt gibt eine Energie-Belohnung
+-- (GameConfig.TUTORIAL_STEP_REWARDS), damit der Ablauf nie am Preis des
 -- nächsten Schritts stockt. "skip" beendet das Tutorial sofort (Rückkehrer).
 
 local Players = game:GetService("Players")
@@ -36,18 +36,13 @@ local TutorialService = {}
 -- Prüft, ob die Bedingung des angegebenen Schritts im Profil erfüllt ist.
 local function isStepFulfilled(profile: Types.PlayerProfile, step: number): boolean
 	if step == 1 then
-		return #profile.biomes >= 1
+		return profile.stats.collected >= 5
 	elseif step == 2 then
-		return profile.lifetimeEnergy >= GameConfig.COLLECT_AMOUNT
+		return profile.stats.sales >= 1
 	elseif step == 3 then
-		for _, placed in profile.biomes do
-			if placed.level >= 2 then
-				return true
-			end
-		end
-		return false
+		return profile.upgrades.magnet + profile.upgrades.backpack >= 1
 	elseif step == 4 then
-		return #profile.collectibles >= 1
+		return #profile.biomes >= 2
 	end
 	return false
 end
@@ -94,11 +89,15 @@ local function onTutorialAction(player: Player, actionArg: any): (boolean, any?)
 		return false, "Dieser Schritt ist noch nicht geschafft."
 	end
 
+	local completedStep = profile.tutorialStep
 	profile.tutorialStep += 1
 	DataService.markDirty(player)
 
-	-- Kleine Belohnung, damit der nächste Schritt immer bezahlbar ist.
-	EnergyService.grantEnergy(player, GameConfig.TUTORIAL_STEP_REWARD)
+	-- Belohnung je Schritt, damit der nächste immer bezahlbar ist.
+	local reward = GameConfig.TUTORIAL_STEP_REWARDS[completedStep]
+	if reward ~= nil and reward > 0 then
+		EnergyService.grantEnergy(player, reward)
+	end
 
 	fireUpdate(player, profile.tutorialStep)
 	return true, profile.tutorialStep

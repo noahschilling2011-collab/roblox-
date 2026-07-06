@@ -41,6 +41,11 @@ local BiomeConfig = require(ConfigFolder:WaitForChild("BiomeConfig") :: ModuleSc
 local UIController = require(ControllersFolder:WaitForChild("UIController") :: ModuleScript) :: {
 	showToast: (message: string, kind: string) -> (),
 }
+type UpgradeDef = { id: string, displayName: string, description: string, maxLevel: number }
+local ProgressionConfig = require(ConfigFolder:WaitForChild("ProgressionConfig") :: ModuleScript) :: {
+	Upgrades: { [string]: UpgradeDef },
+	getUpgradeCost: (upgradeId: string, currentLevel: number) -> number,
+}
 
 -- Farbschema (identisch zum UIController).
 local PANEL_COLOR = Color3.fromRGB(30, 32, 44)
@@ -63,6 +68,11 @@ local lifetimeEnergy = 0
 
 local biomeRows: { [string]: BiomeRow } = {}
 local slotRows: { SlotRow } = {}
+
+-- Insel-Upgrades (Magnet, Rucksack) aus ProgressionConfig.
+type UpgradeRow = { infoLabel: TextLabel, buyButton: TextButton }
+local upgradeRows: { [string]: UpgradeRow } = {}
+local upgradeLevels: { [string]: number } = {}
 
 -- 1234567 -> "1.234.567" (deutsche Tausendertrennung mit Punkt).
 local function formatNumber(value: number): string
@@ -114,6 +124,63 @@ local function invokeRemote(functionName: string, successMessage: string?, ...: 
 			UIController.showToast(successMessage, "success")
 		end
 	end)
+end
+
+-- Zeilen der Insel-Upgrades aktuell halten (Level, Kosten, Färbung).
+local function refreshUpgradeRows()
+	for upgradeId, row in upgradeRows do
+		local def = ProgressionConfig.Upgrades[upgradeId]
+		local level = upgradeLevels[upgradeId] or 0
+		row.infoLabel.Text = `{def.displayName}  Lv. {level}`
+		if level >= def.maxLevel then
+			row.buyButton.Text = "Max"
+			row.buyButton.BackgroundColor3 = UPGRADE_MAX_COLOR
+			row.buyButton.AutoButtonColor = false
+		else
+			local cost = ProgressionConfig.getUpgradeCost(upgradeId, level)
+			row.buyButton.Text = `Kaufen ({formatNumber(cost)})`
+			row.buyButton.BackgroundColor3 = if currentEnergy >= cost then UPGRADE_BUTTON_COLOR else CANNOT_AFFORD_COLOR
+		end
+	end
+end
+
+-- Zeile für ein Insel-Upgrade anlegen.
+local function createUpgradeRow(parent: Instance, def: UpgradeDef, order: number): UpgradeRow
+	local row = Instance.new("Frame")
+	row.Name = `Upgrade_{def.id}`
+	row.Size = UDim2.new(1, -8, 0, 52)
+	row.BackgroundColor3 = ROW_COLOR
+	row.LayoutOrder = order
+	addCorner(row, 8)
+	row.Parent = parent
+
+	local infoLabel = createLabel(row, "Info", def.displayName, UDim2.new(0, 10, 0, 6), UDim2.new(1, -140, 0, 18))
+	infoLabel.Font = Enum.Font.GothamBold
+	infoLabel.TextSize = 13
+
+	local descLabel = createLabel(row, "Desc", def.description, UDim2.new(0, 10, 0, 26), UDim2.new(1, -140, 0, 22))
+	descLabel.TextSize = 11
+	descLabel.TextColor3 = SUBTEXT_COLOR
+	descLabel.TextWrapped = true
+
+	local buyButton = Instance.new("TextButton")
+	buyButton.Name = "Buy"
+	buyButton.AnchorPoint = Vector2.new(1, 0.5)
+	buyButton.Position = UDim2.new(1, -8, 0.5, 0)
+	buyButton.Size = UDim2.new(0, 118, 0, 30)
+	buyButton.BackgroundColor3 = UPGRADE_BUTTON_COLOR
+	buyButton.Font = Enum.Font.GothamBold
+	buyButton.TextSize = 12
+	buyButton.TextColor3 = TEXT_COLOR
+	buyButton.Text = "Kaufen"
+	addCorner(buyButton, 8)
+	buyButton.Parent = row
+
+	buyButton.Activated:Connect(function()
+		invokeRemote("BuyUpgrade", `{def.displayName} verbessert!`, def.id)
+	end)
+
+	return { infoLabel = infoLabel, buyButton = buyButton }
 end
 
 -- Klick auf eine Biom-Zeile: nächsten freien Slot suchen und kaufen.
@@ -284,7 +351,7 @@ local function createSlotRow(parent: Instance, slot: number, order: number): Slo
 	addCorner(row, 8)
 	row.Parent = parent
 
-	local slotLabel = createLabel(row, "SlotNumber", `Slot {slot}`, UDim2.new(0, 10, 0, 0), UDim2.new(0, 52, 1, 0))
+	local slotLabel = createLabel(row, "SlotNumber", `Zone {slot}`, UDim2.new(0, 10, 0, 0), UDim2.new(0, 52, 1, 0))
 	slotLabel.TextSize = 11
 	slotLabel.TextColor3 = SUBTEXT_COLOR
 
@@ -372,6 +439,17 @@ local function buildGui(playerGui: PlayerGui)
 		return order
 	end
 
+	-- Abschnitt: Insel-Upgrades (Magnet, Rucksack).
+	local upgradeHeader =
+		createLabel(scroll, "UpgradeHeader", "Insel-Upgrades", UDim2.new(0, 0, 0, 0), UDim2.new(1, -8, 0, 24))
+	upgradeHeader.LayoutOrder = nextOrder()
+	upgradeHeader.Font = Enum.Font.GothamBold
+	upgradeHeader.TextSize = 16
+
+	for _, upgradeId in { "magnet", "backpack" } do
+		upgradeRows[upgradeId] = createUpgradeRow(scroll, ProgressionConfig.Upgrades[upgradeId], nextOrder())
+	end
+
 	-- Abschnitt: Biom-Liste (sortiert nach Kosten).
 	local biomeHeader = createLabel(scroll, "BiomeHeader", "Biome", UDim2.new(0, 0, 0, 0), UDim2.new(1, -8, 0, 24))
 	biomeHeader.LayoutOrder = nextOrder()
@@ -382,9 +460,9 @@ local function buildGui(playerGui: PlayerGui)
 		biomeRows[biomeId] = createBiomeRow(scroll, BiomeConfig.Biomes[biomeId], nextOrder())
 	end
 
-	-- Abschnitt: die 12 Slots des eigenen Planeten.
+	-- Abschnitt: die 12 Zonen der eigenen Insel.
 	local slotsHeader =
-		createLabel(scroll, "SlotsHeader", "Meine Slots", UDim2.new(0, 0, 0, 0), UDim2.new(1, -8, 0, 24))
+		createLabel(scroll, "SlotsHeader", "Meine Zonen", UDim2.new(0, 0, 0, 0), UDim2.new(1, -8, 0, 24))
 	slotsHeader.LayoutOrder = nextOrder()
 	slotsHeader.Font = Enum.Font.GothamBold
 	slotsHeader.TextSize = 16
@@ -403,6 +481,20 @@ function PlanetBuilderController.init()
 	buildGui(playerGui)
 	refreshBiomeRows()
 	refreshSlotRows()
+	refreshUpgradeRows()
+
+	-- Upgrade-Level vom Server übernehmen.
+	Remotes.getEvent("UpgradesUpdated").OnClientEvent:Connect(function(levels: any)
+		if typeof(levels) ~= "table" then
+			return
+		end
+		for upgradeId, level in levels :: { [any]: any } do
+			if typeof(upgradeId) == "string" and typeof(level) == "number" then
+				upgradeLevels[upgradeId] = level
+			end
+		end
+		refreshUpgradeRows()
+	end)
 
 	-- Snapshot cachen und Slot-Übersicht aktualisieren.
 	Remotes.getEvent("PlanetUpdated").OnClientEvent:Connect(function(snapshot: any)
@@ -422,6 +514,7 @@ function PlanetBuilderController.init()
 			lifetimeEnergy = newLifetimeEnergy
 		end
 		refreshBiomeRows()
+		refreshUpgradeRows()
 	end)
 end
 
