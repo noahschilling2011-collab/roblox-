@@ -22,6 +22,9 @@ local UIController = require(ControllersFolder:WaitForChild("UIController") :: M
 }
 local EffectsController = require(ControllersFolder:WaitForChild("EffectsController") :: ModuleScript) :: {
 	playSound: (name: string, pitchOverride: number?) -> (),
+	flyPartToCharacter: (position: Vector3, color: Color3?) -> (),
+	coinRain: (coinCount: number?) -> (),
+	countUpAtCounter: (amount: number) -> (),
 }
 
 local FULL_HINT_COOLDOWN_SECONDS = 45
@@ -85,16 +88,21 @@ function HarvestController.init()
 		task.delay(2, function()
 			collectPitch = math.max(collectPitch - 0.04, 1)
 		end)
-		showFloatingValue(position, value, if typeof(color) == "Color3" then color else Color3.fromRGB(255, 224, 130))
+		local effectColor = if typeof(color) == "Color3" then color else Color3.fromRGB(255, 224, 130)
+		-- Objekt fliegt sichtbar zum Spieler, Wert steigt am Sammelpunkt auf.
+		EffectsController.flyPartToCharacter(position, effectColor)
+		showFloatingValue(position, value, effectColor)
 	end)
 
-	-- Verkaufs-Feedback.
+	-- Verkaufs-Feedback: Münz-Regen + hochzählender Energie-Zähler.
 	Remotes.getEvent("SoldBackpack").OnClientEvent:Connect(function(gained: any, itemsSold: any)
 		if typeof(gained) ~= "number" then
 			return
 		end
 		EffectsController.playSound("fanfare", 1.1)
 		local items = if typeof(itemsSold) == "number" then itemsSold else 0
+		EffectsController.coinRain(math.clamp(items, 4, 16))
+		EffectsController.countUpAtCounter(gained)
 		UIController.showToast(`Verkauft: {items} Objekte für {gained} Energie! ⚡`, "success")
 	end)
 

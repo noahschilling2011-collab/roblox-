@@ -178,6 +178,158 @@ function EffectsController.screenShake(intensity: number?)
 	end)
 end
 
+-- Lokales Geister-Objekt fliegt vom Sammelpunkt zum Spieler (das echte
+-- Objekt hat der Server bereits entfernt).
+function EffectsController.flyPartToCharacter(position: Vector3, color: Color3?)
+	local character = localPlayer.Character
+	local root = if character ~= nil then character:FindFirstChild("HumanoidRootPart") else nil
+	if root == nil or not root:IsA("BasePart") then
+		return
+	end
+
+	local ghost = Instance.new("Part")
+	ghost.Shape = Enum.PartType.Ball
+	ghost.Size = Vector3.new(1, 1, 1)
+	ghost.Color = color or ACCENT_COLOR
+	ghost.Material = Enum.Material.Neon
+	ghost.Anchored = true
+	ghost.CanCollide = false
+	ghost.CanQuery = false
+	ghost.CFrame = CFrame.new(position)
+	ghost.Parent = Workspace
+
+	local tween = TweenService:Create(
+		ghost,
+		TweenInfo.new(0.28, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
+		{ CFrame = (root :: BasePart).CFrame, Size = Vector3.new(0.3, 0.3, 0.3), Transparency = 0.4 }
+	)
+	tween:Play()
+	tween.Completed:Once(function()
+		ghost:Destroy()
+	end)
+end
+
+-- Münz-Regen über dem Spieler (Verkaufs-Moment).
+function EffectsController.coinRain(coinCount: number?)
+	local character = localPlayer.Character
+	local root = if character ~= nil then character:FindFirstChild("HumanoidRootPart") else nil
+	if root == nil or not root:IsA("BasePart") then
+		return
+	end
+	local origin = (root :: BasePart).Position
+
+	local rng = Random.new()
+	for _ = 1, math.clamp(coinCount or 10, 4, 16) do
+		local coin = Instance.new("Part")
+		coin.Shape = Enum.PartType.Cylinder
+		coin.Size = Vector3.new(0.15, 0.9, 0.9)
+		coin.Color = Color3.fromRGB(255, 210, 90)
+		coin.Material = Enum.Material.Metal
+		coin.Anchored = true
+		coin.CanCollide = false
+		coin.CanQuery = false
+		local offset = Vector3.new(rng:NextNumber(-4, 4), rng:NextNumber(5, 8), rng:NextNumber(-4, 4))
+		coin.CFrame = CFrame.new(origin + offset) * CFrame.Angles(0, 0, math.rad(90))
+		coin.Parent = Workspace
+
+		local fall = TweenService:Create(
+			coin,
+			TweenInfo.new(rng:NextNumber(0.5, 0.9), Enum.EasingStyle.Quad, Enum.EasingDirection.In),
+			{
+				CFrame = CFrame.new(origin + Vector3.new(offset.X, -1, offset.Z))
+					* CFrame.Angles(rng:NextNumber() * 3, rng:NextNumber() * 3, math.rad(90)),
+				Transparency = 0.5,
+			}
+		)
+		fall:Play()
+		fall.Completed:Once(function()
+			coin:Destroy()
+		end)
+	end
+end
+
+-- Aufsteigender Zähler am Energie-HUD ("+123 ⚡" zählt sichtbar hoch).
+function EffectsController.countUpAtCounter(amount: number)
+	local gui = effectsGui
+	if gui == nil or amount <= 0 then
+		return
+	end
+
+	local playerGui = localPlayer:FindFirstChild("PlayerGui")
+	local mainGui = if playerGui ~= nil then playerGui:FindFirstChild("PlanetForgeUI") else nil
+	local header = if mainGui ~= nil then mainGui:FindFirstChild("Header") else nil
+	local target = if header ~= nil then header:FindFirstChild("Energy") else nil
+	if target == nil or not target:IsA("GuiObject") then
+		return
+	end
+	local anchor = (target :: GuiObject).AbsolutePosition + (target :: GuiObject).AbsoluteSize / 2
+
+	local label = Instance.new("TextLabel")
+	label.BackgroundTransparency = 1
+	label.AnchorPoint = Vector2.new(0.5, 0.5)
+	label.Position = UDim2.new(0, anchor.X, 0, anchor.Y + 26)
+	label.Size = UDim2.new(0, 200, 0, 24)
+	label.Font = Enum.Font.GothamBold
+	label.TextSize = 18
+	label.TextColor3 = ACCENT_COLOR
+	label.TextStrokeTransparency = 0.5
+	label.Text = "+0 ⚡"
+	label.Parent = gui
+
+	task.spawn(function()
+		local duration = 0.8
+		local startedAt = os.clock()
+		while true do
+			local alpha = math.clamp((os.clock() - startedAt) / duration, 0, 1)
+			label.Text = `+{math.floor(amount * alpha)} ⚡`
+			if alpha >= 1 then
+				break
+			end
+			task.wait(0.03)
+		end
+		local fade = TweenService:Create(label, TweenInfo.new(0.4), {
+			TextTransparency = 1,
+			TextStrokeTransparency = 1,
+			Position = label.Position - UDim2.fromOffset(0, 18),
+		})
+		fade:Play()
+		fade.Completed:Once(function()
+			label:Destroy()
+		end)
+	end)
+end
+
+-- Kurzer Kamera-Schwenk zu einem Welt-Part (z. B. neu freigelegte Zone).
+local cameraPanActive = false
+function EffectsController.panCameraTo(part: BasePart, holdSeconds: number?)
+	if cameraPanActive then
+		return
+	end
+	local camera = Workspace.CurrentCamera
+	if camera == nil then
+		return
+	end
+	cameraPanActive = true
+
+	task.spawn(function()
+		local originalType = camera.CameraType
+		camera.CameraType = Enum.CameraType.Scriptable
+
+		local lookFrom = part.Position + Vector3.new(0, 22, 26)
+		local tween = TweenService:Create(
+			camera,
+			TweenInfo.new(0.7, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+			{ CFrame = CFrame.lookAt(lookFrom, part.Position) }
+		)
+		tween:Play()
+		tween.Completed:Wait()
+		task.wait(holdSeconds or 1.2)
+
+		camera.CameraType = originalType
+		cameraPanActive = false
+	end)
+end
+
 function EffectsController.init()
 	-- Zentrale SoundGroup mit Lautstärke aus GameConfig.
 	local group = Instance.new("SoundGroup")

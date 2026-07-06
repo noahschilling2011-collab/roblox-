@@ -428,10 +428,20 @@ local function buildLockedZone(zonePart: BasePart)
 	end
 end
 
-local function clearLockedZone(zonePart: BasePart)
+local function clearLockedZone(zonePart: BasePart, animated: boolean?)
+	local TweenService = game:GetService("TweenService")
 	for _, child in zonePart:GetChildren() do
 		if child.Name == "Fog" or string.sub(child.Name, 1, 5) == "Rock_" then
-			child:Destroy()
+			if animated == true and child:IsA("BasePart") then
+				-- Nebel/Felsen lösen sich sichtbar auf (Freischaltungs-Moment).
+				local tween = TweenService:Create(child, TweenInfo.new(1), { Transparency = 1 })
+				tween:Play()
+				tween.Completed:Once(function()
+					child:Destroy()
+				end)
+			else
+				child:Destroy()
+			end
 		end
 	end
 end
@@ -462,7 +472,7 @@ local function updateZoneVisual(player: Player, slotNumber: number, placed: Type
 		return
 	end
 
-	clearLockedZone(zonePart)
+	clearLockedZone(zonePart, withPop)
 	zonePart.Color = def.color
 	zonePart.Material = Enum.Material.Grass
 	setZoneLabel(zonePart, `{def.displayName} (Lv. {placed.level})`)

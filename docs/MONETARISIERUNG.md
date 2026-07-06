@@ -1,5 +1,11 @@
 # Planet Forge – Monetarisierung
 
+> **⚠️ Kurswechsel (aktueller Stand):** Das Spiel nutzt inzwischen eine
+> Simulator-übliche Kauf-Kette mit Währungspaketen, Sofort-Wiedergeburt und
+> Perk-Gamepässen (2x Multiplikator, +2 Pet-Slots, VIP) – siehe
+> `MonetizationConfig.luau` und README. Die folgenden Kapitel beschreiben das
+> ursprüngliche Nur-Kosmetik-Konzept und gelten als Design-Archiv.
+
 Monetarisierungsdesign ohne Pay-to-Win. Verwandte Dokumente: [Spieldesign](GAME_DESIGN.md) · [Globale Events](EVENTS.md) · [Multiplayer](MULTIPLAYER.md) · [Technische Architektur](ARCHITEKTUR.md) · [Roadmap](ROADMAP.md)
 
 Alle Gameplay-Zahlen in diesem Dokument (Fund-Wurf-Kosten, Ultra-Rare-Chancen, Slots) sind Canon und identisch mit `src/shared/Config/GameConfig.luau` und `src/shared/Config/RarityConfig.luau`. Robux-Preise sind Zielspannen und werden in der Beta kalibriert (siehe Abschnitt 7).

@@ -56,8 +56,11 @@ Besuche fremder Planeten mit Bewertungssystem, Clans, die gemeinsam Galaxien bau
 ### 🏆 Rangliste, Tagesbonus & Planeten-Namen
 Globale Ranglisten („Meiste Likes" und „Meiste Gesamt-Energie" über alle Server, via OrderedDataStore) plus Live-Werte in der Spielerliste (leaderstats). Täglicher Login-Bonus mit Streak (Tag 1: 50 bis Tag 7+: 600 Energie). Jeder Planet trägt ein Namensschild – den Namen vergibst du selbst (automatisch gefiltert).
 
-### 💰 Monetarisierung: nur Kosmetik
-Planeten-Skins, Auren, Wettereffekte, Haustiere und später ein Battle Pass – **keine** kaufbaren Gameplay-Vorteile. Der Robux-Shop (Gamepässe + Einzelkäufe über die offiziellen Roblox-Kaufdialoge) ist bereits implementiert; im Creator Dashboard angelegte Produkt-IDs werden in `MonetizationConfig.luau` eingetragen. Richtlinien und Compliance: [Monetarisierung](docs/MONETARISIERUNG.md).
+### 🏝️ Neuer Core-Loop: Sammeln auf deiner Insel
+Jeder Spieler hat eine begehbare Himmelsinsel mit 12 Biom-Zonen: Sammel-Objekte spawnen in freigeschalteten Zonen und werden durch Hinlaufen eingesammelt (Magnet-Radius und Rucksack upgradebar), am 💰-Pad wird verkauft. Zentrale Multiplikator-Formel (Biome × Upgrades × Pets × Rebirth) mit Live-HUD-Anzeige, Rebirth-System ab 25.000 Gesamt-Energie und Inventar mit ausrüstbaren Pets/Trails/Skins.
+
+### 💰 Monetarisierung
+Komplette Kauf-Kette mit idempotentem `ProcessReceipt` (PurchaseId-Log): Kosmetik, Währungspakete (S/M/L), Sofort-Wiedergeburt sowie Gamepässe (2x Multiplikator, +2 Pet-Slots, VIP mit Trail/Chat-Tag/Doppel-Tagesbonus). Alle IDs konfigurierbar in `MonetizationConfig.luau`; Studio-Testmodus simuliert Käufe ohne echte IDs (live hart deaktiviert). **Hinweis:** Damit weicht das Spiel bewusst vom ursprünglichen Nur-Kosmetik-Konzept in [docs/MONETARISIERUNG.md](docs/MONETARISIERUNG.md) ab – die Doku beschreibt den alten Stand.
 
 ## Dokumentation
 

@@ -41,6 +41,10 @@ local BiomeConfig = require(ConfigFolder:WaitForChild("BiomeConfig") :: ModuleSc
 local UIController = require(ControllersFolder:WaitForChild("UIController") :: ModuleScript) :: {
 	showToast: (message: string, kind: string) -> (),
 }
+local EffectsController = require(ControllersFolder:WaitForChild("EffectsController") :: ModuleScript) :: {
+	playSound: (name: string, pitchOverride: number?) -> (),
+	panCameraTo: (part: BasePart, holdSeconds: number?) -> (),
+}
 type UpgradeDef = { id: string, displayName: string, description: string, maxLevel: number }
 local ProgressionConfig = require(ConfigFolder:WaitForChild("ProgressionConfig") :: ModuleScript) :: {
 	Upgrades: { [string]: UpgradeDef },
@@ -110,7 +114,7 @@ end
 
 -- Ruft eine RemoteFunction auf; bei ok=false erscheint die deutsche
 -- Fehlermeldung des Servers als Toast, bei Erfolg optional eine Bestätigung.
-local function invokeRemote(functionName: string, successMessage: string?, ...: any)
+local function invokeRemote(functionName: string, successMessage: string?, onSuccess: (() -> ())?, ...: any)
 	local args = table.pack(...)
 	task.spawn(function()
 		local ok, serverOk, payload = pcall(function()
@@ -120,10 +124,27 @@ local function invokeRemote(functionName: string, successMessage: string?, ...: 
 			UIController.showToast("Verbindungsfehler – bitte erneut versuchen.", "error")
 		elseif serverOk ~= true then
 			UIController.showToast(if typeof(payload) == "string" then payload else "Aktion fehlgeschlagen.", "error")
-		elseif successMessage ~= nil then
-			UIController.showToast(successMessage, "success")
+		else
+			if successMessage ~= nil then
+				UIController.showToast(successMessage, "success")
+			end
+			if onSuccess ~= nil then
+				onSuccess()
+			end
 		end
 	end)
+end
+
+-- Kamera-Schwenk zur frisch freigelegten Zone (Freischaltungs-Moment).
+local function panToOwnZone(slot: number)
+	local localPlayer = Players.LocalPlayer
+	local plots = workspace:FindFirstChild("PlanetPlots")
+	local plot = if plots ~= nil then plots:FindFirstChild(`Plot_{localPlayer.UserId}`) else nil
+	local zone = if plot ~= nil then plot:FindFirstChild(`Zone_{slot}`) else nil
+	if zone ~= nil and zone:IsA("BasePart") then
+		EffectsController.playSound("fanfare", 1.2)
+		EffectsController.panCameraTo(zone, 1.3)
+	end
 end
 
 -- Zeilen der Insel-Upgrades aktuell halten (Level, Kosten, Färbung).
@@ -177,7 +198,7 @@ local function createUpgradeRow(parent: Instance, def: UpgradeDef, order: number
 	buyButton.Parent = row
 
 	buyButton.Activated:Connect(function()
-		invokeRemote("BuyUpgrade", `{def.displayName} verbessert!`, def.id)
+		invokeRemote("BuyUpgrade", `{def.displayName} verbessert!`, nil, def.id)
 	end)
 
 	return { infoLabel = infoLabel, buyButton = buyButton }
@@ -209,7 +230,9 @@ local function onBiomeClicked(biomeId: string)
 	end
 	for slot = 1, GameConfig.PLANET_SLOTS do
 		if not occupied[slot] then
-			invokeRemote("PlaceBiome", `{def.displayName} platziert!`, biomeId, slot)
+			invokeRemote("PlaceBiome", `{def.displayName} platziert!`, function()
+				panToOwnZone(slot)
+			end, biomeId, slot)
 			return
 		end
 	end
@@ -228,7 +251,7 @@ local function onUpgradeClicked(slot: number)
 			if def ~= nil and placed.level >= def.maxLevel then
 				UIController.showToast("Dieses Biom ist bereits auf Maximalstufe.", "info")
 			else
-				invokeRemote("UpgradeBiome", "Biom verbessert!", slot)
+				invokeRemote("UpgradeBiome", "Biom verbessert!", nil, slot)
 			end
 			return
 		end
