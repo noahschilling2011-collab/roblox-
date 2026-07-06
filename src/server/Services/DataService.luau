@@ -70,6 +70,7 @@ local function buildDefaultProfile(): Types.PlayerProfile
 		stats = { collected = 0, sales = 0 },
 		rebirths = 0,
 		equipped = { pets = {} },
+		purchaseIds = {},
 	}
 end
 

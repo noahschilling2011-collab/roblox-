@@ -51,6 +51,7 @@ export type PlayerProfile = {
 	stats: PlayerStats, -- Zähler für Tutorial und Statistiken
 	rebirths: number, -- Anzahl Wiedergeburten (permanenter Multiplikator)
 	equipped: EquippedItems, -- ausgerüstete Loot-Items (Pets/Trail/Skin)
+	purchaseIds: { string }, -- verarbeitete PurchaseIds (Schutz vor Doppelgutschrift)
 }
 
 -- Ausgerüstete Loot-Items (referenzieren OwnedCollectible.uid).

@@ -500,6 +500,15 @@ local function buildIsland(player: Player, origin: CFrame)
 	sellPad.CFrame = origin * CFrame.new(SELL_PAD_OFFSET + Vector3.new(0, BASE_THICKNESS / 2 + 0.25, 0)) * CFrame.Angles(0, 0, math.rad(90))
 	createZoneLabel(sellPad, "💰 Verkaufen")
 
+	-- Shop-Pad: Betreten öffnet den Shop (zusätzlich zum Button).
+	local shopPad = newIslandPart(folder, "ShopPad")
+	shopPad.Shape = Enum.PartType.Cylinder
+	shopPad.Size = Vector3.new(0.5, 11, 11)
+	shopPad.Color = Color3.fromRGB(72, 118, 200)
+	shopPad.Material = Enum.Material.Metal
+	shopPad.CFrame = origin * CFrame.new(-SELL_PAD_OFFSET + Vector3.new(0, BASE_THICKNESS / 2 + 0.25, 0)) * CFrame.Angles(0, 0, math.rad(90))
+	createZoneLabel(shopPad, "🛒 Shop")
+
 	-- Die 12 Biom-Zonen im Ring.
 	for slotNumber = 1, GameConfig.PLANET_SLOTS do
 		local center, angle = zoneCenter(origin, slotNumber)

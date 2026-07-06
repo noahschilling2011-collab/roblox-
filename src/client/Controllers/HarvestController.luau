@@ -29,6 +29,7 @@ local FULL_HINT_COOLDOWN_SECONDS = 45
 local HarvestController = {}
 
 local lastFullHintAt = 0
+local shopHintShown = false -- Kaufanreiz maximal 1x pro Session
 local collectPitch = 1
 
 -- Kleine Wert-Zahl, die vom eingesammelten Objekt aufsteigt (3D-Billboard).
@@ -105,6 +106,13 @@ function HarvestController.init()
 		if items >= capacity and os.clock() - lastFullHintAt > FULL_HINT_COOLDOWN_SECONDS then
 			lastFullHintAt = os.clock()
 			UIController.showToast("Rucksack voll! Verkaufe am goldenen 💰-Pad auf deiner Insel.", "info")
+			-- Kontextueller Kaufanreiz: einmal pro Session, nicht nervig.
+			if not shopHintShown then
+				shopHintShown = true
+				task.delay(2, function()
+					UIController.showToast('Tipp: Größerer Rucksack? Insel-Upgrade im „Biome"-Menü oder 🛒 Shop.', "info")
+				end)
+			end
 		end
 	end)
 end

@@ -90,8 +90,9 @@ end
 test("GameConfig: Canon-Konstanten", function()
 	expect(GameConfig.PLANET_SLOTS == 12, "PLANET_SLOTS != 12")
 	expect(GameConfig.LOOT_ROLL_COST == 25, "LOOT_ROLL_COST != 25")
-	expect(GameConfig.PROFILE_SCHEMA_VERSION == 7, "Schema-Version != 7")
+	expect(GameConfig.PROFILE_SCHEMA_VERSION == 8, "Schema-Version != 8")
 	expect(GameConfig.BASE_PET_SLOTS == 3, "BASE_PET_SLOTS != 3")
+	expect(GameConfig.PURCHASE_LOG_LIMIT >= 10, "PURCHASE_LOG_LIMIT < 10")
 	expect(GameConfig.MAX_TRADE_ITEMS_PER_SIDE == 4, "Trade-Items != 4")
 	expect(GameConfig.TRADE_LOCK_SECONDS == 3, "Trade-Lock != 3")
 	expect(GameConfig.BASE_MAGNET_RADIUS > 0, "BASE_MAGNET_RADIUS <= 0")
@@ -257,7 +258,9 @@ test("MonetizationConfig: alle Verweise gueltig", function()
 		end
 	end
 	for key, def in MonetizationConfig.DeveloperProducts do
-		expect(MonetizationConfig.Cosmetics[def.grantsCosmetic] ~= nil, key .. " vergibt unbekannte Kosmetik")
+		if def.grantsCosmetic ~= nil then
+			expect(MonetizationConfig.Cosmetics[def.grantsCosmetic] ~= nil, key .. " vergibt unbekannte Kosmetik")
+		end
 	end
 	for id, def in MonetizationConfig.Cosmetics do
 		expect(MonetizationConfig.CategoryNames[def.category] ~= nil, id .. ": unbekannte Kategorie")
@@ -403,6 +406,27 @@ end)
 
 test("MonetizationConfig: Studio-Testmodus-Flag vorhanden", function()
 	expect(type(MonetizationConfig.testModeInStudio) == "boolean", "testModeInStudio muss ein Boolean sein")
+end)
+
+test("MonetizationConfig: Kauf-Kette komplett (Pakete, Rebirth, Perk-Paesse)", function()
+	for _, key in { "gp_double_mult", "gp_pet_slots", "gp_vip" } do
+		expect(MonetizationConfig.Gamepasses[key] ~= nil, "Gamepass fehlt: " .. key)
+	end
+	local sizes = {}
+	for key, def in MonetizationConfig.DeveloperProducts do
+		local rules = 0
+		if def.grantsCosmetic ~= nil then rules += 1 end
+		if def.grantsEnergy ~= nil then
+			rules += 1
+			expect(def.grantsEnergy > 0, key .. ": grantsEnergy <= 0")
+			table.insert(sizes, def.grantsEnergy)
+		end
+		if def.perk ~= nil then rules += 1 end
+		expect(rules == 1, key .. ": genau EINE Gutschrift-Regel noetig")
+	end
+	expect(#sizes == 3, "es muss genau 3 Energie-Pakete geben")
+	expect(MonetizationConfig.DeveloperProducts["prod_instant_rebirth"].perk == "instant_rebirth", "Sofort-Rebirth fehlt")
+	expect(MonetizationConfig.PET_SLOTS_BONUS == 2, "PET_SLOTS_BONUS != 2")
 end)
 
 -- 8) Tagesbonus-Logik (Spiegel des DailyRewardService)

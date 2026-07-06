@@ -37,13 +37,16 @@ type GamepassDef = {
 	displayName: string,
 	description: string,
 	grantsCosmetics: { string },
+	perk: string?,
 }
 type ProductDef = {
 	key: string,
 	productId: number,
 	displayName: string,
 	description: string,
-	grantsCosmetic: string,
+	grantsCosmetic: string?,
+	grantsEnergy: number?,
+	perk: string?,
 }
 
 local MonetizationConfig = require(ConfigFolder:WaitForChild("MonetizationConfig") :: ModuleScript) :: {
@@ -88,6 +91,15 @@ local CATEGORY_ICONS: { [string]: string } = {
 	haustier = "🐾",
 }
 
+-- Icons für Gamepass-Perks und Verbrauchs-Produkte.
+local PERK_ICONS: { [string]: string } = {
+	double_mult = "✖2",
+	pet_slots = "🐾",
+	vip = "👑",
+	instant_rebirth = "🔄",
+	energy = "⚡",
+}
+
 local ShopController = {}
 
 local localPlayer = Players.LocalPlayer
@@ -95,6 +107,8 @@ local localPlayer = Players.LocalPlayer
 -- Lokaler Kosmetik-Stand aus CosmeticsUpdated.
 local ownedSet: { [string]: boolean } = {}
 local equipped: { [string]: string } = {}
+local ownedPasses: { [string]: boolean } = {}
+local shopPanel: Frame? = nil
 
 local cosmeticsFrame: Frame? = nil
 local equipFunction: RemoteFunction? = nil
@@ -145,12 +159,19 @@ local function createPreview(parent: Instance, color: Color3, category: string)
 	addStroke(swatch, STROKE_COLOR)
 	swatch.Parent = parent
 
+	local iconText: string
+	if string.sub(category, 1, 5) == "perk:" then
+		iconText = PERK_ICONS[string.sub(category, 6)] or "🎁"
+	else
+		iconText = CATEGORY_ICONS[category] or "🎁"
+	end
+
 	local icon = Instance.new("TextLabel")
 	icon.BackgroundTransparency = 1
 	icon.Size = UDim2.new(1, 0, 1, 0)
 	icon.Font = Enum.Font.GothamBold
 	icon.TextSize = 20
-	icon.Text = CATEGORY_ICONS[category] or "🎁"
+	icon.Text = iconText
 	icon.Parent = swatch
 end
 
@@ -516,17 +537,27 @@ local function buildUI()
 	for _, key in MonetizationConfig.getGamepassKeys() do
 		local def = MonetizationConfig.Gamepasses[key]
 		local firstCosmetic = MonetizationConfig.Cosmetics[def.grantsCosmetics[1]]
+		local previewColor = if firstCosmetic ~= nil
+			then firstCosmetic.visual.color or TEXT_COLOR
+			else TEST_BUTTON_COLOR
+		local previewIcon = if firstCosmetic ~= nil
+			then firstCosmetic.category
+			else `perk:{def.perk or "vip"}`
 		order += 1
 		createPurchaseRow(
 			gamepassContent,
 			order,
 			def.displayName,
 			def.description,
-			if firstCosmetic ~= nil then firstCosmetic.visual.color or TEXT_COLOR else TEXT_COLOR,
-			if firstCosmetic ~= nil then firstCosmetic.category else "skin",
+			previewColor,
+			previewIcon,
 			def.gamePassId,
 			Enum.InfoType.GamePass,
 			function()
+				-- Perk-Pässe: Besitz kommt aus dem Pass-Cache des Servers.
+				if def.perk ~= nil then
+					return ownedPasses[key] == true
+				end
 				for _, cosmeticId in def.grantsCosmetics do
 					if not ownedSet[cosmeticId] then
 						return false
@@ -546,19 +577,29 @@ local function buildUI()
 	-- Einzelkauf-Zeilen.
 	for _, key in MonetizationConfig.getProductKeys() do
 		local def = MonetizationConfig.DeveloperProducts[key]
-		local cosmetic = MonetizationConfig.Cosmetics[def.grantsCosmetic]
+		local cosmeticId = def.grantsCosmetic
+		local cosmetic = if cosmeticId ~= nil then MonetizationConfig.Cosmetics[cosmeticId] else nil
+		local previewColor = if cosmetic ~= nil then cosmetic.visual.color or TEXT_COLOR else TEST_BUTTON_COLOR
+		local previewIcon = if cosmetic ~= nil
+			then cosmetic.category
+			elseif def.grantsEnergy ~= nil then "perk:energy"
+			else `perk:{def.perk or "energy"}`
 		order += 1
 		createPurchaseRow(
 			productContent,
 			order,
 			def.displayName,
 			def.description,
-			if cosmetic ~= nil then cosmetic.visual.color or TEXT_COLOR else TEXT_COLOR,
-			if cosmetic ~= nil then cosmetic.category else "skin",
+			previewColor,
+			previewIcon,
 			def.productId,
 			Enum.InfoType.Product,
 			function()
-				return ownedSet[def.grantsCosmetic] == true
+				-- Verbrauchs-Produkte (Energie, Sofort-Rebirth) sind immer kaufbar.
+				if cosmeticId == nil then
+					return false
+				end
+				return ownedSet[cosmeticId] == true
 			end,
 			function()
 				MarketplaceService:PromptProductPurchase(localPlayer, def.productId)
@@ -581,6 +622,7 @@ local function buildUI()
 	end
 
 	cosmeticsFrame = cosmeticsContent
+	shopPanel = panel
 	rebuildCosmeticsSection()
 	runRowUpdaters()
 end
@@ -589,7 +631,7 @@ function ShopController.init()
 	equipFunction = Remotes.getFunction("EquipCosmetic")
 	simulateFunction = Remotes.getFunction("SimulatePurchase")
 
-	Remotes.getEvent("CosmeticsUpdated").OnClientEvent:Connect(function(ownedArg: any, equippedArg: any)
+	Remotes.getEvent("CosmeticsUpdated").OnClientEvent:Connect(function(ownedArg: any, equippedArg: any, passesArg: any)
 		ownedSet = {}
 		if typeof(ownedArg) == "table" then
 			for _, cosmeticId in ownedArg :: { any } do
@@ -608,11 +650,47 @@ function ShopController.init()
 			end
 		end
 
+		ownedPasses = {}
+		if typeof(passesArg) == "table" then
+			for key, owned in passesArg :: { [any]: any } do
+				if typeof(key) == "string" and owned == true then
+					ownedPasses[key] = true
+				end
+			end
+		end
+
 		rebuildCosmeticsSection()
 		runRowUpdaters()
 	end)
 
 	buildUI()
+
+	-- Shop-Bereich auf der Insel: Betreten des blauen Pads öffnet den Shop.
+	task.spawn(function()
+		local wasNear = false
+		while true do
+			task.wait(0.5)
+			local panel = shopPanel
+			if panel == nil then
+				continue
+			end
+			local character = localPlayer.Character
+			local root = if character ~= nil then character:FindFirstChild("HumanoidRootPart") else nil
+			local plots = workspace:FindFirstChild("PlanetPlots")
+			local plot = if plots ~= nil then plots:FindFirstChild(`Plot_{localPlayer.UserId}`) else nil
+			local pad = if plot ~= nil then plot:FindFirstChild("ShopPad") else nil
+			if root == nil or not root:IsA("BasePart") or pad == nil or not pad:IsA("BasePart") then
+				wasNear = false
+				continue
+			end
+			local near = ((root :: BasePart).Position - (pad :: BasePart).Position).Magnitude <= 9
+			if near and not wasNear then
+				panel.Visible = true
+				EffectsController.playSound("pop", 1.05)
+			end
+			wasNear = near
+		end
+	end)
 end
 
 return ShopController

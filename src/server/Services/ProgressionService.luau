@@ -70,16 +70,19 @@ function ProgressionService.notifyMultiplier(player: Player)
 	})
 end
 
--- Remote-Handler: DoRebirth() -> (ok, neuerMultiplikator | Fehlermeldung)
-local function handleDoRebirth(player: Player): (boolean, any?)
+-- Führt eine Wiedergeburt aus. ignoreThreshold = true nur für das bezahlte
+-- Sofort-Rebirth-Produkt (MonetizationService).
+function ProgressionService.performRebirth(player: Player, ignoreThreshold: boolean?): (boolean, any?)
 	local profile = DataService.getProfile(player)
 	if profile == nil then
 		return false, "Dein Profil ist noch nicht geladen."
 	end
 
-	local threshold = ProgressionConfig.getRebirthThreshold(profile.rebirths)
-	if profile.lifetimeEnergy < threshold then
-		return false, `Du brauchst {threshold} Gesamt-Energie für die nächste Wiedergeburt.`
+	if ignoreThreshold ~= true then
+		local threshold = ProgressionConfig.getRebirthThreshold(profile.rebirths)
+		if profile.lifetimeEnergy < threshold then
+			return false, `Du brauchst {threshold} Gesamt-Energie für die nächste Wiedergeburt.`
+		end
 	end
 
 	-- Reset: Biome und Währung; Sammlung, Kosmetik, Insel-Upgrades,
@@ -113,7 +116,9 @@ end
 function ProgressionService.init()
 	multiplierChangedEvent = Remotes.getEvent("MultiplierChanged")
 	notificationEvent = Remotes.getEvent("Notification")
-	Remotes.getFunction("DoRebirth").OnServerInvoke = handleDoRebirth
+	Remotes.getFunction("DoRebirth").OnServerInvoke = function(player: Player): (boolean, any?)
+		return ProgressionService.performRebirth(player, false)
+	end
 
 	local function onPlayerAdded(player: Player)
 		task.spawn(function()

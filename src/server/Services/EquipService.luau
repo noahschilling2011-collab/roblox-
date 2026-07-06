@@ -285,6 +285,12 @@ local function fireEquipmentUpdated(player: Player)
 	})
 end
 
+-- Öffentlich: Ausrüstungs-Stand erneut melden (z. B. wenn sich die
+-- Pet-Slot-Anzahl durch einen Gamepass ändert).
+function EquipService.notify(player: Player)
+	fireEquipmentUpdated(player)
+end
+
 --------------------------------------------------------------------------
 -- Remote-Handler
 --------------------------------------------------------------------------

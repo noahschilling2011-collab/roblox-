@@ -159,11 +159,31 @@ local function checkMonetization()
 		end
 	end
 	for key, def in MonetizationConfig.DeveloperProducts do
-		check(
-			MonetizationConfig.Cosmetics[def.grantsCosmetic] ~= nil,
-			`Product {key}: vergibt unbekannte Kosmetik {def.grantsCosmetic}`
-		)
+		-- Jedes Produkt braucht genau eine Gutschrift-Regel.
+		local rules = 0
+		if def.grantsCosmetic ~= nil then
+			rules += 1
+			check(
+				MonetizationConfig.Cosmetics[def.grantsCosmetic :: string] ~= nil,
+				`Product {key}: vergibt unbekannte Kosmetik {def.grantsCosmetic}`
+			)
+		end
+		if def.grantsEnergy ~= nil then
+			rules += 1
+			check((def.grantsEnergy :: number) > 0, `Product {key}: grantsEnergy muss > 0 sein`)
+		end
+		if def.perk ~= nil then
+			rules += 1
+		end
+		check(rules == 1, `Product {key}: braucht genau EINE Gutschrift-Regel (hat {rules})`)
 	end
+
+	-- Die drei Perk-Gamepässe der Kauf-Kette müssen existieren.
+	for _, key in { "gp_double_mult", "gp_pet_slots", "gp_vip" } do
+		check(MonetizationConfig.Gamepasses[key] ~= nil, `Gamepass {key} fehlt`)
+	end
+	check(MonetizationConfig.DeveloperProducts["prod_instant_rebirth"] ~= nil, "Produkt prod_instant_rebirth fehlt")
+	check(GameConfig.PURCHASE_LOG_LIMIT >= 10, "PURCHASE_LOG_LIMIT muss >= 10 sein")
 
 	-- Jede Kosmetik hat eine gültige Kategorie.
 	for cosmeticId, def in MonetizationConfig.Cosmetics do

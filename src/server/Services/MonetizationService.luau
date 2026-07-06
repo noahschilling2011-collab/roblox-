@@ -1,10 +1,11 @@
 --!strict
--- MonetizationService: Robux-Käufe (Gamepässe + Developer Products) und
--- Verwaltung der Kauf-Kosmetik.
+-- MonetizationService: Robux-Käufe (Gamepässe + Developer Products).
 --
--- GRUNDSATZ: Für Robux gibt es ausschließlich Kosmetik (siehe
--- docs/MONETARISIERUNG.md und MonetizationConfig). Dieser Service vergibt
--- daher niemals Energie, Funde oder andere Spielvorteile.
+-- Kauf-Kette: Kosmetik (einmalig), Währungspakete und Sofort-Rebirth
+-- (wiederholt kaufbar, idempotent über ein PurchaseId-Log im Profil) sowie
+-- Gamepässe mit dauerhafter Wirkung (2x Multiplikator, +2 Pet-Slots, VIP).
+-- Gekaufte Energie zählt bewusst NICHT zur Gesamt-Energie (keine gekauften
+-- Freischaltungen). Studio-Testmodus simuliert Käufe NUR in Studio.
 --
 -- Ablauf:
 --   - Beim Beitritt werden alle konfigurierten Gamepässe geprüft
@@ -23,8 +24,13 @@ local Types = require(ReplicatedStorage.Shared.Types)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local MonetizationConfig = require(ReplicatedStorage.Shared.Config.MonetizationConfig)
 
+local GameConfig = require(ReplicatedStorage.Shared.Config.GameConfig)
+
 local DataService = require(script.Parent.DataService)
+local EnergyService = require(script.Parent.EnergyService)
+local EquipService = require(script.Parent.EquipService)
 local PlanetService = require(script.Parent.PlanetService)
+local ProgressionService = require(script.Parent.ProgressionService)
 
 local PET_FOLLOW_OFFSET = Vector3.new(4, 3, 0) -- rechts neben und über dem Kopf
 local PET_LERP_ALPHA = 0.25
@@ -44,13 +50,76 @@ local function fireCosmeticsUpdated(player: Player)
 	if profile == nil or cosmeticsUpdatedEvent == nil then
 		return
 	end
-	cosmeticsUpdatedEvent:FireClient(player, profile.ownedCosmetics, profile.equippedCosmetics)
+	local passKeys: { [string]: boolean } = {}
+	local passes = ownedPasses[player]
+	if passes ~= nil then
+		for key, owned in passes do
+			if owned then
+				passKeys[key] = true
+			end
+		end
+	end
+	cosmeticsUpdatedEvent:FireClient(player, profile.ownedCosmetics, profile.equippedCosmetics, passKeys)
 end
 
 local function notify(player: Player, message: string, kind: string)
 	if notificationEvent ~= nil then
 		notificationEvent:FireClient(player, message, kind)
 	end
+end
+
+-- Gamepass-Besitz pro Spieler (beim Join geprueft, im Testmodus simulierbar).
+local ownedPasses: { [Player]: { [string]: boolean } } = {}
+
+-- Besitzt der Spieler den Gamepass mit diesem Config-Key?
+function MonetizationService.hasPass(player: Player, key: string): boolean
+	local passes = ownedPasses[player]
+	return passes ~= nil and passes[key] == true
+end
+
+-- Goldener VIP-Trail am Charakter (unabhaengig vom Equip-System).
+local function applyVipTrail(player: Player)
+	local character = player.Character
+	if character == nil then
+		return
+	end
+	local root = character:FindFirstChild("HumanoidRootPart")
+	if root == nil or not root:IsA("BasePart") then
+		return
+	end
+	if root:FindFirstChild("VIPTrail") ~= nil then
+		return
+	end
+
+	local top = Instance.new("Attachment")
+	top.Name = "VIPTrailTop"
+	top.Position = Vector3.new(0, 1, 0)
+	top.Parent = root
+	local bottom = Instance.new("Attachment")
+	bottom.Name = "VIPTrailBottom"
+	bottom.Position = Vector3.new(0, -1, 0)
+	bottom.Parent = root
+
+	local trail = Instance.new("Trail")
+	trail.Name = "VIPTrail"
+	trail.Attachment0 = top
+	trail.Attachment1 = bottom
+	trail.Color = ColorSequence.new(Color3.fromRGB(255, 210, 90))
+	trail.Transparency = NumberSequence.new(0.1, 1)
+	trail.Lifetime = 0.8
+	trail.LightEmission = 1
+	trail.Parent = root
+end
+
+-- Wendet die Wirkung neu erworbener Gamepaesse sofort an.
+local function applyPassEffects(player: Player)
+	if MonetizationService.hasPass(player, "gp_vip") then
+		player:SetAttribute("PlanetForgeVIP", true)
+		applyVipTrail(player)
+	end
+	-- Pet-Slots und Multiplikator lesen die Hooks live; nur UI informieren.
+	EquipService.notify(player)
+	ProgressionService.notifyMultiplier(player)
 end
 
 local function ownsCosmetic(profile: Types.PlayerProfile, cosmeticId: string): boolean
@@ -176,6 +245,11 @@ end
 
 -- Prüft alle konfigurierten Gamepässe für einen Spieler (pcall pro Pass).
 local function checkGamepasses(player: Player)
+	local passes = ownedPasses[player]
+	if passes == nil then
+		passes = {}
+		ownedPasses[player] = passes
+	end
 	for _, def in MonetizationConfig.Gamepasses do
 		if def.gamePassId == 0 then
 			continue -- Platzhalter: Pass wurde im Dashboard noch nicht angelegt
@@ -184,11 +258,40 @@ local function checkGamepasses(player: Player)
 			return MarketplaceService:UserOwnsGamePassAsync(player.UserId, def.gamePassId)
 		end)
 		if ok and owns == true then
-			grantCosmetics(player, def.grantsCosmetics, def.displayName)
+			passes[def.key] = true
+			if #def.grantsCosmetics > 0 then
+				grantCosmetics(player, def.grantsCosmetics, def.displayName)
+			end
 		elseif not ok then
 			warn(`[PlanetForge] UserOwnsGamePassAsync fehlgeschlagen ({def.key}): {owns}`)
 		end
 	end
+	applyPassEffects(player)
+end
+
+-- Gutschrift eines Developer Products (Kosmetik, Energie oder Sofort-Rebirth).
+-- Wird von ProcessReceipt UND vom Studio-Testmodus genutzt.
+local function grantProduct(player: Player, def: MonetizationConfig.ProductDef, sourceName: string): boolean
+	if def.grantsCosmetic ~= nil then
+		grantCosmetics(player, { def.grantsCosmetic :: string }, sourceName)
+		return true
+	end
+	if def.grantsEnergy ~= nil then
+		-- addRaw: gekaufte Energie zaehlt bewusst NICHT zur Gesamt-Energie
+		-- (keine gekauften Freischaltungen/Rebirths).
+		EnergyService.addRaw(player, def.grantsEnergy :: number)
+		notify(player, `+{def.grantsEnergy} Energie gutgeschrieben ({sourceName})! ⚡`, "success")
+		return true
+	end
+	if def.perk == "instant_rebirth" then
+		local ok = ProgressionService.performRebirth(player, true)
+		if ok then
+			notify(player, `Sofort-Wiedergeburt eingeloest ({sourceName})! 🔄`, "success")
+		end
+		return ok == true
+	end
+	warn(`[PlanetForge] Produkt {def.key} hat keine Gutschrift-Regel`)
+	return false
 end
 
 -- Handler für EquipCosmetic(category, cosmeticId?).
@@ -230,7 +333,9 @@ end
 
 -- Verarbeitet Developer-Product-Käufe. Muss idempotent und robust sein:
 -- Roblox ruft ProcessReceipt erneut auf, solange nicht PurchaseGranted
--- zurückgegeben wurde.
+-- zurückgegeben wurde. Gegen Doppelgutschrift (z. B. Wiederholung nach
+-- einem Absturz zwischen Gutschrift und Antwort) führt jedes Profil ein
+-- PurchaseId-Log (GameConfig.PURCHASE_LOG_LIMIT Einträge).
 local function processReceipt(receiptInfo: { [string]: any }): Enum.ProductPurchaseDecision
 	local productDef = MonetizationConfig.findProductByProductId(receiptInfo.ProductId)
 	if productDef == nil then
@@ -248,7 +353,21 @@ local function processReceipt(receiptInfo: { [string]: any }): Enum.ProductPurch
 		return Enum.ProductPurchaseDecision.NotProcessedYet -- Profil lädt noch
 	end
 
-	grantCosmetics(player, { productDef.grantsCosmetic }, productDef.displayName)
+	-- Idempotenz: bereits verarbeitete PurchaseId -> nur bestätigen.
+	local purchaseId = tostring(receiptInfo.PurchaseId)
+	if table.find(profile.purchaseIds, purchaseId) ~= nil then
+		return Enum.ProductPurchaseDecision.PurchaseGranted
+	end
+
+	if not grantProduct(player, productDef, productDef.displayName) then
+		return Enum.ProductPurchaseDecision.NotProcessedYet
+	end
+
+	table.insert(profile.purchaseIds, purchaseId)
+	while #profile.purchaseIds > GameConfig.PURCHASE_LOG_LIMIT do
+		table.remove(profile.purchaseIds, 1)
+	end
+	DataService.markDirty(player)
 	return Enum.ProductPurchaseDecision.PurchaseGranted
 end
 
@@ -279,7 +398,19 @@ local function onSimulatePurchase(player: Player, kindArg: any, keyArg: any): (b
 		if def.gamePassId ~= 0 then
 			return false, "Dieser Gamepass hat eine echte ID - bitte regulär kaufen."
 		end
-		grantCosmetics(player, def.grantsCosmetics, `{def.displayName} (Test)`)
+		local passes = ownedPasses[player]
+		if passes == nil then
+			passes = {}
+			ownedPasses[player] = passes
+		end
+		passes[def.key] = true
+		if #def.grantsCosmetics > 0 then
+			grantCosmetics(player, def.grantsCosmetics, `{def.displayName} (Test)`)
+		else
+			notify(player, `Gamepass simuliert: {def.displayName} (Test)`, "success")
+		end
+		applyPassEffects(player)
+		fireCosmeticsUpdated(player)
 		return true, nil
 	elseif kindArg == "product" then
 		local def = MonetizationConfig.DeveloperProducts[keyArg]
@@ -289,7 +420,7 @@ local function onSimulatePurchase(player: Player, kindArg: any, keyArg: any): (b
 		if def.productId ~= 0 then
 			return false, "Dieses Produkt hat eine echte ID - bitte regulär kaufen."
 		end
-		grantCosmetics(player, { def.grantsCosmetic }, `{def.displayName} (Test)`)
+		grantProduct(player, def, `{def.displayName} (Test)`)
 		return true, nil
 	end
 
@@ -314,6 +445,7 @@ local function onPlayerRemoving(player: Player)
 		pet:Destroy()
 	end
 	activePets[player] = nil
+	ownedPasses[player] = nil
 end
 
 function MonetizationService.init()
@@ -326,6 +458,25 @@ function MonetizationService.init()
 		print("[PlanetForge] Studio-Testmodus für den Shop ist AKTIV (nur in Studio wirksam).")
 	end
 
+	-- Gamepass-Wirkungen als Hooks verdrahten (vermeidet Service-Zyklen):
+	-- 2x-Pass verdoppelt alle Einnahmen, +2-Pass erweitert die Pet-Slots.
+	EnergyService.getPassMultiplier = function(player: Player): number
+		return if MonetizationService.hasPass(player, "gp_double_mult") then 2 else 1
+	end
+	EquipService.getBonusPetSlots = function(player: Player): number
+		return if MonetizationService.hasPass(player, "gp_pet_slots") then MonetizationConfig.PET_SLOTS_BONUS else 0
+	end
+
+	-- VIP-Trail nach jedem Respawn erneut anbringen.
+	Players.PlayerAdded:Connect(function(player)
+		player.CharacterAdded:Connect(function()
+			task.wait(0.5)
+			if MonetizationService.hasPass(player, "gp_vip") then
+				applyVipTrail(player)
+			end
+		end)
+	end)
+
 	-- Gamepass-Kauf im laufenden Spiel: Kosmetik sofort gutschreiben.
 	MarketplaceService.PromptGamePassPurchaseFinished:Connect(
 		function(player: Player, gamePassId: number, wasPurchased: boolean)
@@ -334,7 +485,16 @@ function MonetizationService.init()
 			end
 			for _, def in MonetizationConfig.Gamepasses do
 				if def.gamePassId ~= 0 and def.gamePassId == gamePassId then
-					grantCosmetics(player, def.grantsCosmetics, def.displayName)
+					local passes = ownedPasses[player]
+					if passes == nil then
+						passes = {}
+						ownedPasses[player] = passes
+					end
+					passes[def.key] = true
+					if #def.grantsCosmetics > 0 then
+						grantCosmetics(player, def.grantsCosmetics, def.displayName)
+					end
+					applyPassEffects(player)
 					break
 				end
 			end

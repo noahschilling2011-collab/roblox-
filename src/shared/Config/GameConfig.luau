@@ -28,7 +28,8 @@ local GameConfig = {
 	TRADE_LOCK_SECONDS = 3, -- Sicherheitspause nach beidseitigem Akzeptieren
 
 	-- Daten
-	PROFILE_SCHEMA_VERSION = 7, -- v5: Insel-Loop; v6: Rebirths; v7: Equip-System
+	PROFILE_SCHEMA_VERSION = 8, -- v6: Rebirths; v7: Equip; v8: PurchaseId-Log
+	PURCHASE_LOG_LIMIT = 50, -- gemerkte PurchaseIds gegen Doppelgutschrift
 
 	-- Ausrüstung
 	BASE_PET_SLOTS = 3, -- gleichzeitig aktive Pets (per Gamepass erweiterbar)

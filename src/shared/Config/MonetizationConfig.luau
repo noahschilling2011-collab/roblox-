@@ -37,6 +37,7 @@ export type GamepassDef = {
 	displayName: string,
 	description: string,
 	grantsCosmetics: { Types.CosmeticId },
+	perk: ("double_mult" | "pet_slots" | "vip")?, -- dauerhafter Spielvorteil
 }
 
 export type ProductDef = {
@@ -44,7 +45,9 @@ export type ProductDef = {
 	productId: number, -- PLATZHALTER: echte ID aus dem Creator Dashboard eintragen
 	displayName: string,
 	description: string,
-	grantsCosmetic: Types.CosmeticId,
+	grantsCosmetic: Types.CosmeticId?, -- einmalige Kosmetik-Freischaltung
+	grantsEnergy: number?, -- Währungspaket (wiederholt kaufbar)
+	perk: "instant_rebirth"?, -- Sofort-Wiedergeburt (wiederholt kaufbar)
 }
 
 local MonetizationConfig = {}
@@ -173,7 +176,34 @@ MonetizationConfig.Gamepasses = {
 		description = "Mini-Komet und Sternenwelpe begleiten dich.",
 		grantsCosmetics = { "haustier_mini_komet", "haustier_sternenwelpe" },
 	},
+	gp_double_mult = {
+		key = "gp_double_mult",
+		gamePassId = 0,
+		displayName = "2x Multiplikator",
+		description = "Verdoppelt dauerhaft ALLE Energie-Einnahmen.",
+		grantsCosmetics = {},
+		perk = "double_mult",
+	},
+	gp_pet_slots = {
+		key = "gp_pet_slots",
+		gamePassId = 0,
+		displayName = "+2 Pet-Slots",
+		description = "Rüste 5 statt 3 Pets gleichzeitig aus.",
+		grantsCosmetics = {},
+		perk = "pet_slots",
+	},
+	gp_vip = {
+		key = "gp_vip",
+		gamePassId = 0,
+		displayName = "👑 VIP",
+		description = "Goldener VIP-Trail, [VIP]-Chat-Tag und doppelter Tagesbonus.",
+		grantsCosmetics = {},
+		perk = "vip",
+	},
 } :: { [string]: GamepassDef }
+
+-- Zusätzliche Pet-Slots des +2-Gamepasses.
+MonetizationConfig.PET_SLOTS_BONUS = 2
 
 -- Developer Products: schalten je eine Kosmetik dauerhaft frei.
 -- (Bereits gekaufte Produkte zeigt der Shop als "Im Besitz" an.)
@@ -205,6 +235,36 @@ MonetizationConfig.DeveloperProducts = {
 		displayName = "Regenbogen-Aura",
 		description = "Schaltet die Regenbogen-Aura frei.",
 		grantsCosmetic = "aura_regenbogen",
+	},
+	-- Währungspakete (wiederholt kaufbar; zählen NICHT zur Gesamt-Energie,
+	-- schalten also weder Biome noch Rebirths frei).
+	prod_energie_klein = {
+		key = "prod_energie_klein",
+		productId = 0,
+		displayName = "Energie-Paket S",
+		description = "1.000 Energie sofort auf dein Konto.",
+		grantsEnergy = 1000,
+	},
+	prod_energie_mittel = {
+		key = "prod_energie_mittel",
+		productId = 0,
+		displayName = "Energie-Paket M",
+		description = "6.000 Energie sofort auf dein Konto.",
+		grantsEnergy = 6000,
+	},
+	prod_energie_gross = {
+		key = "prod_energie_gross",
+		productId = 0,
+		displayName = "Energie-Paket L",
+		description = "20.000 Energie sofort auf dein Konto.",
+		grantsEnergy = 20000,
+	},
+	prod_instant_rebirth = {
+		key = "prod_instant_rebirth",
+		productId = 0,
+		displayName = "Sofort-Wiedergeburt",
+		description = "Löst sofort eine Wiedergeburt aus - ohne Schwelle.",
+		perk = "instant_rebirth",
 	},
 } :: { [string]: ProductDef }
 

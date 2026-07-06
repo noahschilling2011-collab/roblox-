@@ -64,6 +64,9 @@ function EnergyService.grantEnergy(player: Player, baseAmount: number): number
 		multiplier = 1
 	end
 
+	-- 2x-Gamepass wirkt auf alle Einnahmen (Hook, siehe oben).
+	multiplier *= EnergyService.getPassMultiplier(player)
+
 	local amount = math.floor(baseAmount * multiplier)
 	if baseAmount >= 1 then
 		amount = math.max(amount, 1)
@@ -113,6 +116,13 @@ function EnergyService.trySpend(player: Player, amount: number): boolean
 	DataService.markDirty(player)
 	fireEnergyChanged(player, profile)
 	return true
+end
+
+-- Gamepass-Multiplikator auf ALLE Einnahmen (2x-Pass); der
+-- MonetizationService ersetzt diese Funktion beim Start (Hook, damit
+-- keine zyklische Service-Abhängigkeit entsteht).
+EnergyService.getPassMultiplier = function(_player: Player): number
+	return 1
 end
 
 -- Schickt dem Client den aktuellen Energiestand erneut (z. B. nach einem

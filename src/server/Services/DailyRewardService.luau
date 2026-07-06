@@ -15,6 +15,7 @@ local GameConfig = require(ReplicatedStorage.Shared.Config.GameConfig)
 
 local DataService = require(script.Parent.DataService)
 local EnergyService = require(script.Parent.EnergyService)
+local MonetizationService = require(script.Parent.MonetizationService)
 
 local SECONDS_PER_DAY = 24 * 60 * 60
 
@@ -53,6 +54,11 @@ local function claimIfDue(player: Player)
 	end
 
 	local reward = rewardForStreak(newStreak)
+	-- VIP-Gamepass: doppelter Tagesbonus.
+	local isVip = MonetizationService.hasPass(player, "gp_vip")
+	if isVip then
+		reward *= 2
+	end
 	profile.lastDailyClaimDay = today
 	profile.dailyStreak = newStreak
 	DataService.markDirty(player)
@@ -60,9 +66,10 @@ local function claimIfDue(player: Player)
 	EnergyService.grantEnergy(player, reward)
 
 	if notificationEvent ~= nil then
+		local vipSuffix = if isVip then " (VIP: verdoppelt! 👑)" else ""
 		(notificationEvent :: RemoteEvent):FireClient(
 			player,
-			`Tagesbonus Tag {newStreak}: +{reward} Energie! Komm morgen wieder für mehr.`,
+			`Tagesbonus Tag {newStreak}: +{reward} Energie!{vipSuffix} Komm morgen wieder.`,
 			"success"
 		)
 	end
