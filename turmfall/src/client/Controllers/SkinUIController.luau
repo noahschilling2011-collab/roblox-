@@ -7,8 +7,10 @@
 -- Kollaps-Slot); erneuter Klick rüstet ab. Besitz/Ausrüstung kommen
 -- ausschließlich vom Server (SkinsChanged).
 
+local MarketplaceService = game:GetService("MarketplaceService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Network = require(Shared:WaitForChild("Network") :: ModuleScript) :: {
@@ -16,6 +18,8 @@ local Network = require(Shared:WaitForChild("Network") :: ModuleScript) :: {
 	getFunction: (name: string) -> RemoteFunction,
 }
 local SkinCatalog = require(Shared:WaitForChild("Config"):WaitForChild("SkinCatalog") :: ModuleScript) :: any
+local MonetizationCatalog =
+	require(Shared:WaitForChild("Config"):WaitForChild("MonetizationCatalog") :: ModuleScript) :: any
 
 local ControllersFolder = script.Parent :: Instance
 local UIController = require(ControllersFolder:WaitForChild("UIController") :: ModuleScript) :: any
@@ -37,6 +41,8 @@ local grid: ScrollingFrame? = nil
 local currencyLabel: TextLabel? = nil
 
 local equipFunction: RemoteFunction? = nil
+local buyDebrisFunction: RemoteFunction? = nil
+local simulateFunction: RemoteFunction? = nil
 
 local function addCorner(instance: Instance, radius: number)
 	local corner = Instance.new("UICorner")
@@ -85,6 +91,62 @@ local function requestEquip(skin: any)
 			UIController.showToast(err, "error")
 		end
 	end)
+end
+
+-- Kauf eines gesperrten Skins anstoßen: Trümmer direkt, Robux über den
+-- Roblox-Kaufdialog (bzw. Studio-Testmodus bei Platzhalter-IDs).
+local function requestBuy(skin: any)
+	if skin.priceDebris ~= nil then
+		local remote = buyDebrisFunction
+		if remote == nil then
+			return
+		end
+		task.spawn(function()
+			local ok, serverOk, err = pcall(function()
+				return remote:InvokeServer(skin.id)
+			end)
+			if not ok then
+				UIController.showToast("Verbindungsfehler - bitte erneut versuchen.", "error")
+			elseif serverOk ~= true and typeof(err) == "string" then
+				UIController.showToast(err, "error")
+			end
+		end)
+		return
+	end
+
+	if skin.priceRobux ~= nil then
+		-- Passendes Einzel-Produkt im Katalog suchen.
+		local productKey: string? = nil
+		local productId = 0
+		for key, def in MonetizationCatalog.DEVPRODUCT_IDS :: { [string]: any } do
+			if #def.grantsSkins == 1 and def.grantsSkins[1] == skin.id then
+				productKey = key
+				productId = def.productId
+				break
+			end
+		end
+		if productKey == nil then
+			UIController.showToast("Dieser Skin kommt aus einem Bundle oder dem Season-Pass.", "info")
+			return
+		end
+		if productId ~= 0 then
+			MarketplaceService:PromptProductPurchase(Players.LocalPlayer, productId)
+		elseif RunService:IsStudio() and simulateFunction ~= nil then
+			-- Studio-Testmodus für Platzhalter-IDs.
+			task.spawn(function()
+				local ok, serverOk, err = pcall(function()
+					return (simulateFunction :: RemoteFunction):InvokeServer(productKey)
+				end)
+				if ok and serverOk == true then
+					UIController.showToast("Testkauf simuliert (nur Studio).", "success")
+				elseif typeof(err) == "string" then
+					UIController.showToast(err, "error")
+				end
+			end)
+		else
+			UIController.showToast("Bald verfügbar - die Produkt-ID ist noch nicht eingetragen.", "info")
+		end
+	end
 end
 
 --------------------------------------------------------------------------
@@ -164,11 +226,14 @@ local function refreshGrid()
 		statusLabel.Text = if isEquipped(skinId) then "✓ Ausgerüstet" elseif owned then "Im Besitz" else `🔒 {priceText(skin)}`
 		statusLabel.Parent = cell
 
-		if owned then
-			cell.Activated:Connect(function()
+		cell.AutoButtonColor = true
+		cell.Activated:Connect(function()
+			if ownedSkins[skinId] == true then
 				requestEquip(skin)
-			end)
-		end
+			else
+				requestBuy(skin)
+			end
+		end)
 		cell.Parent = container
 	end
 end
@@ -274,6 +339,8 @@ end
 
 function SkinUIController.init()
 	equipFunction = Network.getFunction("EquipSkin")
+	buyDebrisFunction = Network.getFunction("BuySkinWithDebris")
+	simulateFunction = Network.getFunction("SimulatePurchase")
 	buildUI()
 
 	Network.getEvent("SkinsChanged").OnClientEvent:Connect(function(owned: any, equippedArg: any, truemmerArg: any)

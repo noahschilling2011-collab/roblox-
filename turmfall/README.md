@@ -99,3 +99,33 @@ benutzte Remote in `Network.luau` deklariert ist.
 4. Hinweis: In Studio ohne aktivierten API-Zugriff läuft die Persistenz
    im Read-only-Modus (Warnung in der Ausgabe) – im veröffentlichten
    Spiel speichert sie normal.
+
+## Meilenstein 3 – Robux-Monetarisierung ✅
+
+- `MonetizationCatalog.luau`: Developer Products (einzelne Skins + Bundles)
+  und kosmetischer Season-Pass als **Platzhalter-Konstanten** – die echten
+  IDs müssen im Creator Dashboard angelegt und bei `productId` /
+  `SEASON_PASS_GAMEPASS_ID` eingetragen werden (TODO-Kommentare im Code;
+  Code kann keine Produkte erstellen)
+- `MonetizationService.luau`: **idempotentes** `ProcessReceipt` –
+  Receipt-IDs werden im Profil (DataStore) geloggt, ein Beleg wird nie
+  doppelt gutgeschrieben (`ReceiptLogic`, pur getestet); Read-only-Sessions
+  bekommen `NotProcessedYet` statt riskanter Gutschriften
+- **Guard:** Verkauft wird strukturell NUR Kosmetik – Produkte können
+  ausschließlich Skin-IDs vergeben, `MonetizationCatalog.validate()` prüft
+  jeden Verweis gegen den (selbst validierten) SkinCatalog und läuft beim
+  Serverstart und in den Tests
+- Zweitwährung **🧱 Trümmer**: erspielt (Punkte + Rundenbonus), NICHT
+  kaufbar; ein Teil des Katalogs ist nur für Trümmer erhältlich
+  (Free-Progression)
+- Studio-Testmodus: Klick auf einen Robux-Skin mit Platzhalter-ID simuliert
+  den Kauf – NUR in Studio
+
+### So testest du Meilenstein 3
+
+1. Runde zu Ende spielen → Toast `+N 🧱 Trümmer verdient!`, Stand im
+   Skins-Panel oben rechts.
+2. Im Skins-Panel einen 🧱-Skin anklicken → Kauf mit Trümmern.
+3. Einen R$-Skin anklicken → in Studio wird der Kauf simuliert
+   (im Live-Spiel öffnet sich der Roblox-Kaufdialog, sobald echte
+   Produkt-IDs eingetragen sind).

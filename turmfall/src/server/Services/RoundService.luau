@@ -20,6 +20,7 @@ local TowerService = require(script.Parent.TowerService)
 local DeckService = require(script.Parent.DeckService)
 local CollapseService = require(script.Parent.CollapseService)
 local ScoreService = require(script.Parent.ScoreService)
+local MonetizationService = require(script.Parent.MonetizationService)
 
 local RoundService = {}
 
@@ -133,6 +134,9 @@ local function runScoring()
 	else
 		notifyAll("Runde vorbei - niemand hat gepunktet. Nächster Versuch!", "info")
 	end
+
+	-- Trümmer-Ausschüttung (erspielte Zweitwährung, Meilenstein 3).
+	MonetizationService.awardRoundDebris(entries)
 
 	for secondsLeft = GameConfig.SCORING_SECONDS, 1, -1 do
 		broadcastState(secondsLeft, { final = true })

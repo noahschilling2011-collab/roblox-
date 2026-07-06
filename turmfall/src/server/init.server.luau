@@ -20,6 +20,7 @@ local SERVICE_STARTUP_ORDER = {
 	"CollapseService",
 	"TowerService",
 	"SkinService", -- nach TowerService (hängt den Optik-Hook ein)
+	"MonetizationService", -- nach SkinService (vergibt Skins)
 	"ScoreService",
 	"RoundService", -- zuletzt: schaltet die anderen an/aus
 }

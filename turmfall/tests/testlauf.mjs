@@ -73,6 +73,8 @@ const modules = [
   ["GameConfig", "src/shared/Config/GameConfig.luau"],
   ["PartCatalog", "src/shared/Config/PartCatalog.luau"],
   ["SkinCatalog", "src/shared/Config/SkinCatalog.luau"],
+  ["MonetizationCatalog", "src/shared/Config/MonetizationCatalog.luau"],
+  ["ReceiptLogic", "src/shared/ReceiptLogic.luau"],
   ["BlameLogic", "src/shared/BlameLogic.luau"],
   ["ScoreLogic", "src/shared/ScoreLogic.luau"],
 ];
@@ -90,6 +92,8 @@ const tests = `
 local GameConfig = __deps["GameConfig"]
 local PartCatalog = __deps["PartCatalog"]
 local SkinCatalog = __deps["SkinCatalog"]
+local MonetizationCatalog = __deps["MonetizationCatalog"]
+local ReceiptLogic = __deps["ReceiptLogic"]
 local BlameLogic = __deps["BlameLogic"]
 local ScoreLogic = __deps["ScoreLogic"]
 
@@ -279,6 +283,63 @@ test("SkinCatalog: partType-Verweise sind gueltig", function()
 			expect(PartCatalog.Parts[skin.partType] ~= nil, id .. ": unbekannter partType " .. tostring(skin.partType))
 		end
 	end
+end)
+
+-- 12) Monetarisierungs-Guard (Meilenstein 3)
+test("MonetizationCatalog: Guard laesst nur Kosmetik zu", function()
+	MonetizationCatalog.validate() -- wirft bei jedem Regelverstoss
+	-- Platzhalter-IDs (0) duerfen NIE matchen (sonst greift ProcessReceipt ins Leere).
+	expect(MonetizationCatalog.findProductByProductId(0) == nil, "Platzhalter-ID 0 darf nie matchen")
+	expect(MonetizationCatalog.findProductByProductId(999999) == nil, "unbekannte ID darf nicht matchen")
+	-- Sabotage: ein Produkt, das etwas Nicht-Kosmetisches vergibt, fliegt auf.
+	MonetizationCatalog.DEVPRODUCT_IDS.hack = {
+		key = "hack",
+		productId = 0,
+		displayName = "Punkte-Boost",
+		grantsSkins = { "punkte_boost_9000" }, -- existiert nicht im SkinCatalog
+	}
+	local ok = pcall(MonetizationCatalog.validate)
+	MonetizationCatalog.DEVPRODUCT_IDS.hack = nil
+	expect(ok == false, "Guard muss Nicht-Kosmetik-Produkte ablehnen")
+	expect(pcall(MonetizationCatalog.validate) == true, "Katalog muss nach Aufraeumen wieder gueltig sein")
+end)
+
+-- 13) Receipt-Idempotenz (der haeufigste Anfaengerfehler)
+test("ReceiptLogic: kein Beleg wird doppelt gutgeschrieben", function()
+	local log = {}
+	expect(ReceiptLogic.alreadyProcessed(log, "r1") == false, "leeres Log darf nichts kennen")
+	ReceiptLogic.remember(log, "r1")
+	expect(ReceiptLogic.alreadyProcessed(log, "r1") == true, "r1 muss bekannt sein")
+	ReceiptLogic.remember(log, "r1") -- Doppel-Merken ist ein No-Op
+	expect(#log == 1, "Doppel-Merken darf keinen zweiten Eintrag anlegen")
+	-- Limit: aelteste Belege fliegen raus, neueste bleiben.
+	for index = 2, ReceiptLogic.LOG_LIMIT + 5 do
+		ReceiptLogic.remember(log, "r" .. index)
+	end
+	expect(#log == ReceiptLogic.LOG_LIMIT, "Log muss auf das Limit gedeckelt sein")
+	expect(ReceiptLogic.alreadyProcessed(log, "r1") == false, "aeltester Beleg muss rausrotiert sein")
+	expect(ReceiptLogic.alreadyProcessed(log, "r" .. (ReceiptLogic.LOG_LIMIT + 5)) == true, "neuester Beleg muss bekannt sein")
+end)
+
+-- 14) Truemmer-Oekonomie: erspielt, nicht kaufbar
+test("MonetizationCatalog: Truemmer sind erspielt und fair", function()
+	expect(MonetizationCatalog.DEBRIS_PER_POINTS > 0, "DEBRIS_PER_POINTS <= 0")
+	expect(MonetizationCatalog.DEBRIS_ROUND_BONUS > 0, "DEBRIS_ROUND_BONUS <= 0")
+	-- Kein Produkt darf Truemmer vergeben (grantsSkins kann nur Skins tragen,
+	-- aber wir pruefen zusaetzlich, dass kein Skin-Feld Truemmer heisst).
+	for key, def in MonetizationCatalog.DEVPRODUCT_IDS do
+		for _, skinId in def.grantsSkins do
+			expect(string.find(skinId, "truemmer") == nil, key .. " versucht Truemmer zu verkaufen")
+		end
+	end
+	-- Mindestens ein Skin ist fuer Truemmer erhaeltlich (Free-Progression).
+	local debrisSkins = 0
+	for _, skin in SkinCatalog.Skins do
+		if skin.priceDebris ~= nil then
+			debrisSkins += 1
+		end
+	end
+	expect(debrisSkins >= 4, "zu wenige Truemmer-Skins fuer Free-Spieler: " .. debrisSkins)
 end)
 
 table.insert(results, "")

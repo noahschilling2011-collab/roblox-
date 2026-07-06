@@ -29,6 +29,8 @@ local EVENT_NAMES = {
 local FUNCTION_NAMES = {
 	"PlacePart", -- (partTypeId: string, cframe: CFrame) -> (ok, err?)
 	"EquipSkin", -- (slot: string, skinId: string?) -> (ok, err?)
+	"BuySkinWithDebris", -- (skinId: string) -> (ok, err?) Trümmer-Kauf
+	"SimulatePurchase", -- (productKey: string) -> (ok, err?) NUR Studio-Testmodus
 }
 
 local Network = {}

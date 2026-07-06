@@ -75,3 +75,24 @@ den Turm zur sichtbaren "Geschichte" der Runde.
 **D13 – Kollaps-Effekte laufen auf dem eigenen Client.** Konfetti/Zeitlupe
 spielt der Client ab, der den Skin ausgerüstet hat - niemandem sonst wird
 Optik aufgezwungen, und der Server bleibt davon komplett unberührt.
+
+## Meilenstein 3
+
+**D14 – Der Kosmetik-Guard ist strukturell, nicht nur eine Prüfung.**
+Produkte besitzen genau EIN Vergabe-Feld (`grantsSkins`), das nur Skin-IDs
+tragen kann; es existiert kein Feld für Punkte, Teile, Slots oder Trümmer.
+validate() prüft zusätzlich jeden Verweis gegen den SkinCatalog und läuft
+beim Serverstart UND in den Tests (inklusive Sabotage-Test). Gameplay-Werte
+an Käufe zu koppeln erfordert damit eine bewusste Architektur-Änderung
+statt eines versehentlichen Einzeilers.
+
+**D15 – Read-only-Sessions blockieren Käufe komplett.** Hat ein Server den
+Session-Lock nicht bekommen, gibt ProcessReceipt NotProcessedYet zurück und
+der Trümmer-Kauf lehnt ab. Roblox wiederholt den Beleg später automatisch -
+so geht kein Kauf verloren UND keiner wird auf einem veralteten Profil
+gutgeschrieben und anschließend überschrieben.
+
+**D16 – Trümmer-Ausschüttung ist bewusst simpel.** 10 pro Runde plus
+1 je 5 Punkte. Die günstigsten Skins (150) gibt es nach wenigen Runden,
+Rares (600) nach einem Abend - Free-Progression ohne Grind-Wand. Balancing
+lebt als Konstanten im MonetizationCatalog.
