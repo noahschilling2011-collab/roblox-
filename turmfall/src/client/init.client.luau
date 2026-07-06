@@ -8,6 +8,7 @@ local CONTROLLER_STARTUP_ORDER = {
 	"SkinUIController", -- vor dem ReplayController (Kollaps-Effekt-Abfrage)
 	"PlacementController",
 	"ReplayController",
+	"EffectsController", -- Stabilitäts-Feedback + Finale-Visuals
 }
 
 local controllersFolder = script:WaitForChild("Controllers")

@@ -342,6 +342,16 @@ test("MonetizationCatalog: Truemmer sind erspielt und fair", function()
 	expect(debrisSkins >= 4, "zu wenige Truemmer-Skins fuer Free-Spieler: " .. debrisSkins)
 end)
 
+-- 15) Polish-Konstanten (Meilenstein 4)
+test("GameConfig: Finale, Sabotage und Stabilitaets-Feedback", function()
+	expect(GameConfig.FINALE_SECONDS == 15, "Finale != letzte 15 s")
+	expect(GameConfig.FINALE_SECONDS < GameConfig.BUILD_SECONDS, "Finale laenger als die Bauphase")
+	expect(GameConfig.SABOTAGE_COOLDOWN_SECONDS == 10, "Sabotage-Cooldown != 10 s")
+	expect(GameConfig.SABOTAGE_SUPPORT_MAX_DROP > 0, "Sabotage-Stuetzhoehe unplausibel")
+	expect(GameConfig.STABILITY_BROADCAST_SECONDS > 0, "Stabilitaets-Takt unplausibel")
+	expect(GameConfig.STABILITY_SPEED_FOR_ZERO > 0, "Stabilitaets-Skala unplausibel")
+end)
+
 table.insert(results, "")
 table.insert(results, "ERGEBNIS: " .. passed .. " bestanden, " .. failed .. " fehlgeschlagen (" .. (passed + failed) .. " Tests)")
 return table.concat(results, "\\n"), failed

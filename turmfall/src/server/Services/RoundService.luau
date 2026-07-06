@@ -118,10 +118,23 @@ local function runBuild()
 	setPhase("Bauphase")
 	notifyAll("🏗️ BAUPHASE! Baut den Turm - hoch hinaus gibt Punkte, Kollaps kostet alles!", "success")
 
+	local finaleEvent = Network.getEvent("FinaleStarted")
+	local finaleStarted = false
+
 	for secondsLeft = GameConfig.BUILD_SECONDS, 1, -1 do
-		broadcastState(secondsLeft)
+		-- "Letzter Stein"-Finale: die letzten Sekunden setzt jeder genau
+		-- EIN Teil (Zeitlupe/Kamera machen die Clients rein visuell).
+		if not finaleStarted and secondsLeft <= GameConfig.FINALE_SECONDS then
+			finaleStarted = true
+			TowerService.setFinaleMode(true)
+			finaleEvent:FireAllClients()
+			notifyAll(`🪨 LETZTER STEIN! Jeder setzt jetzt genau EIN Teil - macht es zählbar!`, "success")
+		end
+		broadcastState(secondsLeft, if finaleStarted then { finale = true } else nil)
 		task.wait(1)
 	end
+
+	TowerService.setFinaleMode(false)
 end
 
 local function runScoring()

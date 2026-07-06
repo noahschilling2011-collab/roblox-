@@ -129,3 +129,31 @@ benutzte Remote in `Network.luau` deklariert ist.
 3. Einen R$-Skin anklicken → in Studio wird der Kauf simuliert
    (im Live-Spiel öffnet sich der Roblox-Kaufdialog, sobald echte
    Produkt-IDs eingetragen sind).
+
+## Meilenstein 4 – Polish für den ersten Release ✅
+
+- **„Letzter Stein"-Finale:** In den letzten 15 Sekunden setzt jeder genau
+  EIN Teil; die Clients spielen dazu eine rein visuelle Zeitlupe
+  (Farbkorrektur + FOV – die Physik läuft überall normal weiter)
+- **Sabotage-Balancing:** Liegt das nächste Stütz-Teil unter der neuen
+  Platzierung und gehört einem Gegner, gibt es 10 Sekunden
+  Instabilitäts-Cooldown (Sabotage bleibt möglich, kostet aber Tempo)
+- **Turm-Schwank-Feedback:** Server berechnet jede Sekunde einen
+  Stabilitäts-Score 0–100 aus der mittleren Teil-Geschwindigkeit; Clients
+  zeigen einen Balken, wackeln mit der Kamera und knarzen proportional
+- **Mobile-Support (Mobile-first):** Tippen zielt (Ghost folgt dem Finger),
+  gebaut/gedreht wird über zwei große Touch-Buttons rechts unten –
+  kein versehentliches Bauen beim Kamera-Drehen
+- **Denkmal-Sockel** in der Arena für den höchsten Turm der Woche
+  (Platzhalter – Persistenz folgt nach dem ersten Release)
+
+### So testest du Meilenstein 4
+
+1. Runde starten, bis 15 Sekunden vor Schluss spielen → „LETZTER STEIN!"
+   erscheint, die Welt entsättigt sich kurz, jeder kann nur noch 1 Teil setzen.
+2. Ein Teil direkt oben auf ein GEGNERISCHES Teil bauen → Hinweis
+   „Instabilitäts-Cooldown" und 10 s Bausperre.
+3. Turm zum Wackeln bringen → Stabilitäts-Balken unter dem Timer färbt sich
+   gelb/rot, Kamera wackelt, es knarzt.
+4. Mobile testen: In Studio **Test → Emulation → Device** wählen –
+   die Touch-Buttons 🧱/🔄 erscheinen automatisch.

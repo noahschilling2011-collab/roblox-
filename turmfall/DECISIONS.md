@@ -96,3 +96,25 @@ gutgeschrieben und anschließend überschrieben.
 1 je 5 Punkte. Die günstigsten Skins (150) gibt es nach wenigen Runden,
 Rares (600) nach einem Abend - Free-Progression ohne Grind-Wand. Balancing
 lebt als Konstanten im MonetizationCatalog.
+
+## Meilenstein 4
+
+**D17 – "Primär gegnerisch belastet" = nächstes Stütz-Teil gehört einem
+Gegner.** Eine echte Lastverteilungs-Analyse wäre teuer und schwer erklärbar.
+Die Näherung "das nächste Teil unterhalb der Platzierung" ist billig,
+deterministisch und für Spieler intuitiv: Wer direkt auf fremde Teile baut,
+zahlt den Cooldown; wer auf Plattform oder eigene Teile baut, nie.
+
+**D18 – Zeitlupe ist ausschließlich Optik.** Eine echte globale Zeitlupe
+(Physik-Timescale) würde die Simulation aller Clients und das Schuld-System
+verzerren. Farbkorrektur + FOV liefern das Gefühl, ohne die Fairness
+anzufassen - deshalb steht "nur visuell" auch im Konzept.
+
+**D19 – Touch platziert über einen Button, nicht per Tipp.** Auf Mobile
+dreht man die Kamera durch Ziehen/Tippen - ein Tipp, der gleichzeitig baut,
+produziert Fehlplatzierungen (und die kosten im Finale die einzige
+Platzierung). Deshalb: Tippen zielt, der 🧱-Button baut.
+
+**D20 – Stabilitäts-Score ist die mittlere Assembly-Geschwindigkeit.**
+Simpel, ein Wert pro Sekunde über ein Remote, keine Per-Teil-Replikation.
+100 = alles ruht, 0 = mittlere Geschwindigkeit >= STABILITY_SPEED_FOR_ZERO.

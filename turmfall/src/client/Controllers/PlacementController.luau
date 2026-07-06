@@ -220,10 +220,6 @@ function PlacementController.init()
 		end
 		if input.UserInputType == Enum.UserInputType.MouseButton1 then
 			tryPlace()
-		elseif input.UserInputType == Enum.UserInputType.Touch then
-			-- Touch: erst zielen (Ghost springt zur Fingerposition), das
-			-- Platzieren übernimmt derselbe Tipp, wenn der Ghost gültig ist.
-			tryPlace()
 		elseif input.KeyCode == Enum.KeyCode.R then
 			ghostYaw += math.rad(45)
 		elseif input.KeyCode == Enum.KeyCode.One then
@@ -234,6 +230,45 @@ function PlacementController.init()
 			UIController.selectSlot(3)
 		end
 	end)
+
+	-- Mobile-Support (M4, Mobile-first): Tippen zielt nur (der Ghost folgt
+	-- der Fingerposition über GetMouseLocation); platziert und gedreht wird
+	-- über zwei große Touch-Buttons rechts unten - kein versehentliches
+	-- Bauen beim Kamera-Drehen.
+	if UserInputService.TouchEnabled then
+		local playerGui = localPlayer:WaitForChild("PlayerGui")
+		local touchGui = Instance.new("ScreenGui")
+		touchGui.Name = "TurmfallTouch"
+		touchGui.ResetOnSpawn = false
+		touchGui.Parent = playerGui
+
+		local function touchButton(text: string, offsetY: number): TextButton
+			local button = Instance.new("TextButton")
+			button.AnchorPoint = Vector2.new(1, 1)
+			button.Position = UDim2.new(1, -14, 1, offsetY)
+			button.Size = UDim2.new(0, 92, 0, 92)
+			button.BackgroundColor3 = Color3.fromRGB(28, 30, 40)
+			button.BackgroundTransparency = 0.25
+			button.Font = Enum.Font.GothamBold
+			button.TextSize = 15
+			button.TextColor3 = Color3.fromRGB(235, 238, 245)
+			button.TextWrapped = true
+			button.Text = text
+			local corner = Instance.new("UICorner")
+			corner.CornerRadius = UDim.new(1, 0)
+			corner.Parent = button
+			button.Parent = touchGui
+			return button
+		end
+
+		local placeButton = touchButton("🧱\nBauen", -120)
+		placeButton.Activated:Connect(tryPlace)
+
+		local rotateButton = touchButton("🔄\nDrehen", -14)
+		rotateButton.Activated:Connect(function()
+			ghostYaw += math.rad(45)
+		end)
+	end
 
 	-- Platzier-Sound für alle (Server bestätigt die Platzierung).
 	Network.getEvent("PartPlaced").OnClientEvent:Connect(function(position: any)

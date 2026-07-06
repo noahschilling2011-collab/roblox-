@@ -23,6 +23,8 @@ local EVENT_NAMES = {
 	"ScoreboardChanged", -- (entries: {{userId, name, points, culprit}})
 	"Notification", -- (message: string, kind: "info"|"success"|"error")
 	"SkinsChanged", -- (ownedSkins: {string}, equipped: {slot: skinId}, truemmer: number)
+	"FinaleStarted", -- () "Letzter Stein"-Finale beginnt (Zeitlupe nur visuell)
+	"StabilityChanged", -- (score: number) Stabilitäts-Score 0..100 des Turms
 }
 
 -- Client -> Server (RemoteFunctions).

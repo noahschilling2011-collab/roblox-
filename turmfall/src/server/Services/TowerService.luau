@@ -57,10 +57,20 @@ local nextPieceId = 1
 local buildAllowed = false
 local lastPlaceAt: { [Player]: number } = {}
 
+-- Sabotage-Balancing (M4): Wer primär auf fremden Teilen baut, bekommt
+-- einen Instabilitäts-Cooldown - Sabotage bleibt möglich, aber teuer.
+local sabotageCooldownUntil: { [Player]: number } = {}
+
+-- "Letzter Stein"-Finale (M4): genau eine Platzierung pro Spieler.
+local finaleActive = false
+local finalePlacementUsed: { [Player]: boolean } = {}
+
 local towerFolder: Folder? = nil
 local basePlatform: BasePart? = nil
 
 local partPlacedEvent: RemoteEvent? = nil
+local notificationEvent: RemoteEvent? = nil
+local stabilityEvent: RemoteEvent? = nil
 
 -- Hook (RoundService/M4): zusätzliche Platzierungsregeln, z. B. das Finale.
 TowerService.extraPlacementCheck = function(_player: Player, _cframe: CFrame): (boolean, string?)
@@ -115,6 +125,49 @@ function TowerService.buildArena()
 	marker.Color = Color3.fromRGB(255, 210, 90)
 	marker.Transparency = 0.5
 	marker.Parent = arena
+
+	-- Denkmal-Sockel für den höchsten Turm der Woche (M4, Platzhalter:
+	-- die Persistenz der Wochen-Bestleistung folgt nach dem ersten Release).
+	local pedestal = Instance.new("Part")
+	pedestal.Name = "DenkmalSockel"
+	pedestal.Shape = Enum.PartType.Cylinder
+	pedestal.Size = Vector3.new(3, 8, 8)
+	pedestal.CFrame = CFrame.new(
+		-GameConfig.BASE_PLATFORM_SIZE / 2 + 6,
+		GameConfig.BASE_PLATFORM_Y + GameConfig.BASE_PLATFORM_THICKNESS / 2 + 1.5,
+		-GameConfig.BASE_PLATFORM_SIZE / 2 + 6
+	) * CFrame.Angles(0, 0, math.rad(90))
+	pedestal.Anchored = true
+	pedestal.Material = Enum.Material.Marble
+	pedestal.Color = Color3.fromRGB(210, 206, 196)
+	pedestal.Parent = arena
+
+	local trophy = Instance.new("Part")
+	trophy.Name = "DenkmalTrophaee"
+	trophy.Size = Vector3.new(2, 2.6, 2)
+	trophy.CFrame = pedestal.CFrame * CFrame.new(2.9, 0, 0) * CFrame.Angles(0, 0, math.rad(-90)) * CFrame.Angles(0, math.rad(45), 0)
+	trophy.Anchored = true
+	trophy.CanCollide = false
+	trophy.Material = Enum.Material.Metal
+	trophy.Color = Color3.fromRGB(235, 186, 60)
+	trophy.Reflectance = 0.3
+	trophy.Parent = arena
+
+	local plaque = Instance.new("BillboardGui")
+	plaque.Name = "DenkmalSchild"
+	plaque.Size = UDim2.fromOffset(220, 44)
+	plaque.StudsOffset = Vector3.new(0, 3.5, 0)
+	plaque.MaxDistance = 120
+	local plaqueText = Instance.new("TextLabel")
+	plaqueText.Size = UDim2.fromScale(1, 1)
+	plaqueText.BackgroundTransparency = 1
+	plaqueText.Font = Enum.Font.GothamBold
+	plaqueText.TextScaled = true
+	plaqueText.TextColor3 = Color3.fromRGB(255, 210, 90)
+	plaqueText.TextStrokeTransparency = 0.4
+	plaqueText.Text = "🏆 Höchster Turm der Woche\n– bald verewigt –"
+	plaqueText.Parent = plaque
+	plaque.Parent = trophy
 
 	-- Spawn auf der Plattform (vorhandenen SpawnLocation umziehen oder anlegen).
 	local spawnLocation = Workspace:FindFirstChildWhichIsA("SpawnLocation", true)
@@ -213,6 +266,51 @@ local function overlapsExistingParts(targetCFrame: CFrame, partTypeId: string): 
 	return #found > 0
 end
 
+-- Nächstes Stütz-Teil UNTER einer Zielposition (Sabotage-Erkennung, M4).
+-- Rückgabe nil, wenn kein Teil stützt oder direkt auf der Plattform gebaut wird.
+local function findSupportPiece(
+	position: Vector3,
+	ownRadius: number,
+	excludePieceId: number
+): { ownerUserId: number, ownerName: string }?
+	-- Direkt auf der Plattform gebaut? Dann stützt kein fremdes Teil primär.
+	if position.Y - TowerService.getBaseTopY() <= ownRadius + 0.5 then
+		return nil
+	end
+
+	local best: Piece? = nil
+	local bestDistance = math.huge
+	for _, piece in pieces do
+		if piece.pieceId == excludePieceId or piece.fallen or piece.model.Parent == nil then
+			continue
+		end
+		local otherPosition = piece.primaryPart.Position
+		local drop = position.Y - otherPosition.Y
+		if drop <= 0 or drop > GameConfig.SABOTAGE_SUPPORT_MAX_DROP then
+			continue -- liegt nicht als Stütze unter dem neuen Teil
+		end
+		local horizontal = Vector3.new(position.X - otherPosition.X, 0, position.Z - otherPosition.Z).Magnitude
+		if horizontal > ownRadius + PartCatalog.getApproxRadius(piece.partTypeId) then
+			continue
+		end
+		local distance = (otherPosition - position).Magnitude
+		if distance < bestDistance then
+			bestDistance = distance
+			best = piece
+		end
+	end
+
+	if best == nil then
+		return nil
+	end
+	local supportPiece = best :: Piece
+	local ownerPlayer = Players:GetPlayerByUserId(supportPiece.ownerUserId)
+	return {
+		ownerUserId = supportPiece.ownerUserId,
+		ownerName = if ownerPlayer ~= nil then ownerPlayer.DisplayName else `Spieler {supportPiece.ownerUserId}`,
+	}
+end
+
 -- Remote-Handler: PlacePart(partTypeId, cframe) -> (ok, err?).
 local function handlePlacePart(player: Player, partTypeIdArg: unknown, cframeArg: unknown): (boolean, any?)
 	if not buildAllowed then
@@ -233,6 +331,17 @@ local function handlePlacePart(player: Player, partTypeIdArg: unknown, cframeArg
 	local now = os.clock()
 	if now - (lastPlaceAt[player] or 0) < GameConfig.PLACE_COOLDOWN_SECONDS then
 		return false, "Nicht so schnell - kurz warten!"
+	end
+
+	-- Instabilitäts-Cooldown nach Sabotage-Platzierungen.
+	if now < (sabotageCooldownUntil[player] or 0) then
+		local remaining = math.ceil((sabotageCooldownUntil[player] :: number) - now)
+		return false, `⚠️ Instabilitäts-Cooldown: noch {remaining}s (du hast auf fremden Teilen gebaut).`
+	end
+
+	-- Finale: genau EIN Stein pro Spieler.
+	if finaleActive and finalePlacementUsed[player] == true then
+		return false, "Im Finale hast du nur EINEN Stein - der ist gesetzt!"
 	end
 
 	-- Reichweite: Zielposition muss nah am Charakter liegen.
@@ -286,6 +395,27 @@ local function handlePlacePart(player: Player, partTypeIdArg: unknown, cframeArg
 
 	-- Skin des Spielers anwenden (nur Optik, Hook vom SkinService).
 	TowerService.decoratePiece(player, model, partTypeId)
+
+	-- Finale: der eine Stein ist gesetzt.
+	if finaleActive then
+		finalePlacementUsed[player] = true
+	end
+
+	-- Sabotage-Erkennung: Liegt das nächste Stütz-Teil UNTER dem neuen Teil
+	-- und gehört einem ANDEREN Spieler, belastet die Platzierung primär
+	-- fremde Teile -> Instabilitäts-Cooldown. Bauen auf der Plattform oder
+	-- auf eigenen Teilen bleibt frei.
+	local support = findSupportPiece(cframe.Position, ownRadius, piece.pieceId)
+	if support ~= nil and support.ownerUserId ~= player.UserId then
+		sabotageCooldownUntil[player] = now + GameConfig.SABOTAGE_COOLDOWN_SECONDS
+		if notificationEvent ~= nil then
+			(notificationEvent :: RemoteEvent):FireClient(
+				player,
+				`⚠️ Sabotage-Platzierung auf {support.ownerName}s Teil: {GameConfig.SABOTAGE_COOLDOWN_SECONDS}s Instabilitäts-Cooldown!`,
+				"info"
+			)
+		end
+	end
 
 	local piece: Piece = {
 		pieceId = nextPieceId,
@@ -384,6 +514,12 @@ function TowerService.setBuildAllowed(allowed: boolean)
 	buildAllowed = allowed
 end
 
+-- "Letzter Stein"-Finale an/aus (RoundService).
+function TowerService.setFinaleMode(active: boolean)
+	finaleActive = active
+	table.clear(finalePlacementUsed)
+end
+
 -- Entfernt alle Teile (neue Runde).
 function TowerService.resetTower()
 	for _, piece in pieces do
@@ -394,6 +530,28 @@ function TowerService.resetTower()
 	table.clear(pieces)
 	table.clear(piecesById)
 	table.clear(lastPlaceAt)
+	table.clear(sabotageCooldownUntil)
+	table.clear(finalePlacementUsed)
+	finaleActive = false
+end
+
+-- Stabilitäts-Score 0..100 aus der mittleren Geschwindigkeit der aktiven
+-- Teile (100 = felsenfest, 0 = alles in Bewegung). Clients visualisieren.
+function TowerService.computeStabilityScore(): number
+	local totalSpeed = 0
+	local count = 0
+	for _, piece in pieces do
+		if piece.fallen or piece.petrified or piece.model.Parent == nil then
+			continue
+		end
+		totalSpeed += piece.primaryPart.AssemblyLinearVelocity.Magnitude
+		count += 1
+	end
+	if count == 0 then
+		return 100
+	end
+	local meanSpeed = totalSpeed / count
+	return math.clamp(math.floor(100 - (meanSpeed / GameConfig.STABILITY_SPEED_FOR_ZERO) * 100 + 0.5), 0, 100)
 end
 
 -- Markiert ein Teil als gefallen (ruft der CollapseService).
@@ -443,6 +601,8 @@ end
 
 function TowerService.init()
 	partPlacedEvent = Network.getEvent("PartPlaced")
+	notificationEvent = Network.getEvent("Notification")
+	stabilityEvent = Network.getEvent("StabilityChanged")
 	Network.getFunction("PlacePart").OnServerInvoke = handlePlacePart
 
 	-- Hook: der CollapseService meldet gefallene Teile zurück (kein Zyklus,
@@ -453,6 +613,8 @@ function TowerService.init()
 
 	Players.PlayerRemoving:Connect(function(player)
 		lastPlaceAt[player] = nil
+		sabotageCooldownUntil[player] = nil
+		finalePlacementUsed[player] = nil
 	end)
 
 	-- Physik-Budget von Anfang an überwachen.
@@ -460,6 +622,16 @@ function TowerService.init()
 		while true do
 			task.wait(GameConfig.PETRIFY_CHECK_SECONDS)
 			petrifyTick()
+		end
+	end)
+
+	-- Turm-Schwank-Feedback: Stabilitäts-Score an alle Clients (M4).
+	task.spawn(function()
+		while true do
+			task.wait(GameConfig.STABILITY_BROADCAST_SECONDS)
+			if stabilityEvent ~= nil then
+				(stabilityEvent :: RemoteEvent):FireAllClients(TowerService.computeStabilityScore())
+			end
 		end
 	end)
 end

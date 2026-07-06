@@ -47,6 +47,21 @@ local GameConfig = {
 
 	-- Wie oft das Live-Scoreboard während der Bauphase aktualisiert wird.
 	SCOREBOARD_REFRESH_SECONDS = 3,
+
+	-- "Letzter Stein"-Finale (Meilenstein 4): In den letzten Sekunden der
+	-- Bauphase darf jeder Spieler genau EIN Teil setzen.
+	FINALE_SECONDS = 15,
+
+	-- Sabotage-Balancing: Wer primär auf fremden Teilen baut, bekommt
+	-- einen Instabilitäts-Cooldown.
+	SABOTAGE_COOLDOWN_SECONDS = 10,
+	SABOTAGE_SUPPORT_MAX_DROP = 6, -- wie weit unter dem Ziel ein Stütz-Teil liegen darf
+
+	-- Turm-Schwank-Feedback: Server berechnet einen Stabilitäts-Score
+	-- 0..100 aus der mittleren Teil-Geschwindigkeit; Clients visualisieren
+	-- (Kamerawackeln + Knarz-Sounds).
+	STABILITY_BROADCAST_SECONDS = 1,
+	STABILITY_SPEED_FOR_ZERO = 9, -- mittlere Geschwindigkeit (Studs/s), die Score 0 bedeutet
 }
 
 return GameConfig
