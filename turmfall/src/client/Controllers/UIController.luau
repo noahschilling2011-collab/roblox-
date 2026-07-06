@@ -346,7 +346,10 @@ function UIController.init()
 
 		local timer = timerLabel :: TextLabel
 		if phase == "Lobby" then
-			if typeof(info) == "table" and typeof(info.playersNeeded) == "number" and info.playersNeeded > 0 then
+			if typeof(info) == "table" and info.soloCountdown == true and typeof(secondsLeft) == "number" then
+				timer.Text = `🧍 Solo-Start in {secondsLeft}…`
+				timer.TextSize = 17
+			elseif typeof(info) == "table" and typeof(info.playersNeeded) == "number" and info.playersNeeded > 0 then
 				timer.Text = `Warte auf {info.playersNeeded} Spieler…`
 				timer.TextSize = 16
 			elseif typeof(secondsLeft) == "number" and secondsLeft > 0 then

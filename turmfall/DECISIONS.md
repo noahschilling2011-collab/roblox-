@@ -118,3 +118,14 @@ Platzierung). Deshalb: Tippen zielt, der 🧱-Button baut.
 **D20 – Stabilitäts-Score ist die mittlere Assembly-Geschwindigkeit.**
 Simpel, ein Wert pro Sekunde über ein Remote, keine Per-Teil-Replikation.
 100 = alles ruht, 0 = mittlere Geschwindigkeit >= STABILITY_SPEED_FOR_ZERO.
+
+## Nach Release-Feedback
+
+**D21 – Solo-Modus als automatischer Fallback statt Button.** Wer allein
+im Server ist (Studio-Play, leere Server zur Randzeit), startet nach 8
+Sekunden automatisch eine Übungsrunde - ohne Menü, ohne Extra-Klick. Der
+Multiplayer-Einstieg bleibt unverändert bei 2 Spielern mit Countdown;
+joint während der Solo-Wartezeit jemand, übernimmt sofort der normale
+Countdown. Alle Systeme (Kollaps, Schuld, Punkte, Trümmer) funktionieren
+solo identisch - man kann sich selbst den Turm zerlegen und verliert dann
+genauso seinen Einsatz.

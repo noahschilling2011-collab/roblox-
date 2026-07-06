@@ -59,11 +59,12 @@ turmfall/
 1. `node turmfall/tools/build-rbxlx.mjs` ausführen (oder die fertige
    `Turmfall.rbxlx` aus dem Repo-Root nehmen).
 2. Datei in Roblox Studio öffnen.
-3. Oben **TEST → Clients and Servers → 2 Players → Start** wählen
-   (Local Server mit 2 Clients – ein Client allein bleibt in der Lobby,
-   weil Runden erst ab 2 Spielern starten).
-4. In beiden Client-Fenstern: Countdown abwarten, mit Tasten 1–3 ein Teil
-   wählen, mit der Maus zielen (grüner Ghost), klicken zum Platzieren.
+3. **Solo:** einfach ▶ Play drücken – nach kurzer Wartezeit
+   („🧍 Solo-Start in 8…") beginnt automatisch eine Übungsrunde.
+   **Multiplayer:** oben **TEST → Clients and Servers → 2 Players → Start**
+   wählen (Local Server mit 2 Clients, normaler 2-Spieler-Countdown).
+4. Mit Tasten 1–3 ein Teil wählen, mit der Maus zielen (grüner Ghost),
+   klicken zum Platzieren, R zum Drehen.
 5. Kollaps provozieren (z. B. weit außen an eine Kante stapeln): Das
    Schuld-Replay startet automatisch und zeigt den Verursacher.
 

@@ -4,8 +4,14 @@
 
 local GameConfig = {
 	-- Runden-StateMachine (RoundService).
-	LOBBY_MIN_PLAYERS = 2, -- Start ab 2 Spielern
+	LOBBY_MIN_PLAYERS = 2, -- Multiplayer-Start ab 2 Spielern
 	LOBBY_COUNTDOWN_SECONDS = 10, -- Countdown, sobald genug Spieler da sind
+
+	-- Solo-Modus: Wer allein im Server ist, startet nach kurzer Wartezeit
+	-- eine Übungsrunde (Mitspieler können jederzeit einsteigen - kommt
+	-- rechtzeitig ein zweiter Spieler, gilt der normale Countdown).
+	SOLO_MODE_ENABLED = true,
+	SOLO_START_WAIT_SECONDS = 8,
 	SETUP_SECONDS = 5, -- "Aufbau": Turm-Reset + Teleport + Startteil
 	BUILD_SECONDS = 180, -- Bauphase: 3 Minuten
 	SCORING_SECONDS = 12, -- Wertung: Leaderboard zeigen

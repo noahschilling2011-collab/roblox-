@@ -342,7 +342,18 @@ test("MonetizationCatalog: Truemmer sind erspielt und fair", function()
 	expect(debrisSkins >= 4, "zu wenige Truemmer-Skins fuer Free-Spieler: " .. debrisSkins)
 end)
 
--- 15) Polish-Konstanten (Meilenstein 4)
+-- 15) Solo-Modus
+test("GameConfig: Solo-Modus ist an und startet zuegig", function()
+	expect(GameConfig.SOLO_MODE_ENABLED == true, "Solo-Modus muss aktiviert sein")
+	expect(GameConfig.SOLO_START_WAIT_SECONDS > 0, "Solo-Wartezeit <= 0")
+	expect(
+		GameConfig.SOLO_START_WAIT_SECONDS <= GameConfig.LOBBY_COUNTDOWN_SECONDS,
+		"Solo-Start darf nicht laenger warten als der Multiplayer-Countdown"
+	)
+	expect(GameConfig.LOBBY_MIN_PLAYERS == 2, "Multiplayer-Start bleibt bei 2 Spielern")
+end)
+
+-- 16) Polish-Konstanten (Meilenstein 4)
 test("GameConfig: Finale, Sabotage und Stabilitaets-Feedback", function()
 	expect(GameConfig.FINALE_SECONDS == 15, "Finale != letzte 15 s")
 	expect(GameConfig.FINALE_SECONDS < GameConfig.BUILD_SECONDS, "Finale laenger als die Bauphase")

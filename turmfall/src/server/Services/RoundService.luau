@@ -70,31 +70,51 @@ local function teleportPlayersToPlatform()
 	end
 end
 
--- Wartet in der Lobby, bis genug Spieler da sind; bricht der Countdown
--- ab, wenn wieder zu wenige da sind. Blockiert bis zum Rundenstart.
+-- Wartet in der Lobby bis zum Rundenstart. Zwei Wege hinaus:
+--   - Multiplayer: ab LOBBY_MIN_PLAYERS läuft der normale Countdown.
+--   - Solo-Modus: Wer allein ist, startet nach SOLO_START_WAIT_SECONDS
+--     eine Übungsrunde (joint rechtzeitig jemand, gilt der Countdown).
 local function runLobby()
 	setPhase("Lobby")
 	while true do
-		-- Auf Mindestspielerzahl warten.
-		while #Players:GetPlayers() < GameConfig.LOBBY_MIN_PLAYERS do
-			broadcastState(0, { playersNeeded = GameConfig.LOBBY_MIN_PLAYERS - #Players:GetPlayers() })
-			task.wait(1)
-		end
+		local playerCount = #Players:GetPlayers()
 
-		-- Countdown; abbrechen, wenn jemand geht.
-		local aborted = false
-		for secondsLeft = GameConfig.LOBBY_COUNTDOWN_SECONDS, 1, -1 do
-			if #Players:GetPlayers() < GameConfig.LOBBY_MIN_PLAYERS then
-				aborted = true
-				break
+		if playerCount >= GameConfig.LOBBY_MIN_PLAYERS then
+			-- Multiplayer-Countdown; abbrechen, wenn jemand geht.
+			local aborted = false
+			for secondsLeft = GameConfig.LOBBY_COUNTDOWN_SECONDS, 1, -1 do
+				if #Players:GetPlayers() < GameConfig.LOBBY_MIN_PLAYERS then
+					aborted = true
+					break
+				end
+				broadcastState(secondsLeft, { countdown = true })
+				task.wait(1)
 			end
-			broadcastState(secondsLeft, { countdown = true })
+			if not aborted then
+				return
+			end
+			notifyAll("Zu wenige Spieler - Countdown abgebrochen.", "error")
+		elseif playerCount >= 1 and GameConfig.SOLO_MODE_ENABLED then
+			-- Solo-Anlauf: kurz warten, ob noch jemand einsteigt.
+			local interrupted = false
+			for secondsLeft = GameConfig.SOLO_START_WAIT_SECONDS, 1, -1 do
+				local currentCount = #Players:GetPlayers()
+				if currentCount >= GameConfig.LOBBY_MIN_PLAYERS or currentCount == 0 then
+					interrupted = true -- Mitspieler da bzw. alle weg: neu entscheiden
+					break
+				end
+				broadcastState(secondsLeft, { soloCountdown = true })
+				task.wait(1)
+			end
+			if not interrupted then
+				notifyAll("🧍 Solo-Runde! Übe den Turmbau - Mitspieler können jederzeit einsteigen.", "info")
+				return
+			end
+		else
+			-- Leerer Server oder Solo-Modus deaktiviert: auf Spieler warten.
+			broadcastState(0, { playersNeeded = math.max(GameConfig.LOBBY_MIN_PLAYERS - playerCount, 1) })
 			task.wait(1)
 		end
-		if not aborted then
-			return
-		end
-		notifyAll("Zu wenige Spieler - Countdown abgebrochen.", "error")
 	end
 end
 
