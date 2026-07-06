@@ -65,6 +65,25 @@ local GameConfig = {
 	-- (1 Objekt pro Takt; Verkaufen am SellPad bleibt Handarbeit).
 	AUTO_HARVEST_INTERVAL_SECONDS = 1,
 
+	-- Spannung & Glücksmomente (variable Belohnungen halten den Loop frisch):
+	-- Goldene Objekte: seltener Spawn mit vielfachem Wert und Gold-Optik.
+	GOLDEN_OBJECT_CHANCE = 0.05, -- Chance pro Spawn
+	GOLDEN_OBJECT_VALUE_FACTOR = 8,
+	-- Sammel-Kette: schnelles Sammeln stapelt einen Wert-Bonus.
+	COMBO_WINDOW_SECONDS = 3, -- so lange hält die Kette nach dem letzten Fund
+	COMBO_BONUS_PER_STACK = 0.02, -- +2% Objektwert pro Ketten-Stufe
+	COMBO_MAX_STACKS = 25, -- Deckel: +50%
+	-- Kritischer Verkauf: seltener Jackpot-Moment am Verkaufs-Pad.
+	CRIT_SALE_CHANCE = 0.1,
+	CRIT_SALE_FACTOR = 2,
+	-- Meteoriten-Einschlag: Überraschungs-Event auf der eigenen Insel.
+	METEOR_CHECK_INTERVAL_SECONDS = 30, -- wie oft pro Spieler gewürfelt wird
+	METEOR_CHANCE_PER_CHECK = 0.18, -- ~ alle 2-3 Minuten ein Meteor
+	METEOR_CRYSTAL_COUNT = 4, -- Kristalle pro Einschlag
+	METEOR_CRYSTAL_VALUE = 25, -- Basis-Energie pro Kristall (Multiplikatoren wirken)
+	METEOR_CRYSTAL_LIFETIME_SECONDS = 25, -- danach zerfallen die Kristalle
+	METEOR_CLEAR_BONUS = 50, -- Bonus, wenn ALLE Kristalle eingesammelt wurden
+
 	-- Planetenname
 	PLANET_NAME_MAX_LENGTH = 24,
 

@@ -286,6 +286,30 @@ local function checkHarvest()
 	-- Biom-Spezialmechaniken (Eiswelt schmilzt, Vulkan glüht) sind Canon.
 	check(BiomeConfig.Harvest["eiswelt"].meltSeconds ~= nil, "Eiswelt braucht die Schmelz-Mechanik")
 	check(BiomeConfig.Harvest["vulkan"].hotSeconds ~= nil, "Vulkan braucht die Glut-Mechanik")
+
+	-- Spannungs-Mechaniken: Chancen in sinnvollen Grenzen, Boni gedeckelt.
+	check(
+		GameConfig.GOLDEN_OBJECT_CHANCE > 0 and GameConfig.GOLDEN_OBJECT_CHANCE <= 0.2,
+		"GOLDEN_OBJECT_CHANCE muss in (0, 0.2] liegen"
+	)
+	check(GameConfig.GOLDEN_OBJECT_VALUE_FACTOR >= 2, "GOLDEN_OBJECT_VALUE_FACTOR muss >= 2 sein")
+	check(GameConfig.COMBO_WINDOW_SECONDS > 0, "COMBO_WINDOW_SECONDS muss > 0 sein")
+	check(
+		GameConfig.COMBO_BONUS_PER_STACK * GameConfig.COMBO_MAX_STACKS <= 1,
+		"Combo-Bonus darf +100% nicht übersteigen"
+	)
+	check(
+		GameConfig.CRIT_SALE_CHANCE > 0 and GameConfig.CRIT_SALE_CHANCE <= 0.5,
+		"CRIT_SALE_CHANCE muss in (0, 0.5] liegen"
+	)
+	check(GameConfig.CRIT_SALE_FACTOR >= 2, "CRIT_SALE_FACTOR muss >= 2 sein")
+	check(
+		GameConfig.METEOR_CHANCE_PER_CHECK > 0 and GameConfig.METEOR_CHANCE_PER_CHECK < 1,
+		"METEOR_CHANCE_PER_CHECK muss in (0, 1) liegen"
+	)
+	check(GameConfig.METEOR_CRYSTAL_COUNT >= 1, "METEOR_CRYSTAL_COUNT muss >= 1 sein")
+	check(GameConfig.METEOR_CRYSTAL_VALUE > 0, "METEOR_CRYSTAL_VALUE muss > 0 sein")
+	check(GameConfig.METEOR_CRYSTAL_LIFETIME_SECONDS >= 10, "Meteor-Kristalle brauchen >= 10s Lebenszeit")
 	check(GameConfig.BASE_MAGNET_RADIUS > 0, "BASE_MAGNET_RADIUS muss > 0 sein")
 	check(GameConfig.BASE_BACKPACK_CAPACITY >= 5, "BASE_BACKPACK_CAPACITY muss >= 5 sein")
 

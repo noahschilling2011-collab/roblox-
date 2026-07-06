@@ -1,9 +1,9 @@
 <roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4">
-<Item class="Workspace" referent="PF50">
+<Item class="Workspace" referent="PF51">
 <Properties>
 <string name="Name">Workspace</string>
 </Properties>
-<Item class="SpawnLocation" referent="PF49">
+<Item class="SpawnLocation" referent="PF50">
 <Properties>
 <string name="Name">VillaSpawn</string>
 <bool name="Anchored">true</bool>
@@ -14,7 +14,7 @@
 </Properties>
 </Item>
 </Item>
-<Item class="ReplicatedStorage" referent="PF51">
+<Item class="ReplicatedStorage" referent="PF52">
 <Properties>
 <string name="Name">ReplicatedStorage</string>
 </Properties>
@@ -671,6 +671,25 @@ local GameConfig = {
 	-- Auto-Harvest (Gamepass): Takt des automatischen Einsammelns
 	-- (1 Objekt pro Takt; Verkaufen am SellPad bleibt Handarbeit).
 	AUTO_HARVEST_INTERVAL_SECONDS = 1,
+
+	-- Spannung &amp; Glücksmomente (variable Belohnungen halten den Loop frisch):
+	-- Goldene Objekte: seltener Spawn mit vielfachem Wert und Gold-Optik.
+	GOLDEN_OBJECT_CHANCE = 0.05, -- Chance pro Spawn
+	GOLDEN_OBJECT_VALUE_FACTOR = 8,
+	-- Sammel-Kette: schnelles Sammeln stapelt einen Wert-Bonus.
+	COMBO_WINDOW_SECONDS = 3, -- so lange hält die Kette nach dem letzten Fund
+	COMBO_BONUS_PER_STACK = 0.02, -- +2% Objektwert pro Ketten-Stufe
+	COMBO_MAX_STACKS = 25, -- Deckel: +50%
+	-- Kritischer Verkauf: seltener Jackpot-Moment am Verkaufs-Pad.
+	CRIT_SALE_CHANCE = 0.1,
+	CRIT_SALE_FACTOR = 2,
+	-- Meteoriten-Einschlag: Überraschungs-Event auf der eigenen Insel.
+	METEOR_CHECK_INTERVAL_SECONDS = 30, -- wie oft pro Spieler gewürfelt wird
+	METEOR_CHANCE_PER_CHECK = 0.18, -- ~ alle 2-3 Minuten ein Meteor
+	METEOR_CRYSTAL_COUNT = 4, -- Kristalle pro Einschlag
+	METEOR_CRYSTAL_VALUE = 25, -- Basis-Energie pro Kristall (Multiplikatoren wirken)
+	METEOR_CRYSTAL_LIFETIME_SECONDS = 25, -- danach zerfallen die Kristalle
+	METEOR_CLEAR_BONUS = 50, -- Bonus, wenn ALLE Kristalle eingesammelt wurden
 
 	-- Planetenname
 	PLANET_NAME_MAX_LENGTH = 24,
@@ -1542,11 +1561,11 @@ return WeightedRandom
 </Item>
 </Item>
 </Item>
-<Item class="ServerScriptService" referent="PF52">
+<Item class="ServerScriptService" referent="PF53">
 <Properties>
 <string name="Name">ServerScriptService</string>
 </Properties>
-<Item class="Script" referent="PF33">
+<Item class="Script" referent="PF34">
 <Properties>
 <string name="Name">Server</string>
 <ProtectedString name="Source">--!strict
@@ -1578,6 +1597,7 @@ local SERVICE_STARTUP_ORDER = {
 	"MonetizationService",
 	"LeaderboardService",
 	"LobbyService", -- Spawn-Villa (braucht PlanetService + LeaderboardService)
+	"MeteorService", -- Meteor-Events auf der eigenen Insel
 	"DailyRewardService",
 	"QuestService",
 	"TutorialService",
@@ -1601,7 +1621,7 @@ end
 print("[PlanetForge] Server bereit")
 </ProtectedString>
 </Properties>
-<Item class="Folder" referent="PF32">
+<Item class="Folder" referent="PF33">
 <Properties>
 <string name="Name">Services</string>
 </Properties>
@@ -3466,6 +3486,9 @@ local ISLAND_ACTIVITY_RADIUS = 110
 -- Glut-Optik für Vulkan-Objekte, solange sie zu heiß zum Anfassen sind.
 local HOT_COLOR = Color3.fromRGB(255, 176, 70)
 
+-- Gold-Optik für die seltenen Glücks-Objekte.
+local GOLDEN_COLOR = Color3.fromRGB(255, 208, 70)
+
 -- Ein aktives Sammel-Objekt auf einer Insel.
 type ActiveObject = {
 	part: BasePart,
@@ -3473,6 +3496,13 @@ type ActiveObject = {
 	color: Color3,
 	meltAt: number?, -- Eiswelt: os.clock()-Zeitpunkt, an dem es schmilzt
 	hotUntil: number?, -- Vulkan: bis dahin glühend heiß (nicht sammelbar)
+	golden: boolean?, -- seltenes Gold-Objekt (mehrfacher Wert)
+}
+
+-- Sammel-Kette pro Spieler: schnelles Sammeln stapelt einen Wert-Bonus.
+type ComboState = {
+	count: number,
+	lastCollectAt: number,
 }
 
 -- Spawn-Zustand pro Spieler und Zone.
@@ -3483,6 +3513,7 @@ type ZoneSpawnState = {
 
 local zoneStates: { [Player]: { [number]: ZoneSpawnState } } = {}
 local lastSellAt: { [Player]: number } = {}
+local combos: { [Player]: ComboState } = {}
 
 local objectCollectedEvent: RemoteEvent? = nil
 local backpackChangedEvent: RemoteEvent? = nil
@@ -3594,6 +3625,49 @@ local function createObjectPart(zonePart: BasePart, harvest: BiomeConfig.Harvest
 	return part
 end
 
+-- Verwandelt ein frisch gespawntes Objekt in ein seltenes GOLD-Objekt:
+-- deutlich größer Wert, goldene Neon-Optik, Funkeln und Licht.
+local function makeGolden(part: BasePart)
+	part.Color = GOLDEN_COLOR
+	part.Material = Enum.Material.Neon
+	part.Size = part.Size * 1.25
+
+	local light = Instance.new("PointLight")
+	light.Name = "GoldLight"
+	light.Color = GOLDEN_COLOR
+	light.Range = 10
+	light.Brightness = 1.2
+	light.Parent = part
+
+	local sparkle = Instance.new("ParticleEmitter")
+	sparkle.Name = "GoldSparkle"
+	sparkle.Color = ColorSequence.new(GOLDEN_COLOR, Color3.new(1, 1, 1))
+	sparkle.LightEmission = 1
+	sparkle.Rate = 6
+	sparkle.Lifetime = NumberRange.new(0.8, 1.4)
+	sparkle.Speed = NumberRange.new(1.5, 3)
+	sparkle.SpreadAngle = Vector2.new(180, 180)
+	sparkle.Size = NumberSequence.new(0.35)
+	sparkle.Parent = part
+end
+
+-- Aktuelle Ketten-Stufe eines Spielers; zählt weiter, wenn der letzte Fund
+-- innerhalb des Zeitfensters lag, sonst beginnt die Kette neu bei 1.
+local function bumpCombo(player: Player, now: number): number
+	local state = combos[player]
+	if state == nil then
+		state = { count = 0, lastCollectAt = 0 }
+		combos[player] = state
+	end
+	if now - state.lastCollectAt &lt;= GameConfig.COMBO_WINDOW_SECONDS then
+		state.count = math.min(state.count + 1, GameConfig.COMBO_MAX_STACKS)
+	else
+		state.count = 1
+	end
+	state.lastCollectAt = now
+	return state.count
+end
+
 -- Biom-Spezialmechaniken pro Takt: Glutsteine kühlen sichtbar ab,
 -- Eis-Objekte schmelzen nach ihrer Lebenszeit (kurzes Schrumpfen).
 local function updateSpecialObjects(state: ZoneSpawnState, harvest: BiomeConfig.HarvestDef, now: number)
@@ -3605,8 +3679,13 @@ local function updateSpecialObjects(state: ZoneSpawnState, harvest: BiomeConfig.
 
 		if object.hotUntil ~= nil and now &gt;= object.hotUntil then
 			object.hotUntil = nil
-			object.part.Material = Enum.Material.Slate
-			object.part.Color = harvest.color
+			-- Goldene Glutsteine behalten nach dem Abkühlen ihre Gold-Optik.
+			if object.golden == true then
+				object.part.Color = GOLDEN_COLOR
+			else
+				object.part.Material = Enum.Material.Slate
+				object.part.Color = harvest.color
+			end
 			local heat = object.part:FindFirstChild("HeatLight")
 			if heat ~= nil then
 				heat:Destroy()
@@ -3682,12 +3761,21 @@ local function spawnTick(player: Player)
 		end
 
 		state.lastSpawnAt = now
+		local part = createObjectPart(zonePart, harvest)
+
+		-- Glücksmoment: seltene GOLD-Objekte mit vielfachem Wert.
+		local golden = rng:NextNumber() &lt; GameConfig.GOLDEN_OBJECT_CHANCE
+		if golden then
+			makeGolden(part)
+		end
+
 		table.insert(state.objects, {
-			part = createObjectPart(zonePart, harvest),
-			value = harvest.value,
-			color = harvest.color,
+			part = part,
+			value = if golden then harvest.value * GameConfig.GOLDEN_OBJECT_VALUE_FACTOR else harvest.value,
+			color = if golden then GOLDEN_COLOR else harvest.color,
 			meltAt = if harvest.meltSeconds ~= nil then now + harvest.meltSeconds :: number else nil,
 			hotUntil = if harvest.hotSeconds ~= nil then now + harvest.hotSeconds :: number else nil,
+			golden = golden,
 		})
 	end
 end
@@ -3735,6 +3823,12 @@ local function collectTick(player: Player)
 		profile.backpack.value = 0
 		profile.stats.sales += 1
 
+		-- Kritischer Verkauf: seltener Jackpot-Moment mit doppeltem Ertrag.
+		local critical = rng:NextNumber() &lt; GameConfig.CRIT_SALE_CHANCE
+		if critical then
+			sellValue *= GameConfig.CRIT_SALE_FACTOR
+		end
+
 		-- Progressions-Multiplikator (Biome/Upgrades/Rebirth/Pets) auf den
 		-- Verkaufswert; grantEnergy legt Event-Multiplikatoren obendrauf.
 		local multiplier = ProgressionConfig.getTotalMultiplier(
@@ -3747,7 +3841,7 @@ local function collectTick(player: Player)
 		DataService.markDirty(player)
 		fireBackpackChanged(player, profile)
 		if soldBackpackEvent ~= nil then
-			(soldBackpackEvent :: RemoteEvent):FireClient(player, gained or sellValue, itemsSold)
+			(soldBackpackEvent :: RemoteEvent):FireClient(player, gained or sellValue, itemsSold, critical)
 		end
 	end
 
@@ -3775,15 +3869,26 @@ local function collectTick(player: Player)
 				continue
 			end
 
-			-- Einsammeln.
+			-- Einsammeln; die Sammel-Kette erhöht den Wert (schnell = mehr).
+			local comboCount = bumpCombo(player, now)
+			local comboBonus = 1 + comboCount * GameConfig.COMBO_BONUS_PER_STACK
+			local value = math.max(math.floor(object.value * comboBonus), object.value)
+
 			table.remove(state.objects, index)
 			profile.backpack.items += 1
-			profile.backpack.value += object.value
+			profile.backpack.value += value
 			profile.stats.collected += 1
 			collectedAny = true
 
 			if objectCollectedEvent ~= nil then
-				(objectCollectedEvent :: RemoteEvent):FireClient(player, object.part.Position, object.value, object.color)
+				(objectCollectedEvent :: RemoteEvent):FireClient(
+					player,
+					object.part.Position,
+					value,
+					object.color,
+					comboCount,
+					object.golden == true
+				)
 			end
 			object.part:Destroy()
 
@@ -3834,7 +3939,15 @@ local function autoCollectOne(player: Player)
 			profile.stats.collected += 1
 
 			if objectCollectedEvent ~= nil then
-				(objectCollectedEvent :: RemoteEvent):FireClient(player, object.part.Position, object.value, object.color)
+				-- Ohne Ketten-Stufe (der Auto-Sammler ist passiv), aber mit Gold-Flag.
+				(objectCollectedEvent :: RemoteEvent):FireClient(
+					player,
+					object.part.Position,
+					object.value,
+					object.color,
+					nil,
+					object.golden == true
+				)
 			end
 			object.part:Destroy()
 
@@ -3934,6 +4047,7 @@ function HarvestService.init()
 	Players.PlayerRemoving:Connect(function(player)
 		zoneStates[player] = nil
 		lastSellAt[player] = nil
+		combos[player] = nil
 	end)
 
 	for _, player in Players:GetPlayers() do
@@ -4966,6 +5080,346 @@ return LootService
 </Item>
 <Item class="ModuleScript" referent="PF24">
 <Properties>
+<string name="Name">MeteorService</string>
+<ProtectedString name="Source">--!strict
+-- MeteorService: Überraschungs-Event auf der eigenen Insel.
+--
+-- In unregelmäßigen Abständen (GameConfig.METEOR_*) schlägt ein Meteor auf
+-- der Insel eines anwesenden Spielers ein: Warnung als Toast, sichtbarer
+-- Feuerball-Sturz, Einschlag mit Partikel-Burst - und zurück bleiben
+-- glühende Meteor-Kristalle, die nur kurz existieren. Wer schnell genug
+-- alle einsammelt, bekommt einen Extra-Bonus. Die Energie wird über
+-- EnergyService.grantEnergy gutgeschrieben (alle Multiplikatoren wirken).
+--
+-- Serverseitig autoritativ: Spawn-Ort, Lebenszeit und Einsammel-Distanz
+-- (Magnet-Radius aus dem Profil) entscheidet ausschließlich der Server.
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TweenService = game:GetService("TweenService")
+local Workspace = game:GetService("Workspace")
+
+local Remotes = require(ReplicatedStorage.Shared.Remotes)
+local GameConfig = require(ReplicatedStorage.Shared.Config.GameConfig)
+
+local DataService = require(script.Parent.DataService)
+local EnergyService = require(script.Parent.EnergyService)
+local HarvestService = require(script.Parent.HarvestService)
+local PlanetService = require(script.Parent.PlanetService)
+
+local METEOR_COLOR = Color3.fromRGB(255, 140, 50)
+local CRYSTAL_COLOR = Color3.fromRGB(255, 170, 90)
+
+-- Einschlagpunkt: im Grasring zwischen Plaza und Biom-Zonen.
+local IMPACT_RADIUS_MIN = 20
+local IMPACT_RADIUS_MAX = 40
+local IMPACT_HEIGHT = 110 -- Starthöhe des Feuerballs über der Insel
+local FALL_SECONDS = 1.4
+
+-- Nur wer wirklich auf seiner Insel steht, bekommt einen Meteor.
+local PRESENCE_RADIUS = 100
+local COLLECT_TICK_SECONDS = 0.3
+
+-- Ein aktiver Kristall eines Einschlags.
+type Crystal = {
+	part: BasePart,
+	expiresAt: number,
+}
+
+-- Aktiver Einschlag pro Spieler (maximal einer gleichzeitig).
+type MeteorState = {
+	crystals: { Crystal },
+	totalSpawned: number,
+	collected: number,
+}
+
+local activeMeteors: { [Player]: MeteorState } = {}
+
+local objectCollectedEvent: RemoteEvent? = nil
+local notificationEvent: RemoteEvent? = nil
+
+local rng = Random.new()
+
+local MeteorService = {}
+
+local function notify(player: Player, message: string, kind: string)
+	if notificationEvent ~= nil then
+		(notificationEvent :: RemoteEvent):FireClient(player, message, kind)
+	end
+end
+
+-- Charakter-Wurzel eines Spielers (nil, wenn nicht bereit).
+local function getRoot(player: Player): BasePart?
+	local character = player.Character
+	if character == nil then
+		return nil
+	end
+	local root = character:FindFirstChild("HumanoidRootPart")
+	if root ~= nil and root:IsA("BasePart") then
+		return root
+	end
+	return nil
+end
+
+-- Kurzlebiger Sound an einer Position (Engine-Sound, zerstört sich selbst).
+local function playSoundAt(parent: Instance, soundId: string, volume: number, speed: number)
+	local sound = Instance.new("Sound")
+	sound.SoundId = soundId
+	sound.Volume = volume
+	sound.PlaybackSpeed = speed
+	sound.RollOffMaxDistance = 220
+	sound.Parent = parent
+	sound:Play()
+	task.delay(3, function()
+		sound:Destroy()
+	end)
+end
+
+-- Erzeugt einen glühenden Meteor-Kristall am Einschlagpunkt.
+local function spawnCrystal(parent: Instance, position: Vector3): BasePart
+	local crystal = Instance.new("Part")
+	crystal.Name = "MeteorKristall"
+	crystal.Size = Vector3.new(1.6, 2.6, 1.6)
+	crystal.Color = CRYSTAL_COLOR
+	crystal.Material = Enum.Material.Neon
+	crystal.Anchored = true
+	crystal.CanCollide = false
+	crystal.CanQuery = false
+	crystal.CanTouch = false
+	crystal.CFrame = CFrame.new(position)
+		* CFrame.Angles(rng:NextNumber(-0.3, 0.3), rng:NextNumber(0, math.pi), rng:NextNumber(-0.3, 0.3))
+
+	local light = Instance.new("PointLight")
+	light.Color = CRYSTAL_COLOR
+	light.Range = 9
+	light.Brightness = 1
+	light.Parent = crystal
+
+	crystal.Parent = parent
+	return crystal
+end
+
+-- Lässt den Feuerball fallen und legt danach die Kristalle aus.
+local function launchMeteor(player: Player, origin: CFrame)
+	local angle = rng:NextNumber(0, 2 * math.pi)
+	local distance = rng:NextNumber(IMPACT_RADIUS_MIN, IMPACT_RADIUS_MAX)
+	-- Y: Inseloberkante (+2) plus etwas Luft.
+	local impactPosition = origin.Position + Vector3.new(math.cos(angle) * distance, 3, math.sin(angle) * distance)
+
+	notify(player, "☄️ Achtung: Ein Meteor stürzt auf deine Insel!", "info")
+
+	-- Feuerball mit Leucht-Schweif.
+	local meteor = Instance.new("Part")
+	meteor.Name = "Meteor"
+	meteor.Shape = Enum.PartType.Ball
+	meteor.Size = Vector3.new(5, 5, 5)
+	meteor.Color = METEOR_COLOR
+	meteor.Material = Enum.Material.Neon
+	meteor.Anchored = true
+	meteor.CanCollide = false
+	meteor.CanQuery = false
+	meteor.CanTouch = false
+	meteor.CFrame = CFrame.new(impactPosition + Vector3.new(12, IMPACT_HEIGHT, 12))
+
+	local trail = Instance.new("ParticleEmitter")
+	trail.Color = ColorSequence.new(METEOR_COLOR, Color3.fromRGB(120, 60, 30))
+	trail.LightEmission = 0.8
+	trail.Rate = 40
+	trail.Lifetime = NumberRange.new(0.5, 1)
+	trail.Speed = NumberRange.new(1, 3)
+	trail.Size = NumberSequence.new(1.4)
+	trail.Parent = meteor
+
+	local glow = Instance.new("PointLight")
+	glow.Color = METEOR_COLOR
+	glow.Range = 24
+	glow.Brightness = 1.5
+	glow.Parent = meteor
+
+	meteor.Parent = Workspace
+	playSoundAt(meteor, "rbxasset://sounds/swoosh.wav", 0.8, 0.6)
+
+	local fall = TweenService:Create(
+		meteor,
+		TweenInfo.new(FALL_SECONDS, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
+		{ CFrame = CFrame.new(impactPosition) }
+	)
+	fall:Play()
+	fall.Completed:Once(function()
+		-- Einschlag: Knall, Lichtblitz, Partikel-Burst - dann Kristalle.
+		playSoundAt(meteor, "rbxasset://sounds/snap.mp3", 1, 0.55)
+		local burst = Instance.new("ParticleEmitter")
+		burst.Color = ColorSequence.new(METEOR_COLOR, Color3.new(1, 1, 1))
+		burst.LightEmission = 1
+		burst.Rate = 0
+		burst.Lifetime = NumberRange.new(0.5, 1)
+		burst.Speed = NumberRange.new(12, 22)
+		burst.SpreadAngle = Vector2.new(180, 180)
+		burst.Size = NumberSequence.new(1)
+		burst.Parent = meteor
+		burst:Emit(40)
+
+		task.delay(1.2, function()
+			meteor:Destroy()
+		end)
+
+		-- Spieler könnte während des Sturzes gegangen sein.
+		if player.Parent == nil then
+			return
+		end
+
+		-- Kristalle im Kreis um den Einschlagpunkt (überleben nur kurz).
+		local plotFolder = Workspace:FindFirstChild("PlanetPlots")
+		local parent: Instance = if plotFolder ~= nil then plotFolder else Workspace
+		local state: MeteorState = {
+			crystals = {},
+			totalSpawned = GameConfig.METEOR_CRYSTAL_COUNT,
+			collected = 0,
+		}
+		for index = 1, GameConfig.METEOR_CRYSTAL_COUNT do
+			local crystalAngle = (index / GameConfig.METEOR_CRYSTAL_COUNT) * 2 * math.pi + rng:NextNumber(-0.4, 0.4)
+			local crystalDistance = rng:NextNumber(3, 6.5)
+			local position = impactPosition
+				+ Vector3.new(math.cos(crystalAngle) * crystalDistance, 0.4, math.sin(crystalAngle) * crystalDistance)
+			table.insert(state.crystals, {
+				part = spawnCrystal(parent, position),
+				expiresAt = os.clock() + GameConfig.METEOR_CRYSTAL_LIFETIME_SECONDS,
+			})
+		end
+		activeMeteors[player] = state
+		notify(
+			player,
+			`☄️ Meteor eingeschlagen! Sammle {GameConfig.METEOR_CRYSTAL_COUNT} Kristalle, bevor sie zerfallen!`,
+			"success"
+		)
+	end)
+end
+
+-- Ein Sammel-/Zerfalls-Takt für die Kristalle eines Spielers.
+local function crystalTick(player: Player, state: MeteorState)
+	local profile = DataService.getProfile(player)
+	local root = getRoot(player)
+	local now = os.clock()
+
+	for index = #state.crystals, 1, -1 do
+		local crystal = state.crystals[index]
+
+		if crystal.part.Parent == nil then
+			table.remove(state.crystals, index)
+			continue
+		end
+
+		-- Zerfall: Kristall schrumpft sichtbar weg.
+		if now &gt;= crystal.expiresAt then
+			table.remove(state.crystals, index)
+			local part = crystal.part
+			local tween = TweenService:Create(
+				part,
+				TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
+				{ Size = part.Size * 0.05, Transparency = 1 }
+			)
+			tween:Play()
+			tween.Completed:Once(function()
+				part:Destroy()
+			end)
+			continue
+		end
+
+		-- Einsammeln über den Magnet-Radius des Profils.
+		if profile ~= nil and root ~= nil then
+			local radius = HarvestService.getMagnetRadius(profile)
+			if (crystal.part.Position - root.Position).Magnitude &lt;= radius then
+				table.remove(state.crystals, index)
+				state.collected += 1
+
+				local gained = EnergyService.grantEnergy(player, GameConfig.METEOR_CRYSTAL_VALUE)
+				profile.stats.collected += 1
+				DataService.markDirty(player)
+
+				if objectCollectedEvent ~= nil then
+					(objectCollectedEvent :: RemoteEvent):FireClient(
+						player,
+						crystal.part.Position,
+						gained,
+						CRYSTAL_COLOR,
+						nil,
+						true -- Gold-Juice auch für Meteor-Kristalle
+					)
+				end
+				crystal.part:Destroy()
+
+				-- Alle erwischt? Extra-Bonus für den vollen Abbau.
+				if state.collected &gt;= state.totalSpawned then
+					local bonus = EnergyService.grantEnergy(player, GameConfig.METEOR_CLEAR_BONUS)
+					notify(player, `☄️ Meteor komplett abgebaut! Bonus: +{bonus} Energie! 🎉`, "success")
+				end
+			end
+		end
+	end
+
+	if #state.crystals == 0 then
+		activeMeteors[player] = nil
+	end
+end
+
+function MeteorService.init()
+	objectCollectedEvent = Remotes.getEvent("ObjectCollected")
+	notificationEvent = Remotes.getEvent("Notification")
+
+	Players.PlayerRemoving:Connect(function(player)
+		local state = activeMeteors[player]
+		if state ~= nil then
+			for _, crystal in state.crystals do
+				if crystal.part.Parent ~= nil then
+					crystal.part:Destroy()
+				end
+			end
+		end
+		activeMeteors[player] = nil
+	end)
+
+	-- Würfel-Schleife: entscheidet pro Spieler, ob ein Meteor kommt.
+	task.spawn(function()
+		while true do
+			task.wait(GameConfig.METEOR_CHECK_INTERVAL_SECONDS)
+			for _, player in Players:GetPlayers() do
+				if activeMeteors[player] ~= nil then
+					continue -- es liegen noch Kristalle
+				end
+				if rng:NextNumber() &gt;= GameConfig.METEOR_CHANCE_PER_CHECK then
+					continue
+				end
+				local origin = PlanetService.getPlotOrigin(player)
+				local root = getRoot(player)
+				if origin == nil or root == nil then
+					continue
+				end
+				-- Nur wenn der Spieler wirklich auf seiner Insel steht.
+				if (root.Position - origin.Position).Magnitude &gt; PRESENCE_RADIUS then
+					continue
+				end
+				launchMeteor(player, origin)
+			end
+		end
+	end)
+
+	-- Sammel-/Zerfalls-Schleife für aktive Kristalle.
+	task.spawn(function()
+		while true do
+			task.wait(COLLECT_TICK_SECONDS)
+			for player, state in activeMeteors do
+				crystalTick(player, state)
+			end
+		end
+	end)
+end
+
+return MeteorService
+</ProtectedString>
+</Properties>
+</Item>
+<Item class="ModuleScript" referent="PF25">
+<Properties>
 <string name="Name">MonetizationService</string>
 <ProtectedString name="Source">--!strict
 -- MonetizationService: Robux-Käufe (Gamepässe + Developer Products).
@@ -5542,7 +5996,7 @@ return MonetizationService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="PF25">
+<Item class="ModuleScript" referent="PF26">
 <Properties>
 <string name="Name">PlanetService</string>
 <ProtectedString name="Source">--!strict
@@ -6983,7 +7437,7 @@ return PlanetService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="PF26">
+<Item class="ModuleScript" referent="PF27">
 <Properties>
 <string name="Name">ProgressionService</string>
 <ProtectedString name="Source">--!strict
@@ -7170,7 +7624,7 @@ return ProgressionService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="PF27">
+<Item class="ModuleScript" referent="PF28">
 <Properties>
 <string name="Name">QuestService</string>
 <ProtectedString name="Source">--!strict
@@ -7337,7 +7791,7 @@ return QuestService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="PF28">
+<Item class="ModuleScript" referent="PF29">
 <Properties>
 <string name="Name">SelfCheckService</string>
 <ProtectedString name="Source">--!strict
@@ -7628,6 +8082,30 @@ local function checkHarvest()
 	-- Biom-Spezialmechaniken (Eiswelt schmilzt, Vulkan glüht) sind Canon.
 	check(BiomeConfig.Harvest["eiswelt"].meltSeconds ~= nil, "Eiswelt braucht die Schmelz-Mechanik")
 	check(BiomeConfig.Harvest["vulkan"].hotSeconds ~= nil, "Vulkan braucht die Glut-Mechanik")
+
+	-- Spannungs-Mechaniken: Chancen in sinnvollen Grenzen, Boni gedeckelt.
+	check(
+		GameConfig.GOLDEN_OBJECT_CHANCE &gt; 0 and GameConfig.GOLDEN_OBJECT_CHANCE &lt;= 0.2,
+		"GOLDEN_OBJECT_CHANCE muss in (0, 0.2] liegen"
+	)
+	check(GameConfig.GOLDEN_OBJECT_VALUE_FACTOR &gt;= 2, "GOLDEN_OBJECT_VALUE_FACTOR muss &gt;= 2 sein")
+	check(GameConfig.COMBO_WINDOW_SECONDS &gt; 0, "COMBO_WINDOW_SECONDS muss &gt; 0 sein")
+	check(
+		GameConfig.COMBO_BONUS_PER_STACK * GameConfig.COMBO_MAX_STACKS &lt;= 1,
+		"Combo-Bonus darf +100% nicht übersteigen"
+	)
+	check(
+		GameConfig.CRIT_SALE_CHANCE &gt; 0 and GameConfig.CRIT_SALE_CHANCE &lt;= 0.5,
+		"CRIT_SALE_CHANCE muss in (0, 0.5] liegen"
+	)
+	check(GameConfig.CRIT_SALE_FACTOR &gt;= 2, "CRIT_SALE_FACTOR muss &gt;= 2 sein")
+	check(
+		GameConfig.METEOR_CHANCE_PER_CHECK &gt; 0 and GameConfig.METEOR_CHANCE_PER_CHECK &lt; 1,
+		"METEOR_CHANCE_PER_CHECK muss in (0, 1) liegen"
+	)
+	check(GameConfig.METEOR_CRYSTAL_COUNT &gt;= 1, "METEOR_CRYSTAL_COUNT muss &gt;= 1 sein")
+	check(GameConfig.METEOR_CRYSTAL_VALUE &gt; 0, "METEOR_CRYSTAL_VALUE muss &gt; 0 sein")
+	check(GameConfig.METEOR_CRYSTAL_LIFETIME_SECONDS &gt;= 10, "Meteor-Kristalle brauchen &gt;= 10s Lebenszeit")
 	check(GameConfig.BASE_MAGNET_RADIUS &gt; 0, "BASE_MAGNET_RADIUS muss &gt; 0 sein")
 	check(GameConfig.BASE_BACKPACK_CAPACITY &gt;= 5, "BASE_BACKPACK_CAPACITY muss &gt;= 5 sein")
 
@@ -7761,7 +8239,7 @@ return SelfCheckService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="PF29">
+<Item class="ModuleScript" referent="PF30">
 <Properties>
 <string name="Name">TradeService</string>
 <ProtectedString name="Source">--!strict
@@ -8250,7 +8728,7 @@ return TradeService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="PF30">
+<Item class="ModuleScript" referent="PF31">
 <Properties>
 <string name="Name">TutorialService</string>
 <ProtectedString name="Source">--!strict
@@ -8396,7 +8874,7 @@ return TutorialService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="PF31">
+<Item class="ModuleScript" referent="PF32">
 <Properties>
 <string name="Name">VisitService</string>
 <ProtectedString name="Source">--!strict
@@ -8588,21 +9066,21 @@ return VisitService
 </Item>
 </Item>
 </Item>
-<Item class="Lighting" referent="PF53">
+<Item class="Lighting" referent="PF54">
 <Properties>
 <string name="Name">Lighting</string>
 <token name="Technology">4</token>
 </Properties>
 </Item>
-<Item class="StarterPlayer" referent="PF54">
+<Item class="StarterPlayer" referent="PF55">
 <Properties>
 <string name="Name">StarterPlayer</string>
 </Properties>
-<Item class="StarterPlayerScripts" referent="PF55">
+<Item class="StarterPlayerScripts" referent="PF56">
 <Properties>
 <string name="Name">StarterPlayerScripts</string>
 </Properties>
-<Item class="LocalScript" referent="PF48">
+<Item class="LocalScript" referent="PF49">
 <Properties>
 <string name="Name">Client</string>
 <ProtectedString name="Source">--!strict
@@ -8644,11 +9122,11 @@ for _, controllerName in CONTROLLER_STARTUP_ORDER do
 end
 </ProtectedString>
 </Properties>
-<Item class="Folder" referent="PF47">
+<Item class="Folder" referent="PF48">
 <Properties>
 <string name="Name">Controllers</string>
 </Properties>
-<Item class="ModuleScript" referent="PF34">
+<Item class="ModuleScript" referent="PF35">
 <Properties>
 <string name="Name">ChatTagController</string>
 <ProtectedString name="Source">--!strict
@@ -8682,7 +9160,7 @@ return ChatTagController
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="PF35">
+<Item class="ModuleScript" referent="PF36">
 <Properties>
 <string name="Name">EffectsController</string>
 <ProtectedString name="Source">--!strict
@@ -9074,7 +9552,7 @@ return EffectsController
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="PF36">
+<Item class="ModuleScript" referent="PF37">
 <Properties>
 <string name="Name">EventNotifierController</string>
 <ProtectedString name="Source">--!strict
@@ -9310,7 +9788,7 @@ return EventNotifierController
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="PF37">
+<Item class="ModuleScript" referent="PF38">
 <Properties>
 <string name="Name">HarvestController</string>
 <ProtectedString name="Source">--!strict
@@ -9321,16 +9799,22 @@ return EventNotifierController
 -- Verkaufs-Feedback und ein dezenter "Rucksack voll"-Hinweis.
 
 
+local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 local Workspace = game:GetService("Workspace")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
+local ConfigFolder = Shared:WaitForChild("Config")
 local ControllersFolder = script.Parent :: Instance
 
 local Remotes = require(Shared:WaitForChild("Remotes") :: ModuleScript) :: {
 	getEvent: (name: string) -&gt; RemoteEvent,
 	getFunction: (name: string) -&gt; RemoteFunction,
+}
+local GameConfig = require(ConfigFolder:WaitForChild("GameConfig") :: ModuleScript) :: {
+	COMBO_WINDOW_SECONDS: number,
+	COMBO_BONUS_PER_STACK: number,
 }
 local UIController = require(ControllersFolder:WaitForChild("UIController") :: ModuleScript) :: {
 	showToast: (message: string, kind: string) -&gt; (),
@@ -9340,9 +9824,16 @@ local EffectsController = require(ControllersFolder:WaitForChild("EffectsControl
 	flyPartToCharacter: (position: Vector3, color: Color3?) -&gt; (),
 	coinRain: (coinCount: number?) -&gt; (),
 	countUpAtCounter: (amount: number) -&gt; (),
+	screenShake: (intensity: number?) -&gt; (),
 }
 
 local FULL_HINT_COOLDOWN_SECONDS = 45
+
+-- Ab dieser Ketten-Stufe wird die Combo-Anzeige eingeblendet.
+local COMBO_SHOW_THRESHOLD = 4
+local COMBO_HOT_THRESHOLD = 15 -- ab hier wird die Anzeige "heiß" (rot)
+
+local GOLD_COLOR = Color3.fromRGB(255, 208, 70)
 
 local HarvestController = {}
 
@@ -9350,8 +9841,60 @@ local lastFullHintAt = 0
 local shopHintShown = false -- Kaufanreiz maximal 1x pro Session
 local collectPitch = 1
 
+-- Combo-Anzeige (unten Mitte, über der Buttonleiste).
+local comboLabel: TextLabel? = nil
+local comboGeneration = 0
+
+-- Baut die (anfangs unsichtbare) Combo-Anzeige.
+local function buildComboUI()
+	local playerGui = Players.LocalPlayer:WaitForChild("PlayerGui")
+
+	local screenGui = Instance.new("ScreenGui")
+	screenGui.Name = "PlanetForgeCombo"
+	screenGui.ResetOnSpawn = false
+	screenGui.Parent = playerGui
+
+	-- Position: über der Tutorial-Box (-78..-142), damit sich beide nie überlappen.
+	local label = Instance.new("TextLabel")
+	label.Name = "Combo"
+	label.AnchorPoint = Vector2.new(0.5, 1)
+	label.Position = UDim2.new(0.5, 0, 1, -150)
+	label.Size = UDim2.new(0, 320, 0, 26)
+	label.BackgroundTransparency = 1
+	label.Font = Enum.Font.GothamBold
+	label.TextSize = 20
+	label.TextColor3 = GOLD_COLOR
+	label.TextStrokeTransparency = 0.4
+	label.Visible = false
+	label.Parent = screenGui
+
+	comboLabel = label
+end
+
+-- Zeigt die Ketten-Stufe an und blendet sie nach dem Ketten-Fenster aus.
+local function showCombo(count: number)
+	local label = comboLabel
+	if label == nil then
+		return
+	end
+
+	local bonusPercent = math.floor(count * GameConfig.COMBO_BONUS_PER_STACK * 100 + 0.5)
+	label.Text = `🔥 Kette x{count} (+{bonusPercent}%)`
+	label.TextColor3 = if count &gt;= COMBO_HOT_THRESHOLD then Color3.fromRGB(255, 96, 60) else GOLD_COLOR
+	label.TextSize = math.min(20 + count, 32)
+	label.Visible = true
+
+	comboGeneration += 1
+	local generation = comboGeneration
+	task.delay(GameConfig.COMBO_WINDOW_SECONDS, function()
+		if generation == comboGeneration and comboLabel ~= nil then
+			(comboLabel :: TextLabel).Visible = false
+		end
+	end)
+end
+
 -- Kleine Wert-Zahl, die vom eingesammelten Objekt aufsteigt (3D-Billboard).
-local function showFloatingValue(position: Vector3, value: number, color: Color3)
+local function showFloatingValue(position: Vector3, value: number, color: Color3, golden: boolean?)
 	local anchor = Instance.new("Part")
 	anchor.Anchored = true
 	anchor.CanCollide = false
@@ -9371,10 +9914,10 @@ local function showFloatingValue(position: Vector3, value: number, color: Color3
 	label.BackgroundTransparency = 1
 	label.Size = UDim2.fromScale(1, 1)
 	label.Font = Enum.Font.GothamBold
-	label.TextSize = 18
+	label.TextSize = if golden == true then 26 else 18
 	label.TextColor3 = color
 	label.TextStrokeTransparency = 0.4
-	label.Text = `+{value}`
+	label.Text = if golden == true then `+{value} ✨` else `+{value}`
 	label.Parent = billboard
 
 	local rise = TweenService:Create(
@@ -9393,32 +9936,52 @@ local function showFloatingValue(position: Vector3, value: number, color: Color3
 end
 
 function HarvestController.init()
-	-- Sammel-Effekt: Sound (leicht steigende Tonhöhe bei Ketten) + Wert-Zahl.
-	Remotes.getEvent("ObjectCollected").OnClientEvent:Connect(function(position: any, value: any, color: any)
-		if typeof(position) ~= "Vector3" or typeof(value) ~= "number" then
-			return
-		end
-		collectPitch = math.min(collectPitch + 0.04, 1.5)
-		EffectsController.playSound("collect", collectPitch)
-		task.delay(2, function()
-			collectPitch = math.max(collectPitch - 0.04, 1)
-		end)
-		local effectColor = if typeof(color) == "Color3" then color else Color3.fromRGB(255, 224, 130)
-		-- Objekt fliegt sichtbar zum Spieler, Wert steigt am Sammelpunkt auf.
-		EffectsController.flyPartToCharacter(position, effectColor)
-		showFloatingValue(position, value, effectColor)
-	end)
+	buildComboUI()
 
-	-- Verkaufs-Feedback: Münz-Regen + hochzählender Energie-Zähler.
-	Remotes.getEvent("SoldBackpack").OnClientEvent:Connect(function(gained: any, itemsSold: any)
+	-- Sammel-Effekt: Sound (leicht steigende Tonhöhe bei Ketten) + Wert-Zahl
+	-- + Combo-Anzeige; goldene Objekte bekommen extra Fanfare und Funkeln.
+	Remotes.getEvent("ObjectCollected").OnClientEvent:Connect(
+		function(position: any, value: any, color: any, comboCount: any, golden: any)
+			if typeof(position) ~= "Vector3" or typeof(value) ~= "number" then
+				return
+			end
+			collectPitch = math.min(collectPitch + 0.04, 1.5)
+			EffectsController.playSound("collect", collectPitch)
+			task.delay(2, function()
+				collectPitch = math.max(collectPitch - 0.04, 1)
+			end)
+			if golden == true then
+				EffectsController.playSound("fanfare", 1.5)
+			end
+			local effectColor = if typeof(color) == "Color3" then color else Color3.fromRGB(255, 224, 130)
+			-- Objekt fliegt sichtbar zum Spieler, Wert steigt am Sammelpunkt auf.
+			EffectsController.flyPartToCharacter(position, effectColor)
+			showFloatingValue(position, value, effectColor, golden == true)
+			if typeof(comboCount) == "number" and comboCount &gt;= COMBO_SHOW_THRESHOLD then
+				showCombo(comboCount)
+			end
+		end
+	)
+
+	-- Verkaufs-Feedback: Münz-Regen + hochzählender Energie-Zähler;
+	-- kritische Verkäufe knallen richtig (Shake + eigener Toast).
+	Remotes.getEvent("SoldBackpack").OnClientEvent:Connect(function(gained: any, itemsSold: any, critical: any)
 		if typeof(gained) ~= "number" then
 			return
 		end
-		EffectsController.playSound("fanfare", 1.1)
 		local items = if typeof(itemsSold) == "number" then itemsSold else 0
-		EffectsController.coinRain(math.clamp(items, 4, 16))
-		EffectsController.countUpAtCounter(gained)
-		UIController.showToast(`Verkauft: {items} Objekte für {gained} Energie! ⚡`, "success")
+		if critical == true then
+			EffectsController.playSound("fanfare", 0.85)
+			EffectsController.screenShake(1)
+			EffectsController.coinRain(math.clamp(items * 2, 10, 28))
+			EffectsController.countUpAtCounter(gained)
+			UIController.showToast(`💥 KRITISCHER VERKAUF! Doppelte Beute: +{gained} Energie!`, "success")
+		else
+			EffectsController.playSound("fanfare", 1.1)
+			EffectsController.coinRain(math.clamp(items, 4, 16))
+			EffectsController.countUpAtCounter(gained)
+			UIController.showToast(`Verkauft: {items} Objekte für {gained} Energie! ⚡`, "success")
+		end
 	end)
 
 	-- Dezenter Hinweis, wenn der Rucksack voll ist (gedrosselt).
@@ -9444,7 +10007,7 @@ return HarvestController
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="PF38">
+<Item class="ModuleScript" referent="PF39">
 <Properties>
 <string name="Name">InventoryController</string>
 <ProtectedString name="Source">--!strict
@@ -9914,7 +10477,7 @@ return InventoryController
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="PF39">
+<Item class="ModuleScript" referent="PF40">
 <Properties>
 <string name="Name">LeaderboardController</string>
 <ProtectedString name="Source">--!strict
@@ -10151,7 +10714,7 @@ return LeaderboardController
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="PF40">
+<Item class="ModuleScript" referent="PF41">
 <Properties>
 <string name="Name">PlanetBuilderController</string>
 <ProtectedString name="Source">--!strict
@@ -10702,7 +11265,7 @@ return PlanetBuilderController
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="PF41">
+<Item class="ModuleScript" referent="PF42">
 <Properties>
 <string name="Name">PlanetNameController</string>
 <ProtectedString name="Source">--!strict
@@ -10841,7 +11404,7 @@ return PlanetNameController
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="PF42">
+<Item class="ModuleScript" referent="PF43">
 <Properties>
 <string name="Name">QuestController</string>
 <ProtectedString name="Source">--!strict
@@ -10953,7 +11516,7 @@ return QuestController
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="PF43">
+<Item class="ModuleScript" referent="PF44">
 <Properties>
 <string name="Name">RebirthController</string>
 <ProtectedString name="Source">--!strict
@@ -11293,7 +11856,7 @@ return RebirthController
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="PF44">
+<Item class="ModuleScript" referent="PF45">
 <Properties>
 <string name="Name">ShopController</string>
 <ProtectedString name="Source">--!strict
@@ -11996,7 +12559,7 @@ return ShopController
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="PF45">
+<Item class="ModuleScript" referent="PF46">
 <Properties>
 <string name="Name">TutorialController</string>
 <ProtectedString name="Source">--!strict
@@ -12436,7 +12999,7 @@ return TutorialController
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="PF46">
+<Item class="ModuleScript" referent="PF47">
 <Properties>
 <string name="Name">UIController</string>
 <ProtectedString name="Source">--!strict

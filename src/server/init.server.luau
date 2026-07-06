@@ -27,6 +27,7 @@ local SERVICE_STARTUP_ORDER = {
 	"MonetizationService",
 	"LeaderboardService",
 	"LobbyService", -- Spawn-Villa (braucht PlanetService + LeaderboardService)
+	"MeteorService", -- Meteor-Events auf der eigenen Insel
 	"DailyRewardService",
 	"QuestService",
 	"TutorialService",

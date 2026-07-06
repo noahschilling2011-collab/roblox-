@@ -35,6 +35,9 @@ local ISLAND_ACTIVITY_RADIUS = 110
 -- Glut-Optik für Vulkan-Objekte, solange sie zu heiß zum Anfassen sind.
 local HOT_COLOR = Color3.fromRGB(255, 176, 70)
 
+-- Gold-Optik für die seltenen Glücks-Objekte.
+local GOLDEN_COLOR = Color3.fromRGB(255, 208, 70)
+
 -- Ein aktives Sammel-Objekt auf einer Insel.
 type ActiveObject = {
 	part: BasePart,
@@ -42,6 +45,13 @@ type ActiveObject = {
 	color: Color3,
 	meltAt: number?, -- Eiswelt: os.clock()-Zeitpunkt, an dem es schmilzt
 	hotUntil: number?, -- Vulkan: bis dahin glühend heiß (nicht sammelbar)
+	golden: boolean?, -- seltenes Gold-Objekt (mehrfacher Wert)
+}
+
+-- Sammel-Kette pro Spieler: schnelles Sammeln stapelt einen Wert-Bonus.
+type ComboState = {
+	count: number,
+	lastCollectAt: number,
 }
 
 -- Spawn-Zustand pro Spieler und Zone.
@@ -52,6 +62,7 @@ type ZoneSpawnState = {
 
 local zoneStates: { [Player]: { [number]: ZoneSpawnState } } = {}
 local lastSellAt: { [Player]: number } = {}
+local combos: { [Player]: ComboState } = {}
 
 local objectCollectedEvent: RemoteEvent? = nil
 local backpackChangedEvent: RemoteEvent? = nil
@@ -163,6 +174,49 @@ local function createObjectPart(zonePart: BasePart, harvest: BiomeConfig.Harvest
 	return part
 end
 
+-- Verwandelt ein frisch gespawntes Objekt in ein seltenes GOLD-Objekt:
+-- deutlich größer Wert, goldene Neon-Optik, Funkeln und Licht.
+local function makeGolden(part: BasePart)
+	part.Color = GOLDEN_COLOR
+	part.Material = Enum.Material.Neon
+	part.Size = part.Size * 1.25
+
+	local light = Instance.new("PointLight")
+	light.Name = "GoldLight"
+	light.Color = GOLDEN_COLOR
+	light.Range = 10
+	light.Brightness = 1.2
+	light.Parent = part
+
+	local sparkle = Instance.new("ParticleEmitter")
+	sparkle.Name = "GoldSparkle"
+	sparkle.Color = ColorSequence.new(GOLDEN_COLOR, Color3.new(1, 1, 1))
+	sparkle.LightEmission = 1
+	sparkle.Rate = 6
+	sparkle.Lifetime = NumberRange.new(0.8, 1.4)
+	sparkle.Speed = NumberRange.new(1.5, 3)
+	sparkle.SpreadAngle = Vector2.new(180, 180)
+	sparkle.Size = NumberSequence.new(0.35)
+	sparkle.Parent = part
+end
+
+-- Aktuelle Ketten-Stufe eines Spielers; zählt weiter, wenn der letzte Fund
+-- innerhalb des Zeitfensters lag, sonst beginnt die Kette neu bei 1.
+local function bumpCombo(player: Player, now: number): number
+	local state = combos[player]
+	if state == nil then
+		state = { count = 0, lastCollectAt = 0 }
+		combos[player] = state
+	end
+	if now - state.lastCollectAt <= GameConfig.COMBO_WINDOW_SECONDS then
+		state.count = math.min(state.count + 1, GameConfig.COMBO_MAX_STACKS)
+	else
+		state.count = 1
+	end
+	state.lastCollectAt = now
+	return state.count
+end
+
 -- Biom-Spezialmechaniken pro Takt: Glutsteine kühlen sichtbar ab,
 -- Eis-Objekte schmelzen nach ihrer Lebenszeit (kurzes Schrumpfen).
 local function updateSpecialObjects(state: ZoneSpawnState, harvest: BiomeConfig.HarvestDef, now: number)
@@ -174,8 +228,13 @@ local function updateSpecialObjects(state: ZoneSpawnState, harvest: BiomeConfig.
 
 		if object.hotUntil ~= nil and now >= object.hotUntil then
 			object.hotUntil = nil
-			object.part.Material = Enum.Material.Slate
-			object.part.Color = harvest.color
+			-- Goldene Glutsteine behalten nach dem Abkühlen ihre Gold-Optik.
+			if object.golden == true then
+				object.part.Color = GOLDEN_COLOR
+			else
+				object.part.Material = Enum.Material.Slate
+				object.part.Color = harvest.color
+			end
 			local heat = object.part:FindFirstChild("HeatLight")
 			if heat ~= nil then
 				heat:Destroy()
@@ -251,12 +310,21 @@ local function spawnTick(player: Player)
 		end
 
 		state.lastSpawnAt = now
+		local part = createObjectPart(zonePart, harvest)
+
+		-- Glücksmoment: seltene GOLD-Objekte mit vielfachem Wert.
+		local golden = rng:NextNumber() < GameConfig.GOLDEN_OBJECT_CHANCE
+		if golden then
+			makeGolden(part)
+		end
+
 		table.insert(state.objects, {
-			part = createObjectPart(zonePart, harvest),
-			value = harvest.value,
-			color = harvest.color,
+			part = part,
+			value = if golden then harvest.value * GameConfig.GOLDEN_OBJECT_VALUE_FACTOR else harvest.value,
+			color = if golden then GOLDEN_COLOR else harvest.color,
 			meltAt = if harvest.meltSeconds ~= nil then now + harvest.meltSeconds :: number else nil,
 			hotUntil = if harvest.hotSeconds ~= nil then now + harvest.hotSeconds :: number else nil,
+			golden = golden,
 		})
 	end
 end
@@ -304,6 +372,12 @@ local function collectTick(player: Player)
 		profile.backpack.value = 0
 		profile.stats.sales += 1
 
+		-- Kritischer Verkauf: seltener Jackpot-Moment mit doppeltem Ertrag.
+		local critical = rng:NextNumber() < GameConfig.CRIT_SALE_CHANCE
+		if critical then
+			sellValue *= GameConfig.CRIT_SALE_FACTOR
+		end
+
 		-- Progressions-Multiplikator (Biome/Upgrades/Rebirth/Pets) auf den
 		-- Verkaufswert; grantEnergy legt Event-Multiplikatoren obendrauf.
 		local multiplier = ProgressionConfig.getTotalMultiplier(
@@ -316,7 +390,7 @@ local function collectTick(player: Player)
 		DataService.markDirty(player)
 		fireBackpackChanged(player, profile)
 		if soldBackpackEvent ~= nil then
-			(soldBackpackEvent :: RemoteEvent):FireClient(player, gained or sellValue, itemsSold)
+			(soldBackpackEvent :: RemoteEvent):FireClient(player, gained or sellValue, itemsSold, critical)
 		end
 	end
 
@@ -344,15 +418,26 @@ local function collectTick(player: Player)
 				continue
 			end
 
-			-- Einsammeln.
+			-- Einsammeln; die Sammel-Kette erhöht den Wert (schnell = mehr).
+			local comboCount = bumpCombo(player, now)
+			local comboBonus = 1 + comboCount * GameConfig.COMBO_BONUS_PER_STACK
+			local value = math.max(math.floor(object.value * comboBonus), object.value)
+
 			table.remove(state.objects, index)
 			profile.backpack.items += 1
-			profile.backpack.value += object.value
+			profile.backpack.value += value
 			profile.stats.collected += 1
 			collectedAny = true
 
 			if objectCollectedEvent ~= nil then
-				(objectCollectedEvent :: RemoteEvent):FireClient(player, object.part.Position, object.value, object.color)
+				(objectCollectedEvent :: RemoteEvent):FireClient(
+					player,
+					object.part.Position,
+					value,
+					object.color,
+					comboCount,
+					object.golden == true
+				)
 			end
 			object.part:Destroy()
 
@@ -403,7 +488,15 @@ local function autoCollectOne(player: Player)
 			profile.stats.collected += 1
 
 			if objectCollectedEvent ~= nil then
-				(objectCollectedEvent :: RemoteEvent):FireClient(player, object.part.Position, object.value, object.color)
+				-- Ohne Ketten-Stufe (der Auto-Sammler ist passiv), aber mit Gold-Flag.
+				(objectCollectedEvent :: RemoteEvent):FireClient(
+					player,
+					object.part.Position,
+					object.value,
+					object.color,
+					nil,
+					object.golden == true
+				)
 			end
 			object.part:Destroy()
 
@@ -503,6 +596,7 @@ function HarvestService.init()
 	Players.PlayerRemoving:Connect(function(player)
 		zoneStates[player] = nil
 		lastSellAt[player] = nil
+		combos[player] = nil
 	end)
 
 	for _, player in Players:GetPlayers() do

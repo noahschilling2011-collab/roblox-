@@ -120,6 +120,33 @@ test("Sammel-Loop: Harvest-Definition fuer jedes Biom", function()
 	expect(BiomeConfig.Harvest["wiese"].meltSeconds == nil, "Wiese darf nicht schmelzen (Einsteiger-Zone)")
 end)
 
+test("Spannungs-Mechaniken: Gold, Kette, Krit, Meteor (Canon)", function()
+	expect(GameConfig.GOLDEN_OBJECT_CHANCE > 0 and GameConfig.GOLDEN_OBJECT_CHANCE <= 0.2, "Gold-Chance ausserhalb (0, 0.2]")
+	expect(GameConfig.GOLDEN_OBJECT_VALUE_FACTOR == 8, "Gold-Faktor != 8")
+	expect(GameConfig.COMBO_WINDOW_SECONDS == 3, "Ketten-Fenster != 3s")
+	expect(math.abs(GameConfig.COMBO_BONUS_PER_STACK - 0.02) < 1e-9, "Ketten-Bonus != 2% pro Stufe")
+	expect(GameConfig.COMBO_MAX_STACKS == 25, "Ketten-Deckel != 25 Stufen")
+	expect(GameConfig.COMBO_BONUS_PER_STACK * GameConfig.COMBO_MAX_STACKS <= 1, "Ketten-Bonus uebersteigt +100%")
+	expect(math.abs(GameConfig.CRIT_SALE_CHANCE - 0.1) < 1e-9, "Krit-Chance != 10%")
+	expect(GameConfig.CRIT_SALE_FACTOR == 2, "Krit-Faktor != 2")
+	expect(GameConfig.METEOR_CHANCE_PER_CHECK > 0 and GameConfig.METEOR_CHANCE_PER_CHECK < 1, "Meteor-Chance ausserhalb (0,1)")
+	expect(GameConfig.METEOR_CRYSTAL_COUNT == 4, "Meteor-Kristalle != 4")
+	expect(GameConfig.METEOR_CRYSTAL_VALUE > 0, "Meteor-Kristallwert <= 0")
+	expect(GameConfig.METEOR_CRYSTAL_LIFETIME_SECONDS >= 10, "Meteor-Kristalle leben < 10s")
+	expect(GameConfig.METEOR_CLEAR_BONUS > 0, "Meteor-Abbau-Bonus <= 0")
+
+	-- Ketten-Logik gespiegelt: Deckel greift, Bonus rechnet korrekt.
+	local function comboValue(baseValue, count)
+		local capped = math.min(count, GameConfig.COMBO_MAX_STACKS)
+		return math.max(math.floor(baseValue * (1 + capped * GameConfig.COMBO_BONUS_PER_STACK)), baseValue)
+	end
+	expect(comboValue(100, 0) == 100, "Kette 0: Basiswert falsch")
+	expect(comboValue(100, 10) == 120, "Kette 10: +20% falsch")
+	expect(comboValue(100, 25) == 150, "Kette 25: +50% falsch")
+	expect(comboValue(100, 999) == 150, "Ketten-Deckel greift nicht")
+	expect(comboValue(1, 5) == 1, "kleine Werte duerfen nie unter den Basiswert fallen")
+end)
+
 test("ProgressionConfig: Upgrade-Kosten exponentiell (Faktor 1.15-1.25)", function()
 	for upgradeId, def in ProgressionConfig.Upgrades do
 		expect(def.baseCost > 0, upgradeId .. ": baseCost <= 0")
