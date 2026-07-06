@@ -21,7 +21,7 @@ local GameConfig = {
 	TRADE_LOCK_SECONDS = 3, -- Sicherheitspause nach beidseitigem Akzeptieren
 
 	-- Daten
-	PROFILE_SCHEMA_VERSION = 3, -- v2: Kosmetik-Felder; v3: Tagesbonus + Planetenname
+	PROFILE_SCHEMA_VERSION = 4, -- v2: Kosmetik; v3: Tagesbonus/Name; v4: Tutorial
 	DATASTORE_NAME = "PlanetForge_v1",
 	AUTOSAVE_INTERVAL_SECONDS = 120,
 
@@ -41,6 +41,14 @@ local GameConfig = {
 
 	-- Planetenname
 	PLANET_NAME_MAX_LENGTH = 24,
+
+	-- Tutorial (First-Time Experience)
+	TUTORIAL_STEP_COUNT = 4, -- Schritte: Wiese bauen, Energie sammeln, Upgrade, Fund
+	TUTORIAL_STEP_REWARD = 15, -- Energie-Belohnung pro abgeschlossenem Schritt
+	TUTORIAL_HINT_LIFETIME_LIMIT = 100, -- Hinweis-Schilder verschwinden ab dieser Lifetime-Energie
+
+	-- Sound (Client): zentrale Lautstärke der PlanetForge-Soundgruppe (0..1)
+	SOUND_MASTER_VOLUME = 0.5,
 }
 
 return GameConfig

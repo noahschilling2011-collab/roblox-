@@ -24,6 +24,7 @@ local SERVICE_STARTUP_ORDER = {
 	"MonetizationService",
 	"LeaderboardService",
 	"DailyRewardService",
+	"TutorialService",
 	"SelfCheckService", -- immer zuletzt: prüft den fertigen Aufbau
 }
 

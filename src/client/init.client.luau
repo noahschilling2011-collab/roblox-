@@ -10,6 +10,7 @@ local CONTROLLER_STARTUP_ORDER = {
 	"ShopController",
 	"LeaderboardController",
 	"PlanetNameController",
+	"TutorialController",
 }
 
 local controllersFolder = script:WaitForChild("Controllers")

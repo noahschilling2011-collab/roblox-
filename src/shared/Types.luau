@@ -45,6 +45,7 @@ export type PlayerProfile = {
 	planetName: string, -- vom Spieler vergebener, gefilterter Name ("" = Standard)
 	dailyStreak: number, -- aufeinanderfolgende Login-Tage (Tagesbonus)
 	lastDailyClaimDay: number, -- UTC-Tagesnummer des letzten Tagesbonus (os.time() / 86400)
+	tutorialStep: number, -- nächster offener Tutorial-Schritt (1..4); 5 = abgeschlossen
 }
 
 -- Ein aktuell laufendes globales Event.

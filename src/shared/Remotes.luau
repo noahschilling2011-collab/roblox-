@@ -16,6 +16,7 @@
 --     CosmeticsUpdated(owned: { string }, equipped: { [string]: string })
 --     LeaderboardUpdated(boards: { likes: { LBEntry }, energy: { LBEntry } })
 --       mit LBEntry = { userId: number, name: string, value: number }
+--     TutorialUpdated(step: number) -- 1..4 = offener Schritt, 5 = abgeschlossen
 --
 --   RemoteFunctions (Client -> Server), geben immer (ok: boolean, payload: any?) zurück:
 --     PlaceBiome(biomeId: string, slot: number)
@@ -28,6 +29,7 @@
 --     TradeAction(action: "invite" | "acceptInvite" | "setOffer" | "toggleAccept" | "cancel", payload: any?)
 --     EquipCosmetic(category: string, cosmeticId: string?) -- nil = Kategorie ablegen
 --     RenamePlanet(name: string) -- gibt bei ok den gefilterten Namen zurück
+--     TutorialAction(action: "advance" | "skip") -- Server validiert den Fortschritt
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -44,6 +46,7 @@ local EVENT_NAMES = {
 	"Notification",
 	"CosmeticsUpdated",
 	"LeaderboardUpdated",
+	"TutorialUpdated",
 }
 
 local FUNCTION_NAMES = {
@@ -57,6 +60,7 @@ local FUNCTION_NAMES = {
 	"TradeAction",
 	"EquipCosmetic",
 	"RenamePlanet",
+	"TutorialAction",
 }
 
 local Remotes = {}

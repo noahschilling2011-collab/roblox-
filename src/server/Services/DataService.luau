@@ -59,6 +59,10 @@ local function buildDefaultProfile(): Types.PlayerProfile
 		createdAt = os.time(),
 		ownedCosmetics = {},
 		equippedCosmetics = {},
+		planetName = "",
+		dailyStreak = 0,
+		lastDailyClaimDay = 0,
+		tutorialStep = 1,
 	}
 end
 
