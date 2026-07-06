@@ -132,6 +132,7 @@ local function buildUI()
 	addCorner(toggleButton, 10)
 	addStroke(toggleButton, STROKE_COLOR)
 	toggleButton.Parent = screenGui
+	EffectsController.addButtonFX(toggleButton)
 
 	-- Bestätigungs-Dialog (zentriert).
 	local frame = Instance.new("Frame")

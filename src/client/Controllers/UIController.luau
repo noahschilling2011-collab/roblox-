@@ -30,6 +30,8 @@ local EffectsController = require(script.Parent:WaitForChild("EffectsController"
 	flyEnergyToCounter: (amount: number) -> (),
 	burstAtOwnPlanet: (color: Color3?) -> (),
 	screenShake: (intensity: number?) -> (),
+	addButtonFX: (button: GuiButton) -> (),
+	addGradient: (guiObject: GuiObject) -> (),
 }
 
 -- Farbschema: dunkle Panels, helle Schrift.
@@ -216,6 +218,8 @@ local function createActionButton(
 	button.Activated:Connect(function()
 		invokeAction(functionName, onSuccess)
 	end)
+	EffectsController.addGradient(button)
+	EffectsController.addButtonFX(button)
 	button.Parent = parent
 	return button
 end
@@ -378,10 +382,30 @@ function UIController.init()
 
 	local refs = buildGui(playerGui)
 
-	-- Energie-Anzeige aktuell halten.
+	-- Energie-Anzeige mit Count-Up-Animation (Zahl läuft sichtbar hoch/runter).
+	local displayedEnergy = 0
+	local energyAnimToken = 0
 	Remotes.getEvent("EnergyChanged").OnClientEvent:Connect(function(newEnergy: any, lifetimeEnergy: any)
 		if typeof(newEnergy) == "number" then
-			refs.energyLabel.Text = `Energie: {formatNumber(newEnergy)}`
+			energyAnimToken += 1
+			local token = energyAnimToken
+			local fromValue = displayedEnergy
+			task.spawn(function()
+				local duration = 0.35
+				local startedAt = os.clock()
+				while true do
+					if token ~= energyAnimToken then
+						return
+					end
+					local alpha = math.clamp((os.clock() - startedAt) / duration, 0, 1)
+					displayedEnergy = fromValue + (newEnergy - fromValue) * alpha
+					refs.energyLabel.Text = `Energie: {formatNumber(displayedEnergy)}`
+					if alpha >= 1 then
+						return
+					end
+					task.wait(0.03)
+				end
+			end)
 		end
 		if typeof(lifetimeEnergy) == "number" then
 			refs.lifetimeLabel.Text = `Gesamt: {formatNumber(lifetimeEnergy)}`

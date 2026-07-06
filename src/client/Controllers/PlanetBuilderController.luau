@@ -424,6 +424,7 @@ local function buildGui(playerGui: PlayerGui)
 	stroke.Thickness = 1
 	stroke.Parent = toggleButton
 	toggleButton.Parent = screenGui
+	EffectsController.addButtonFX(toggleButton)
 
 	local panel = Instance.new("Frame")
 	panel.Name = "BuildPanel"

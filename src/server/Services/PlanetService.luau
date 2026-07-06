@@ -493,6 +493,35 @@ local function buildIsland(player: Player, origin: CFrame)
 	base.Material = Enum.Material.Grass
 	base.CFrame = origin * CFrame.Angles(0, 0, math.rad(90))
 
+	-- Hub-Podest: zweistufige Plattform unter dem Kristall mit Gold-Akzenten,
+	-- damit die Inselmitte wie ein gestalteter Treffpunkt wirkt.
+	local podiumBottom = newIslandPart(folder, "PodiumBottom")
+	podiumBottom.Shape = Enum.PartType.Cylinder
+	podiumBottom.Size = Vector3.new(0.8, 26, 26)
+	podiumBottom.Color = Color3.fromRGB(168, 162, 152)
+	podiumBottom.Material = Enum.Material.SmoothPlastic
+	podiumBottom.CFrame = origin * CFrame.new(0, BASE_THICKNESS / 2 + 0.4, 0) * CFrame.Angles(0, 0, math.rad(90))
+
+	local podiumTop = newIslandPart(folder, "PodiumTop")
+	podiumTop.Shape = Enum.PartType.Cylinder
+	podiumTop.Size = Vector3.new(0.8, 18, 18)
+	podiumTop.Color = Color3.fromRGB(196, 190, 178)
+	podiumTop.Material = Enum.Material.SmoothPlastic
+	podiumTop.CFrame = origin * CFrame.new(0, BASE_THICKNESS / 2 + 1.2, 0) * CFrame.Angles(0, 0, math.rad(90))
+
+	-- Vier goldene Leuchtstreifen, die vom Podest zu den Pads zeigen.
+	for i = 0, 3 do
+		local angle = i * math.pi / 2 + math.pi / 4
+		local strip = newIslandPart(folder, `HubStrip_{i + 1}`)
+		strip.Size = Vector3.new(0.6, 0.12, 9)
+		strip.Color = Color3.fromRGB(255, 210, 90)
+		strip.Material = Enum.Material.Neon
+		strip.CanCollide = false
+		strip.CFrame = origin
+			* CFrame.Angles(0, angle, 0)
+			* CFrame.new(0, BASE_THICKNESS / 2 + 0.28, -14)
+	end
+
 	-- Insel-Kristall in der Mitte (Ziel für Skins/Auren, trägt das Namensschild).
 	local core = newIslandPart(folder, "Core")
 	core.Size = Vector3.new(3, 7, 3)
@@ -751,50 +780,67 @@ end
 -- Welt-Stimmung
 --------------------------------------------------------------------------
 
--- Freundliche Himmel-Insel-Stimmung: Tag, weiche Atmosphäre, dezentes Bloom.
+-- "Goldene Stunde"-Look: warmes Licht, weiche Schatten, dezentes Bloom,
+-- SunRays und leicht angehobene Sättigung (typischer Simulator-Look,
+-- bewusst subtil - kein Neon-Matsch). Idempotent.
 local function setupWorldAmbience()
 	local Lighting = game:GetService("Lighting")
 
-	Lighting.ClockTime = 13
-	Lighting.Brightness = 2.4
-	Lighting.Ambient = Color3.fromRGB(120, 130, 150)
-	Lighting.OutdoorAmbient = Color3.fromRGB(140, 150, 170)
+	Lighting.ClockTime = 16.4 -- goldene Stunde: lange, warme Schatten
+	Lighting.Brightness = 2.6
+	Lighting.GlobalShadows = true
+	Lighting.ShadowSoftness = 0.25
+	Lighting.EnvironmentDiffuseScale = 0.6
+	Lighting.EnvironmentSpecularScale = 0.6
+	Lighting.Ambient = Color3.fromRGB(118, 110, 125)
+	Lighting.OutdoorAmbient = Color3.fromRGB(160, 145, 140)
+	Lighting.ColorShift_Top = Color3.fromRGB(255, 226, 180) -- warme Sonnenseite
+	Lighting.ColorShift_Bottom = Color3.fromRGB(120, 130, 170) -- kühle Schattenseite
 
 	if Lighting:FindFirstChild("PlanetForgeSky") == nil then
 		local sky = Instance.new("Sky")
 		sky.Name = "PlanetForgeSky"
-		sky.StarCount = 1000
-		sky.SunAngularSize = 14
+		sky.StarCount = 1500
+		sky.SunAngularSize = 18
+		sky.MoonAngularSize = 12
 		sky.Parent = Lighting
 	end
 
 	if Lighting:FindFirstChild("PlanetForgeAtmosphere") == nil then
 		local atmosphere = Instance.new("Atmosphere")
 		atmosphere.Name = "PlanetForgeAtmosphere"
-		atmosphere.Density = 0.3
-		atmosphere.Color = Color3.fromRGB(200, 215, 235)
-		atmosphere.Decay = Color3.fromRGB(110, 130, 160)
-		atmosphere.Glare = 0.25
-		atmosphere.Haze = 1.6
+		atmosphere.Density = 0.32
+		atmosphere.Color = Color3.fromRGB(215, 200, 215)
+		atmosphere.Decay = Color3.fromRGB(130, 120, 160)
+		atmosphere.Glare = 0.35
+		atmosphere.Haze = 1.8
 		atmosphere.Parent = Lighting
 	end
 
 	if Lighting:FindFirstChild("PlanetForgeBloom") == nil then
 		local bloom = Instance.new("BloomEffect")
 		bloom.Name = "PlanetForgeBloom"
-		bloom.Intensity = 0.35
-		bloom.Size = 24
-		bloom.Threshold = 1.2
+		bloom.Intensity = 0.5
+		bloom.Size = 28
+		bloom.Threshold = 1.1 -- hoch genug, damit nur Neon/Sonne blüht
 		bloom.Parent = Lighting
 	end
 
 	if Lighting:FindFirstChild("PlanetForgeColor") == nil then
 		local color = Instance.new("ColorCorrectionEffect")
 		color.Name = "PlanetForgeColor"
-		color.Contrast = 0.04
-		color.Saturation = 0.1
-		color.TintColor = Color3.fromRGB(255, 250, 240)
+		color.Contrast = 0.08
+		color.Saturation = 0.18 -- "juicy", aber unterhalb der Kitsch-Grenze
+		color.TintColor = Color3.fromRGB(255, 248, 238)
 		color.Parent = Lighting
+	end
+
+	if Lighting:FindFirstChild("PlanetForgeSunRays") == nil then
+		local rays = Instance.new("SunRaysEffect")
+		rays.Name = "PlanetForgeSunRays"
+		rays.Intensity = 0.06 -- dezent: nur ein Hauch Gottesstrahlen
+		rays.Spread = 0.8
+		rays.Parent = Lighting
 	end
 end
 

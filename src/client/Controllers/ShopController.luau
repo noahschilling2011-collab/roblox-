@@ -460,6 +460,7 @@ local function buildUI()
 	addCorner(toggleButton, 10)
 	addStroke(toggleButton, STROKE_COLOR)
 	toggleButton.Parent = screenGui
+	EffectsController.addButtonFX(toggleButton)
 
 	local panel = Instance.new("Frame")
 	panel.Name = "ShopPanel"

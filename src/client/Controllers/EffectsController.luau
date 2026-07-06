@@ -178,6 +178,40 @@ function EffectsController.screenShake(intensity: number?)
 	end)
 end
 
+-- Einheitliches Button-Feedback: sanftes Hover- (1.05) und Press-Scaling (0.95).
+function EffectsController.addButtonFX(button: GuiButton)
+	local scale = Instance.new("UIScale")
+	scale.Name = "FXScale"
+	scale.Parent = button
+
+	local function tweenTo(value: number, seconds: number)
+		TweenService:Create(scale, TweenInfo.new(seconds, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+			Scale = value,
+		}):Play()
+	end
+
+	button.MouseEnter:Connect(function()
+		tweenTo(1.05, 0.12)
+	end)
+	button.MouseLeave:Connect(function()
+		tweenTo(1, 0.12)
+	end)
+	button.MouseButton1Down:Connect(function()
+		tweenTo(0.95, 0.08)
+	end)
+	button.MouseButton1Up:Connect(function()
+		tweenTo(1.05, 0.1)
+	end)
+end
+
+-- Dezenter vertikaler Verlauf für Panels/Buttons (heller oben).
+function EffectsController.addGradient(guiObject: GuiObject)
+	local gradient = Instance.new("UIGradient")
+	gradient.Rotation = 90
+	gradient.Color = ColorSequence.new(Color3.new(1, 1, 1), Color3.fromRGB(200, 200, 210))
+	gradient.Parent = guiObject
+end
+
 -- Lokales Geister-Objekt fliegt vom Sammelpunkt zum Spieler (das echte
 -- Objekt hat der Server bereits entfernt).
 function EffectsController.flyPartToCharacter(position: Vector3, color: Color3?)
