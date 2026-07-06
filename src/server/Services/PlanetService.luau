@@ -449,6 +449,47 @@ local function parseSlot(slotArg: unknown): number?
 end
 
 -- Remote-Handler: PlaceBiome(biomeId, slot) -> (ok, snapshot | Fehlermeldung)
+-- Juice beim Bauen/Upgraden: Sound + Partikel-Burst direkt am Slot,
+-- damit die Aktion sich für alle sichtbar "gut anfühlt".
+local function playSlotJuice(player: Player, slotNumber: number, color: Color3, level: number)
+	local plotFolder = getPlotFolder(player)
+	if plotFolder == nil then
+		return
+	end
+	local slotPart = plotFolder:FindFirstChild(`Slot_{slotNumber}`)
+	if slotPart == nil or not slotPart:IsA("BasePart") then
+		return
+	end
+
+	-- Pop-Sound (Engine-Sounddatei, 3D am Slot; Tonhöhe steigt leicht pro Level).
+	local sound = Instance.new("Sound")
+	sound.SoundId = "rbxasset://sounds/snap.mp3"
+	sound.Volume = 0.8
+	sound.PlaybackSpeed = 0.95 + level * 0.06
+	sound.RollOffMaxDistance = 120
+	sound.Parent = slotPart
+	sound:Play()
+	task.delay(3, function()
+		sound:Destroy()
+	end)
+
+	-- Einmaliger Partikel-Burst in Biomfarbe.
+	local emitter = Instance.new("ParticleEmitter")
+	emitter.Name = "BuildBurst"
+	emitter.Color = ColorSequence.new(color)
+	emitter.LightEmission = 0.6
+	emitter.Rate = 0
+	emitter.Lifetime = NumberRange.new(0.4, 0.8)
+	emitter.Speed = NumberRange.new(6, 12)
+	emitter.SpreadAngle = Vector2.new(180, 180)
+	emitter.Size = NumberSequence.new(0.6)
+	emitter.Parent = slotPart
+	emitter:Emit(18)
+	task.delay(1.5, function()
+		emitter:Destroy()
+	end)
+end
+
 local function handlePlaceBiome(player: Player, biomeIdArg: unknown, slotArg: unknown): (boolean, any?)
 	local profile = DataService.getProfile(player)
 	if profile == nil then
@@ -487,6 +528,7 @@ local function handlePlaceBiome(player: Player, biomeIdArg: unknown, slotArg: un
 	table.insert(profile.biomes, placed)
 
 	updateSlotVisual(player, slot, placed)
+	playSlotJuice(player, slot, def.color, placed.level)
 	DataService.markDirty(player)
 	PlanetService.sendSnapshot(player)
 	return true, buildSnapshot(profile)
@@ -525,6 +567,7 @@ local function handleUpgradeBiome(player: Player, slotArg: unknown): (boolean, a
 	placed.level += 1
 
 	updateSlotVisual(player, slot, placed)
+	playSlotJuice(player, slot, def.color, placed.level)
 	DataService.markDirty(player)
 	PlanetService.sendSnapshot(player)
 	return true, buildSnapshot(profile)

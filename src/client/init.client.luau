@@ -4,6 +4,7 @@
 -- eine Tabelle mit einer init()-Funktion.
 
 local CONTROLLER_STARTUP_ORDER = {
+	"EffectsController", -- zuerst: stellt Sounds/Effekte für alle anderen bereit
 	"UIController",
 	"PlanetBuilderController",
 	"EventNotifierController",

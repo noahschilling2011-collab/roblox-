@@ -20,9 +20,16 @@ local GameConfig = require(ConfigFolder:WaitForChild("GameConfig") :: ModuleScri
 }
 local RarityConfig = require(ConfigFolder:WaitForChild("RarityConfig") :: ModuleScript) :: {
 	Tiers: { [string]: { displayName: string, color: Color3 } },
+	TierOrder: { string },
 }
 local CollectibleConfig = require(ConfigFolder:WaitForChild("CollectibleConfig") :: ModuleScript) :: {
 	Collectibles: { [string]: { displayName: string } },
+}
+local EffectsController = require(script.Parent:WaitForChild("EffectsController") :: ModuleScript) :: {
+	playSound: (name: string, pitchOverride: number?) -> (),
+	flyEnergyToCounter: (amount: number) -> (),
+	burstAtOwnPlanet: (color: Color3?) -> (),
+	screenShake: (intensity: number?) -> (),
 }
 
 -- Farbschema: dunkle Panels, helle Schrift.
@@ -34,6 +41,15 @@ local SUBTEXT_COLOR = Color3.fromRGB(158, 164, 186)
 local TOAST_LIFETIME_SECONDS = 4
 local FADE_SECONDS = 0.35
 local LOOT_POPUP_SECONDS = 3
+local LOOT_SUSPENSE_SECONDS = 1.5 -- Spannungsaufbau vor dem Reveal
+local LOOT_SUSPENSE_TICK = 0.12
+
+-- Ab diesen Stufen gibt es Screen-Shake + Glow beim Reveal.
+local HIGH_TIER: { [string]: boolean } = {
+	Legendary = true,
+	Mythic = true,
+	Cosmic = true,
+}
 
 local TOAST_COLORS: { [string]: Color3 } = {
 	info = Color3.fromRGB(66, 133, 244),
@@ -157,8 +173,8 @@ function UIController.showToast(message: string, kind: string)
 end
 
 -- Ruft eine argumentlose RemoteFunction auf; bei ok=false erscheint die
--- deutsche Fehlermeldung des Servers als Toast.
-local function invokeAction(functionName: string)
+-- deutsche Fehlermeldung des Servers als Toast, bei Erfolg läuft onSuccess.
+local function invokeAction(functionName: string, onSuccess: ((payload: any) -> ())?)
 	task.spawn(function()
 		local ok, serverOk, payload = pcall(function()
 			return Remotes.getFunction(functionName):InvokeServer()
@@ -170,11 +186,21 @@ local function invokeAction(functionName: string)
 		if serverOk ~= true then
 			local message = if typeof(payload) == "string" then payload else "Aktion fehlgeschlagen."
 			UIController.showToast(message, "error")
+			return
+		end
+		if onSuccess ~= nil then
+			onSuccess(payload)
 		end
 	end)
 end
 
-local function createActionButton(parent: Instance, order: number, text: string, functionName: string): TextButton
+local function createActionButton(
+	parent: Instance,
+	order: number,
+	text: string,
+	functionName: string,
+	onSuccess: ((payload: any) -> ())?
+): TextButton
 	local button = Instance.new("TextButton")
 	button.Name = functionName
 	button.LayoutOrder = order
@@ -188,7 +214,7 @@ local function createActionButton(parent: Instance, order: number, text: string,
 	addCorner(button, 10)
 	addStroke(button, STROKE_COLOR)
 	button.Activated:Connect(function()
-		invokeAction(functionName)
+		invokeAction(functionName, onSuccess)
 	end)
 	button.Parent = parent
 	return button
@@ -259,9 +285,19 @@ local function buildGui(playerGui: PlayerGui): GuiRefs
 	barLayout.Padding = UDim.new(0, 10)
 	barLayout.Parent = buttonBar
 
-	createActionButton(buttonBar, 1, "Energie sammeln", "CollectEnergy")
+	-- Einsammeln mit Juice: Sound, fliegende "+N ⚡"-Zahl, Partikel am Planeten.
+	createActionButton(buttonBar, 1, "Energie sammeln", "CollectEnergy", function(payload: any)
+		local amount = if typeof(payload) == "number" then payload else 0
+		EffectsController.playSound("collect")
+		if amount > 0 then
+			EffectsController.flyEnergyToCounter(amount)
+		end
+		EffectsController.burstAtOwnPlanet(Color3.fromRGB(255, 224, 130))
+	end)
 	createActionButton(buttonBar, 2, `Fund suchen ({GameConfig.LOOT_ROLL_COST})`, "RollLoot")
-	createActionButton(buttonBar, 3, "Nach Hause", "GoHome")
+	createActionButton(buttonBar, 3, "Nach Hause", "GoHome", function()
+		EffectsController.playSound("pop", 0.9)
+	end)
 
 	-- Toast-Feed rechts oben.
 	local toasts = Instance.new("Frame")
@@ -359,7 +395,8 @@ function UIController.init()
 		showToastInternal(message, if typeof(kind) == "string" then kind else "info")
 	end)
 
-	-- Loot-Popup: Name + Seltenheit 3 s lang zentriert anzeigen.
+	-- Loot-Popup mit Spannungsaufbau: 1,5 s durchlaufende Seltenheiten,
+	-- dann Reveal in der echten Rarity-Farbe; ab Legendär Shake + Glow.
 	Remotes.getEvent("LootObtained").OnClientEvent:Connect(function(collectibleId: any, rarity: any, _uid: any)
 		if typeof(collectibleId) ~= "string" or typeof(rarity) ~= "string" then
 			return
@@ -369,13 +406,8 @@ function UIController.init()
 		local tierDef = RarityConfig.Tiers[rarity]
 		local tierColor = if tierDef ~= nil then tierDef.color else TEXT_COLOR
 
-		refs.lootName.Text = if collectibleDef ~= nil then collectibleDef.displayName else collectibleId
-		refs.lootRarity.Text = if tierDef ~= nil then tierDef.displayName else rarity
-		refs.lootRarity.TextColor3 = tierColor
-		refs.lootStroke.Color = tierColor
-
 		-- Generation zählt mit, damit sich überlappende Popups nicht gegenseitig
-		-- vorzeitig ausblenden.
+		-- vorzeitig ausblenden oder alte Spannungsphasen weiterlaufen.
 		lootPopupGeneration += 1
 		local generation = lootPopupGeneration
 
@@ -386,23 +418,70 @@ function UIController.init()
 			activeLootTween = nil
 		end
 
+		refs.lootName.Text = "???"
+		refs.lootRarity.Text = ""
+		refs.lootStroke.Color = STROKE_COLOR
+		refs.lootStroke.Thickness = 2
 		refs.lootPopup.GroupTransparency = 0
 		refs.lootPopup.Visible = true
 
-		task.delay(LOOT_POPUP_SECONDS, function()
+		task.spawn(function()
+			-- Spannungsphase: Seltenheitsstufen rotieren durch.
+			local tierOrder = RarityConfig.TierOrder
+			local elapsed = 0
+			local index = 0
+			while elapsed < LOOT_SUSPENSE_SECONDS do
+				if generation ~= lootPopupGeneration then
+					return
+				end
+				index = index % #tierOrder + 1
+				local cycleTier = RarityConfig.Tiers[tierOrder[index]]
+				if cycleTier ~= nil then
+					refs.lootRarity.Text = cycleTier.displayName
+					refs.lootRarity.TextColor3 = cycleTier.color
+					refs.lootStroke.Color = cycleTier.color
+				end
+				EffectsController.playSound("tick")
+				task.wait(LOOT_SUSPENSE_TICK)
+				elapsed += LOOT_SUSPENSE_TICK
+			end
 			if generation ~= lootPopupGeneration then
 				return
 			end
-			local tween = TweenService:Create(refs.lootPopup, TweenInfo.new(FADE_SECONDS), { GroupTransparency = 1 })
-			activeLootTween = tween
-			tween:Play()
-			tween.Completed:Once(function()
-				if activeLootTween == tween then
-					activeLootTween = nil
+
+			-- Reveal.
+			refs.lootName.Text = if collectibleDef ~= nil then collectibleDef.displayName else collectibleId
+			refs.lootRarity.Text = if tierDef ~= nil then tierDef.displayName else rarity
+			refs.lootRarity.TextColor3 = tierColor
+			refs.lootStroke.Color = tierColor
+			EffectsController.playSound("reveal")
+
+			if HIGH_TIER[rarity] == true then
+				EffectsController.playSound("fanfare")
+				EffectsController.screenShake(1)
+				EffectsController.burstAtOwnPlanet(tierColor)
+				-- Glow: Rahmen kurz aufblitzen lassen.
+				refs.lootStroke.Thickness = 6
+				local glow = TweenService:Create(refs.lootStroke, TweenInfo.new(0.6), { Thickness = 3 })
+				glow:Play()
+			end
+
+			task.delay(LOOT_POPUP_SECONDS, function()
+				if generation ~= lootPopupGeneration then
+					return
 				end
-				if generation == lootPopupGeneration then
-					refs.lootPopup.Visible = false
-				end
+				local tween =
+					TweenService:Create(refs.lootPopup, TweenInfo.new(FADE_SECONDS), { GroupTransparency = 1 })
+				activeLootTween = tween
+				tween:Play()
+				tween.Completed:Once(function()
+					if activeLootTween == tween then
+						activeLootTween = nil
+					end
+					if generation == lootPopupGeneration then
+						refs.lootPopup.Visible = false
+					end
+				end)
 			end)
 		end)
 	end)
