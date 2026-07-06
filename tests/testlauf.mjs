@@ -90,7 +90,7 @@ end
 test("GameConfig: Canon-Konstanten", function()
 	expect(GameConfig.PLANET_SLOTS == 12, "PLANET_SLOTS != 12")
 	expect(GameConfig.LOOT_ROLL_COST == 25, "LOOT_ROLL_COST != 25")
-	expect(GameConfig.PROFILE_SCHEMA_VERSION == 5, "Schema-Version != 5")
+	expect(GameConfig.PROFILE_SCHEMA_VERSION == 6, "Schema-Version != 6")
 	expect(GameConfig.MAX_TRADE_ITEMS_PER_SIDE == 4, "Trade-Items != 4")
 	expect(GameConfig.TRADE_LOCK_SECONDS == 3, "Trade-Lock != 3")
 	expect(GameConfig.BASE_MAGNET_RADIUS > 0, "BASE_MAGNET_RADIUS <= 0")
@@ -330,6 +330,33 @@ test("Loot-Glueck: Formel verbessert Ultra-Rare-Chance korrekt", function()
 	expect(effective(10000, 5) == 2000, "Kreaturen-Event (x5) falsch")
 	expect(effective(10000, 3) == 3333, "Meteoritenschauer (x3) falsch")
 	expect(effective(2, 100) == 1, "Untergrenze 1 verletzt")
+end)
+
+-- 7a) Multiplikator-Formel und Rebirth (Spiegel von ProgressionConfig)
+test("Progression: Multiplikator-Formel exakt", function()
+	-- Leer = Basis 1.
+	expect(ProgressionConfig.getTotalMultiplier({}, {}, 0, 1) == 1, "leeres Profil != 1")
+	-- 2 Biome (Level 1 + Level 3) -> Biome-Bonus 0.1*2 + 0.05*2 = 0.3.
+	local biomes = {
+		{ biomeId = "wiese", slot = 1, level = 1, placedAt = 0 },
+		{ biomeId = "wald", slot = 2, level = 3, placedAt = 0 },
+	}
+	local bonus = ProgressionConfig.getBiomeBonus(biomes)
+	expect(math.abs(bonus - 0.3) < 1e-9, "Biome-Bonus falsch: " .. bonus)
+	-- 5 Upgrade-Stufen -> +10%.
+	local upgradeBonus = ProgressionConfig.getUpgradeBonus({ magnet = 3, backpack = 2 })
+	expect(math.abs(upgradeBonus - 0.1) < 1e-9, "Upgrade-Bonus falsch")
+	-- Gesamt: 1 * 1.3 * 1.1 * 1.2 (Pet) * 2 (2 Rebirths) = 3.432
+	local total = ProgressionConfig.getTotalMultiplier(biomes, { magnet = 3, backpack = 2 }, 2, 1.2)
+	expect(math.abs(total - 1.3 * 1.1 * 1.2 * 2) < 1e-9, "Gesamt-Multiplikator falsch: " .. total)
+end)
+
+test("Progression: Rebirth-Schwellen verdoppeln sich", function()
+	expect(ProgressionConfig.getRebirthThreshold(0) == 25000, "Schwelle 0 != 25000")
+	expect(ProgressionConfig.getRebirthThreshold(1) == 50000, "Schwelle 1 != 50000")
+	expect(ProgressionConfig.getRebirthThreshold(3) == 200000, "Schwelle 3 != 200000")
+	expect(ProgressionConfig.getRebirthMultiplier(0) == 1, "Rebirth-Mult 0 != 1")
+	expect(ProgressionConfig.getRebirthMultiplier(4) == 3, "Rebirth-Mult 4 != 3 (+50% stapelnd)")
 end)
 
 -- 7b) Tutorial-Oekonomie und Studio-Testmodus

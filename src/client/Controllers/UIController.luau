@@ -224,6 +224,7 @@ type GuiRefs = {
 	energyLabel: TextLabel,
 	lifetimeLabel: TextLabel,
 	backpackLabel: TextLabel,
+	multiplierLabel: TextLabel,
 	statsLabel: TextLabel,
 	lootPopup: CanvasGroup,
 	lootName: TextLabel,
@@ -243,7 +244,7 @@ local function buildGui(playerGui: PlayerGui): GuiRefs
 	header.Name = "Header"
 	header.AnchorPoint = Vector2.new(0.5, 0)
 	header.Position = UDim2.new(0.5, 0, 0, 8)
-	header.Size = UDim2.new(0, 640, 0, 44)
+	header.Size = UDim2.new(0, 780, 0, 44)
 	header.BackgroundColor3 = PANEL_COLOR
 	header.BackgroundTransparency = 0.05
 	addCorner(header, 10)
@@ -264,9 +265,17 @@ local function buildGui(playerGui: PlayerGui): GuiRefs
 
 	local backpackLabel = createLabel(header, "Backpack", "🎒 0/30")
 	backpackLabel.Position = UDim2.new(0, 400, 0, 0)
-	backpackLabel.Size = UDim2.new(0, 120, 1, 0)
+	backpackLabel.Size = UDim2.new(0, 150, 1, 0)
 	backpackLabel.Font = Enum.Font.GothamBold
 	backpackLabel.TextSize = 14
+
+	-- Live-Multiplikator (Formel siehe ProgressionConfig).
+	local multiplierLabel = createLabel(header, "Multiplier", "×1,0")
+	multiplierLabel.Position = UDim2.new(0, 556, 0, 0)
+	multiplierLabel.Size = UDim2.new(0, 70, 1, 0)
+	multiplierLabel.Font = Enum.Font.GothamBold
+	multiplierLabel.TextSize = 16
+	multiplierLabel.TextColor3 = Color3.fromRGB(214, 160, 72)
 
 	local statsLabel = createLabel(header, "Stats", "Besuche: 0  |  Likes: 0")
 	statsLabel.AnchorPoint = Vector2.new(1, 0)
@@ -354,6 +363,7 @@ local function buildGui(playerGui: PlayerGui): GuiRefs
 		energyLabel = energyLabel,
 		lifetimeLabel = lifetimeLabel,
 		backpackLabel = backpackLabel,
+		multiplierLabel = multiplierLabel,
 		statsLabel = statsLabel,
 		lootPopup = lootPopup,
 		lootName = lootName,
@@ -384,6 +394,14 @@ function UIController.init()
 			local valueText = if typeof(value) == "number" and value > 0 then ` (Wert {formatNumber(value)})` else ""
 			refs.backpackLabel.Text = `🎒 {items}/{capacity}{valueText}`
 			refs.backpackLabel.TextColor3 = if items >= capacity then Color3.fromRGB(214, 110, 110) else TEXT_COLOR
+		end
+	end)
+
+	-- Live-Multiplikator im HUD (Komma statt Punkt, eine Nachkommastelle).
+	Remotes.getEvent("MultiplierChanged").OnClientEvent:Connect(function(info: any)
+		if typeof(info) == "table" and typeof(info.total) == "number" then
+			local text = string.format("×%.1f", info.total)
+			refs.multiplierLabel.Text = (string.gsub(text, "%.", ","))
 		end
 	end)
 

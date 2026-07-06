@@ -49,6 +49,7 @@ export type PlayerProfile = {
 	backpack: Backpack, -- gesammelte, noch nicht verkaufte Objekte
 	upgrades: IslandUpgrades, -- Level der Insel-Upgrades (Magnet, Rucksack)
 	stats: PlayerStats, -- Zähler für Tutorial und Statistiken
+	rebirths: number, -- Anzahl Wiedergeburten (permanenter Multiplikator)
 }
 
 -- Rucksack: füllt sich beim Sammeln, wird an der Verkaufs-Zone geleert.

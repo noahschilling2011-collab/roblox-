@@ -229,8 +229,11 @@ local function collectTick(player: Player)
 		profile.backpack.value = 0
 		profile.stats.sales += 1
 
-		-- grantEnergy wendet Event-Multiplikatoren an und erhöht lifetimeEnergy.
-		local gained = EnergyService.grantEnergy(player, sellValue)
+		-- Progressions-Multiplikator (Biome/Upgrades/Rebirth; Pets ab Phase 3)
+		-- auf den Verkaufswert; grantEnergy legt Event-Multiplikatoren obendrauf.
+		local multiplier =
+			ProgressionConfig.getTotalMultiplier(profile.biomes, profile.upgrades, profile.rebirths, 1)
+		local gained = EnergyService.grantEnergy(player, sellValue * multiplier)
 		DataService.markDirty(player)
 		fireBackpackChanged(player, profile)
 		if soldBackpackEvent ~= nil then

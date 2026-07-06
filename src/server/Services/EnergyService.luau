@@ -11,6 +11,7 @@ local Types = require(ReplicatedStorage.Shared.Types)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local GameConfig = require(ReplicatedStorage.Shared.Config.GameConfig)
 local BiomeConfig = require(ReplicatedStorage.Shared.Config.BiomeConfig)
+local ProgressionConfig = require(ReplicatedStorage.Shared.Config.ProgressionConfig)
 
 local DataService = require(script.Parent.DataService)
 local GlobalEventService = require(script.Parent.GlobalEventService)
@@ -113,6 +114,15 @@ function EnergyService.trySpend(player: Player, amount: number): boolean
 	return true
 end
 
+-- Schickt dem Client den aktuellen Energiestand erneut (z. B. nach einem
+-- Rebirth-Reset, der das Profil direkt verändert hat).
+function EnergyService.notify(player: Player)
+	local profile: Types.PlayerProfile? = DataService.getProfile(player)
+	if profile ~= nil then
+		fireEnergyChanged(player, profile)
+	end
+end
+
 -- Summiert das Biom-Einkommen (Energie pro Minute) eines Profils.
 local function computeIncomePerMinute(profile: Types.PlayerProfile): number
 	local perMinute = 0
@@ -153,7 +163,11 @@ function EnergyService.init()
 			for _, player in Players:GetPlayers() do
 				local profile: Types.PlayerProfile? = DataService.getProfile(player)
 				if profile ~= nil then
-					local income = computeIncomePerMinute(profile) * intervalMinutes
+					-- Progression wirkt auch auf das passive Einkommen
+					-- (Pet-Bonus ergänzt Phase 3).
+					local multiplier =
+						ProgressionConfig.getTotalMultiplier(profile.biomes, profile.upgrades, profile.rebirths, 1)
+					local income = computeIncomePerMinute(profile) * intervalMinutes * multiplier
 					if income > 0 then
 						EnergyService.grantEnergy(player, income)
 					end

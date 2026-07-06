@@ -704,6 +704,7 @@ local function onPlayerAdded(player: Player)
 	end
 	updateNameTag(player)
 	PlanetService.applyCosmetics(player)
+	PlanetService.applyRebirthDeco(player, profile.rebirths)
 	PlanetService.sendSnapshot(player)
 end
 
@@ -831,6 +832,74 @@ function PlanetService.getSellPadPosition(player: Player): Vector3?
 		return pad.Position
 	end
 	return nil
+end
+
+-- Alle 12 Zonen an den aktuellen Profilstand angleichen (z. B. nach Rebirth).
+function PlanetService.refreshAllZones(player: Player)
+	local profile = DataService.getProfile(player)
+	if profile == nil then
+		return
+	end
+	for slot = 1, GameConfig.PLANET_SLOTS do
+		local placed: Types.PlacedBiome? = nil
+		for _, candidate in profile.biomes do
+			if candidate.slot == slot then
+				placed = candidate
+				break
+			end
+		end
+		updateZoneVisual(player, slot, placed)
+	end
+end
+
+-- Exklusive Rebirth-Deko: goldene Orbs umkreisen den Insel-Kristall
+-- (einer pro Wiedergeburt, gedeckelt), ab 3 Wiedergeburten mit Licht.
+function PlanetService.applyRebirthDeco(player: Player, rebirths: number)
+	local plotFolder = getPlotFolder(player)
+	if plotFolder == nil then
+		return
+	end
+
+	local existing = plotFolder:FindFirstChild("RebirthDeco")
+	if existing ~= nil then
+		existing:Destroy()
+	end
+	if rebirths <= 0 then
+		return
+	end
+
+	local core = plotFolder:FindFirstChild("Core")
+	if core == nil or not core:IsA("BasePart") then
+		return
+	end
+
+	local deco = Instance.new("Model")
+	deco.Name = "RebirthDeco"
+
+	local shown = math.min(rebirths, 8)
+	for index = 1, shown do
+		local angle = (index / shown) * 2 * math.pi
+		local orb = Instance.new("Part")
+		orb.Name = `RebirthOrb_{index}`
+		orb.Shape = Enum.PartType.Ball
+		orb.Size = Vector3.new(1.1, 1.1, 1.1)
+		orb.Color = Color3.fromRGB(255, 210, 90)
+		orb.Material = Enum.Material.Neon
+		orb.Anchored = true
+		orb.CanCollide = false
+		orb.CanQuery = false
+		orb.CFrame = (core :: BasePart).CFrame * CFrame.new(math.cos(angle) * 4, 0.5, math.sin(angle) * 4)
+		orb.Parent = deco
+		if rebirths >= 3 and index == 1 then
+			local light = Instance.new("PointLight")
+			light.Color = orb.Color
+			light.Range = 14
+			light.Brightness = 1
+			light.Parent = orb
+		end
+	end
+
+	deco.Parent = plotFolder
 end
 
 -- Schickt dem Besitzer einen frischen Insel-Snapshot (tiefe Kopie).

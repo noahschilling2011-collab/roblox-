@@ -28,7 +28,7 @@ local GameConfig = {
 	TRADE_LOCK_SECONDS = 3, -- Sicherheitspause nach beidseitigem Akzeptieren
 
 	-- Daten
-	PROFILE_SCHEMA_VERSION = 5, -- v4: Tutorial; v5: Rucksack/Upgrades/Statistiken (Insel-Loop)
+	PROFILE_SCHEMA_VERSION = 6, -- v5: Insel-Loop; v6: Rebirths
 	DATASTORE_NAME = "PlanetForge_v1",
 	AUTOSAVE_INTERVAL_SECONDS = 120,
 

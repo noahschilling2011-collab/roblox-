@@ -209,15 +209,15 @@ local function checkGameConfigAndRemotes()
 				functions += 1
 			end
 		end
-		check(events == 14, `Erwartet 14 RemoteEvents, gefunden: {events}`)
-		check(functions == 12, `Erwartet 12 RemoteFunctions, gefunden: {functions}`)
+		check(events == 15, `Erwartet 15 RemoteEvents, gefunden: {events}`)
+		check(functions == 13, `Erwartet 13 RemoteFunctions, gefunden: {functions}`)
 
 		-- Kritische Einzel-Remotes (Tutorial, Sammel-Loop, Studio-Testmodus).
 		for _, name in { "TutorialUpdated", "ObjectCollected", "BackpackChanged", "SoldBackpack", "UpgradesUpdated" } do
 			local remote = folder:FindFirstChild(name)
 			check(remote ~= nil and remote:IsA("RemoteEvent"), `RemoteEvent {name} fehlt`)
 		end
-		for _, name in { "TutorialAction", "SimulatePurchase", "BuyUpgrade" } do
+		for _, name in { "TutorialAction", "SimulatePurchase", "BuyUpgrade", "DoRebirth" } do
 			local remote = folder:FindFirstChild(name)
 			check(remote ~= nil and remote:IsA("RemoteFunction"), `RemoteFunction {name} fehlt`)
 		end
@@ -246,6 +246,32 @@ local function checkHarvest()
 			`Upgrade {upgradeId}: costFactor {def.costFactor} außerhalb 1.15..1.25`
 		)
 	end
+end
+
+local function checkProgression()
+	-- Formel-Stichproben: leeres Profil = Basis; Boni wirken monoton.
+	local emptyMult = ProgressionConfig.getTotalMultiplier({}, {}, 0, 1)
+	check(emptyMult == ProgressionConfig.BASE_MULTIPLIER, "Leeres Profil muss den Basis-Multiplikator ergeben")
+
+	local withBiome = ProgressionConfig.getTotalMultiplier(
+		{ { biomeId = "wiese", slot = 1, level = 3, placedAt = 0 } },
+		{},
+		0,
+		1
+	)
+	check(withBiome > emptyMult, "Biome müssen den Multiplikator erhöhen")
+
+	local withRebirth = ProgressionConfig.getTotalMultiplier({}, {}, 2, 1)
+	check(
+		math.abs(withRebirth - (1 + 2 * ProgressionConfig.REBIRTH_BONUS)) < 1e-9,
+		"Rebirth-Multiplikator stapelt nicht korrekt (+50% pro Rebirth)"
+	)
+
+	-- Schwelle wächst pro Rebirth.
+	check(
+		ProgressionConfig.getRebirthThreshold(1) > ProgressionConfig.getRebirthThreshold(0),
+		"Rebirth-Schwelle muss pro Wiedergeburt wachsen"
+	)
 end
 
 local function checkTutorial()
@@ -300,6 +326,7 @@ function SelfCheckService.init()
 		{ name = "Shop", fn = checkMonetization },
 		{ name = "Konfig+Remotes", fn = checkGameConfigAndRemotes },
 		{ name = "Sammeln", fn = checkHarvest },
+		{ name = "Progression", fn = checkProgression },
 		{ name = "Tutorial", fn = checkTutorial },
 		{ name = "Biom-Visuals", fn = checkBiomeVisuals },
 		{ name = "Testmodus", fn = checkTestMode },

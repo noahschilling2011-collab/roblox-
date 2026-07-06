@@ -21,6 +21,8 @@
 --     BackpackChanged(items: number, capacity: number, value: number)
 --     SoldBackpack(gainedEnergy: number, itemsSold: number)
 --     UpgradesUpdated(levels: { magnet: number, backpack: number })
+--     MultiplierChanged(info: { total, biomeBonus, upgradeBonus, petBonus,
+--       rebirthMultiplier, rebirths, nextThreshold, lifetimeEnergy })
 --
 --   RemoteFunctions (Client -> Server), geben immer (ok: boolean, payload: any?) zurück:
 --     PlaceBiome(biomeId: string, slot: number) -- schaltet eine Insel-Zone frei
@@ -36,6 +38,7 @@
 --     TutorialAction(action: "advance" | "skip") -- Server validiert den Fortschritt
 --     SimulatePurchase(kind: "gamepass" | "product", key: string)
 --       NUR Studio-Testmodus (Server prüft RunService:IsStudio() hart)
+--     DoRebirth() -- Wiedergeburt (Server prüft die lifetimeEnergy-Schwelle)
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -57,6 +60,7 @@ local EVENT_NAMES = {
 	"BackpackChanged",
 	"SoldBackpack",
 	"UpgradesUpdated",
+	"MultiplierChanged",
 }
 
 local FUNCTION_NAMES = {
@@ -72,6 +76,7 @@ local FUNCTION_NAMES = {
 	"RenamePlanet",
 	"TutorialAction",
 	"SimulatePurchase",
+	"DoRebirth",
 }
 
 local Remotes = {}
