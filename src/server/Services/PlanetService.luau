@@ -5,6 +5,7 @@
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TextService = game:GetService("TextService")
 local Workspace = game:GetService("Workspace")
 
 local Types = require(ReplicatedStorage.Shared.Types)
@@ -202,6 +203,101 @@ local function buildPlot(player: Player, origin: CFrame)
 	end
 
 	folder.Parent = getPlotsRoot()
+end
+
+-- Aktualisiert das Namensschild über dem Planetenkern.
+-- Ohne eigenen Namen: "<DisplayName>s Planet".
+local function updateNameTag(player: Player)
+	local plotFolder = getPlotFolder(player)
+	if plotFolder == nil then
+		return
+	end
+	local core = plotFolder:FindFirstChild("Core")
+	if core == nil or not core:IsA("BasePart") then
+		return
+	end
+
+	local profile = DataService.getProfile(player)
+	local customName = if profile ~= nil then profile.planetName else ""
+	local displayText = if customName ~= "" then customName else `{player.DisplayName}s Planet`
+
+	local billboard = core:FindFirstChild("NameTag")
+	local nameLabel: TextLabel
+	local ownerLabel: TextLabel
+	if billboard ~= nil and billboard:IsA("BillboardGui") then
+		nameLabel = billboard:FindFirstChild("PlanetName") :: TextLabel
+		ownerLabel = billboard:FindFirstChild("OwnerName") :: TextLabel
+	else
+		local gui = Instance.new("BillboardGui")
+		gui.Name = "NameTag"
+		gui.Size = UDim2.new(0, 260, 0, 56)
+		gui.StudsOffset = Vector3.new(0, CORE_DIAMETER / 2 + 8, 0)
+		gui.AlwaysOnTop = false
+		gui.MaxDistance = 350
+
+		nameLabel = Instance.new("TextLabel")
+		nameLabel.Name = "PlanetName"
+		nameLabel.BackgroundTransparency = 1
+		nameLabel.Size = UDim2.new(1, 0, 0, 32)
+		nameLabel.Font = Enum.Font.GothamBold
+		nameLabel.TextSize = 24
+		nameLabel.TextColor3 = Color3.fromRGB(235, 238, 245)
+		nameLabel.TextStrokeTransparency = 0.4
+		nameLabel.Parent = gui
+
+		ownerLabel = Instance.new("TextLabel")
+		ownerLabel.Name = "OwnerName"
+		ownerLabel.BackgroundTransparency = 1
+		ownerLabel.Position = UDim2.new(0, 0, 0, 32)
+		ownerLabel.Size = UDim2.new(1, 0, 0, 20)
+		ownerLabel.Font = Enum.Font.GothamMedium
+		ownerLabel.TextSize = 14
+		ownerLabel.TextColor3 = Color3.fromRGB(158, 164, 186)
+		ownerLabel.TextStrokeTransparency = 0.6
+		ownerLabel.Parent = gui
+
+		gui.Parent = core
+	end
+
+	nameLabel.Text = displayText
+	ownerLabel.Text = `von {player.DisplayName}`
+end
+
+-- Handler für RenamePlanet(name): validiert, filtert (Roblox-Pflicht für
+-- nutzergenerierten Text) und speichert den Planetennamen.
+local function handleRenamePlanet(player: Player, nameArg: unknown): (boolean, any?)
+	if typeof(nameArg) ~= "string" then
+		return false, "Ungültiger Name."
+	end
+
+	-- Führende/abschließende Leerzeichen entfernen.
+	local trimmed = string.gsub(nameArg :: string, "^%s*(.-)%s*$", "%1")
+	if #trimmed < 3 then
+		return false, "Der Name braucht mindestens 3 Zeichen."
+	end
+	if #trimmed > GameConfig.PLANET_NAME_MAX_LENGTH then
+		return false, `Maximal {GameConfig.PLANET_NAME_MAX_LENGTH} Zeichen.`
+	end
+
+	local profile = DataService.getProfile(player)
+	if profile == nil then
+		return false, "Dein Profil ist noch nicht geladen."
+	end
+
+	-- Pflicht-Filterung für von Spielern eingegebenen Text.
+	local okFilter, filtered = pcall(function()
+		local result = TextService:FilterStringAsync(trimmed, player.UserId)
+		return result:GetNonChatStringForBroadcastAsync()
+	end)
+	if not okFilter or typeof(filtered) ~= "string" then
+		warn(`[PlanetForge] Namensfilter fehlgeschlagen: {filtered}`)
+		return false, "Der Name konnte gerade nicht geprüft werden - versuche es gleich noch einmal."
+	end
+
+	profile.planetName = filtered
+	DataService.markDirty(player)
+	updateNameTag(player)
+	return true, filtered
 end
 
 -- Holt oder erstellt einen ParticleEmitter mit festem Namen unter parent.
@@ -441,6 +537,7 @@ local function onPlayerAdded(player: Player)
 
 	-- Basis-Plot (Kern + leere Slots) sofort aufbauen, damit die Welt nicht leer wirkt.
 	buildPlot(player, origin)
+	updateNameTag(player) -- Standardname; nach dem Profil-Load ggf. eigener Name
 
 	characterConnections[player] = player.CharacterAdded:Connect(function(character)
 		task.spawn(teleportToPlot, player, character)
@@ -459,6 +556,7 @@ local function onPlayerAdded(player: Player)
 	for _, placed in profile.biomes do
 		updateSlotVisual(player, placed.slot, placed)
 	end
+	updateNameTag(player)
 	PlanetService.applyCosmetics(player)
 	PlanetService.sendSnapshot(player)
 end
@@ -488,6 +586,7 @@ function PlanetService.init()
 
 	Remotes.getFunction("PlaceBiome").OnServerInvoke = handlePlaceBiome
 	Remotes.getFunction("UpgradeBiome").OnServerInvoke = handleUpgradeBiome
+	Remotes.getFunction("RenamePlanet").OnServerInvoke = handleRenamePlanet
 
 	Players.PlayerAdded:Connect(function(player)
 		task.spawn(onPlayerAdded, player)

@@ -14,6 +14,8 @@
 --     TradeUpdated(tradeSnapshot: any?) -- nil = keine aktive Handelssitzung
 --     Notification(message: string, kind: "info" | "success" | "error")
 --     CosmeticsUpdated(owned: { string }, equipped: { [string]: string })
+--     LeaderboardUpdated(boards: { likes: { LBEntry }, energy: { LBEntry } })
+--       mit LBEntry = { userId: number, name: string, value: number }
 --
 --   RemoteFunctions (Client -> Server), geben immer (ok: boolean, payload: any?) zurück:
 --     PlaceBiome(biomeId: string, slot: number)
@@ -25,6 +27,7 @@
 --     LikePlanet(targetUserId: number)
 --     TradeAction(action: "invite" | "acceptInvite" | "setOffer" | "toggleAccept" | "cancel", payload: any?)
 --     EquipCosmetic(category: string, cosmeticId: string?) -- nil = Kategorie ablegen
+--     RenamePlanet(name: string) -- gibt bei ok den gefilterten Namen zurück
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -40,6 +43,7 @@ local EVENT_NAMES = {
 	"TradeUpdated",
 	"Notification",
 	"CosmeticsUpdated",
+	"LeaderboardUpdated",
 }
 
 local FUNCTION_NAMES = {
@@ -52,6 +56,7 @@ local FUNCTION_NAMES = {
 	"LikePlanet",
 	"TradeAction",
 	"EquipCosmetic",
+	"RenamePlanet",
 }
 
 local Remotes = {}

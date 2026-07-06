@@ -42,6 +42,9 @@ export type PlayerProfile = {
 	createdAt: number,
 	ownedCosmetics: { CosmeticId }, -- per Robux freigeschaltete Kosmetik
 	equippedCosmetics: { [string]: CosmeticId }, -- Kategorie -> ausgerüstete Kosmetik
+	planetName: string, -- vom Spieler vergebener, gefilterter Name ("" = Standard)
+	dailyStreak: number, -- aufeinanderfolgende Login-Tage (Tagesbonus)
+	lastDailyClaimDay: number, -- UTC-Tagesnummer des letzten Tagesbonus (os.time() / 86400)
 }
 
 -- Ein aktuell laufendes globales Event.

@@ -22,6 +22,9 @@ local SERVICE_STARTUP_ORDER = {
 	"VisitService",
 	"TradeService",
 	"MonetizationService",
+	"LeaderboardService",
+	"DailyRewardService",
+	"SelfCheckService", -- immer zuletzt: prüft den fertigen Aufbau
 }
 
 local servicesFolder = script:WaitForChild("Services")

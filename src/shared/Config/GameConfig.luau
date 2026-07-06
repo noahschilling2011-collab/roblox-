@@ -21,7 +21,7 @@ local GameConfig = {
 	TRADE_LOCK_SECONDS = 3, -- Sicherheitspause nach beidseitigem Akzeptieren
 
 	-- Daten
-	PROFILE_SCHEMA_VERSION = 2, -- v2: ownedCosmetics/equippedCosmetics ergänzt
+	PROFILE_SCHEMA_VERSION = 3, -- v2: Kosmetik-Felder; v3: Tagesbonus + Planetenname
 	DATASTORE_NAME = "PlanetForge_v1",
 	AUTOSAVE_INTERVAL_SECONDS = 120,
 
@@ -29,6 +29,18 @@ local GameConfig = {
 	EVENT_CHECK_INTERVAL_SECONDS = 60, -- wie oft der Event-Scheduler würfelt
 	EVENT_MIN_GAP_SECONDS = 15 * 60, -- Mindestabstand zwischen zwei globalen Events
 	EVENT_START_CHANCE = 0.25, -- Chance pro Prüfintervall, dass ein Event startet
+
+	-- Rangliste
+	LEADERBOARD_REFRESH_SECONDS = 120, -- Schreib- und Lese-Takt der globalen Ranglisten
+	LEADERBOARD_TOP_N = 20, -- Anzahl der angezeigten Plätze
+	LEADERBOARD_STORE_LIKES = "PF_Rangliste_Likes_v1",
+	LEADERBOARD_STORE_ENERGY = "PF_Rangliste_Energie_v1",
+
+	-- Tagesbonus (Energie je aufeinanderfolgendem Login-Tag; Tag 7+ = letzter Wert)
+	DAILY_REWARDS = { 50, 100, 150, 250, 350, 450, 600 },
+
+	-- Planetenname
+	PLANET_NAME_MAX_LENGTH = 24,
 }
 
 return GameConfig

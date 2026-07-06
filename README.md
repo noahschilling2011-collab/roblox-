@@ -53,6 +53,9 @@ Event-Loot-Glück verbessert diese Chancen direkt (Divisor durch den Multiplikat
 ### 🤝 Multiplayer
 Besuche fremder Planeten mit Bewertungssystem, Clans, die gemeinsam Galaxien bauen, sicheres Handelssystem (max. 4 Items + Energie pro Seite, 3 s Sicherheits-Lock, atomare Ausführung), Wettbewerbe für den schönsten Planeten und PvE-Bosse für Gruppen. Konzept: [Multiplayer](docs/MULTIPLAYER.md).
 
+### 🏆 Rangliste, Tagesbonus & Planeten-Namen
+Globale Ranglisten („Meiste Likes" und „Meiste Gesamt-Energie" über alle Server, via OrderedDataStore) plus Live-Werte in der Spielerliste (leaderstats). Täglicher Login-Bonus mit Streak (Tag 1: 50 bis Tag 7+: 600 Energie). Jeder Planet trägt ein Namensschild – den Namen vergibst du selbst (automatisch gefiltert).
+
 ### 💰 Monetarisierung: nur Kosmetik
 Planeten-Skins, Auren, Wettereffekte, Haustiere und später ein Battle Pass – **keine** kaufbaren Gameplay-Vorteile. Der Robux-Shop (Gamepässe + Einzelkäufe über die offiziellen Roblox-Kaufdialoge) ist bereits implementiert; im Creator Dashboard angelegte Produkt-IDs werden in `MonetizationConfig.luau` eingetragen. Richtlinien und Compliance: [Monetarisierung](docs/MONETARISIERUNG.md).
 
@@ -93,15 +96,22 @@ src/
 │       ├── GlobalEventService.luau  Event-Scheduler und aktive Multiplikatoren
 │       ├── VisitService.luau        Besuche und Bewertungen fremder Planeten
 │       ├── TradeService.luau        Handel mit Lock-Phase und atomarer Ausführung
-│       └── MonetizationService.luau Robux-Käufe, Kosmetik-Freischaltung, Haustiere
+│       ├── MonetizationService.luau Robux-Käufe, Kosmetik-Freischaltung, Haustiere
+│       ├── LeaderboardService.luau  Globale Ranglisten (OrderedDataStore) + leaderstats
+│       ├── DailyRewardService.luau  Täglicher Login-Bonus mit Streak
+│       └── SelfCheckService.luau    Selbsttest der Konfiguration bei Serverstart
 └── client/                          → StarterPlayer.StarterPlayerScripts.Client
     ├── init.client.luau             Client-Bootstrap: startet alle Controller
     └── Controllers/
         ├── UIController.luau        HUD, Energie-Anzeige, Toasts, Loot-Popup
         ├── PlanetBuilderController.luau   Bau-Interface für Biom-Slots
         ├── EventNotifierController.luau   Banner/Effekte bei globalen Events
-        └── ShopController.luau      Robux-Shop und "Meine Kosmetik"
+        ├── ShopController.luau      Robux-Shop und "Meine Kosmetik"
+        ├── LeaderboardController.luau     Ranglisten-Panel (🏆)
+        └── PlanetNameController.luau      Planet benennen (✏️)
 ```
+
+Dazu kommt `tests/` – ein Testlauf, der die echten Shared-Module in einer Luau-VM ausführt und Logik/Balancing prüft ([Anleitung](tests/README.md)); im Spiel prüft der `SelfCheckService` dieselben Invarianten bei jedem Serverstart.
 
 Das Mapping ins Roblox-DataModel definiert [`default.project.json`](default.project.json) (Rojo): `shared` wird auf Server **und** Client repliziert, `server` läuft ausschließlich serverseitig, `client` startet pro Spieler. Alle Balancing-Werte liegen in `src/shared/Config/` – Code liest sie nur, statt Zahlen zu duplizieren.
 
@@ -138,6 +148,9 @@ Voraussetzungen: Roblox Studio und [Rokit](https://github.com/rojo-rbx/rokit) (T
 - Globaler Event-Scheduler mit den fünf Events und wirksamen Energie-/Loot-Multiplikatoren
 - Besuche und Handel innerhalb eines Servers (4 Items + Energie, 3-s-Lock, atomare Ausführung)
 - Robux-Kosmetik-Shop: Gamepässe und Einzelkäufe, sichtbare Skins/Auren/Wetter auf dem Planeten, Haustier-Begleiter (Produkt-IDs müssen im Creator Dashboard angelegt und in `MonetizationConfig.luau` eingetragen werden)
+- Globale Ranglisten (Likes und Gesamt-Energie) mit Panel im Spiel, leaderstats in der Spielerliste
+- Täglicher Login-Bonus mit Streak und eigene Planeten-Namen (serverseitig gefiltert)
+- Automatisierte Tests: `tests/` (Luau-VM) und `SelfCheckService` (bei jedem Serverstart)
 
 **Fehlt noch (bewusst nicht in P0):**
 - Minispiele und Kämpfe als aktive Energie-Quellen
