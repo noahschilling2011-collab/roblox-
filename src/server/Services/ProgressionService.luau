@@ -22,6 +22,7 @@ local ProgressionConfig = require(ReplicatedStorage.Shared.Config.ProgressionCon
 local DataService = require(script.Parent.DataService)
 local EnergyService = require(script.Parent.EnergyService)
 local EquipService = require(script.Parent.EquipService)
+local HarvestService = require(script.Parent.HarvestService)
 local PlanetService = require(script.Parent.PlanetService)
 
 local WATCHER_INTERVAL_SECONDS = 3 -- wie oft der Multiplikator neu geprüft wird
@@ -95,7 +96,9 @@ function ProgressionService.performRebirth(player: Player, ignoreThreshold: bool
 	profile.backpack.value = 0
 	DataService.markDirty(player)
 
-	-- Welt und Client synchronisieren.
+	-- Welt und Client synchronisieren; liegengebliebene Sammel-Objekte
+	-- der alten Biome verschwinden mit (sonst wären sie weiter einsammelbar).
+	HarvestService.resetPlayer(player)
 	PlanetService.refreshAllZones(player)
 	PlanetService.applyRebirthDeco(player, profile.rebirths)
 	PlanetService.sendSnapshot(player)

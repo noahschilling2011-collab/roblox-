@@ -293,6 +293,31 @@ local function collectTick(player: Player)
 end
 
 --------------------------------------------------------------------------
+-- Reset (z. B. nach einer Wiedergeburt)
+--------------------------------------------------------------------------
+
+-- Entfernt alle liegenden Sammel-Objekte des Spielers, leert den
+-- Spawn-Zustand und meldet den (bereits zurückgesetzten) Rucksack ans HUD.
+function HarvestService.resetPlayer(player: Player)
+	local states = zoneStates[player]
+	if states ~= nil then
+		for _, state in states do
+			for _, object in state.objects do
+				if object.part.Parent ~= nil then
+					object.part:Destroy()
+				end
+			end
+		end
+	end
+	zoneStates[player] = nil
+
+	local profile = DataService.getProfile(player)
+	if profile ~= nil then
+		fireBackpackChanged(player, profile)
+	end
+end
+
+--------------------------------------------------------------------------
 -- Insel-Upgrades (Magnet, Rucksack)
 --------------------------------------------------------------------------
 

@@ -45,6 +45,15 @@ local activePets: { [Player]: Model } = {}
 
 local MonetizationService = {}
 
+-- Gamepass-Besitz pro Spieler (beim Join geprueft, im Testmodus simulierbar).
+local ownedPasses: { [Player]: { [string]: boolean } } = {}
+
+-- Besitzt der Spieler den Gamepass mit diesem Config-Key?
+function MonetizationService.hasPass(player: Player, key: string): boolean
+	local passes = ownedPasses[player]
+	return passes ~= nil and passes[key] == true
+end
+
 local function fireCosmeticsUpdated(player: Player)
 	local profile = DataService.getProfile(player)
 	if profile == nil or cosmeticsUpdatedEvent == nil then
@@ -66,15 +75,6 @@ local function notify(player: Player, message: string, kind: string)
 	if notificationEvent ~= nil then
 		notificationEvent:FireClient(player, message, kind)
 	end
-end
-
--- Gamepass-Besitz pro Spieler (beim Join geprueft, im Testmodus simulierbar).
-local ownedPasses: { [Player]: { [string]: boolean } } = {}
-
--- Besitzt der Spieler den Gamepass mit diesem Config-Key?
-function MonetizationService.hasPass(player: Player, key: string): boolean
-	local passes = ownedPasses[player]
-	return passes ~= nil and passes[key] == true
 end
 
 -- Goldener VIP-Trail am Charakter (unabhaengig vom Equip-System).
@@ -428,6 +428,15 @@ local function onSimulatePurchase(player: Player, kindArg: any, keyArg: any): (b
 end
 
 local function onPlayerAdded(player: Player)
+	-- VIP-Trail nach jedem Respawn erneut anbringen (auch für Spieler,
+	-- die vor dem Service-Start beigetreten sind, z. B. Studio-Solo).
+	player.CharacterAdded:Connect(function()
+		task.wait(0.5)
+		if MonetizationService.hasPass(player, "gp_vip") then
+			applyVipTrail(player)
+		end
+	end)
+
 	local profile = DataService.waitForProfile(player)
 	if profile == nil then
 		return -- Spieler bereits weg
@@ -467,15 +476,6 @@ function MonetizationService.init()
 		return if MonetizationService.hasPass(player, "gp_pet_slots") then MonetizationConfig.PET_SLOTS_BONUS else 0
 	end
 
-	-- VIP-Trail nach jedem Respawn erneut anbringen.
-	Players.PlayerAdded:Connect(function(player)
-		player.CharacterAdded:Connect(function()
-			task.wait(0.5)
-			if MonetizationService.hasPass(player, "gp_vip") then
-				applyVipTrail(player)
-			end
-		end)
-	end)
 
 	-- Gamepass-Kauf im laufenden Spiel: Kosmetik sofort gutschreiben.
 	MarketplaceService.PromptGamePassPurchaseFinished:Connect(

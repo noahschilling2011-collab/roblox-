@@ -87,15 +87,19 @@ src/
 │   │   ├── RarityConfig.luau        Seltenheits-Tiers und Gewichte (Common 60 … Legendary 1)
 │   │   ├── CollectibleConfig.luau   Sammelobjekte inkl. der drei Ultra-Rares
 │   │   ├── EventConfig.luau         Die fünf globalen Events (Dauer, Effekt, Gewicht)
-│   │   └── MonetizationConfig.luau  Robux-Shop: Kosmetik-Katalog, Gamepässe, Products
+│   │   ├── ProgressionConfig.luau   Multiplikator-Formel, Upgrades, Rebirth-Schwellen
+│   │   └── MonetizationConfig.luau  Kauf-Kette: Pakete, Perks, Kosmetik, Testmodus
 │   └── Util/
 │       └── WeightedRandom.luau      Gewichtete Zufallsauswahl für Loot und Events
 ├── server/                          → ServerScriptService.Server
 │   ├── init.server.luau             Server-Bootstrap: startet alle Services
 │   └── Services/
 │       ├── DataService.luau         Laden/Speichern der Spielerdaten (DataStore)
-│       ├── PlanetService.luau       Biome bauen und upgraden (server-autoritativ)
-│       ├── EnergyService.luau       Manuelles Sammeln + passives Einkommen
+│       ├── PlanetService.luau       Insel mit Biom-Zonen, Pads, Rebirth-Deko
+│       ├── HarvestService.luau      Objekt-Spawner, Näherungs-Sammlung, Verkauf
+│       ├── EquipService.luau        Pets/Trails/Skins ausrüsten + Pet-Boni
+│       ├── ProgressionService.luau  Live-Multiplikator + Rebirth
+│       ├── EnergyService.luau       Energie-Konto + passives Einkommen
 │       ├── LootService.luau         Fund-Würfe inkl. Ultra-Rare-Rolls
 │       ├── GlobalEventService.luau  Event-Scheduler und aktive Multiplikatoren
 │       ├── VisitService.luau        Besuche und Bewertungen fremder Planeten
@@ -109,8 +113,12 @@ src/
 └── client/                          → StarterPlayer.StarterPlayerScripts.Client
     ├── init.client.luau             Client-Bootstrap: startet alle Controller
     └── Controllers/
-        ├── EffectsController.luau   Sounds, fliegende Zahlen, Shake (startet zuerst)
-        ├── UIController.luau        HUD, Toasts, Loot-Popup mit Spannungsaufbau
+        ├── EffectsController.luau   Sounds, Tweens, Münz-Regen, Kamera (startet zuerst)
+        ├── UIController.luau        HUD (Energie/Rucksack/Multiplikator), Loot-Popup
+        ├── HarvestController.luau   Sammel-/Verkaufs-Effekte, Kaufhinweis
+        ├── InventoryController.luau Inventar-Grid mit Equip und Tooltips
+        ├── RebirthController.luau   Wiedergeburt-Dialog mit Vorher/Nachher
+        ├── ChatTagController.luau   [VIP]-Chat-Tag
         ├── PlanetBuilderController.luau   Bau-Interface für Biom-Slots
         ├── EventNotifierController.luau   Banner/Effekte bei globalen Events
         ├── ShopController.luau      Robux-Shop mit Tabs und "Meine Kosmetik"

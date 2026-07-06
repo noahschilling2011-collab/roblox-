@@ -3466,6 +3466,31 @@ local function collectTick(player: Player)
 end
 
 --------------------------------------------------------------------------
+-- Reset (z. B. nach einer Wiedergeburt)
+--------------------------------------------------------------------------
+
+-- Entfernt alle liegenden Sammel-Objekte des Spielers, leert den
+-- Spawn-Zustand und meldet den (bereits zurückgesetzten) Rucksack ans HUD.
+function HarvestService.resetPlayer(player: Player)
+	local states = zoneStates[player]
+	if states ~= nil then
+		for _, state in states do
+			for _, object in state.objects do
+				if object.part.Parent ~= nil then
+					object.part:Destroy()
+				end
+			end
+		end
+	end
+	zoneStates[player] = nil
+
+	local profile = DataService.getProfile(player)
+	if profile ~= nil then
+		fireBackpackChanged(player, profile)
+	end
+end
+
+--------------------------------------------------------------------------
 -- Insel-Upgrades (Magnet, Rucksack)
 --------------------------------------------------------------------------
 
@@ -4017,6 +4042,15 @@ local activePets: { [Player]: Model } = {}
 
 local MonetizationService = {}
 
+-- Gamepass-Besitz pro Spieler (beim Join geprueft, im Testmodus simulierbar).
+local ownedPasses: { [Player]: { [string]: boolean } } = {}
+
+-- Besitzt der Spieler den Gamepass mit diesem Config-Key?
+function MonetizationService.hasPass(player: Player, key: string): boolean
+	local passes = ownedPasses[player]
+	return passes ~= nil and passes[key] == true
+end
+
 local function fireCosmeticsUpdated(player: Player)
 	local profile = DataService.getProfile(player)
 	if profile == nil or cosmeticsUpdatedEvent == nil then
@@ -4038,15 +4072,6 @@ local function notify(player: Player, message: string, kind: string)
 	if notificationEvent ~= nil then
 		notificationEvent:FireClient(player, message, kind)
 	end
-end
-
--- Gamepass-Besitz pro Spieler (beim Join geprueft, im Testmodus simulierbar).
-local ownedPasses: { [Player]: { [string]: boolean } } = {}
-
--- Besitzt der Spieler den Gamepass mit diesem Config-Key?
-function MonetizationService.hasPass(player: Player, key: string): boolean
-	local passes = ownedPasses[player]
-	return passes ~= nil and passes[key] == true
 end
 
 -- Goldener VIP-Trail am Charakter (unabhaengig vom Equip-System).
@@ -4400,6 +4425,15 @@ local function onSimulatePurchase(player: Player, kindArg: any, keyArg: any): (b
 end
 
 local function onPlayerAdded(player: Player)
+	-- VIP-Trail nach jedem Respawn erneut anbringen (auch für Spieler,
+	-- die vor dem Service-Start beigetreten sind, z. B. Studio-Solo).
+	player.CharacterAdded:Connect(function()
+		task.wait(0.5)
+		if MonetizationService.hasPass(player, "gp_vip") then
+			applyVipTrail(player)
+		end
+	end)
+
 	local profile = DataService.waitForProfile(player)
 	if profile == nil then
 		return -- Spieler bereits weg
@@ -4439,15 +4473,6 @@ function MonetizationService.init()
 		return if MonetizationService.hasPass(player, "gp_pet_slots") then MonetizationConfig.PET_SLOTS_BONUS else 0
 	end
 
-	-- VIP-Trail nach jedem Respawn erneut anbringen.
-	Players.PlayerAdded:Connect(function(player)
-		player.CharacterAdded:Connect(function()
-			task.wait(0.5)
-			if MonetizationService.hasPass(player, "gp_vip") then
-				applyVipTrail(player)
-			end
-		end)
-	end)
 
 	-- Gamepass-Kauf im laufenden Spiel: Kosmetik sofort gutschreiben.
 	MarketplaceService.PromptGamePassPurchaseFinished:Connect(
@@ -5481,6 +5506,7 @@ local ProgressionConfig = require(ReplicatedStorage.Shared.Config.ProgressionCon
 local DataService = require(script.Parent.DataService)
 local EnergyService = require(script.Parent.EnergyService)
 local EquipService = require(script.Parent.EquipService)
+local HarvestService = require(script.Parent.HarvestService)
 local PlanetService = require(script.Parent.PlanetService)
 
 local WATCHER_INTERVAL_SECONDS = 3 -- wie oft der Multiplikator neu geprüft wird
@@ -5554,7 +5580,9 @@ function ProgressionService.performRebirth(player: Player, ignoreThreshold: bool
 	profile.backpack.value = 0
 	DataService.markDirty(player)
 
-	-- Welt und Client synchronisieren.
+	-- Welt und Client synchronisieren; liegengebliebene Sammel-Objekte
+	-- der alten Biome verschwinden mit (sonst wären sie weiter einsammelbar).
+	HarvestService.resetPlayer(player)
 	PlanetService.refreshAllZones(player)
 	PlanetService.applyRebirthDeco(player, profile.rebirths)
 	PlanetService.sendSnapshot(player)
