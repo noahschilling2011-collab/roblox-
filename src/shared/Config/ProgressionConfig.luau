@@ -57,6 +57,9 @@ ProgressionConfig.UPGRADE_BONUS_PER_LEVEL = 0.02 -- je Upgrade-Stufe (alle Upgra
 ProgressionConfig.REBIRTH_BONUS = 0.5 -- +50% pro Wiedergeburt, stapelnd
 
 -- Rebirth-Schwelle: lifetimeEnergy, ab der die nächste Wiedergeburt möglich ist.
+-- HINWEIS (Balancing-Vorschlag, bewusst NICHT eigenmächtig geändert):
+-- 25.000 ist für den ersten Rebirth in Session 1-2 vermutlich zu hoch.
+-- Empfehlung nach erstem Playtest: 5.000-8.000 als Einstiegs-Schwelle testen.
 ProgressionConfig.REBIRTH_BASE_THRESHOLD = 25000
 ProgressionConfig.REBIRTH_THRESHOLD_FACTOR = 2 -- jede weitere verdoppelt die Schwelle
 

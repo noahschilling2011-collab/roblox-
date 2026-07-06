@@ -71,6 +71,7 @@ local function buildDefaultProfile(): Types.PlayerProfile
 		rebirths = 0,
 		equipped = { pets = {} },
 		purchaseIds = {},
+		lastSeenAt = 0,
 	}
 end
 
@@ -145,6 +146,8 @@ end
 
 -- Speichert einen Session-Eintrag via UpdateAsync (Last-Writer-Wins, siehe Kopfkommentar).
 local function saveProfile(player: Player, entry: SessionEntry): boolean
+	-- Zeitstempel für Offline-Earnings: Stand des letzten Speicherns.
+	entry.profile.lastSeenAt = os.time()
 	local dataStore = store
 	if dataStore == nil or not entry.saveable then
 		return false

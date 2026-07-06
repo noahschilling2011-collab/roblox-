@@ -28,7 +28,7 @@ local GameConfig = {
 	TRADE_LOCK_SECONDS = 3, -- Sicherheitspause nach beidseitigem Akzeptieren
 
 	-- Daten
-	PROFILE_SCHEMA_VERSION = 8, -- v6: Rebirths; v7: Equip; v8: PurchaseId-Log
+	PROFILE_SCHEMA_VERSION = 9, -- v7: Equip; v8: PurchaseId-Log; v9: Offline-Earnings
 	PURCHASE_LOG_LIMIT = 50, -- gemerkte PurchaseIds gegen Doppelgutschrift
 
 	-- Ausrüstung
@@ -47,8 +47,14 @@ local GameConfig = {
 	LEADERBOARD_STORE_LIKES = "PF_Rangliste_Likes_v1",
 	LEADERBOARD_STORE_ENERGY = "PF_Rangliste_Energie_v1",
 
-	-- Tagesbonus (Energie je aufeinanderfolgendem Login-Tag; Tag 7+ = letzter Wert)
-	DAILY_REWARDS = { 50, 100, 150, 250, 350, 450, 600 },
+	-- Tagesbonus (Energie je aufeinanderfolgendem Login-Tag; Tag 7+ = letzter Wert).
+	-- Tag 7 lohnt sich bewusst deutlich (Retention-Anker).
+	DAILY_REWARDS = { 50, 100, 150, 250, 400, 600, 1200 },
+
+	-- Offline-Earnings: Anteil des passiven Einkommens, das Biome
+	-- waehrend der Abwesenheit "weiterverdienen" (gedeckelt).
+	OFFLINE_EARNINGS_RATE = 0.5,
+	OFFLINE_EARNINGS_CAP_HOURS = 8,
 
 	-- Planetenname
 	PLANET_NAME_MAX_LENGTH = 24,

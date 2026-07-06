@@ -151,11 +151,39 @@ function EnergyService.init()
 
 	-- Initialen Energiestand senden, sobald das Profil geladen ist,
 	-- damit die UI von Anfang an korrekte Werte zeigt.
+	local offlineEvent = Remotes.getEvent("OfflineEarnings")
+
 	local function onPlayerAdded(player: Player)
 		task.spawn(function()
 			local profile: Types.PlayerProfile? = DataService.waitForProfile(player)
-			if profile ~= nil and player.Parent ~= nil then
-				fireEnergyChanged(player, profile)
+			if profile == nil or player.Parent == nil then
+				return
+			end
+			fireEnergyChanged(player, profile)
+
+			-- Offline-Earnings: Biome haben waehrend der Abwesenheit anteilig
+			-- weiterproduziert (OFFLINE_EARNINGS_RATE, gedeckelt auf CAP_HOURS).
+			if profile.lastSeenAt > 0 then
+				local awayMinutes = (os.time() - profile.lastSeenAt) / 60
+				awayMinutes = math.clamp(awayMinutes, 0, GameConfig.OFFLINE_EARNINGS_CAP_HOURS * 60)
+				if awayMinutes >= 1 then
+					local multiplier = ProgressionConfig.getTotalMultiplier(
+						profile.biomes,
+						profile.upgrades,
+						profile.rebirths,
+						EquipService.getPetBonus(profile)
+					)
+					local offline = math.floor(
+						computeIncomePerMinute(profile) * awayMinutes * GameConfig.OFFLINE_EARNINGS_RATE * multiplier
+					)
+					if offline > 0 then
+						EnergyService.addRaw(player, offline)
+						profile.lifetimeEnergy += offline
+						DataService.markDirty(player)
+						fireEnergyChanged(player, profile)
+						offlineEvent:FireClient(player, offline, math.floor(awayMinutes))
+					end
+				end
 			end
 		end)
 	end

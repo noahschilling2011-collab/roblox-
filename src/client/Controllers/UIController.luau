@@ -429,6 +429,46 @@ function UIController.init()
 		end
 	end)
 
+	-- Offline-Earnings: Willkommens-Popup mit grosser Summe (nutzt das
+	-- Loot-Popup-Layout) plus hochzaehlender Zahl am Energie-Counter.
+	Remotes.getEvent("OfflineEarnings").OnClientEvent:Connect(function(amount: any, minutes: any)
+		if typeof(amount) ~= "number" or amount <= 0 then
+			return
+		end
+		local awayText = if typeof(minutes) == "number" and minutes >= 60
+			then `{math.floor(minutes / 60)} Std. {minutes % 60} Min.`
+			else `{if typeof(minutes) == "number" then minutes else 0} Min.`
+
+		lootPopupGeneration += 1
+		local generation = lootPopupGeneration
+		if activeLootTween ~= nil then
+			activeLootTween:Cancel()
+			activeLootTween = nil
+		end
+		refs.lootName.Text = `+{formatNumber(amount)} ⚡`
+		refs.lootRarity.Text = `Willkommen zurück! Deine Biome haben {awayText} weitergearbeitet.`
+		refs.lootRarity.TextColor3 = SUBTEXT_COLOR
+		refs.lootStroke.Color = Color3.fromRGB(214, 160, 72)
+		refs.lootStroke.Thickness = 3
+		refs.lootPopup.GroupTransparency = 0
+		refs.lootPopup.Visible = true
+		EffectsController.playSound("fanfare", 1)
+
+		task.delay(4, function()
+			if generation ~= lootPopupGeneration then
+				return
+			end
+			local tween = TweenService:Create(refs.lootPopup, TweenInfo.new(FADE_SECONDS), { GroupTransparency = 1 })
+			activeLootTween = tween
+			tween:Play()
+			tween.Completed:Once(function()
+				if generation == lootPopupGeneration then
+					refs.lootPopup.Visible = false
+				end
+			end)
+		end)
+	end)
+
 	-- Statistikzeile (Besuche/Likes) aus dem Planeten-Snapshot.
 	Remotes.getEvent("PlanetUpdated").OnClientEvent:Connect(function(snapshot: any)
 		if typeof(snapshot) ~= "table" then

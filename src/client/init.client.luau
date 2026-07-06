@@ -15,6 +15,7 @@ local CONTROLLER_STARTUP_ORDER = {
 	"PlanetNameController",
 	"RebirthController",
 	"ChatTagController",
+	"QuestController",
 	"TutorialController",
 }
 

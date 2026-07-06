@@ -24,6 +24,8 @@
 --     MultiplierChanged(info: { total, biomeBonus, upgradeBonus, petBonus,
 --       rebirthMultiplier, rebirths, nextThreshold, lifetimeEnergy })
 --     EquipmentUpdated(equipped: { pets: { uid }, trail: uid?, skin: uid?, maxPetSlots: number })
+--     OfflineEarnings(amount: number, minutes: number) -- Willkommens-Popup
+--     QuestsUpdated(quests: { { text, progress, target, reward, done } })
 --
 --   RemoteFunctions (Client -> Server), geben immer (ok: boolean, payload: any?) zurück:
 --     PlaceBiome(biomeId: string, slot: number) -- schaltet eine Insel-Zone frei
@@ -64,6 +66,8 @@ local EVENT_NAMES = {
 	"UpgradesUpdated",
 	"MultiplierChanged",
 	"EquipmentUpdated",
+	"OfflineEarnings",
+	"QuestsUpdated",
 }
 
 local FUNCTION_NAMES = {

@@ -214,6 +214,8 @@ local function checkGameConfigAndRemotes()
 	check(GameConfig.PLANET_SLOTS == 12, "PLANET_SLOTS muss 12 sein (Canon)")
 	check(GameConfig.LOOT_ROLL_COST > 0, "LOOT_ROLL_COST muss > 0 sein")
 	check(#GameConfig.DAILY_REWARDS >= 1, "DAILY_REWARDS darf nicht leer sein")
+	check(GameConfig.OFFLINE_EARNINGS_RATE > 0 and GameConfig.OFFLINE_EARNINGS_RATE <= 1, "OFFLINE_EARNINGS_RATE muss in (0,1] liegen")
+	check(GameConfig.OFFLINE_EARNINGS_CAP_HOURS >= 1, "OFFLINE_EARNINGS_CAP_HOURS muss >= 1 sein")
 	for index = 2, #GameConfig.DAILY_REWARDS do
 		check(
 			GameConfig.DAILY_REWARDS[index] >= GameConfig.DAILY_REWARDS[index - 1],
@@ -236,7 +238,7 @@ local function checkGameConfigAndRemotes()
 				functions += 1
 			end
 		end
-		check(events == 16, `Erwartet 16 RemoteEvents, gefunden: {events}`)
+		check(events == 18, `Erwartet 18 RemoteEvents, gefunden: {events}`)
 		check(functions == 14, `Erwartet 14 RemoteFunctions, gefunden: {functions}`)
 
 		-- Kritische Einzel-Remotes (Tutorial, Sammel-Loop, Studio-Testmodus).

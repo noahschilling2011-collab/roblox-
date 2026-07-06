@@ -52,6 +52,7 @@ export type PlayerProfile = {
 	rebirths: number, -- Anzahl Wiedergeburten (permanenter Multiplikator)
 	equipped: EquippedItems, -- ausgerüstete Loot-Items (Pets/Trail/Skin)
 	purchaseIds: { string }, -- verarbeitete PurchaseIds (Schutz vor Doppelgutschrift)
+	lastSeenAt: number, -- Unix-Zeit des letzten Speicherns (Offline-Earnings)
 }
 
 -- Ausgerüstete Loot-Items (referenzieren OwnedCollectible.uid).
