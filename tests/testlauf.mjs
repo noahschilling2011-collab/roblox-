@@ -90,7 +90,7 @@ test("GameConfig: Canon-Konstanten", function()
 	expect(GameConfig.LOOT_ROLL_COST == 25, "LOOT_ROLL_COST != 25")
 	expect(GameConfig.COLLECT_AMOUNT == 5, "COLLECT_AMOUNT != 5")
 	expect(GameConfig.COLLECT_COOLDOWN_SECONDS == 6, "COLLECT_COOLDOWN != 6")
-	expect(GameConfig.PROFILE_SCHEMA_VERSION == 3, "Schema-Version != 3")
+	expect(GameConfig.PROFILE_SCHEMA_VERSION == 4, "Schema-Version != 4")
 	expect(GameConfig.MAX_TRADE_ITEMS_PER_SIDE == 4, "Trade-Items != 4")
 	expect(GameConfig.TRADE_LOCK_SECONDS == 3, "Trade-Lock != 3")
 end)
@@ -298,6 +298,24 @@ test("Loot-Glueck: Formel verbessert Ultra-Rare-Chance korrekt", function()
 	expect(effective(10000, 5) == 2000, "Kreaturen-Event (x5) falsch")
 	expect(effective(10000, 3) == 3333, "Meteoritenschauer (x3) falsch")
 	expect(effective(2, 100) == 1, "Untergrenze 1 verletzt")
+end)
+
+-- 7b) Tutorial-Oekonomie und Studio-Testmodus
+test("Tutorial: jeder Schritt bleibt bezahlbar (Spiegel der Belohnungslogik)", function()
+	expect(GameConfig.TUTORIAL_STEP_COUNT == 4, "TUTORIAL_STEP_COUNT != 4")
+	expect(GameConfig.TUTORIAL_STEP_REWARD > 0, "TUTORIAL_STEP_REWARD <= 0")
+	local wiese = BiomeConfig.Biomes["wiese"]
+	-- Nach Schritt 2: Start - Wiese + 1x Sammeln + 2 Schritt-Belohnungen.
+	local afterStep2 = GameConfig.START_ENERGY - wiese.baseCost
+		+ GameConfig.COLLECT_AMOUNT + 2 * GameConfig.TUTORIAL_STEP_REWARD
+	expect(afterStep2 >= BiomeConfig.getUpgradeCost("wiese", 1), "Upgrade in Schritt 3 nicht bezahlbar")
+	-- Nach Schritt 3 muss der Fund-Wurf bezahlbar sein.
+	local afterStep3 = afterStep2 - BiomeConfig.getUpgradeCost("wiese", 1) + GameConfig.TUTORIAL_STEP_REWARD
+	expect(afterStep3 >= GameConfig.LOOT_ROLL_COST, "Fund-Wurf in Schritt 4 nicht bezahlbar")
+end)
+
+test("MonetizationConfig: Studio-Testmodus-Flag vorhanden", function()
+	expect(type(MonetizationConfig.testModeInStudio) == "boolean", "testModeInStudio muss ein Boolean sein")
 end)
 
 -- 8) Tagesbonus-Logik (Spiegel des DailyRewardService)

@@ -100,6 +100,12 @@ ${sharedXml}</Item>
 <string name="Name">ServerScriptService</string>
 </Properties>
 ${serverXml}</Item>
+<Item class="Lighting" referent="${nextReferent()}">
+<Properties>
+<string name="Name">Lighting</string>
+<token name="Technology">4</token>
+</Properties>
+</Item>
 <Item class="StarterPlayer" referent="${nextReferent()}">
 <Properties>
 <string name="Name">StarterPlayer</string>

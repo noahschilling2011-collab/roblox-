@@ -97,19 +97,23 @@ src/
 │       ├── GlobalEventService.luau  Event-Scheduler und aktive Multiplikatoren
 │       ├── VisitService.luau        Besuche und Bewertungen fremder Planeten
 │       ├── TradeService.luau        Handel mit Lock-Phase und atomarer Ausführung
-│       ├── MonetizationService.luau Robux-Käufe, Kosmetik-Freischaltung, Haustiere
+│       ├── MonetizationService.luau Robux-Käufe, Kosmetik, Haustiere, Studio-Testmodus
 │       ├── LeaderboardService.luau  Globale Ranglisten (OrderedDataStore) + leaderstats
 │       ├── DailyRewardService.luau  Täglicher Login-Bonus mit Streak
+│       ├── TutorialService.luau     First-Time Experience (validiert Schritte)
+│       ├── BiomeVisuals.luau        Prozedurale Biom-Deko (Bau-Hilfe, kein Service)
 │       └── SelfCheckService.luau    Selbsttest der Konfiguration bei Serverstart
 └── client/                          → StarterPlayer.StarterPlayerScripts.Client
     ├── init.client.luau             Client-Bootstrap: startet alle Controller
     └── Controllers/
-        ├── UIController.luau        HUD, Energie-Anzeige, Toasts, Loot-Popup
+        ├── EffectsController.luau   Sounds, fliegende Zahlen, Shake (startet zuerst)
+        ├── UIController.luau        HUD, Toasts, Loot-Popup mit Spannungsaufbau
         ├── PlanetBuilderController.luau   Bau-Interface für Biom-Slots
         ├── EventNotifierController.luau   Banner/Effekte bei globalen Events
-        ├── ShopController.luau      Robux-Shop und "Meine Kosmetik"
+        ├── ShopController.luau      Robux-Shop mit Tabs und "Meine Kosmetik"
         ├── LeaderboardController.luau     Ranglisten-Panel (🏆)
-        └── PlanetNameController.luau      Planet benennen (✏️)
+        ├── PlanetNameController.luau      Planet benennen (✏️)
+        └── TutorialController.luau  Geführte erste Schritte mit Highlights
 ```
 
 Dazu kommt `tests/` – ein Testlauf, der die echten Shared-Module in einer Luau-VM ausführt und Logik/Balancing prüft ([Anleitung](tests/README.md)); im Spiel prüft der `SelfCheckService` dieselben Invarianten bei jedem Serverstart.
@@ -155,6 +159,9 @@ Voraussetzungen: Roblox Studio und [Rokit](https://github.com/rojo-rbx/rokit) (T
 - Robux-Kosmetik-Shop: Gamepässe und Einzelkäufe, sichtbare Skins/Auren/Wetter auf dem Planeten, Haustier-Begleiter (Produkt-IDs müssen im Creator Dashboard angelegt und in `MonetizationConfig.luau` eingetragen werden)
 - Globale Ranglisten (Likes und Gesamt-Energie) mit Panel im Spiel, leaderstats in der Spielerliste
 - Täglicher Login-Bonus mit Streak und eigene Planeten-Namen (serverseitig gefiltert)
+- Geführtes Tutorial (4 Schritte mit Highlights, nur beim ersten Mal) und Einsteiger-Hinweise
+- Game Feel: Sounds, fliegende Energie-Zahlen, Loot-Spannungsaufbau mit Screen-Shake, prozedurale Biom-Deko pro Level, Weltraum-Himmel, Haustier-Modelle mit Schwebe-Animation
+- Studio-Testmodus im Shop (Käufe ohne echte IDs testbar – nur in Studio wirksam)
 - Automatisierte Tests: `tests/` (Luau-VM) und `SelfCheckService` (bei jedem Serverstart)
 
 **Fehlt noch (bewusst nicht in P0):**

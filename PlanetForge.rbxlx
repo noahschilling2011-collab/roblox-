@@ -1,9 +1,9 @@
 <roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4">
-<Item class="Workspace" referent="PF35">
+<Item class="Workspace" referent="PF39">
 <Properties>
 <string name="Name">Workspace</string>
 </Properties>
-<Item class="SpawnLocation" referent="PF34">
+<Item class="SpawnLocation" referent="PF38">
 <Properties>
 <string name="Name">SpawnLocation</string>
 <bool name="Anchored">true</bool>
@@ -11,7 +11,7 @@
 </Properties>
 </Item>
 </Item>
-<Item class="ReplicatedStorage" referent="PF36">
+<Item class="ReplicatedStorage" referent="PF40">
 <Properties>
 <string name="Name">ReplicatedStorage</string>
 </Properties>
@@ -541,7 +541,7 @@ local GameConfig = {
 	TRADE_LOCK_SECONDS = 3, -- Sicherheitspause nach beidseitigem Akzeptieren
 
 	-- Daten
-	PROFILE_SCHEMA_VERSION = 3, -- v2: Kosmetik-Felder; v3: Tagesbonus + Planetenname
+	PROFILE_SCHEMA_VERSION = 4, -- v2: Kosmetik; v3: Tagesbonus/Name; v4: Tutorial
 	DATASTORE_NAME = "PlanetForge_v1",
 	AUTOSAVE_INTERVAL_SECONDS = 120,
 
@@ -561,6 +561,14 @@ local GameConfig = {
 
 	-- Planetenname
 	PLANET_NAME_MAX_LENGTH = 24,
+
+	-- Tutorial (First-Time Experience)
+	TUTORIAL_STEP_COUNT = 4, -- Schritte: Wiese bauen, Energie sammeln, Upgrade, Fund
+	TUTORIAL_STEP_REWARD = 15, -- Energie-Belohnung pro abgeschlossenem Schritt
+	TUTORIAL_HINT_LIFETIME_LIMIT = 100, -- Hinweis-Schilder verschwinden ab dieser Lifetime-Energie
+
+	-- Sound (Client): zentrale Lautstärke der PlanetForge-Soundgruppe (0..1)
+	SOUND_MASTER_VOLUME = 0.5,
 }
 
 return GameConfig
@@ -620,6 +628,13 @@ export type ProductDef = {
 }
 
 local MonetizationConfig = {}
+
+-- STUDIO-TESTMODUS: Solange Produkt-IDs 0 sind, simuliert ein Klick im Shop
+-- den erfolgreichen Kauf - ABER ausschliesslich in Roblox Studio. Der Server
+-- prüft RunService:IsStudio() hart (MonetizationService.isTestPurchaseAllowed);
+-- in einem veröffentlichten Spiel hat dieses Flag deshalb NIE eine Wirkung.
+-- So lassen sich Equip, Haustiere und Effekte ohne echte IDs testen.
+MonetizationConfig.testModeInStudio = true
 
 MonetizationConfig.Categories = { "skin", "aura", "wetter", "haustier" }
 
@@ -911,6 +926,7 @@ return RarityConfig
 --     CosmeticsUpdated(owned: { string }, equipped: { [string]: string })
 --     LeaderboardUpdated(boards: { likes: { LBEntry }, energy: { LBEntry } })
 --       mit LBEntry = { userId: number, name: string, value: number }
+--     TutorialUpdated(step: number) -- 1..4 = offener Schritt, 5 = abgeschlossen
 --
 --   RemoteFunctions (Client -&gt; Server), geben immer (ok: boolean, payload: any?) zurück:
 --     PlaceBiome(biomeId: string, slot: number)
@@ -923,6 +939,9 @@ return RarityConfig
 --     TradeAction(action: "invite" | "acceptInvite" | "setOffer" | "toggleAccept" | "cancel", payload: any?)
 --     EquipCosmetic(category: string, cosmeticId: string?) -- nil = Kategorie ablegen
 --     RenamePlanet(name: string) -- gibt bei ok den gefilterten Namen zurück
+--     TutorialAction(action: "advance" | "skip") -- Server validiert den Fortschritt
+--     SimulatePurchase(kind: "gamepass" | "product", key: string)
+--       NUR Studio-Testmodus (Server prüft RunService:IsStudio() hart)
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -939,6 +958,7 @@ local EVENT_NAMES = {
 	"Notification",
 	"CosmeticsUpdated",
 	"LeaderboardUpdated",
+	"TutorialUpdated",
 }
 
 local FUNCTION_NAMES = {
@@ -952,6 +972,8 @@ local FUNCTION_NAMES = {
 	"TradeAction",
 	"EquipCosmetic",
 	"RenamePlanet",
+	"TutorialAction",
+	"SimulatePurchase",
 }
 
 local Remotes = {}
@@ -1048,6 +1070,7 @@ export type PlayerProfile = {
 	planetName: string, -- vom Spieler vergebener, gefilterter Name ("" = Standard)
 	dailyStreak: number, -- aufeinanderfolgende Login-Tage (Tagesbonus)
 	lastDailyClaimDay: number, -- UTC-Tagesnummer des letzten Tagesbonus (os.time() / 86400)
+	tutorialStep: number, -- nächster offener Tutorial-Schritt (1..4); 5 = abgeschlossen
 }
 
 -- Ein aktuell laufendes globales Event.
@@ -1135,11 +1158,11 @@ return WeightedRandom
 </Item>
 </Item>
 </Item>
-<Item class="ServerScriptService" referent="PF37">
+<Item class="ServerScriptService" referent="PF41">
 <Properties>
 <string name="Name">ServerScriptService</string>
 </Properties>
-<Item class="Script" referent="PF25">
+<Item class="Script" referent="PF27">
 <Properties>
 <string name="Name">Server</string>
 <ProtectedString name="Source">--!strict
@@ -1168,6 +1191,7 @@ local SERVICE_STARTUP_ORDER = {
 	"MonetizationService",
 	"LeaderboardService",
 	"DailyRewardService",
+	"TutorialService",
 	"SelfCheckService", -- immer zuletzt: prüft den fertigen Aufbau
 }
 
@@ -1188,11 +1212,378 @@ end
 print("[PlanetForge] Server bereit")
 </ProtectedString>
 </Properties>
-<Item class="Folder" referent="PF24">
+<Item class="Folder" referent="PF26">
 <Properties>
 <string name="Name">Services</string>
 </Properties>
 <Item class="ModuleScript" referent="PF13">
+<Properties>
+<string name="Name">BiomeVisuals</string>
+<ProtectedString name="Source">--!strict
+-- BiomeVisuals: prozedurale Deko-Sets für die Biom-Slots (KEIN Service,
+-- reine Bau-Hilfe für den PlanetService).
+--
+-- Jedes Biom bekommt ein kleines Set aus 3-6 einfachen Parts (Wald =
+-- Stämme + Kronen, Wüste = Dünen + Kaktus, Ozean = Wasserscheibe usw.).
+-- Höhere Level erzeugen sichtbar mehr Objekte. Die Platzierung ist pro
+-- Slot und Level deterministisch (gleicher Seed -&gt; gleicher Look), damit
+-- der Planet nach einem Rejoin identisch aussieht.
+--
+-- BiomeVisuals.build(slotPart, biomeId, level, withPop) ersetzt das
+-- Deko-Model unter dem Slot; withPop = true lässt die Teile mit einem
+-- Scale-Pop-Tween erscheinen (beim Bauen/Upgraden).
+
+local TweenService = game:GetService("TweenService")
+
+local SLOT_TOP_OFFSET = 0.5 -- halbe Slot-Dicke: Deko steht auf der Oberfläche
+local SCATTER_RADIUS = 4.6 -- Streuradius um die Slot-Mitte
+local POP_SECONDS = 0.3
+
+export type BuilderFn = (model: Model, top: Vector3, level: number, rng: Random) -&gt; ()
+
+local BiomeVisuals = {}
+
+-- Anzahl Deko-Objekte je Level (Level 1 = 3, Level 5 = 7).
+local function objectCount(level: number): number
+	return math.clamp(2 + level, 3, 7)
+end
+
+local function newPart(
+	model: Model,
+	shape: Enum.PartType,
+	size: Vector3,
+	color: Color3,
+	material: Enum.Material,
+	cframe: CFrame,
+	transparency: number?
+): BasePart
+	local part = Instance.new("Part")
+	part.Shape = shape
+	part.Size = size
+	part.Color = color
+	part.Material = material
+	part.CFrame = cframe
+	part.Transparency = transparency or 0
+	part.Anchored = true
+	part.CanCollide = false
+	part.CanQuery = false
+	part.CanTouch = false
+	part.Parent = model
+	return part
+end
+
+-- Zufälliger Punkt auf der Slot-Oberfläche (deterministisch über rng).
+local function scatter(top: Vector3, rng: Random, radius: number?): Vector3
+	local r = (radius or SCATTER_RADIUS) * math.sqrt(rng:NextNumber())
+	local angle = rng:NextNumber() * 2 * math.pi
+	return top + Vector3.new(math.cos(angle) * r, 0, math.sin(angle) * r)
+end
+
+local function yaw(rng: Random): CFrame
+	return CFrame.Angles(0, rng:NextNumber() * 2 * math.pi, 0)
+end
+
+--------------------------------------------------------------------------
+-- Bausteine
+--------------------------------------------------------------------------
+
+local function buildTree(model: Model, base: Vector3, rng: Random, trunkHeight: number, crownColor: Color3)
+	newPart(
+		model,
+		Enum.PartType.Cylinder,
+		Vector3.new(trunkHeight, 0.6, 0.6),
+		Color3.fromRGB(96, 67, 43),
+		Enum.Material.Wood,
+		CFrame.new(base + Vector3.new(0, trunkHeight / 2, 0)) * CFrame.Angles(0, 0, math.rad(90))
+	)
+	local crownSize = trunkHeight * 0.9 + rng:NextNumber() * 0.6
+	newPart(
+		model,
+		Enum.PartType.Ball,
+		Vector3.new(crownSize, crownSize, crownSize),
+		crownColor,
+		Enum.Material.Grass,
+		CFrame.new(base + Vector3.new(0, trunkHeight + crownSize * 0.35, 0))
+	)
+end
+
+local function buildCactus(model: Model, base: Vector3, rng: Random)
+	local height = 1.6 + rng:NextNumber() * 1.2
+	local green = Color3.fromRGB(88, 148, 82)
+	newPart(
+		model,
+		Enum.PartType.Cylinder,
+		Vector3.new(height, 0.7, 0.7),
+		green,
+		Enum.Material.Grass,
+		CFrame.new(base + Vector3.new(0, height / 2, 0)) * CFrame.Angles(0, 0, math.rad(90))
+	)
+	-- Ein kleiner Seitenarm.
+	newPart(
+		model,
+		Enum.PartType.Cylinder,
+		Vector3.new(0.9, 0.5, 0.5),
+		green,
+		Enum.Material.Grass,
+		CFrame.new(base + Vector3.new(0.55, height * 0.6, 0)) * CFrame.Angles(0, 0, math.rad(35))
+	)
+end
+
+--------------------------------------------------------------------------
+-- Biom-Baumeister (einer pro Canon-Biom)
+--------------------------------------------------------------------------
+
+BiomeVisuals.Builders = {
+	wiese = function(model: Model, top: Vector3, level: number, rng: Random)
+		for i = 1, objectCount(level) do
+			local base = scatter(top, rng)
+			if i % 2 == 0 then
+				-- Grasbüschel: flachgedrückte grüne Kugel.
+				local s = 0.7 + rng:NextNumber() * 0.6
+				newPart(model, Enum.PartType.Ball, Vector3.new(s * 1.6, s, s * 1.6),
+					Color3.fromRGB(96, 170, 84), Enum.Material.Grass, CFrame.new(base + Vector3.new(0, s * 0.3, 0)))
+			else
+				-- Blume: dünner Stiel + bunte Blüte.
+				local petals = { Color3.fromRGB(235, 120, 150), Color3.fromRGB(240, 200, 90), Color3.fromRGB(150, 140, 235) }
+				newPart(model, Enum.PartType.Cylinder, Vector3.new(0.9, 0.12, 0.12),
+					Color3.fromRGB(90, 150, 70), Enum.Material.Grass,
+					CFrame.new(base + Vector3.new(0, 0.45, 0)) * CFrame.Angles(0, 0, math.rad(90)))
+				newPart(model, Enum.PartType.Ball, Vector3.new(0.4, 0.4, 0.4),
+					petals[rng:NextInteger(1, #petals)], Enum.Material.SmoothPlastic,
+					CFrame.new(base + Vector3.new(0, 0.95, 0)))
+			end
+		end
+	end,
+
+	wald = function(model: Model, top: Vector3, level: number, rng: Random)
+		for _ = 1, objectCount(level) - 1 do
+			buildTree(model, scatter(top, rng), rng, 1.8 + rng:NextNumber() * 1.4, Color3.fromRGB(58, 125, 60))
+		end
+		-- Ein Findling als Akzent.
+		newPart(model, Enum.PartType.Ball, Vector3.new(0.9, 0.7, 0.9),
+			Color3.fromRGB(120, 118, 112), Enum.Material.Slate, CFrame.new(scatter(top, rng)) * yaw(rng))
+	end,
+
+	wueste = function(model: Model, top: Vector3, level: number, rng: Random)
+		for i = 1, objectCount(level) do
+			local base = scatter(top, rng)
+			if i % 3 == 0 then
+				buildCactus(model, base, rng)
+			else
+				-- Düne: flache Sandkugel.
+				local s = 1.2 + rng:NextNumber() * 1.4
+				newPart(model, Enum.PartType.Ball, Vector3.new(s * 1.8, s * 0.5, s * 1.3),
+					Color3.fromRGB(214, 186, 130), Enum.Material.Sand,
+					CFrame.new(base + Vector3.new(0, s * 0.12, 0)) * yaw(rng))
+			end
+		end
+	end,
+
+	ozean = function(model: Model, top: Vector3, level: number, rng: Random)
+		-- Wasserscheibe über fast dem ganzen Slot, mit Glasglanz.
+		newPart(model, Enum.PartType.Cylinder, Vector3.new(0.35, 11, 11),
+			Color3.fromRGB(60, 140, 210), Enum.Material.Glass,
+			CFrame.new(top + Vector3.new(0, 0.18, 0)) * CFrame.Angles(0, 0, math.rad(90)), 0.35)
+		for _ = 1, objectCount(level) - 2 do
+			-- Kleine Felsen, die aus dem Wasser ragen.
+			local s = 0.5 + rng:NextNumber() * 0.7
+			newPart(model, Enum.PartType.Ball, Vector3.new(s, s * 0.8, s),
+				Color3.fromRGB(105, 110, 120), Enum.Material.Slate,
+				CFrame.new(scatter(top, rng, 3.6) + Vector3.new(0, 0.3, 0)) * yaw(rng))
+		end
+		-- Dezentes Funkeln auf der Wasseroberfläche.
+		local sparkleAnchor = newPart(model, Enum.PartType.Block, Vector3.new(0.2, 0.2, 0.2),
+			Color3.new(1, 1, 1), Enum.Material.SmoothPlastic, CFrame.new(top + Vector3.new(0, 0.6, 0)), 1)
+		local emitter = Instance.new("ParticleEmitter")
+		emitter.Color = ColorSequence.new(Color3.fromRGB(220, 245, 255))
+		emitter.LightEmission = 0.8
+		emitter.Rate = 2
+		emitter.Lifetime = NumberRange.new(0.8, 1.4)
+		emitter.Speed = NumberRange.new(0.5, 1)
+		emitter.Size = NumberSequence.new(0.25)
+		emitter.Parent = sparkleAnchor
+	end,
+
+	dschungel = function(model: Model, top: Vector3, level: number, rng: Random)
+		for _ = 1, objectCount(level) - 1 do
+			buildTree(model, scatter(top, rng), rng, 2.6 + rng:NextNumber() * 1.6, Color3.fromRGB(38, 105, 44))
+		end
+		-- Grosses Blatt als Unterholz-Akzent.
+		newPart(model, Enum.PartType.Block, Vector3.new(1.6, 0.1, 0.9),
+			Color3.fromRGB(52, 130, 58), Enum.Material.Grass,
+			CFrame.new(scatter(top, rng) + Vector3.new(0, 0.3, 0)) * yaw(rng) * CFrame.Angles(math.rad(20), 0, 0))
+	end,
+
+	eiswelt = function(model: Model, top: Vector3, level: number, rng: Random)
+		for i = 1, objectCount(level) do
+			local base = scatter(top, rng)
+			if i % 2 == 0 then
+				-- Eiskristall: gekippter Block.
+				local h = 1.2 + rng:NextNumber() * 1.6
+				newPart(model, Enum.PartType.Block, Vector3.new(0.6, h, 0.6),
+					Color3.fromRGB(170, 220, 250), Enum.Material.Ice,
+					CFrame.new(base + Vector3.new(0, h / 2, 0)) * yaw(rng) * CFrame.Angles(math.rad(rng:NextNumber() * 14 - 7), 0, math.rad(45)), 0.15)
+			else
+				-- Schneehaufen.
+				local s = 0.9 + rng:NextNumber() * 0.9
+				newPart(model, Enum.PartType.Ball, Vector3.new(s * 1.5, s * 0.6, s * 1.2),
+					Color3.fromRGB(240, 246, 252), Enum.Material.Snow,
+					CFrame.new(base + Vector3.new(0, s * 0.15, 0)) * yaw(rng))
+			end
+		end
+	end,
+
+	vulkan = function(model: Model, top: Vector3, level: number, rng: Random)
+		-- Vulkankegel in der Slot-Mitte: zwei gestapelte Zylinder + Lavakuppe.
+		newPart(model, Enum.PartType.Cylinder, Vector3.new(1.4, 4.6, 4.6),
+			Color3.fromRGB(62, 58, 56), Enum.Material.Basalt,
+			CFrame.new(top + Vector3.new(0, 0.7, 0)) * CFrame.Angles(0, 0, math.rad(90)))
+		newPart(model, Enum.PartType.Cylinder, Vector3.new(1.2, 2.8, 2.8),
+			Color3.fromRGB(52, 48, 46), Enum.Material.Basalt,
+			CFrame.new(top + Vector3.new(0, 1.9, 0)) * CFrame.Angles(0, 0, math.rad(90)))
+		local lava = newPart(model, Enum.PartType.Ball, Vector3.new(1.8, 1.1, 1.8),
+			Color3.fromRGB(255, 96, 32), Enum.Material.Neon, CFrame.new(top + Vector3.new(0, 2.6, 0)))
+		-- Glut-Partikel aus dem Krater.
+		local emitter = Instance.new("ParticleEmitter")
+		emitter.Color = ColorSequence.new(Color3.fromRGB(255, 140, 40), Color3.fromRGB(255, 60, 20))
+		emitter.LightEmission = 1
+		emitter.Rate = 3 + level
+		emitter.Lifetime = NumberRange.new(0.6, 1.2)
+		emitter.Speed = NumberRange.new(2, 4)
+		emitter.Size = NumberSequence.new(0.3)
+		emitter.Parent = lava
+		-- Lavabrocken drumherum (mehr pro Level).
+		for _ = 1, objectCount(level) - 2 do
+			local s = 0.5 + rng:NextNumber() * 0.6
+			newPart(model, Enum.PartType.Ball, Vector3.new(s, s * 0.8, s),
+				Color3.fromRGB(90, 60, 50), Enum.Material.CrackedLava,
+				CFrame.new(scatter(top, rng) + Vector3.new(0, s * 0.3, 0)) * yaw(rng))
+		end
+	end,
+
+	pilzwald = function(model: Model, top: Vector3, level: number, rng: Random)
+		local caps = { Color3.fromRGB(206, 74, 74), Color3.fromRGB(150, 96, 208) }
+		for i = 1, objectCount(level) do
+			local base = scatter(top, rng)
+			local stemHeight = 0.9 + rng:NextNumber() * 1.3
+			newPart(model, Enum.PartType.Cylinder, Vector3.new(stemHeight, 0.5, 0.5),
+				Color3.fromRGB(226, 214, 190), Enum.Material.SmoothPlastic,
+				CFrame.new(base + Vector3.new(0, stemHeight / 2, 0)) * CFrame.Angles(0, 0, math.rad(90)))
+			local capSize = 0.9 + rng:NextNumber() * 0.8
+			-- Ab Level 3 leuchtet jeder dritte Pilz.
+			local glowing = level &gt;= 3 and i % 3 == 0
+			newPart(model, Enum.PartType.Ball, Vector3.new(capSize, capSize * 0.55, capSize),
+				caps[rng:NextInteger(1, #caps)],
+				if glowing then Enum.Material.Neon else Enum.Material.SmoothPlastic,
+				CFrame.new(base + Vector3.new(0, stemHeight + capSize * 0.15, 0)))
+		end
+	end,
+
+	kristallfelder = function(model: Model, top: Vector3, level: number, rng: Random)
+		local colors = { Color3.fromRGB(110, 230, 230), Color3.fromRGB(170, 120, 255) }
+		for i = 1, objectCount(level) do
+			local base = scatter(top, rng)
+			local h = 1.4 + rng:NextNumber() * 2
+			local crystal = newPart(model, Enum.PartType.Block, Vector3.new(0.55, h, 0.55),
+				colors[i % 2 + 1],
+				if i % 2 == 0 then Enum.Material.Neon else Enum.Material.Glass,
+				CFrame.new(base + Vector3.new(0, h / 2, 0)) * yaw(rng) * CFrame.Angles(math.rad(rng:NextNumber() * 16 - 8), 0, math.rad(45)), 0.1)
+			if level &gt;= 3 and i == 1 then
+				local light = Instance.new("PointLight")
+				light.Color = crystal.Color
+				light.Range = 8
+				light.Brightness = 0.8
+				light.Parent = crystal
+			end
+		end
+	end,
+
+	kosmische_ebene = function(model: Model, top: Vector3, level: number, rng: Random)
+		for i = 1, objectCount(level) do
+			local base = scatter(top, rng)
+			if i % 2 == 0 then
+				-- Schwebender Felsbrocken.
+				local s = 0.5 + rng:NextNumber() * 0.8
+				newPart(model, Enum.PartType.Block, Vector3.new(s, s * 0.8, s),
+					Color3.fromRGB(70, 66, 92), Enum.Material.Slate,
+					CFrame.new(base + Vector3.new(0, 1.2 + rng:NextNumber() * 2, 0)) * yaw(rng) * CFrame.Angles(math.rad(20), 0, math.rad(15)))
+			else
+				-- Kleiner leuchtender Stern.
+				newPart(model, Enum.PartType.Ball, Vector3.new(0.35, 0.35, 0.35),
+					Color3.fromRGB(255, 235, 170), Enum.Material.Neon,
+					CFrame.new(base + Vector3.new(0, 0.8 + rng:NextNumber() * 2.4, 0)))
+			end
+		end
+		-- Sanftes Sternenflimmern über dem Slot.
+		local anchor = newPart(model, Enum.PartType.Block, Vector3.new(0.2, 0.2, 0.2),
+			Color3.new(1, 1, 1), Enum.Material.SmoothPlastic, CFrame.new(top + Vector3.new(0, 2, 0)), 1)
+		local emitter = Instance.new("ParticleEmitter")
+		emitter.Color = ColorSequence.new(Color3.fromRGB(200, 190, 255))
+		emitter.LightEmission = 1
+		emitter.Rate = 2
+		emitter.Lifetime = NumberRange.new(1, 2)
+		emitter.Speed = NumberRange.new(0.3, 0.8)
+		emitter.Size = NumberSequence.new(0.2)
+		emitter.Parent = anchor
+	end,
+} :: { [string]: BuilderFn }
+
+--------------------------------------------------------------------------
+-- Öffentliche API
+--------------------------------------------------------------------------
+
+-- Baut das Deko-Set eines Slots neu auf (ersetzt ein vorhandenes).
+function BiomeVisuals.build(slotPart: BasePart, biomeId: string, level: number, withPop: boolean)
+	local existing = slotPart:FindFirstChild("Deko")
+	if existing ~= nil then
+		existing:Destroy()
+	end
+
+	local builder = BiomeVisuals.Builders[biomeId]
+	if builder == nil then
+		warn(`[PlanetForge] Kein Deko-Set für Biom {biomeId}`)
+		return
+	end
+
+	local model = Instance.new("Model")
+	model.Name = "Deko"
+
+	local top = slotPart.Position + Vector3.new(0, SLOT_TOP_OFFSET, 0)
+	-- Deterministischer Seed pro Slot-Position und Level.
+	local seed = math.floor(math.abs(slotPart.Position.X) * 7 + math.abs(slotPart.Position.Z) * 13) + level * 101
+	builder(model, top, level, Random.new(seed))
+
+	model.Parent = slotPart
+
+	-- Scale-Pop: Teile wachsen mit Back-Easing auf ihre Zielgröße.
+	if withPop then
+		for _, child in model:GetDescendants() do
+			if child:IsA("BasePart") then
+				local targetSize = child.Size
+				child.Size = targetSize * 0.05
+				TweenService:Create(
+					child,
+					TweenInfo.new(POP_SECONDS, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
+					{ Size = targetSize }
+				):Play()
+			end
+		end
+	end
+end
+
+-- Entfernt das Deko-Set (leerer Slot).
+function BiomeVisuals.clear(slotPart: BasePart)
+	local existing = slotPart:FindFirstChild("Deko")
+	if existing ~= nil then
+		existing:Destroy()
+	end
+end
+
+return BiomeVisuals
+</ProtectedString>
+</Properties>
+</Item>
+<Item class="ModuleScript" referent="PF14">
 <Properties>
 <string name="Name">DailyRewardService</string>
 <ProtectedString name="Source">--!strict
@@ -1280,7 +1671,7 @@ return DailyRewardService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="PF14">
+<Item class="ModuleScript" referent="PF15">
 <Properties>
 <string name="Name">DataService</string>
 <ProtectedString name="Source">--!strict
@@ -1344,6 +1735,10 @@ local function buildDefaultProfile(): Types.PlayerProfile
 		createdAt = os.time(),
 		ownedCosmetics = {},
 		equippedCosmetics = {},
+		planetName = "",
+		dailyStreak = 0,
+		lastDailyClaimDay = 0,
+		tutorialStep = 1,
 	}
 end
 
@@ -1554,7 +1949,7 @@ return DataService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="PF15">
+<Item class="ModuleScript" referent="PF16">
 <Properties>
 <string name="Name">EnergyService</string>
 <ProtectedString name="Source">--!strict
@@ -1753,7 +2148,7 @@ return EnergyService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="PF16">
+<Item class="ModuleScript" referent="PF17">
 <Properties>
 <string name="Name">GlobalEventService</string>
 <ProtectedString name="Source">--!strict
@@ -1964,7 +2359,7 @@ return GlobalEventService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="PF17">
+<Item class="ModuleScript" referent="PF18">
 <Properties>
 <string name="Name">LeaderboardService</string>
 <ProtectedString name="Source">--!strict
@@ -2222,7 +2617,7 @@ return LeaderboardService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="PF18">
+<Item class="ModuleScript" referent="PF19">
 <Properties>
 <string name="Name">LootService</string>
 <ProtectedString name="Source">--!strict
@@ -2365,7 +2760,7 @@ return LootService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="PF19">
+<Item class="ModuleScript" referent="PF20">
 <Properties>
 <string name="Name">MonetizationService</string>
 <ProtectedString name="Source">--!strict
@@ -2387,6 +2782,7 @@ return LootService
 local MarketplaceService = game:GetService("MarketplaceService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 
 local Types = require(ReplicatedStorage.Shared.Types)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
@@ -2403,8 +2799,8 @@ local PET_SIZE = 1.6
 local cosmeticsUpdatedEvent: RemoteEvent? = nil
 local notificationEvent: RemoteEvent? = nil
 
--- Aktive Haustier-Parts pro Spieler.
-local activePets: { [Player]: BasePart } = {}
+-- Aktive Haustier-Modelle pro Spieler.
+local activePets: { [Player]: Model } = {}
 
 local MonetizationService = {}
 
@@ -2450,33 +2846,67 @@ local function applyPet(player: Player)
 		return
 	end
 
-	local pet = Instance.new("Part")
+	-- Zusammengesetztes Mini-Model: Körper + Augen mit Pupillen; die
+	-- Schwebe-Animation (Sine-Bobbing) macht die Folgeschleife.
+	local petColor = petDef.visual.color or Color3.new(1, 1, 1)
+	local pet = Instance.new("Model")
 	pet.Name = `Pet_{player.UserId}`
-	pet.Shape = Enum.PartType.Ball
-	pet.Size = Vector3.new(PET_SIZE, PET_SIZE, PET_SIZE)
-	pet.Anchored = true
-	pet.CanCollide = false
-	pet.CanQuery = false
-	pet.Material = petDef.visual.material or Enum.Material.Neon
-	pet.Color = petDef.visual.color or Color3.new(1, 1, 1)
+
+	local function petPart(name: string, size: Vector3, color: Color3, material: Enum.Material, offset: CFrame): BasePart
+		local part = Instance.new("Part")
+		part.Name = name
+		part.Shape = Enum.PartType.Ball
+		part.Size = size
+		part.Color = color
+		part.Material = material
+		part.CFrame = offset
+		part.Anchored = true
+		part.CanCollide = false
+		part.CanQuery = false
+		part.CanTouch = false
+		part.Parent = pet
+		return part
+	end
+
+	local body = petPart(
+		"Body",
+		Vector3.new(PET_SIZE, PET_SIZE, PET_SIZE),
+		petColor,
+		petDef.visual.material or Enum.Material.Neon,
+		CFrame.new()
+	)
+	-- Augen vorn (-Z), leicht nach außen versetzt.
+	for side = -1, 1, 2 do
+		local eyeOffset = CFrame.new(side * PET_SIZE * 0.22, PET_SIZE * 0.12, -PET_SIZE * 0.38)
+		petPart(`Eye{side}`, Vector3.new(0.42, 0.42, 0.42), Color3.new(1, 1, 1), Enum.Material.SmoothPlastic, eyeOffset)
+		petPart(
+			`Pupil{side}`,
+			Vector3.new(0.2, 0.2, 0.2),
+			Color3.fromRGB(25, 25, 30),
+			Enum.Material.SmoothPlastic,
+			eyeOffset * CFrame.new(0, 0, -0.14)
+		)
+	end
 
 	if petDef.visual.glow == true then
 		local light = Instance.new("PointLight")
-		light.Color = pet.Color
+		light.Color = petColor
 		light.Range = 12
 		light.Brightness = 1
-		light.Parent = pet
+		light.Parent = body
 	end
+
+	pet.PrimaryPart = body
 
 	-- Startposition: direkt beim Charakter (falls vorhanden), sonst beim Plot.
 	local character = player.Character
 	local root = if character ~= nil then character:FindFirstChild("HumanoidRootPart") else nil
 	if root ~= nil and root:IsA("BasePart") then
-		pet.CFrame = (root :: BasePart).CFrame * CFrame.new(PET_FOLLOW_OFFSET)
+		pet:PivotTo((root :: BasePart).CFrame * CFrame.new(PET_FOLLOW_OFFSET))
 	else
 		local origin = PlanetService.getPlotOrigin(player)
 		if origin ~= nil then
-			pet.CFrame = origin * CFrame.new(PET_FOLLOW_OFFSET)
+			pet:PivotTo(origin * CFrame.new(PET_FOLLOW_OFFSET))
 		end
 	end
 
@@ -2587,6 +3017,50 @@ local function processReceipt(receiptInfo: { [string]: any }): Enum.ProductPurch
 	return Enum.ProductPurchaseDecision.PurchaseGranted
 end
 
+-- Studio-Testmodus: Käufe dürfen NUR simuliert werden, wenn das Config-Flag
+-- gesetzt ist UND der Server in Roblox Studio läuft. In einem
+-- veröffentlichten Spiel gibt diese Funktion immer false zurück - das ist
+-- die harte Absicherung, die der SelfCheckService zusätzlich überwacht.
+function MonetizationService.isTestPurchaseAllowed(): boolean
+	return MonetizationConfig.testModeInStudio == true and RunService:IsStudio()
+end
+
+-- Handler für SimulatePurchase(kind, key): simuliert im Studio-Testmodus
+-- den erfolgreichen Kauf eines noch nicht konfigurierten Produkts (ID 0),
+-- damit Equip/Haustiere/Effekte ohne echte IDs testbar sind.
+local function onSimulatePurchase(player: Player, kindArg: any, keyArg: any): (boolean, any?)
+	if not MonetizationService.isTestPurchaseAllowed() then
+		return false, "Test-Käufe sind nur im Studio-Testmodus möglich."
+	end
+	if typeof(kindArg) ~= "string" or typeof(keyArg) ~= "string" then
+		return false, "Ungültige Anfrage."
+	end
+
+	if kindArg == "gamepass" then
+		local def = MonetizationConfig.Gamepasses[keyArg]
+		if def == nil then
+			return false, "Unbekannter Gamepass."
+		end
+		if def.gamePassId ~= 0 then
+			return false, "Dieser Gamepass hat eine echte ID - bitte regulär kaufen."
+		end
+		grantCosmetics(player, def.grantsCosmetics, `{def.displayName} (Test)`)
+		return true, nil
+	elseif kindArg == "product" then
+		local def = MonetizationConfig.DeveloperProducts[keyArg]
+		if def == nil then
+			return false, "Unbekanntes Produkt."
+		end
+		if def.productId ~= 0 then
+			return false, "Dieses Produkt hat eine echte ID - bitte regulär kaufen."
+		end
+		grantCosmetics(player, { def.grantsCosmetic }, `{def.displayName} (Test)`)
+		return true, nil
+	end
+
+	return false, "Unbekannte Kaufart."
+end
+
 local function onPlayerAdded(player: Player)
 	local profile = DataService.waitForProfile(player)
 	if profile == nil then
@@ -2611,6 +3085,11 @@ function MonetizationService.init()
 	cosmeticsUpdatedEvent = Remotes.getEvent("CosmeticsUpdated")
 	notificationEvent = Remotes.getEvent("Notification")
 	Remotes.getFunction("EquipCosmetic").OnServerInvoke = onEquipCosmetic
+	Remotes.getFunction("SimulatePurchase").OnServerInvoke = onSimulatePurchase
+
+	if MonetizationService.isTestPurchaseAllowed() then
+		print("[PlanetForge] Studio-Testmodus für den Shop ist AKTIV (nur in Studio wirksam).")
+	end
 
 	-- Gamepass-Kauf im laufenden Spiel: Kosmetik sofort gutschreiben.
 	MarketplaceService.PromptGamePassPurchaseFinished:Connect(
@@ -2638,7 +3117,8 @@ function MonetizationService.init()
 		task.spawn(onPlayerAdded, player)
 	end
 
-	-- Haustier-Folgeschleife: sanftes Nachschweben hinter dem Besitzer.
+	-- Haustier-Folgeschleife: sanftes Nachschweben hinter dem Besitzer
+	-- plus Sine-Bobbing (jedes Haustier leicht phasenversetzt).
 	task.spawn(function()
 		while true do
 			task.wait(PET_UPDATE_SECONDS)
@@ -2651,8 +3131,9 @@ function MonetizationService.init()
 				if root == nil or not root:IsA("BasePart") then
 					continue
 				end
-				local target = (root :: BasePart).CFrame * CFrame.new(PET_FOLLOW_OFFSET)
-				pet.CFrame = pet.CFrame:Lerp(target, PET_LERP_ALPHA)
+				local bob = math.sin(os.clock() * 2.4 + player.UserId % 7) * 0.45
+				local target = (root :: BasePart).CFrame * CFrame.new(PET_FOLLOW_OFFSET + Vector3.new(0, bob, 0))
+				pet:PivotTo(pet:GetPivot():Lerp(target, PET_LERP_ALPHA))
 			end
 		end
 	end)
@@ -2662,7 +3143,7 @@ return MonetizationService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="PF20">
+<Item class="ModuleScript" referent="PF21">
 <Properties>
 <string name="Name">PlanetService</string>
 <ProtectedString name="Source">--!strict
@@ -2683,6 +3164,7 @@ local MonetizationConfig = require(ReplicatedStorage.Shared.Config.MonetizationC
 
 local DataService = require(script.Parent.DataService)
 local EnergyService = require(script.Parent.EnergyService)
+local BiomeVisuals = require(script.Parent.BiomeVisuals)
 
 local PLOTS_FOLDER_NAME = "PlanetPlots"
 local POSITIONS_PER_RING = 12 -- Plots pro Ring; danach beginnt ein weiterer Ring
@@ -2810,7 +3292,7 @@ local function setSlotAppearance(part: BasePart, color: Color3, material: Enum.M
 end
 
 -- Slot-Visual an den Profilstand angleichen (placed = nil -&gt; leerer Slot).
-local function updateSlotVisual(player: Player, slotNumber: number, placed: Types.PlacedBiome?)
+local function updateSlotVisual(player: Player, slotNumber: number, placed: Types.PlacedBiome?, withPop: boolean?)
 	local plotFolder = getPlotFolder(player)
 	if plotFolder == nil then
 		return
@@ -2822,6 +3304,7 @@ local function updateSlotVisual(player: Player, slotNumber: number, placed: Type
 
 	if placed == nil then
 		setSlotAppearance(slotPart, EMPTY_SLOT_COLOR, Enum.Material.Concrete, `Slot {slotNumber}`)
+		BiomeVisuals.clear(slotPart)
 		return
 	end
 
@@ -2831,6 +3314,8 @@ local function updateSlotVisual(player: Player, slotNumber: number, placed: Type
 		return
 	end
 	setSlotAppearance(slotPart, def.color, Enum.Material.Grass, `{def.displayName} (Lv. {placed.level})`)
+	-- Prozedurales Deko-Set (mehr Objekte pro Level); Pop-Tween nur bei Aktionen.
+	BiomeVisuals.build(slotPart, placed.biomeId, placed.level, withPop == true)
 end
 
 -- Baut Kern und leere Slot-Plattformen für einen Spieler auf.
@@ -3116,6 +3601,47 @@ local function parseSlot(slotArg: unknown): number?
 end
 
 -- Remote-Handler: PlaceBiome(biomeId, slot) -&gt; (ok, snapshot | Fehlermeldung)
+-- Juice beim Bauen/Upgraden: Sound + Partikel-Burst direkt am Slot,
+-- damit die Aktion sich für alle sichtbar "gut anfühlt".
+local function playSlotJuice(player: Player, slotNumber: number, color: Color3, level: number)
+	local plotFolder = getPlotFolder(player)
+	if plotFolder == nil then
+		return
+	end
+	local slotPart = plotFolder:FindFirstChild(`Slot_{slotNumber}`)
+	if slotPart == nil or not slotPart:IsA("BasePart") then
+		return
+	end
+
+	-- Pop-Sound (Engine-Sounddatei, 3D am Slot; Tonhöhe steigt leicht pro Level).
+	local sound = Instance.new("Sound")
+	sound.SoundId = "rbxasset://sounds/snap.mp3"
+	sound.Volume = 0.8
+	sound.PlaybackSpeed = 0.95 + level * 0.06
+	sound.RollOffMaxDistance = 120
+	sound.Parent = slotPart
+	sound:Play()
+	task.delay(3, function()
+		sound:Destroy()
+	end)
+
+	-- Einmaliger Partikel-Burst in Biomfarbe.
+	local emitter = Instance.new("ParticleEmitter")
+	emitter.Name = "BuildBurst"
+	emitter.Color = ColorSequence.new(color)
+	emitter.LightEmission = 0.6
+	emitter.Rate = 0
+	emitter.Lifetime = NumberRange.new(0.4, 0.8)
+	emitter.Speed = NumberRange.new(6, 12)
+	emitter.SpreadAngle = Vector2.new(180, 180)
+	emitter.Size = NumberSequence.new(0.6)
+	emitter.Parent = slotPart
+	emitter:Emit(18)
+	task.delay(1.5, function()
+		emitter:Destroy()
+	end)
+end
+
 local function handlePlaceBiome(player: Player, biomeIdArg: unknown, slotArg: unknown): (boolean, any?)
 	local profile = DataService.getProfile(player)
 	if profile == nil then
@@ -3153,7 +3679,8 @@ local function handlePlaceBiome(player: Player, biomeIdArg: unknown, slotArg: un
 	}
 	table.insert(profile.biomes, placed)
 
-	updateSlotVisual(player, slot, placed)
+	updateSlotVisual(player, slot, placed, true)
+	playSlotJuice(player, slot, def.color, placed.level)
 	DataService.markDirty(player)
 	PlanetService.sendSnapshot(player)
 	return true, buildSnapshot(profile)
@@ -3191,7 +3718,8 @@ local function handleUpgradeBiome(player: Player, slotArg: unknown): (boolean, a
 
 	placed.level += 1
 
-	updateSlotVisual(player, slot, placed)
+	updateSlotVisual(player, slot, placed, true)
+	playSlotJuice(player, slot, def.color, placed.level)
 	DataService.markDirty(player)
 	PlanetService.sendSnapshot(player)
 	return true, buildSnapshot(profile)
@@ -3248,7 +3776,58 @@ local function onPlayerRemoving(player: Player)
 	end
 end
 
+-- Weltraum-Stimmung: Sternenhimmel, Atmosphäre, dezentes Bloom und
+-- Farbkorrektur. Idempotent - vorhandene PlanetForge-Effekte bleiben.
+local function setupWorldAmbience()
+	local Lighting = game:GetService("Lighting")
+
+	Lighting.ClockTime = 0 -- Mitternacht: Sterne sichtbar
+	Lighting.Brightness = 2
+	Lighting.Ambient = Color3.fromRGB(28, 32, 52)
+	Lighting.OutdoorAmbient = Color3.fromRGB(70, 78, 110)
+
+	if Lighting:FindFirstChild("PlanetForgeSky") == nil then
+		local sky = Instance.new("Sky")
+		sky.Name = "PlanetForgeSky"
+		sky.StarCount = 3000
+		sky.SunAngularSize = 8
+		sky.MoonAngularSize = 14
+		sky.Parent = Lighting
+	end
+
+	if Lighting:FindFirstChild("PlanetForgeAtmosphere") == nil then
+		local atmosphere = Instance.new("Atmosphere")
+		atmosphere.Name = "PlanetForgeAtmosphere"
+		atmosphere.Density = 0.25
+		atmosphere.Color = Color3.fromRGB(70, 80, 130)
+		atmosphere.Decay = Color3.fromRGB(20, 24, 44)
+		atmosphere.Glare = 0.2
+		atmosphere.Haze = 1.4
+		atmosphere.Parent = Lighting
+	end
+
+	if Lighting:FindFirstChild("PlanetForgeBloom") == nil then
+		local bloom = Instance.new("BloomEffect")
+		bloom.Name = "PlanetForgeBloom"
+		bloom.Intensity = 0.4
+		bloom.Size = 24
+		bloom.Threshold = 1.15
+		bloom.Parent = Lighting
+	end
+
+	if Lighting:FindFirstChild("PlanetForgeColor") == nil then
+		local color = Instance.new("ColorCorrectionEffect")
+		color.Name = "PlanetForgeColor"
+		color.Contrast = 0.05
+		color.Saturation = 0.08
+		color.TintColor = Color3.fromRGB(235, 240, 255)
+		color.Parent = Lighting
+	end
+end
+
 function PlanetService.init()
+	setupWorldAmbience()
+
 	planetUpdatedEvent = Remotes.getEvent("PlanetUpdated")
 
 	Remotes.getFunction("PlaceBiome").OnServerInvoke = handlePlaceBiome
@@ -3289,7 +3868,7 @@ return PlanetService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="PF21">
+<Item class="ModuleScript" referent="PF22">
 <Properties>
 <string name="Name">SelfCheckService</string>
 <ProtectedString name="Source">--!strict
@@ -3303,6 +3882,7 @@ return PlanetService
 -- Läuft als letzter Service der Startreihenfolge (alle Remotes existieren dann).
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 
 local GameConfig = require(ReplicatedStorage.Shared.Config.GameConfig)
 local BiomeConfig = require(ReplicatedStorage.Shared.Config.BiomeConfig)
@@ -3311,15 +3891,35 @@ local CollectibleConfig = require(ReplicatedStorage.Shared.Config.CollectibleCon
 local EventConfig = require(ReplicatedStorage.Shared.Config.EventConfig)
 local MonetizationConfig = require(ReplicatedStorage.Shared.Config.MonetizationConfig)
 
+local BiomeVisuals = require(script.Parent.BiomeVisuals)
+local MonetizationService = require(script.Parent.MonetizationService)
+
 local SelfCheckService = {}
 
 local checksRun = 0
 local problems: { string } = {}
 
+-- Abschnitts-Ergebnisse für die Zusammenfassung am Ende.
+local sections: { { name: string, checks: number, problems: number } } = {}
+local currentSection: { name: string, checks: number, problems: number }? = nil
+
+local function beginSection(name: string)
+	local section = { name = name, checks = 0, problems = 0 }
+	table.insert(sections, section)
+	currentSection = section
+end
+
 local function check(condition: boolean, message: string)
 	checksRun += 1
+	local section = currentSection
+	if section ~= nil then
+		section.checks += 1
+	end
 	if not condition then
 		table.insert(problems, message)
+		if section ~= nil then
+			section.problems += 1
+		end
 	end
 end
 
@@ -3467,7 +4067,7 @@ local function checkGameConfigAndRemotes()
 	check(GameConfig.LEADERBOARD_TOP_N &gt;= 1, "LEADERBOARD_TOP_N muss &gt;= 1 sein")
 	check(GameConfig.PLANET_NAME_MAX_LENGTH &gt;= 3, "PLANET_NAME_MAX_LENGTH muss &gt;= 3 sein")
 
-	-- Alle Remotes wurden von Remotes.init() erzeugt (7+2 Events, 8+2 Functions).
+	-- Alle Remotes wurden von Remotes.init() erzeugt.
 	local folder = ReplicatedStorage:FindFirstChild("PlanetForgeRemotes")
 	check(folder ~= nil, "Remote-Ordner PlanetForgeRemotes fehlt (Remotes.init() nicht gelaufen?)")
 	if folder ~= nil then
@@ -3480,28 +4080,91 @@ local function checkGameConfigAndRemotes()
 				functions += 1
 			end
 		end
-		check(events == 9, `Erwartet 9 RemoteEvents, gefunden: {events}`)
-		check(functions == 10, `Erwartet 10 RemoteFunctions, gefunden: {functions}`)
+		check(events == 10, `Erwartet 10 RemoteEvents, gefunden: {events}`)
+		check(functions == 12, `Erwartet 12 RemoteFunctions, gefunden: {functions}`)
+
+		-- Kritische Einzel-Remotes (Tutorial + Studio-Testmodus).
+		for _, name in { "TutorialUpdated" } do
+			local remote = folder:FindFirstChild(name)
+			check(remote ~= nil and remote:IsA("RemoteEvent"), `RemoteEvent {name} fehlt`)
+		end
+		for _, name in { "TutorialAction", "SimulatePurchase" } do
+			local remote = folder:FindFirstChild(name)
+			check(remote ~= nil and remote:IsA("RemoteFunction"), `RemoteFunction {name} fehlt`)
+		end
+	end
+end
+
+local function checkTutorial()
+	check(GameConfig.TUTORIAL_STEP_COUNT == 4, "TUTORIAL_STEP_COUNT muss 4 sein")
+	check(GameConfig.TUTORIAL_STEP_REWARD &gt; 0, "TUTORIAL_STEP_REWARD muss &gt; 0 sein")
+	check(GameConfig.TUTORIAL_HINT_LIFETIME_LIMIT &gt; 0, "TUTORIAL_HINT_LIFETIME_LIMIT muss &gt; 0 sein")
+	-- Schritt 3 (Upgrade der Wiese) muss mit Start-Energie + Belohnungen +
+	-- einmal Sammeln bezahlbar sein, sonst stockt das Tutorial.
+	local wiese = BiomeConfig.Biomes["wiese"]
+	if wiese ~= nil then
+		local afterStep2 = GameConfig.START_ENERGY
+			- wiese.baseCost
+			+ GameConfig.COLLECT_AMOUNT
+			+ 2 * GameConfig.TUTORIAL_STEP_REWARD
+		check(
+			afterStep2 &gt;= BiomeConfig.getUpgradeCost("wiese", 1),
+			"Tutorial-Ökonomie: Upgrade in Schritt 3 ist mit Belohnungen nicht bezahlbar"
+		)
+	end
+end
+
+local function checkBiomeVisuals()
+	-- Jedes Biom braucht ein prozedurales Deko-Set.
+	for biomeId in BiomeConfig.Biomes do
+		check(BiomeVisuals.Builders[biomeId] ~= nil, `Biom {biomeId}: kein Visual-Set in BiomeVisuals`)
+	end
+end
+
+local function checkTestMode()
+	-- Außerhalb von Studio dürfen Test-Käufe NIEMALS möglich sein.
+	if not RunService:IsStudio() then
+		check(
+			MonetizationService.isTestPurchaseAllowed() == false,
+			"KRITISCH: Studio-Testmodus ist außerhalb von Studio aktiv!"
+		)
+	else
+		check(true, "") -- in Studio zählt der Testmodus als geprüft
 	end
 end
 
 function SelfCheckService.init()
-	local ok, err = pcall(function()
-		checkBiomes()
-		checkRarityAndCollectibles()
-		checkEvents()
-		checkMonetization()
-		checkGameConfigAndRemotes()
-	end)
-	if not ok then
-		warn(`[PlanetForge] Selbsttest selbst fehlgeschlagen: {err}`)
-		return
+	local sectionRuns: { { name: string, fn: () -&gt; () } } = {
+		{ name = "Biome", fn = checkBiomes },
+		{ name = "Seltenheiten", fn = checkRarityAndCollectibles },
+		{ name = "Events", fn = checkEvents },
+		{ name = "Shop", fn = checkMonetization },
+		{ name = "Konfig+Remotes", fn = checkGameConfigAndRemotes },
+		{ name = "Tutorial", fn = checkTutorial },
+		{ name = "Biom-Visuals", fn = checkBiomeVisuals },
+		{ name = "Testmodus", fn = checkTestMode },
+	}
+
+	for _, section in sectionRuns do
+		beginSection(section.name)
+		local ok, err = pcall(section.fn)
+		if not ok then
+			check(false, `Abschnitt {section.name} ist selbst abgestürzt: {err}`)
+		end
 	end
 
+	-- Übersichtliche Zusammenfassung: eine Zeile pro Abschnitt, dann Gesamt.
+	local lines = {}
+	for _, section in sections do
+		local mark = if section.problems == 0 then "✓" else `✗ {section.problems}`
+		table.insert(lines, `{section.name} {mark}`)
+	end
+	local overview = table.concat(lines, "  |  ")
+
 	if #problems == 0 then
-		print(`[PlanetForge] Selbsttest bestanden: {checksRun} Prüfungen, 0 Probleme.`)
+		print(`[PlanetForge] Selbsttest bestanden ({checksRun} Prüfungen): {overview}`)
 	else
-		warn(`[PlanetForge] Selbsttest: {#problems} Problem(e) bei {checksRun} Prüfungen:`)
+		warn(`[PlanetForge] Selbsttest: {#problems} Problem(e) bei {checksRun} Prüfungen: {overview}`)
 		for _, problem in problems do
 			warn(`[PlanetForge]   - {problem}`)
 		end
@@ -3512,7 +4175,7 @@ return SelfCheckService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="PF22">
+<Item class="ModuleScript" referent="PF23">
 <Properties>
 <string name="Name">TradeService</string>
 <ProtectedString name="Source">--!strict
@@ -3998,7 +4661,148 @@ return TradeService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="PF23">
+<Item class="ModuleScript" referent="PF24">
+<Properties>
+<string name="Name">TutorialService</string>
+<ProtectedString name="Source">--!strict
+-- TutorialService: serverseitiger Fortschritt der First-Time Experience.
+--
+-- Der Client (TutorialController) zeigt die geführten Schritte an und meldet
+-- per TutorialAction("advance"), wenn er glaubt, dass der aktuelle Schritt
+-- geschafft ist. Der Server bleibt autoritativ: Jeder Schritt wird gegen den
+-- echten Profilzustand validiert, erst dann wird weitergeschaltet.
+--
+-- Schritte (profile.tutorialStep = nächster offener Schritt):
+--   1  Platziere deine erste Wiese       (mindestens 1 Biom gebaut)
+--   2  Sammle Energie ein                (lifetimeEnergy &gt;= COLLECT_AMOUNT)
+--   3  Kaufe ein Upgrade                 (mindestens 1 Biom auf Level &gt;= 2)
+--   4  Suche deinen ersten Fund          (mindestens 1 Sammelobjekt)
+--   5  = abgeschlossen (kommt nie wieder)
+--
+-- Jeder abgeschlossene Schritt gibt eine kleine Energie-Belohnung
+-- (GameConfig.TUTORIAL_STEP_REWARD), damit der Ablauf nie am Preis des
+-- nächsten Schritts stockt. "skip" beendet das Tutorial sofort (Rückkehrer).
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Types = require(ReplicatedStorage.Shared.Types)
+local Remotes = require(ReplicatedStorage.Shared.Remotes)
+local GameConfig = require(ReplicatedStorage.Shared.Config.GameConfig)
+
+local DataService = require(script.Parent.DataService)
+local EnergyService = require(script.Parent.EnergyService)
+
+local DONE_STEP = GameConfig.TUTORIAL_STEP_COUNT + 1
+
+local tutorialUpdatedEvent: RemoteEvent? = nil
+
+local TutorialService = {}
+
+-- Prüft, ob die Bedingung des angegebenen Schritts im Profil erfüllt ist.
+local function isStepFulfilled(profile: Types.PlayerProfile, step: number): boolean
+	if step == 1 then
+		return #profile.biomes &gt;= 1
+	elseif step == 2 then
+		return profile.lifetimeEnergy &gt;= GameConfig.COLLECT_AMOUNT
+	elseif step == 3 then
+		for _, placed in profile.biomes do
+			if placed.level &gt;= 2 then
+				return true
+			end
+		end
+		return false
+	elseif step == 4 then
+		return #profile.collectibles &gt;= 1
+	end
+	return false
+end
+
+local function fireUpdate(player: Player, step: number)
+	if tutorialUpdatedEvent ~= nil then
+		(tutorialUpdatedEvent :: RemoteEvent):FireClient(player, step)
+	end
+end
+
+-- Handler für TutorialAction(action).
+local function onTutorialAction(player: Player, actionArg: any): (boolean, any?)
+	if typeof(actionArg) ~= "string" then
+		return false, "Ungültige Aktion."
+	end
+
+	local profile = DataService.getProfile(player)
+	if profile == nil then
+		return false, "Dein Profil ist noch nicht geladen."
+	end
+
+	-- "status": aktueller Stand ohne Änderung (Client fragt nach dem Beitritt nach).
+	if actionArg == "status" then
+		return true, profile.tutorialStep
+	end
+
+	if profile.tutorialStep &gt;= DONE_STEP then
+		return true, DONE_STEP -- längst fertig; nichts zu tun
+	end
+
+	if actionArg == "skip" then
+		profile.tutorialStep = DONE_STEP
+		DataService.markDirty(player)
+		fireUpdate(player, DONE_STEP)
+		return true, DONE_STEP
+	end
+
+	if actionArg ~= "advance" then
+		return false, "Unbekannte Aktion."
+	end
+
+	-- Autoritative Prüfung: Der Schritt zählt nur, wenn das Profil ihn belegt.
+	if not isStepFulfilled(profile, profile.tutorialStep) then
+		return false, "Dieser Schritt ist noch nicht geschafft."
+	end
+
+	profile.tutorialStep += 1
+	DataService.markDirty(player)
+
+	-- Kleine Belohnung, damit der nächste Schritt immer bezahlbar ist.
+	EnergyService.grantEnergy(player, GameConfig.TUTORIAL_STEP_REWARD)
+
+	fireUpdate(player, profile.tutorialStep)
+	return true, profile.tutorialStep
+end
+
+local function onPlayerAdded(player: Player)
+	local profile = DataService.waitForProfile(player)
+	if profile == nil then
+		return
+	end
+
+	-- Falls ältere Profile (Migration) einen ungültigen Wert tragen: klemmen.
+	if typeof(profile.tutorialStep) ~= "number" or profile.tutorialStep &lt; 1 then
+		profile.tutorialStep = 1
+	elseif profile.tutorialStep &gt; DONE_STEP then
+		profile.tutorialStep = DONE_STEP
+	end
+
+	fireUpdate(player, profile.tutorialStep)
+end
+
+function TutorialService.init()
+	tutorialUpdatedEvent = Remotes.getEvent("TutorialUpdated")
+	Remotes.getFunction("TutorialAction").OnServerInvoke = onTutorialAction
+
+	Players.PlayerAdded:Connect(function(player)
+		task.spawn(onPlayerAdded, player)
+	end)
+	for _, player in Players:GetPlayers() do
+		task.spawn(onPlayerAdded, player)
+	end
+end
+
+return TutorialService
+</ProtectedString>
+</Properties>
+</Item>
+<Item class="ModuleScript" referent="PF25">
 <Properties>
 <string name="Name">VisitService</string>
 <ProtectedString name="Source">--!strict
@@ -4181,15 +4985,21 @@ return VisitService
 </Item>
 </Item>
 </Item>
-<Item class="StarterPlayer" referent="PF38">
+<Item class="Lighting" referent="PF42">
+<Properties>
+<string name="Name">Lighting</string>
+<token name="Technology">4</token>
+</Properties>
+</Item>
+<Item class="StarterPlayer" referent="PF43">
 <Properties>
 <string name="Name">StarterPlayer</string>
 </Properties>
-<Item class="StarterPlayerScripts" referent="PF39">
+<Item class="StarterPlayerScripts" referent="PF44">
 <Properties>
 <string name="Name">StarterPlayerScripts</string>
 </Properties>
-<Item class="LocalScript" referent="PF33">
+<Item class="LocalScript" referent="PF37">
 <Properties>
 <string name="Name">Client</string>
 <ProtectedString name="Source">--!strict
@@ -4198,12 +5008,14 @@ return VisitService
 -- eine Tabelle mit einer init()-Funktion.
 
 local CONTROLLER_STARTUP_ORDER = {
+	"EffectsController", -- zuerst: stellt Sounds/Effekte für alle anderen bereit
 	"UIController",
 	"PlanetBuilderController",
 	"EventNotifierController",
 	"ShopController",
 	"LeaderboardController",
 	"PlanetNameController",
+	"TutorialController",
 }
 
 local controllersFolder = script:WaitForChild("Controllers")
@@ -4224,11 +5036,217 @@ for _, controllerName in CONTROLLER_STARTUP_ORDER do
 end
 </ProtectedString>
 </Properties>
-<Item class="Folder" referent="PF32">
+<Item class="Folder" referent="PF36">
 <Properties>
 <string name="Name">Controllers</string>
 </Properties>
-<Item class="ModuleScript" referent="PF26">
+<Item class="ModuleScript" referent="PF28">
+<Properties>
+<string name="Name">EffectsController</string>
+<ProtectedString name="Source">--!strict
+-- EffectsController: zentrales "Juice"-Modul des Clients.
+--
+-- Bietet anderen Controllern Sounds, fliegende Energie-Zahlen, Partikel-
+-- Bursts am eigenen Planeten und Screen-Shake an. Alle Sounds hängen an
+-- einer SoundGroup in SoundService; die Gesamtlautstärke kommt zentral aus
+-- GameConfig.SOUND_MASTER_VOLUME. Es werden ausschließlich Engine-eigene
+-- rbxasset://-Sounddateien verwendet (immer verfügbar, keine Moderation).
+--
+-- Startet als ERSTER Controller, alle Funktionen sind aber auch vor init()
+-- gefahrlos aufrufbar (sie tun dann einfach nichts).
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+local SoundService = game:GetService("SoundService")
+local TweenService = game:GetService("TweenService")
+local Workspace = game:GetService("Workspace")
+
+local Shared = ReplicatedStorage:WaitForChild("Shared")
+local ConfigFolder = Shared:WaitForChild("Config")
+
+local GameConfig = require(ConfigFolder:WaitForChild("GameConfig") :: ModuleScript) :: {
+	SOUND_MASTER_VOLUME: number,
+}
+
+local ACCENT_COLOR = Color3.fromRGB(214, 160, 72)
+
+type SoundDef = { file: string, pitch: number, volume: number }
+
+-- Nur Engine-Sounddateien (rbxasset://), damit nie etwas fehlt.
+local SOUND_DEFS: { [string]: SoundDef } = {
+	collect = { file = "rbxasset://sounds/electronicpingshort.wav", pitch = 1.15, volume = 0.6 },
+	pop = { file = "rbxasset://sounds/snap.mp3", pitch = 1.0, volume = 0.7 },
+	tick = { file = "rbxasset://sounds/electronicpingshort.wav", pitch = 1.7, volume = 0.18 },
+	reveal = { file = "rbxasset://sounds/swoosh.wav", pitch = 1.0, volume = 0.8 },
+	fanfare = { file = "rbxasset://sounds/impact_water.mp3", pitch = 1.35, volume = 0.8 },
+}
+
+local EffectsController = {}
+
+local localPlayer = Players.LocalPlayer
+
+local soundGroup: SoundGroup? = nil
+local effectsGui: ScreenGui? = nil
+local shakeCounter = 0
+
+-- Spielt einen benannten Sound (optional mit abweichender Tonhöhe).
+function EffectsController.playSound(name: string, pitchOverride: number?)
+	local def = SOUND_DEFS[name]
+	local group = soundGroup
+	if def == nil or group == nil then
+		return
+	end
+
+	local sound = Instance.new("Sound")
+	sound.SoundId = def.file
+	sound.Volume = def.volume
+	sound.PlaybackSpeed = pitchOverride or def.pitch
+	sound.SoundGroup = group
+	sound.Parent = SoundService
+	sound:Play()
+	task.delay(4, function()
+		sound:Destroy()
+	end)
+end
+
+-- "+N ⚡" fliegt vom Sammel-Button hoch zum Energie-Zähler.
+function EffectsController.flyEnergyToCounter(amount: number)
+	local gui = effectsGui
+	if gui == nil then
+		return
+	end
+
+	local playerGui = localPlayer:FindFirstChild("PlayerGui")
+	if playerGui == nil then
+		return
+	end
+	local mainGui = playerGui:FindFirstChild("PlanetForgeUI")
+	if mainGui == nil then
+		return
+	end
+	local buttonBar = mainGui:FindFirstChild("ButtonBar")
+	local header = mainGui:FindFirstChild("Header")
+	local sourceButton = if buttonBar ~= nil then buttonBar:FindFirstChild("CollectEnergy") else nil
+	local targetLabel = if header ~= nil then header:FindFirstChild("Energy") else nil
+	if sourceButton == nil or not sourceButton:IsA("GuiObject") or targetLabel == nil or not targetLabel:IsA("GuiObject") then
+		return
+	end
+
+	local source = (sourceButton :: GuiObject).AbsolutePosition
+		+ (sourceButton :: GuiObject).AbsoluteSize / 2
+	local target = (targetLabel :: GuiObject).AbsolutePosition
+		+ (targetLabel :: GuiObject).AbsoluteSize / 2
+
+	local label = Instance.new("TextLabel")
+	label.Name = "FlyingEnergy"
+	label.BackgroundTransparency = 1
+	label.AnchorPoint = Vector2.new(0.5, 0.5)
+	label.Position = UDim2.new(0, source.X, 0, source.Y)
+	label.Size = UDim2.new(0, 120, 0, 24)
+	label.Font = Enum.Font.GothamBold
+	label.TextSize = 20
+	label.TextColor3 = ACCENT_COLOR
+	label.TextStrokeTransparency = 0.5
+	label.Text = `+{amount} ⚡`
+	label.Parent = gui
+
+	local flight = TweenService:Create(
+		label,
+		TweenInfo.new(0.65, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
+		{ Position = UDim2.new(0, target.X, 0, target.Y), TextSize = 12 }
+	)
+	flight:Play()
+	flight.Completed:Once(function()
+		local fade = TweenService:Create(label, TweenInfo.new(0.15), { TextTransparency = 1, TextStrokeTransparency = 1 })
+		fade:Play()
+		fade.Completed:Once(function()
+			label:Destroy()
+		end)
+	end)
+end
+
+-- Kurzer Partikel-Burst am eigenen Planetenkern (rein lokal).
+function EffectsController.burstAtOwnPlanet(color: Color3?)
+	local plots = Workspace:FindFirstChild("PlanetPlots")
+	local plot = if plots ~= nil then plots:FindFirstChild(`Plot_{localPlayer.UserId}`) else nil
+	local core = if plot ~= nil then plot:FindFirstChild("Core") else nil
+	if core == nil or not core:IsA("BasePart") then
+		return
+	end
+
+	local emitter = Instance.new("ParticleEmitter")
+	emitter.Name = "LocalBurst"
+	local burstColor = color or ACCENT_COLOR
+	emitter.Color = ColorSequence.new(burstColor)
+	emitter.LightEmission = 0.7
+	emitter.Rate = 0
+	emitter.Lifetime = NumberRange.new(0.4, 0.9)
+	emitter.Speed = NumberRange.new(8, 14)
+	emitter.SpreadAngle = Vector2.new(180, 180)
+	emitter.Size = NumberSequence.new(0.7)
+	emitter.Parent = core
+	emitter:Emit(14)
+	task.delay(1.5, function()
+		emitter:Destroy()
+	end)
+end
+
+-- Kurzer, abklingender Screen-Shake (z. B. bei legendären Funden).
+function EffectsController.screenShake(intensity: number?)
+	local camera = Workspace.CurrentCamera
+	if camera == nil then
+		return
+	end
+
+	local strength = intensity or 1
+	local duration = 0.35
+	shakeCounter += 1
+	local bindName = `PlanetForgeShake_{shakeCounter}`
+	local rng = Random.new()
+	local startedAt = os.clock()
+
+	RunService:BindToRenderStep(bindName, Enum.RenderPriority.Camera.Value + 1, function()
+		local elapsed = os.clock() - startedAt
+		if elapsed &gt;= duration then
+			RunService:UnbindFromRenderStep(bindName)
+			return
+		end
+		local falloff = 1 - elapsed / duration
+		local amplitude = 0.35 * strength * falloff
+		local offset = CFrame.new(
+			rng:NextNumber(-amplitude, amplitude),
+			rng:NextNumber(-amplitude, amplitude),
+			0
+		) * CFrame.Angles(0, 0, math.rad(rng:NextNumber(-1, 1) * strength * falloff))
+		camera.CFrame = camera.CFrame * offset
+	end)
+end
+
+function EffectsController.init()
+	-- Zentrale SoundGroup mit Lautstärke aus GameConfig.
+	local group = Instance.new("SoundGroup")
+	group.Name = "PlanetForgeSounds"
+	group.Volume = math.clamp(GameConfig.SOUND_MASTER_VOLUME, 0, 1)
+	group.Parent = SoundService
+	soundGroup = group
+
+	-- Eigene Ebene für fliegende Zahlen und ähnliche Overlay-Effekte.
+	local playerGui = localPlayer:WaitForChild("PlayerGui")
+	local gui = Instance.new("ScreenGui")
+	gui.Name = "PlanetForgeEffects"
+	gui.ResetOnSpawn = false
+	gui.IgnoreGuiInset = true
+	gui.DisplayOrder = 30
+	gui.Parent = playerGui
+	effectsGui = gui
+end
+
+return EffectsController
+</ProtectedString>
+</Properties>
+</Item>
+<Item class="ModuleScript" referent="PF29">
 <Properties>
 <string name="Name">EventNotifierController</string>
 <ProtectedString name="Source">--!strict
@@ -4464,7 +5482,7 @@ return EventNotifierController
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="PF27">
+<Item class="ModuleScript" referent="PF30">
 <Properties>
 <string name="Name">LeaderboardController</string>
 <ProtectedString name="Source">--!strict
@@ -4701,7 +5719,7 @@ return LeaderboardController
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="PF28">
+<Item class="ModuleScript" referent="PF31">
 <Properties>
 <string name="Name">PlanetBuilderController</string>
 <ProtectedString name="Source">--!strict
@@ -5135,7 +6153,7 @@ return PlanetBuilderController
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="PF29">
+<Item class="ModuleScript" referent="PF32">
 <Properties>
 <string name="Name">PlanetNameController</string>
 <ProtectedString name="Source">--!strict
@@ -5274,19 +6292,25 @@ return PlanetNameController
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="PF30">
+<Item class="ModuleScript" referent="PF33">
 <Properties>
 <string name="Name">ShopController</string>
 <ProtectedString name="Source">--!strict
--- ShopController: Robux-Shop am rechten Bildschirmrand.
--- Zeigt Gamepässe und Einzelkäufe (nur Kosmetik!) und verwaltet unter
--- "Meine Kosmetik" das Ausrüsten gekaufter Inhalte. Käufe laufen über die
--- offiziellen Roblox-Kaufdialoge (MarketplaceService); die Gutschrift macht
--- ausschließlich der Server (MonetizationService).
+-- ShopController: Robux-Shop mit Kategorie-Tabs am rechten Bildschirmrand.
+--
+-- Tabs: "Gamepässe", "Einzelkäufe", "Meine Kosmetik". Jede Kauf-Zeile zeigt
+-- eine Vorschau (Farb-Swatch + Kategorie-Icon), den Preis und - falls schon
+-- freigeschaltet - ein "Im Besitz ✓"-Badge. Käufe laufen über die offiziellen
+-- Roblox-Kaufdialoge; die Gutschrift macht ausschließlich der Server.
+--
+-- STUDIO-TESTMODUS: Ist eine Produkt-ID noch 0 und läuft das Spiel in Studio
+-- (MonetizationConfig.testModeInStudio), zeigt der Button "Test-Kauf" und
+-- simuliert den Kauf über SimulatePurchase - der Server prüft Studio hart.
 
 local MarketplaceService = game:GetService("MarketplaceService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local ConfigFolder = Shared:WaitForChild("Config")
@@ -5320,6 +6344,7 @@ type ProductDef = {
 }
 
 local MonetizationConfig = require(ConfigFolder:WaitForChild("MonetizationConfig") :: ModuleScript) :: {
+	testModeInStudio: boolean,
 	Categories: { string },
 	CategoryNames: { [string]: string },
 	Cosmetics: { [string]: CosmeticDef },
@@ -5331,6 +6356,9 @@ local MonetizationConfig = require(ConfigFolder:WaitForChild("MonetizationConfig
 local UIController = require(ControllersFolder:WaitForChild("UIController") :: ModuleScript) :: {
 	showToast: (message: string, kind: string) -&gt; (),
 }
+local EffectsController = require(ControllersFolder:WaitForChild("EffectsController") :: ModuleScript) :: {
+	playSound: (name: string, pitchOverride: number?) -&gt; (),
+}
 
 -- Farbschema (identisch zum UIController).
 local PANEL_COLOR = Color3.fromRGB(30, 32, 44)
@@ -5339,13 +6367,23 @@ local STROKE_COLOR = Color3.fromRGB(70, 75, 100)
 local TEXT_COLOR = Color3.fromRGB(235, 238, 245)
 local SUBTEXT_COLOR = Color3.fromRGB(158, 164, 186)
 local BUY_BUTTON_COLOR = Color3.fromRGB(56, 160, 92)
+local TEST_BUTTON_COLOR = Color3.fromRGB(214, 160, 72)
 local DISABLED_BUTTON_COLOR = Color3.fromRGB(60, 64, 84)
 local EQUIP_BUTTON_COLOR = Color3.fromRGB(52, 96, 178)
 local EQUIPPED_BUTTON_COLOR = Color3.fromRGB(120, 90, 200)
-local SECTION_COLOR = Color3.fromRGB(214, 160, 72)
+local OWNED_BADGE_COLOR = Color3.fromRGB(76, 175, 110)
+local TAB_ACTIVE_COLOR = Color3.fromRGB(52, 96, 178)
 
-local PANEL_WIDTH = 320
-local ROW_HEIGHT = 56
+local PANEL_WIDTH = 340
+local ROW_HEIGHT = 62
+
+-- Kategorie-Icons für die Vorschau.
+local CATEGORY_ICONS: { [string]: string } = {
+	skin = "🪐",
+	aura = "✨",
+	wetter = "🌦️",
+	haustier = "🐾",
+}
 
 local ShopController = {}
 
@@ -5357,6 +6395,10 @@ local equipped: { [string]: string } = {}
 
 local cosmeticsFrame: Frame? = nil
 local equipFunction: RemoteFunction? = nil
+local simulateFunction: RemoteFunction? = nil
+
+-- Zeilen-Aktualisierer, die bei jedem CosmeticsUpdated laufen (Badges usw.).
+local rowUpdaters: { () -&gt; () } = {}
 
 local function addCorner(instance: Instance, radius: number)
 	local corner = Instance.new("UICorner")
@@ -5383,16 +6425,46 @@ local function createLabel(parent: Instance, name: string, text: string): TextLa
 	return label
 end
 
+-- Testmodus aus Client-Sicht (der Server prüft zusätzlich hart).
+local function isTestModeActive(): boolean
+	return MonetizationConfig.testModeInStudio == true and RunService:IsStudio()
+end
+
+-- Vorschau: runder Farb-Swatch mit Kategorie-Icon.
+local function createPreview(parent: Instance, color: Color3, category: string)
+	local swatch = Instance.new("Frame")
+	swatch.Name = "Preview"
+	swatch.AnchorPoint = Vector2.new(0, 0.5)
+	swatch.Position = UDim2.new(0, 8, 0.5, 0)
+	swatch.Size = UDim2.new(0, 40, 0, 40)
+	swatch.BackgroundColor3 = color
+	addCorner(swatch, 20)
+	addStroke(swatch, STROKE_COLOR)
+	swatch.Parent = parent
+
+	local icon = Instance.new("TextLabel")
+	icon.BackgroundTransparency = 1
+	icon.Size = UDim2.new(1, 0, 1, 0)
+	icon.Font = Enum.Font.GothamBold
+	icon.TextSize = 20
+	icon.Text = CATEGORY_ICONS[category] or "🎁"
+	icon.Parent = swatch
+end
+
 -- Kauf-Zeile für einen Gamepass oder ein Developer Product.
 local function createPurchaseRow(
 	parent: Instance,
 	order: number,
 	displayName: string,
 	description: string,
+	previewColor: Color3,
+	previewCategory: string,
 	assetId: number,
 	infoType: Enum.InfoType,
-	onBuy: () -&gt; ()
-): TextButton
+	isOwned: () -&gt; boolean,
+	onBuy: () -&gt; (),
+	onTestBuy: () -&gt; ()
+)
 	local row = Instance.new("Frame")
 	row.Name = `Row_{order}`
 	row.Size = UDim2.new(1, 0, 0, ROW_HEIGHT)
@@ -5401,15 +6473,17 @@ local function createPurchaseRow(
 	addCorner(row, 8)
 	row.Parent = parent
 
+	createPreview(row, previewColor, previewCategory)
+
 	local nameLabel = createLabel(row, "Name", displayName)
-	nameLabel.Position = UDim2.new(0, 10, 0, 6)
-	nameLabel.Size = UDim2.new(1, -110, 0, 18)
+	nameLabel.Position = UDim2.new(0, 56, 0, 8)
+	nameLabel.Size = UDim2.new(1, -160, 0, 18)
 	nameLabel.Font = Enum.Font.GothamBold
 	nameLabel.TextSize = 14
 
 	local descLabel = createLabel(row, "Desc", description)
-	descLabel.Position = UDim2.new(0, 10, 0, 26)
-	descLabel.Size = UDim2.new(1, -110, 0, 26)
+	descLabel.Position = UDim2.new(0, 56, 0, 28)
+	descLabel.Size = UDim2.new(1, -160, 0, 28)
 	descLabel.TextSize = 11
 	descLabel.TextColor3 = SUBTEXT_COLOR
 	descLabel.TextWrapped = true
@@ -5426,17 +6500,26 @@ local function createPurchaseRow(
 	addCorner(buyButton, 8)
 	buyButton.Parent = row
 
-	if assetId == 0 then
-		-- Platzhalter-ID: Produkt wurde im Creator Dashboard noch nicht angelegt.
-		buyButton.Text = "Bald..."
-		buyButton.BackgroundColor3 = DISABLED_BUTTON_COLOR
-		buyButton.AutoButtonColor = false
-	else
+	local ownedBadge = Instance.new("TextLabel")
+	ownedBadge.Name = "OwnedBadge"
+	ownedBadge.AnchorPoint = Vector2.new(1, 0.5)
+	ownedBadge.Position = UDim2.new(1, -8, 0.5, 0)
+	ownedBadge.Size = UDim2.new(0, 88, 0, 34)
+	ownedBadge.BackgroundColor3 = OWNED_BADGE_COLOR
+	ownedBadge.Font = Enum.Font.GothamBold
+	ownedBadge.TextSize = 12
+	ownedBadge.TextColor3 = TEXT_COLOR
+	ownedBadge.Text = "Im Besitz ✓"
+	ownedBadge.Visible = false
+	addCorner(ownedBadge, 8)
+	ownedBadge.Parent = row
+
+	-- Kaufweg bestimmen: echte ID -&gt; Roblox-Dialog; ID 0 im Studio-Testmodus
+	-- -&gt; Test-Kauf; sonst deaktiviert.
+	if assetId ~= 0 then
 		buyButton.Text = "Kaufen"
 		buyButton.BackgroundColor3 = BUY_BUTTON_COLOR
 		buyButton.Activated:Connect(onBuy)
-
-		-- Preis asynchron nachladen und im Button anzeigen.
 		task.spawn(function()
 			local ok, info = pcall(function()
 				return MarketplaceService:GetProductInfo(assetId, infoType)
@@ -5445,9 +6528,48 @@ local function createPurchaseRow(
 				buyButton.Text = `{info.PriceInRobux} R$`
 			end
 		end)
+	elseif isTestModeActive() then
+		buyButton.Text = "Test-Kauf"
+		buyButton.BackgroundColor3 = TEST_BUTTON_COLOR
+		buyButton.Activated:Connect(onTestBuy)
+	else
+		buyButton.Text = "Bald..."
+		buyButton.BackgroundColor3 = DISABLED_BUTTON_COLOR
+		buyButton.AutoButtonColor = false
 	end
 
-	return buyButton
+	-- Badge/Button live umschalten, sobald sich der Besitz ändert.
+	table.insert(rowUpdaters, function()
+		local owned = isOwned()
+		ownedBadge.Visible = owned
+		buyButton.Visible = not owned
+	end)
+end
+
+-- Test-Kauf über den Server simulieren (nur Studio; Server prüft hart).
+local function requestTestPurchase(kind: string, key: string)
+	local remote = simulateFunction
+	if remote == nil then
+		return
+	end
+	task.spawn(function()
+		local ok, serverOk, message = pcall(function()
+			return remote:InvokeServer(kind, key)
+		end)
+		if not ok then
+			UIController.showToast("Verbindungsfehler – bitte erneut versuchen.", "error")
+		elseif serverOk ~= true and typeof(message) == "string" then
+			UIController.showToast(message, "error")
+		else
+			EffectsController.playSound("collect")
+		end
+	end)
+end
+
+local function runRowUpdaters()
+	for _, update in rowUpdaters do
+		update()
+	end
 end
 
 -- "Meine Kosmetik" neu aufbauen (nach jedem CosmeticsUpdated).
@@ -5457,7 +6579,7 @@ local function rebuildCosmeticsSection()
 		return
 	end
 	for _, child in frame:GetChildren() do
-		if not child:IsA("UIListLayout") then
+		if not (child:IsA("UIListLayout") or child:IsA("UIPadding")) then
 			child:Destroy()
 		end
 	end
@@ -5466,7 +6588,6 @@ local function rebuildCosmeticsSection()
 	local ownedAny = false
 
 	for _, category in MonetizationConfig.Categories do
-		-- Alle besessenen Kosmetiken dieser Kategorie einsammeln (sortiert).
 		local ids: { string } = {}
 		for cosmeticId in ownedSet do
 			local def = MonetizationConfig.Cosmetics[cosmeticId]
@@ -5483,8 +6604,9 @@ local function rebuildCosmeticsSection()
 		order += 1
 		local header = createLabel(frame, `Cat_{category}`, MonetizationConfig.CategoryNames[category] or category)
 		header.Size = UDim2.new(1, 0, 0, 20)
+		header.Font = Enum.Font.GothamBold
 		header.TextSize = 12
-		header.TextColor3 = SECTION_COLOR
+		header.TextColor3 = TEST_BUTTON_COLOR
 		header.LayoutOrder = order
 
 		for _, cosmeticId in ids do
@@ -5494,25 +6616,32 @@ local function rebuildCosmeticsSection()
 			order += 1
 			local row = Instance.new("Frame")
 			row.Name = `Own_{cosmeticId}`
-			row.Size = UDim2.new(1, 0, 0, 40)
+			row.Size = UDim2.new(1, 0, 0, 48)
 			row.BackgroundColor3 = ROW_COLOR
 			row.LayoutOrder = order
 			addCorner(row, 8)
 			row.Parent = frame
 
-			local swatch = Instance.new("Frame")
-			swatch.Name = "Swatch"
-			swatch.AnchorPoint = Vector2.new(0, 0.5)
-			swatch.Position = UDim2.new(0, 8, 0.5, 0)
-			swatch.Size = UDim2.new(0, 14, 0, 14)
-			swatch.BackgroundColor3 = def.visual.color or TEXT_COLOR
-			addCorner(swatch, 7)
-			swatch.Parent = row
+			local preview = Instance.new("Frame")
+			preview.AnchorPoint = Vector2.new(0, 0.5)
+			preview.Position = UDim2.new(0, 8, 0.5, 0)
+			preview.Size = UDim2.new(0, 30, 0, 30)
+			preview.BackgroundColor3 = def.visual.color or TEXT_COLOR
+			addCorner(preview, 15)
+			preview.Parent = row
+
+			local icon = Instance.new("TextLabel")
+			icon.BackgroundTransparency = 1
+			icon.Size = UDim2.new(1, 0, 1, 0)
+			icon.Font = Enum.Font.GothamBold
+			icon.TextSize = 15
+			icon.Text = CATEGORY_ICONS[def.category] or "🎁"
+			icon.Parent = preview
 
 			local nameLabel = createLabel(row, "Name", def.displayName)
 			nameLabel.AnchorPoint = Vector2.new(0, 0.5)
-			nameLabel.Position = UDim2.new(0, 30, 0.5, 0)
-			nameLabel.Size = UDim2.new(1, -130, 0, 18)
+			nameLabel.Position = UDim2.new(0, 46, 0.5, 0)
+			nameLabel.Size = UDim2.new(1, -150, 0, 18)
 			nameLabel.TextSize = 13
 
 			local equipButton = Instance.new("TextButton")
@@ -5541,6 +6670,8 @@ local function rebuildCosmeticsSection()
 						UIController.showToast("Verbindungsfehler – bitte erneut versuchen.", "error")
 					elseif success ~= true and typeof(err) == "string" then
 						UIController.showToast(err, "error")
+					else
+						EffectsController.playSound("pop")
 					end
 				end)
 			end)
@@ -5548,13 +6679,40 @@ local function rebuildCosmeticsSection()
 	end
 
 	if not ownedAny then
-		local hint = createLabel(frame, "Empty", "Noch keine Kosmetik – kaufe oben etwas oder hol dir einen Gamepass!")
-		hint.Size = UDim2.new(1, 0, 0, 40)
+		local hint = createLabel(frame, "Empty", 'Noch keine Kosmetik – hol dir etwas aus den Tabs „Gamepässe" oder „Einzelkäufe"!')
+		hint.Size = UDim2.new(1, 0, 0, 44)
 		hint.TextSize = 12
 		hint.TextColor3 = SUBTEXT_COLOR
 		hint.TextWrapped = true
 		hint.LayoutOrder = 1
 	end
+end
+
+-- Scrollbaren Tab-Inhalt anlegen.
+local function createTabContent(parent: Instance): ScrollingFrame
+	local frame = Instance.new("ScrollingFrame")
+	frame.Position = UDim2.new(0, 0, 0, 44)
+	frame.Size = UDim2.new(1, 0, 1, -44)
+	frame.BackgroundTransparency = 1
+	frame.ScrollBarThickness = 6
+	frame.AutomaticCanvasSize = Enum.AutomaticSize.Y
+	frame.CanvasSize = UDim2.new(0, 0, 0, 0)
+	frame.Visible = false
+	frame.Parent = parent
+
+	local padding = Instance.new("UIPadding")
+	padding.PaddingTop = UDim.new(0, 8)
+	padding.PaddingLeft = UDim.new(0, 10)
+	padding.PaddingRight = UDim.new(0, 10)
+	padding.PaddingBottom = UDim.new(0, 8)
+	padding.Parent = frame
+
+	local layout = Instance.new("UIListLayout")
+	layout.SortOrder = Enum.SortOrder.LayoutOrder
+	layout.Padding = UDim.new(0, 6)
+	layout.Parent = frame
+
+	return frame
 end
 
 local function buildUI()
@@ -5565,7 +6723,6 @@ local function buildUI()
 	screenGui.ResetOnSpawn = false
 	screenGui.Parent = playerGui
 
-	-- Umschalt-Button am rechten Rand.
 	local toggleButton = Instance.new("TextButton")
 	toggleButton.Name = "ShopToggle"
 	toggleButton.AnchorPoint = Vector2.new(1, 0.5)
@@ -5580,117 +6737,154 @@ local function buildUI()
 	addStroke(toggleButton, STROKE_COLOR)
 	toggleButton.Parent = screenGui
 
-	-- Shop-Panel (ScrollingFrame).
-	local panel = Instance.new("ScrollingFrame")
+	local panel = Instance.new("Frame")
 	panel.Name = "ShopPanel"
 	panel.AnchorPoint = Vector2.new(1, 0.5)
-	panel.Position = UDim2.new(1, -12, 0.5, 0)
-	panel.Size = UDim2.new(0, PANEL_WIDTH, 0.7, 0)
+	panel.Position = UDim2.new(1, -130, 0.5, 0)
+	panel.Size = UDim2.new(0, PANEL_WIDTH, 0.72, 0)
 	panel.BackgroundColor3 = PANEL_COLOR
-	panel.ScrollBarThickness = 6
-	panel.AutomaticCanvasSize = Enum.AutomaticSize.Y
-	panel.CanvasSize = UDim2.new(0, 0, 0, 0)
 	panel.Visible = false
 	addCorner(panel, 12)
 	addStroke(panel, STROKE_COLOR)
 	panel.Parent = screenGui
 
-	local padding = Instance.new("UIPadding")
-	padding.PaddingTop = UDim.new(0, 10)
-	padding.PaddingBottom = UDim.new(0, 10)
-	padding.PaddingLeft = UDim.new(0, 10)
-	padding.PaddingRight = UDim.new(0, 10)
-	padding.Parent = panel
-
-	local layout = Instance.new("UIListLayout")
-	layout.SortOrder = Enum.SortOrder.LayoutOrder
-	layout.Padding = UDim.new(0, 6)
-	layout.Parent = panel
-
 	toggleButton.Activated:Connect(function()
 		panel.Visible = not panel.Visible
 	end)
 
-	local order = 0
-	local function addSectionLabel(text: string)
-		order += 1
-		local label = createLabel(panel, `Section_{order}`, text)
-		label.Size = UDim2.new(1, 0, 0, 22)
-		label.Font = Enum.Font.GothamBold
-		label.TextSize = 13
-		label.TextColor3 = SECTION_COLOR
-		label.LayoutOrder = order
+	-- Tab-Leiste.
+	local tabBar = Instance.new("Frame")
+	tabBar.Name = "Tabs"
+	tabBar.Position = UDim2.new(0, 8, 0, 8)
+	tabBar.Size = UDim2.new(1, -16, 0, 30)
+	tabBar.BackgroundTransparency = 1
+	tabBar.Parent = panel
+
+	local tabLayout = Instance.new("UIListLayout")
+	tabLayout.FillDirection = Enum.FillDirection.Horizontal
+	tabLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	tabLayout.Padding = UDim.new(0, 6)
+	tabLayout.Parent = tabBar
+
+	local gamepassContent = createTabContent(panel)
+	gamepassContent.Name = "GamepassContent"
+	local productContent = createTabContent(panel)
+	productContent.Name = "ProductContent"
+	local cosmeticsContent = createTabContent(panel)
+	cosmeticsContent.Name = "CosmeticsContent"
+
+	local tabs: { { button: TextButton, content: ScrollingFrame } } = {}
+
+	local function selectTab(selectedIndex: number)
+		for index, tab in tabs do
+			local active = index == selectedIndex
+			tab.content.Visible = active
+			tab.button.BackgroundColor3 = if active then TAB_ACTIVE_COLOR else ROW_COLOR
+		end
 	end
 
-	-- Fairness-Hinweis ganz oben.
-	order += 1
-	local fairness = createLabel(panel, "Fairness", "Nur Kosmetik – keine Spielvorteile, kein Pay-to-Win.")
-	fairness.Size = UDim2.new(1, 0, 0, 30)
-	fairness.TextSize = 11
-	fairness.TextColor3 = SUBTEXT_COLOR
-	fairness.TextWrapped = true
-	fairness.LayoutOrder = order
+	local function addTab(order: number, title: string, content: ScrollingFrame)
+		local button = Instance.new("TextButton")
+		button.Name = `Tab_{order}`
+		button.LayoutOrder = order
+		button.Size = UDim2.new(0, 104, 1, 0)
+		button.BackgroundColor3 = ROW_COLOR
+		button.Font = Enum.Font.GothamBold
+		button.TextSize = 11
+		button.TextColor3 = TEXT_COLOR
+		button.Text = title
+		addCorner(button, 8)
+		button.Parent = tabBar
 
-	addSectionLabel("Gamepässe")
+		table.insert(tabs, { button = button, content = content })
+		local index = #tabs
+		button.Activated:Connect(function()
+			selectTab(index)
+		end)
+	end
+
+	addTab(1, "Gamepässe", gamepassContent)
+	addTab(2, "Einzelkäufe", productContent)
+	addTab(3, "Meine Kosmetik", cosmeticsContent)
+	selectTab(1)
+
+	-- Gamepass-Zeilen (Vorschau = erste enthaltene Kosmetik).
+	local order = 0
 	for _, key in MonetizationConfig.getGamepassKeys() do
 		local def = MonetizationConfig.Gamepasses[key]
+		local firstCosmetic = MonetizationConfig.Cosmetics[def.grantsCosmetics[1]]
 		order += 1
-		local row = createPurchaseRow(
-			panel,
+		createPurchaseRow(
+			gamepassContent,
 			order,
 			def.displayName,
 			def.description,
+			if firstCosmetic ~= nil then firstCosmetic.visual.color or TEXT_COLOR else TEXT_COLOR,
+			if firstCosmetic ~= nil then firstCosmetic.category else "skin",
 			def.gamePassId,
 			Enum.InfoType.GamePass,
 			function()
+				for _, cosmeticId in def.grantsCosmetics do
+					if not ownedSet[cosmeticId] then
+						return false
+					end
+				end
+				return true
+			end,
+			function()
 				MarketplaceService:PromptGamePassPurchase(localPlayer, def.gamePassId)
+			end,
+			function()
+				requestTestPurchase("gamepass", key)
 			end
 		)
-		row.LayoutOrder = order
 	end
 
-	addSectionLabel("Einzelkäufe")
+	-- Einzelkauf-Zeilen.
 	for _, key in MonetizationConfig.getProductKeys() do
 		local def = MonetizationConfig.DeveloperProducts[key]
+		local cosmetic = MonetizationConfig.Cosmetics[def.grantsCosmetic]
 		order += 1
 		createPurchaseRow(
-			panel,
+			productContent,
 			order,
 			def.displayName,
 			def.description,
+			if cosmetic ~= nil then cosmetic.visual.color or TEXT_COLOR else TEXT_COLOR,
+			if cosmetic ~= nil then cosmetic.category else "skin",
 			def.productId,
 			Enum.InfoType.Product,
 			function()
-				if ownedSet[def.grantsCosmetic] == true then
-					UIController.showToast("Das besitzt du schon!", "info")
-					return
-				end
+				return ownedSet[def.grantsCosmetic] == true
+			end,
+			function()
 				MarketplaceService:PromptProductPurchase(localPlayer, def.productId)
+			end,
+			function()
+				requestTestPurchase("product", key)
 			end
 		)
 	end
 
-	addSectionLabel("Meine Kosmetik")
-	order += 1
-	local owned = Instance.new("Frame")
-	owned.Name = "OwnedCosmetics"
-	owned.Size = UDim2.new(1, 0, 0, 0)
-	owned.AutomaticSize = Enum.AutomaticSize.Y
-	owned.BackgroundTransparency = 1
-	owned.LayoutOrder = order
-	owned.Parent = panel
+	-- Hinweis im Testmodus.
+	if isTestModeActive() then
+		order += 1
+		local hint = createLabel(gamepassContent, "TestHint", 'Studio-Testmodus aktiv: „Test-Kauf" schaltet ohne Robux frei (nur in Studio).')
+		hint.Size = UDim2.new(1, 0, 0, 30)
+		hint.TextSize = 10
+		hint.TextColor3 = TEST_BUTTON_COLOR
+		hint.TextWrapped = true
+		hint.LayoutOrder = order
+	end
 
-	local ownedLayout = Instance.new("UIListLayout")
-	ownedLayout.SortOrder = Enum.SortOrder.LayoutOrder
-	ownedLayout.Padding = UDim.new(0, 6)
-	ownedLayout.Parent = owned
-
-	cosmeticsFrame = owned
+	cosmeticsFrame = cosmeticsContent
 	rebuildCosmeticsSection()
+	runRowUpdaters()
 end
 
 function ShopController.init()
 	equipFunction = Remotes.getFunction("EquipCosmetic")
+	simulateFunction = Remotes.getFunction("SimulatePurchase")
 
 	Remotes.getEvent("CosmeticsUpdated").OnClientEvent:Connect(function(ownedArg: any, equippedArg: any)
 		ownedSet = {}
@@ -5712,6 +6906,7 @@ function ShopController.init()
 		end
 
 		rebuildCosmeticsSection()
+		runRowUpdaters()
 	end)
 
 	buildUI()
@@ -5721,7 +6916,532 @@ return ShopController
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="PF31">
+<Item class="ModuleScript" referent="PF34">
+<Properties>
+<string name="Name">TutorialController</string>
+<ProtectedString name="Source">--!strict
+-- TutorialController: geführte First-Time Experience.
+--
+-- Zeigt für neue Spieler vier Schritte mit Textbox und pulsierendem
+-- Highlight auf dem jeweils richtigen Bedienelement:
+--   1  Platziere deine erste Wiese  (Biome-Menü + leerer Slot pulsiert)
+--   2  Sammle Energie ein           ("Energie sammeln"-Button pulsiert)
+--   3  Kaufe ein Upgrade            (Biome-Menü pulsiert)
+--   4  Suche deinen ersten Fund     ("Fund suchen"-Button pulsiert)
+--
+-- Der Fortschritt liegt im Profil (tutorialStep, TutorialService validiert
+-- autoritativ); dieses Tutorial erscheint deshalb nur einmal. Zusätzlich
+-- bekommen leere Slots und der Sammel-Button dezente Hinweis-Schilder,
+-- solange der Spieler unter GameConfig.TUTORIAL_HINT_LIFETIME_LIMIT
+-- Lifetime-Energie hat.
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TweenService = game:GetService("TweenService")
+local Workspace = game:GetService("Workspace")
+
+local Shared = ReplicatedStorage:WaitForChild("Shared")
+local ConfigFolder = Shared:WaitForChild("Config")
+local ControllersFolder = script.Parent :: Instance
+
+local Remotes = require(Shared:WaitForChild("Remotes") :: ModuleScript) :: {
+	getEvent: (name: string) -&gt; RemoteEvent,
+	getFunction: (name: string) -&gt; RemoteFunction,
+}
+local GameConfig = require(ConfigFolder:WaitForChild("GameConfig") :: ModuleScript) :: {
+	PLANET_SLOTS: number,
+	COLLECT_AMOUNT: number,
+	TUTORIAL_STEP_COUNT: number,
+	TUTORIAL_HINT_LIFETIME_LIMIT: number,
+}
+local UIController = require(ControllersFolder:WaitForChild("UIController") :: ModuleScript) :: {
+	showToast: (message: string, kind: string) -&gt; (),
+}
+
+-- Farbschema (identisch zum UIController) plus Gold-Akzent für Highlights.
+local PANEL_COLOR = Color3.fromRGB(30, 32, 44)
+local STROKE_COLOR = Color3.fromRGB(70, 75, 100)
+local TEXT_COLOR = Color3.fromRGB(235, 238, 245)
+local SUBTEXT_COLOR = Color3.fromRGB(158, 164, 186)
+local ACCENT_COLOR = Color3.fromRGB(214, 160, 72)
+local SKIP_COLOR = Color3.fromRGB(60, 64, 84)
+
+local DONE_STEP = GameConfig.TUTORIAL_STEP_COUNT + 1
+local PULSE_INFO = TweenInfo.new(0.7, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true)
+
+type StepDef = {
+	text: string,
+	target: "biome" | "collect" | "loot",
+	highlightSlot: boolean, -- zusätzlich einen leeren Slot in der Welt pulsieren lassen
+}
+
+local STEPS: { StepDef } = {
+	{ text = 'Öffne links „Biome" und platziere deine erste Wiese! 🌿', target = "biome", highlightSlot = true },
+	{ text = 'Super! Jetzt drücke unten auf „Energie sammeln". ⚡', target = "collect", highlightSlot = false },
+	{ text = 'Kaufe ein Upgrade: Öffne „Biome" und drücke bei deiner Wiese auf „Upgrade"!', target = "biome", highlightSlot = false },
+	{ text = 'Fast geschafft: Suche deinen ersten Fund! 🎁', target = "loot", highlightSlot = false },
+}
+
+local TutorialController = {}
+
+local localPlayer = Players.LocalPlayer
+
+local currentStep = 0
+local advanceInFlight = false
+local lifetimeEnergy = 0
+
+-- Zwischenspeicher aus PlanetUpdated für Bedingungen und Slot-Suche.
+local snapshotBiomeCount = 0
+local snapshotMaxLevel = 0
+local snapshotCollectibles = 0
+local occupiedSlots: { [number]: boolean } = {}
+
+-- UI-Referenzen (in buildUI gesetzt).
+local tutorialFrame: Frame? = nil
+local stepLabel: TextLabel? = nil
+local textLabel: TextLabel? = nil
+
+-- Aktive Highlight-Objekte des aktuellen Schritts (werden bei Wechsel entsorgt).
+local activeHighlights: { Instance } = {}
+local activeTweens: { Tween } = {}
+
+-- Hinweis-Schilder (unabhängig vom Tutorial, solange Lifetime &lt; Limit).
+local slotHints: { [number]: BillboardGui } = {}
+local collectHint: TextLabel? = nil
+local hintsRemoved = false
+
+local tutorialActionFunction: RemoteFunction? = nil
+
+local function addCorner(instance: Instance, radius: number)
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0, radius)
+	corner.Parent = instance
+end
+
+-- Sucht ein GUI-Objekt über einen Pfad aus WaitForChild-Schritten (mit Timeout).
+local function waitForPath(root: Instance, path: { string }, timeout: number): Instance?
+	local current: Instance? = root
+	for _, name in path do
+		if current == nil then
+			return nil
+		end
+		current = current:WaitForChild(name, timeout)
+	end
+	return current
+end
+
+local function clearHighlights()
+	for _, tween in activeTweens do
+		tween:Cancel()
+	end
+	table.clear(activeTweens)
+	for _, instance in activeHighlights do
+		instance:Destroy()
+	end
+	table.clear(activeHighlights)
+end
+
+-- Pulsierender Gold-Rahmen um einen GUI-Button.
+local function highlightButton(button: Instance)
+	if not button:IsA("GuiObject") then
+		return
+	end
+	local stroke = Instance.new("UIStroke")
+	stroke.Name = "TutorialPulse"
+	stroke.Color = ACCENT_COLOR
+	stroke.Thickness = 3
+	stroke.Transparency = 0
+	stroke.Parent = button
+
+	local tween = TweenService:Create(stroke, PULSE_INFO, { Transparency = 0.75 })
+	tween:Play()
+
+	table.insert(activeHighlights, stroke)
+	table.insert(activeTweens, tween)
+end
+
+-- Pulsierendes Highlight + Pfeil-Schild über einem leeren Slot in der Welt.
+local function highlightEmptySlot()
+	task.spawn(function()
+		local plots = Workspace:WaitForChild("PlanetPlots", 15)
+		if plots == nil then
+			return
+		end
+		local plot = plots:WaitForChild(`Plot_{localPlayer.UserId}`, 15)
+		if plot == nil then
+			return
+		end
+
+		-- Ersten freien Slot laut Snapshot nehmen (Standard: Slot 1).
+		local slotNumber = 1
+		for candidate = 1, GameConfig.PLANET_SLOTS do
+			if not occupiedSlots[candidate] then
+				slotNumber = candidate
+				break
+			end
+		end
+		local slotPart = plot:FindFirstChild(`Slot_{slotNumber}`)
+		if slotPart == nil or not slotPart:IsA("BasePart") then
+			return
+		end
+
+		-- Falls der Schritt inzwischen weitergesprungen ist: nichts anheften.
+		if currentStep ~= 1 then
+			return
+		end
+
+		local highlight = Instance.new("Highlight")
+		highlight.Name = "TutorialSlotPulse"
+		highlight.FillColor = ACCENT_COLOR
+		highlight.OutlineColor = TEXT_COLOR
+		highlight.FillTransparency = 0.4
+		highlight.Adornee = slotPart
+		highlight.Parent = slotPart
+
+		local billboard = Instance.new("BillboardGui")
+		billboard.Name = "TutorialSlotArrow"
+		billboard.Size = UDim2.new(0, 140, 0, 40)
+		billboard.StudsOffset = Vector3.new(0, 6, 0)
+		billboard.AlwaysOnTop = true
+		billboard.Adornee = slotPart
+		billboard.Parent = slotPart
+
+		local arrow = Instance.new("TextLabel")
+		arrow.BackgroundTransparency = 1
+		arrow.Size = UDim2.new(1, 0, 1, 0)
+		arrow.Font = Enum.Font.GothamBold
+		arrow.TextSize = 18
+		arrow.TextColor3 = ACCENT_COLOR
+		arrow.TextStrokeTransparency = 0.4
+		arrow.Text = "⬇ Hier bauen!"
+		arrow.Parent = billboard
+
+		local tween = TweenService:Create(highlight, PULSE_INFO, { FillTransparency = 0.85 })
+		tween:Play()
+
+		table.insert(activeHighlights, highlight)
+		table.insert(activeHighlights, billboard)
+		table.insert(activeTweens, tween)
+	end)
+end
+
+-- Setzt das Highlight passend zum Schritt (Buttons liegen in anderen ScreenGuis).
+local function applyStepHighlight(step: number)
+	clearHighlights()
+	local def = STEPS[step]
+	if def == nil then
+		return
+	end
+
+	task.spawn(function()
+		local playerGui = localPlayer:WaitForChild("PlayerGui")
+		local target: Instance? = nil
+		if def.target == "biome" then
+			target = waitForPath(playerGui, { "PlanetForgeBuildUI", "ToggleBiomes" }, 10)
+		elseif def.target == "collect" then
+			target = waitForPath(playerGui, { "PlanetForgeUI", "ButtonBar", "CollectEnergy" }, 10)
+		elseif def.target == "loot" then
+			target = waitForPath(playerGui, { "PlanetForgeUI", "ButtonBar", "RollLoot" }, 10)
+		end
+		-- Nur anheften, wenn der Schritt noch aktuell ist (WaitForChild kann dauern).
+		if target ~= nil and currentStep == step then
+			highlightButton(target)
+		end
+	end)
+
+	if def.highlightSlot then
+		highlightEmptySlot()
+	end
+end
+
+local function buildUI()
+	local playerGui = localPlayer:WaitForChild("PlayerGui")
+
+	local screenGui = Instance.new("ScreenGui")
+	screenGui.Name = "PlanetForgeTutorial"
+	screenGui.ResetOnSpawn = false
+	screenGui.DisplayOrder = 20
+	screenGui.Parent = playerGui
+
+	local frame = Instance.new("Frame")
+	frame.Name = "TutorialBox"
+	frame.AnchorPoint = Vector2.new(0.5, 1)
+	frame.Position = UDim2.new(0.5, 0, 1, -78)
+	frame.Size = UDim2.new(0, 520, 0, 64)
+	frame.BackgroundColor3 = PANEL_COLOR
+	frame.Visible = false
+	addCorner(frame, 12)
+	local stroke = Instance.new("UIStroke")
+	stroke.Color = ACCENT_COLOR
+	stroke.Thickness = 2
+	stroke.Parent = frame
+	frame.Parent = screenGui
+
+	local step = Instance.new("TextLabel")
+	step.Name = "StepLabel"
+	step.BackgroundTransparency = 1
+	step.Position = UDim2.new(0, 14, 0, 8)
+	step.Size = UDim2.new(0, 200, 0, 14)
+	step.Font = Enum.Font.GothamBold
+	step.TextSize = 11
+	step.TextColor3 = ACCENT_COLOR
+	step.TextXAlignment = Enum.TextXAlignment.Left
+	step.Text = ""
+	step.Parent = frame
+
+	local text = Instance.new("TextLabel")
+	text.Name = "TaskText"
+	text.BackgroundTransparency = 1
+	text.Position = UDim2.new(0, 14, 0, 24)
+	text.Size = UDim2.new(1, -140, 0, 34)
+	text.Font = Enum.Font.GothamMedium
+	text.TextSize = 15
+	text.TextColor3 = TEXT_COLOR
+	text.TextXAlignment = Enum.TextXAlignment.Left
+	text.TextWrapped = true
+	text.Text = ""
+	text.Parent = frame
+
+	local skipButton = Instance.new("TextButton")
+	skipButton.Name = "Skip"
+	skipButton.AnchorPoint = Vector2.new(1, 0.5)
+	skipButton.Position = UDim2.new(1, -10, 0.5, 0)
+	skipButton.Size = UDim2.new(0, 108, 0, 30)
+	skipButton.BackgroundColor3 = SKIP_COLOR
+	skipButton.Font = Enum.Font.GothamMedium
+	skipButton.TextSize = 12
+	skipButton.TextColor3 = SUBTEXT_COLOR
+	skipButton.Text = "Überspringen"
+	addCorner(skipButton, 8)
+	skipButton.Parent = frame
+
+	skipButton.Activated:Connect(function()
+		local remote = tutorialActionFunction
+		if remote == nil then
+			return
+		end
+		task.spawn(function()
+			pcall(function()
+				return remote:InvokeServer("skip")
+			end)
+		end)
+	end)
+
+	tutorialFrame = frame
+	stepLabel = step
+	textLabel = text
+end
+
+local function setStep(step: number)
+	local wasActive = currentStep &gt;= 1 and currentStep &lt;= GameConfig.TUTORIAL_STEP_COUNT
+	currentStep = step
+
+	local frame = tutorialFrame
+	if frame == nil then
+		return
+	end
+
+	if step &gt;= DONE_STEP or STEPS[step] == nil then
+		clearHighlights()
+		frame.Visible = false
+		if wasActive then
+			UIController.showToast("Tutorial abgeschlossen – viel Spaß beim Bauen! 🎉", "success")
+		end
+		return
+	end
+
+	local def = STEPS[step];
+	(stepLabel :: TextLabel).Text = `TUTORIAL – SCHRITT {step} VON {GameConfig.TUTORIAL_STEP_COUNT}`;
+	(textLabel :: TextLabel).Text = def.text
+	frame.Visible = true
+	applyStepHighlight(step)
+end
+
+-- Meldet dem Server, dass der aktuelle Schritt geschafft sein sollte.
+local function requestAdvance()
+	if advanceInFlight or currentStep &lt; 1 or currentStep &gt;= DONE_STEP then
+		return
+	end
+	local remote = tutorialActionFunction
+	if remote == nil then
+		return
+	end
+	advanceInFlight = true
+	task.spawn(function()
+		pcall(function()
+			return remote:InvokeServer("advance")
+		end)
+		advanceInFlight = false
+	end)
+end
+
+-- Prüft die lokale Sicht der Schritt-Bedingung und stößt ggf. "advance" an.
+local function evaluateProgress()
+	if currentStep == 1 and snapshotBiomeCount &gt;= 1 then
+		requestAdvance()
+	elseif currentStep == 2 and lifetimeEnergy &gt;= GameConfig.COLLECT_AMOUNT then
+		requestAdvance()
+	elseif currentStep == 3 and snapshotMaxLevel &gt;= 2 then
+		requestAdvance()
+	elseif currentStep == 4 and snapshotCollectibles &gt;= 1 then
+		requestAdvance()
+	end
+end
+
+-- Dezente Hinweis-Schilder über leeren Slots (nur für Einsteiger).
+local function updateSlotHints()
+	if hintsRemoved then
+		return
+	end
+
+	task.spawn(function()
+		local plots = Workspace:FindFirstChild("PlanetPlots")
+		local plot = if plots ~= nil then plots:FindFirstChild(`Plot_{localPlayer.UserId}`) else nil
+		if plot == nil then
+			return
+		end
+
+		for slotNumber = 1, GameConfig.PLANET_SLOTS do
+			local shouldShow = not occupiedSlots[slotNumber]
+			local existing = slotHints[slotNumber]
+
+			if shouldShow and existing == nil then
+				local slotPart = plot:FindFirstChild(`Slot_{slotNumber}`)
+				if slotPart ~= nil and slotPart:IsA("BasePart") then
+					local billboard = Instance.new("BillboardGui")
+					billboard.Name = "SlotHint"
+					billboard.Size = UDim2.new(0, 90, 0, 22)
+					billboard.StudsOffset = Vector3.new(0, 2.5, 0)
+					billboard.MaxDistance = 120
+					billboard.Adornee = slotPart
+
+					local label = Instance.new("TextLabel")
+					label.BackgroundTransparency = 1
+					label.Size = UDim2.new(1, 0, 1, 0)
+					label.Font = Enum.Font.GothamMedium
+					label.TextSize = 12
+					label.TextColor3 = SUBTEXT_COLOR
+					label.TextTransparency = 0.25
+					label.TextStrokeTransparency = 0.7
+					label.Text = "Bau-Platz"
+					label.Parent = billboard
+
+					billboard.Parent = slotPart
+					slotHints[slotNumber] = billboard
+				end
+			elseif not shouldShow and existing ~= nil then
+				existing:Destroy()
+				slotHints[slotNumber] = nil
+			end
+		end
+	end)
+end
+
+local function removeAllHints()
+	if hintsRemoved then
+		return
+	end
+	hintsRemoved = true
+	for slotNumber, billboard in slotHints do
+		billboard:Destroy()
+		slotHints[slotNumber] = nil
+	end
+	if collectHint ~= nil then
+		collectHint:Destroy()
+		collectHint = nil
+	end
+end
+
+-- Kleines "+5 ⚡"-Schild im Sammel-Button für Einsteiger.
+local function attachCollectHint()
+	task.spawn(function()
+		local playerGui = localPlayer:WaitForChild("PlayerGui")
+		local button = waitForPath(playerGui, { "PlanetForgeUI", "ButtonBar", "CollectEnergy" }, 10)
+		if button == nil or hintsRemoved then
+			return
+		end
+
+		local hint = Instance.new("TextLabel")
+		hint.Name = "BeginnerHint"
+		hint.BackgroundTransparency = 1
+		hint.AnchorPoint = Vector2.new(0.5, 1)
+		hint.Position = UDim2.new(0.5, 0, 1, -1)
+		hint.Size = UDim2.new(1, 0, 0, 12)
+		hint.Font = Enum.Font.GothamMedium
+		hint.TextSize = 10
+		hint.TextColor3 = SUBTEXT_COLOR
+		hint.Text = `gibt +{GameConfig.COLLECT_AMOUNT} ⚡`
+		hint.Parent = button
+
+		collectHint = hint
+	end)
+end
+
+function TutorialController.init()
+	tutorialActionFunction = Remotes.getFunction("TutorialAction")
+
+	buildUI()
+	attachCollectHint()
+
+	Remotes.getEvent("TutorialUpdated").OnClientEvent:Connect(function(step: any)
+		if typeof(step) == "number" then
+			setStep(step)
+		end
+	end)
+
+	Remotes.getEvent("PlanetUpdated").OnClientEvent:Connect(function(snapshot: any)
+		if typeof(snapshot) ~= "table" or typeof(snapshot.biomes) ~= "table" then
+			return
+		end
+		snapshotBiomeCount = 0
+		snapshotMaxLevel = 0
+		table.clear(occupiedSlots)
+		for _, placed in snapshot.biomes :: { any } do
+			if typeof(placed) == "table" and typeof(placed.slot) == "number" then
+				snapshotBiomeCount += 1
+				occupiedSlots[placed.slot] = true
+				if typeof(placed.level) == "number" and placed.level &gt; snapshotMaxLevel then
+					snapshotMaxLevel = placed.level
+				end
+			end
+		end
+		snapshotCollectibles = if typeof(snapshot.collectibles) == "table" then #(snapshot.collectibles :: { any }) else 0
+
+		updateSlotHints()
+		evaluateProgress()
+	end)
+
+	Remotes.getEvent("EnergyChanged").OnClientEvent:Connect(function(_newEnergy: any, lifetime: any)
+		if typeof(lifetime) ~= "number" then
+			return
+		end
+		lifetimeEnergy = lifetime
+		if lifetimeEnergy &gt;= GameConfig.TUTORIAL_HINT_LIFETIME_LIMIT then
+			removeAllHints()
+		end
+		evaluateProgress()
+	end)
+
+	-- Falls das initiale TutorialUpdated verpasst wurde (Race beim Beitritt):
+	-- aktuellen Stand aktiv abfragen.
+	task.spawn(function()
+		task.wait(2)
+		if currentStep == 0 and tutorialActionFunction ~= nil then
+			local ok, serverOk, step = pcall(function()
+				return (tutorialActionFunction :: RemoteFunction):InvokeServer("status")
+			end)
+			if ok and serverOk == true and typeof(step) == "number" and currentStep == 0 then
+				setStep(step)
+			end
+		end
+	end)
+end
+
+return TutorialController
+</ProtectedString>
+</Properties>
+</Item>
+<Item class="ModuleScript" referent="PF35">
 <Properties>
 <string name="Name">UIController</string>
 <ProtectedString name="Source">--!strict
@@ -5746,9 +7466,16 @@ local GameConfig = require(ConfigFolder:WaitForChild("GameConfig") :: ModuleScri
 }
 local RarityConfig = require(ConfigFolder:WaitForChild("RarityConfig") :: ModuleScript) :: {
 	Tiers: { [string]: { displayName: string, color: Color3 } },
+	TierOrder: { string },
 }
 local CollectibleConfig = require(ConfigFolder:WaitForChild("CollectibleConfig") :: ModuleScript) :: {
 	Collectibles: { [string]: { displayName: string } },
+}
+local EffectsController = require(script.Parent:WaitForChild("EffectsController") :: ModuleScript) :: {
+	playSound: (name: string, pitchOverride: number?) -&gt; (),
+	flyEnergyToCounter: (amount: number) -&gt; (),
+	burstAtOwnPlanet: (color: Color3?) -&gt; (),
+	screenShake: (intensity: number?) -&gt; (),
 }
 
 -- Farbschema: dunkle Panels, helle Schrift.
@@ -5760,6 +7487,15 @@ local SUBTEXT_COLOR = Color3.fromRGB(158, 164, 186)
 local TOAST_LIFETIME_SECONDS = 4
 local FADE_SECONDS = 0.35
 local LOOT_POPUP_SECONDS = 3
+local LOOT_SUSPENSE_SECONDS = 1.5 -- Spannungsaufbau vor dem Reveal
+local LOOT_SUSPENSE_TICK = 0.12
+
+-- Ab diesen Stufen gibt es Screen-Shake + Glow beim Reveal.
+local HIGH_TIER: { [string]: boolean } = {
+	Legendary = true,
+	Mythic = true,
+	Cosmic = true,
+}
 
 local TOAST_COLORS: { [string]: Color3 } = {
 	info = Color3.fromRGB(66, 133, 244),
@@ -5883,8 +7619,8 @@ function UIController.showToast(message: string, kind: string)
 end
 
 -- Ruft eine argumentlose RemoteFunction auf; bei ok=false erscheint die
--- deutsche Fehlermeldung des Servers als Toast.
-local function invokeAction(functionName: string)
+-- deutsche Fehlermeldung des Servers als Toast, bei Erfolg läuft onSuccess.
+local function invokeAction(functionName: string, onSuccess: ((payload: any) -&gt; ())?)
 	task.spawn(function()
 		local ok, serverOk, payload = pcall(function()
 			return Remotes.getFunction(functionName):InvokeServer()
@@ -5896,11 +7632,21 @@ local function invokeAction(functionName: string)
 		if serverOk ~= true then
 			local message = if typeof(payload) == "string" then payload else "Aktion fehlgeschlagen."
 			UIController.showToast(message, "error")
+			return
+		end
+		if onSuccess ~= nil then
+			onSuccess(payload)
 		end
 	end)
 end
 
-local function createActionButton(parent: Instance, order: number, text: string, functionName: string): TextButton
+local function createActionButton(
+	parent: Instance,
+	order: number,
+	text: string,
+	functionName: string,
+	onSuccess: ((payload: any) -&gt; ())?
+): TextButton
 	local button = Instance.new("TextButton")
 	button.Name = functionName
 	button.LayoutOrder = order
@@ -5914,7 +7660,7 @@ local function createActionButton(parent: Instance, order: number, text: string,
 	addCorner(button, 10)
 	addStroke(button, STROKE_COLOR)
 	button.Activated:Connect(function()
-		invokeAction(functionName)
+		invokeAction(functionName, onSuccess)
 	end)
 	button.Parent = parent
 	return button
@@ -5985,9 +7731,19 @@ local function buildGui(playerGui: PlayerGui): GuiRefs
 	barLayout.Padding = UDim.new(0, 10)
 	barLayout.Parent = buttonBar
 
-	createActionButton(buttonBar, 1, "Energie sammeln", "CollectEnergy")
+	-- Einsammeln mit Juice: Sound, fliegende "+N ⚡"-Zahl, Partikel am Planeten.
+	createActionButton(buttonBar, 1, "Energie sammeln", "CollectEnergy", function(payload: any)
+		local amount = if typeof(payload) == "number" then payload else 0
+		EffectsController.playSound("collect")
+		if amount &gt; 0 then
+			EffectsController.flyEnergyToCounter(amount)
+		end
+		EffectsController.burstAtOwnPlanet(Color3.fromRGB(255, 224, 130))
+	end)
 	createActionButton(buttonBar, 2, `Fund suchen ({GameConfig.LOOT_ROLL_COST})`, "RollLoot")
-	createActionButton(buttonBar, 3, "Nach Hause", "GoHome")
+	createActionButton(buttonBar, 3, "Nach Hause", "GoHome", function()
+		EffectsController.playSound("pop", 0.9)
+	end)
 
 	-- Toast-Feed rechts oben.
 	local toasts = Instance.new("Frame")
@@ -6085,7 +7841,8 @@ function UIController.init()
 		showToastInternal(message, if typeof(kind) == "string" then kind else "info")
 	end)
 
-	-- Loot-Popup: Name + Seltenheit 3 s lang zentriert anzeigen.
+	-- Loot-Popup mit Spannungsaufbau: 1,5 s durchlaufende Seltenheiten,
+	-- dann Reveal in der echten Rarity-Farbe; ab Legendär Shake + Glow.
 	Remotes.getEvent("LootObtained").OnClientEvent:Connect(function(collectibleId: any, rarity: any, _uid: any)
 		if typeof(collectibleId) ~= "string" or typeof(rarity) ~= "string" then
 			return
@@ -6095,13 +7852,8 @@ function UIController.init()
 		local tierDef = RarityConfig.Tiers[rarity]
 		local tierColor = if tierDef ~= nil then tierDef.color else TEXT_COLOR
 
-		refs.lootName.Text = if collectibleDef ~= nil then collectibleDef.displayName else collectibleId
-		refs.lootRarity.Text = if tierDef ~= nil then tierDef.displayName else rarity
-		refs.lootRarity.TextColor3 = tierColor
-		refs.lootStroke.Color = tierColor
-
 		-- Generation zählt mit, damit sich überlappende Popups nicht gegenseitig
-		-- vorzeitig ausblenden.
+		-- vorzeitig ausblenden oder alte Spannungsphasen weiterlaufen.
 		lootPopupGeneration += 1
 		local generation = lootPopupGeneration
 
@@ -6112,23 +7864,70 @@ function UIController.init()
 			activeLootTween = nil
 		end
 
+		refs.lootName.Text = "???"
+		refs.lootRarity.Text = ""
+		refs.lootStroke.Color = STROKE_COLOR
+		refs.lootStroke.Thickness = 2
 		refs.lootPopup.GroupTransparency = 0
 		refs.lootPopup.Visible = true
 
-		task.delay(LOOT_POPUP_SECONDS, function()
+		task.spawn(function()
+			-- Spannungsphase: Seltenheitsstufen rotieren durch.
+			local tierOrder = RarityConfig.TierOrder
+			local elapsed = 0
+			local index = 0
+			while elapsed &lt; LOOT_SUSPENSE_SECONDS do
+				if generation ~= lootPopupGeneration then
+					return
+				end
+				index = index % #tierOrder + 1
+				local cycleTier = RarityConfig.Tiers[tierOrder[index]]
+				if cycleTier ~= nil then
+					refs.lootRarity.Text = cycleTier.displayName
+					refs.lootRarity.TextColor3 = cycleTier.color
+					refs.lootStroke.Color = cycleTier.color
+				end
+				EffectsController.playSound("tick")
+				task.wait(LOOT_SUSPENSE_TICK)
+				elapsed += LOOT_SUSPENSE_TICK
+			end
 			if generation ~= lootPopupGeneration then
 				return
 			end
-			local tween = TweenService:Create(refs.lootPopup, TweenInfo.new(FADE_SECONDS), { GroupTransparency = 1 })
-			activeLootTween = tween
-			tween:Play()
-			tween.Completed:Once(function()
-				if activeLootTween == tween then
-					activeLootTween = nil
+
+			-- Reveal.
+			refs.lootName.Text = if collectibleDef ~= nil then collectibleDef.displayName else collectibleId
+			refs.lootRarity.Text = if tierDef ~= nil then tierDef.displayName else rarity
+			refs.lootRarity.TextColor3 = tierColor
+			refs.lootStroke.Color = tierColor
+			EffectsController.playSound("reveal")
+
+			if HIGH_TIER[rarity] == true then
+				EffectsController.playSound("fanfare")
+				EffectsController.screenShake(1)
+				EffectsController.burstAtOwnPlanet(tierColor)
+				-- Glow: Rahmen kurz aufblitzen lassen.
+				refs.lootStroke.Thickness = 6
+				local glow = TweenService:Create(refs.lootStroke, TweenInfo.new(0.6), { Thickness = 3 })
+				glow:Play()
+			end
+
+			task.delay(LOOT_POPUP_SECONDS, function()
+				if generation ~= lootPopupGeneration then
+					return
 				end
-				if generation == lootPopupGeneration then
-					refs.lootPopup.Visible = false
-				end
+				local tween =
+					TweenService:Create(refs.lootPopup, TweenInfo.new(FADE_SECONDS), { GroupTransparency = 1 })
+				activeLootTween = tween
+				tween:Play()
+				tween.Completed:Once(function()
+					if activeLootTween == tween then
+						activeLootTween = nil
+					end
+					if generation == lootPopupGeneration then
+						refs.lootPopup.Visible = false
+					end
+				end)
 			end)
 		end)
 	end)

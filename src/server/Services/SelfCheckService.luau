@@ -9,6 +9,7 @@
 -- Läuft als letzter Service der Startreihenfolge (alle Remotes existieren dann).
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 
 local GameConfig = require(ReplicatedStorage.Shared.Config.GameConfig)
 local BiomeConfig = require(ReplicatedStorage.Shared.Config.BiomeConfig)
@@ -17,15 +18,35 @@ local CollectibleConfig = require(ReplicatedStorage.Shared.Config.CollectibleCon
 local EventConfig = require(ReplicatedStorage.Shared.Config.EventConfig)
 local MonetizationConfig = require(ReplicatedStorage.Shared.Config.MonetizationConfig)
 
+local BiomeVisuals = require(script.Parent.BiomeVisuals)
+local MonetizationService = require(script.Parent.MonetizationService)
+
 local SelfCheckService = {}
 
 local checksRun = 0
 local problems: { string } = {}
 
+-- Abschnitts-Ergebnisse für die Zusammenfassung am Ende.
+local sections: { { name: string, checks: number, problems: number } } = {}
+local currentSection: { name: string, checks: number, problems: number }? = nil
+
+local function beginSection(name: string)
+	local section = { name = name, checks = 0, problems = 0 }
+	table.insert(sections, section)
+	currentSection = section
+end
+
 local function check(condition: boolean, message: string)
 	checksRun += 1
+	local section = currentSection
+	if section ~= nil then
+		section.checks += 1
+	end
 	if not condition then
 		table.insert(problems, message)
+		if section ~= nil then
+			section.problems += 1
+		end
 	end
 end
 
@@ -173,7 +194,7 @@ local function checkGameConfigAndRemotes()
 	check(GameConfig.LEADERBOARD_TOP_N >= 1, "LEADERBOARD_TOP_N muss >= 1 sein")
 	check(GameConfig.PLANET_NAME_MAX_LENGTH >= 3, "PLANET_NAME_MAX_LENGTH muss >= 3 sein")
 
-	-- Alle Remotes wurden von Remotes.init() erzeugt (7+2 Events, 8+2 Functions).
+	-- Alle Remotes wurden von Remotes.init() erzeugt.
 	local folder = ReplicatedStorage:FindFirstChild("PlanetForgeRemotes")
 	check(folder ~= nil, "Remote-Ordner PlanetForgeRemotes fehlt (Remotes.init() nicht gelaufen?)")
 	if folder ~= nil then
@@ -186,28 +207,91 @@ local function checkGameConfigAndRemotes()
 				functions += 1
 			end
 		end
-		check(events == 9, `Erwartet 9 RemoteEvents, gefunden: {events}`)
-		check(functions == 10, `Erwartet 10 RemoteFunctions, gefunden: {functions}`)
+		check(events == 10, `Erwartet 10 RemoteEvents, gefunden: {events}`)
+		check(functions == 12, `Erwartet 12 RemoteFunctions, gefunden: {functions}`)
+
+		-- Kritische Einzel-Remotes (Tutorial + Studio-Testmodus).
+		for _, name in { "TutorialUpdated" } do
+			local remote = folder:FindFirstChild(name)
+			check(remote ~= nil and remote:IsA("RemoteEvent"), `RemoteEvent {name} fehlt`)
+		end
+		for _, name in { "TutorialAction", "SimulatePurchase" } do
+			local remote = folder:FindFirstChild(name)
+			check(remote ~= nil and remote:IsA("RemoteFunction"), `RemoteFunction {name} fehlt`)
+		end
+	end
+end
+
+local function checkTutorial()
+	check(GameConfig.TUTORIAL_STEP_COUNT == 4, "TUTORIAL_STEP_COUNT muss 4 sein")
+	check(GameConfig.TUTORIAL_STEP_REWARD > 0, "TUTORIAL_STEP_REWARD muss > 0 sein")
+	check(GameConfig.TUTORIAL_HINT_LIFETIME_LIMIT > 0, "TUTORIAL_HINT_LIFETIME_LIMIT muss > 0 sein")
+	-- Schritt 3 (Upgrade der Wiese) muss mit Start-Energie + Belohnungen +
+	-- einmal Sammeln bezahlbar sein, sonst stockt das Tutorial.
+	local wiese = BiomeConfig.Biomes["wiese"]
+	if wiese ~= nil then
+		local afterStep2 = GameConfig.START_ENERGY
+			- wiese.baseCost
+			+ GameConfig.COLLECT_AMOUNT
+			+ 2 * GameConfig.TUTORIAL_STEP_REWARD
+		check(
+			afterStep2 >= BiomeConfig.getUpgradeCost("wiese", 1),
+			"Tutorial-Ökonomie: Upgrade in Schritt 3 ist mit Belohnungen nicht bezahlbar"
+		)
+	end
+end
+
+local function checkBiomeVisuals()
+	-- Jedes Biom braucht ein prozedurales Deko-Set.
+	for biomeId in BiomeConfig.Biomes do
+		check(BiomeVisuals.Builders[biomeId] ~= nil, `Biom {biomeId}: kein Visual-Set in BiomeVisuals`)
+	end
+end
+
+local function checkTestMode()
+	-- Außerhalb von Studio dürfen Test-Käufe NIEMALS möglich sein.
+	if not RunService:IsStudio() then
+		check(
+			MonetizationService.isTestPurchaseAllowed() == false,
+			"KRITISCH: Studio-Testmodus ist außerhalb von Studio aktiv!"
+		)
+	else
+		check(true, "") -- in Studio zählt der Testmodus als geprüft
 	end
 end
 
 function SelfCheckService.init()
-	local ok, err = pcall(function()
-		checkBiomes()
-		checkRarityAndCollectibles()
-		checkEvents()
-		checkMonetization()
-		checkGameConfigAndRemotes()
-	end)
-	if not ok then
-		warn(`[PlanetForge] Selbsttest selbst fehlgeschlagen: {err}`)
-		return
+	local sectionRuns: { { name: string, fn: () -> () } } = {
+		{ name = "Biome", fn = checkBiomes },
+		{ name = "Seltenheiten", fn = checkRarityAndCollectibles },
+		{ name = "Events", fn = checkEvents },
+		{ name = "Shop", fn = checkMonetization },
+		{ name = "Konfig+Remotes", fn = checkGameConfigAndRemotes },
+		{ name = "Tutorial", fn = checkTutorial },
+		{ name = "Biom-Visuals", fn = checkBiomeVisuals },
+		{ name = "Testmodus", fn = checkTestMode },
+	}
+
+	for _, section in sectionRuns do
+		beginSection(section.name)
+		local ok, err = pcall(section.fn)
+		if not ok then
+			check(false, `Abschnitt {section.name} ist selbst abgestürzt: {err}`)
+		end
 	end
 
+	-- Übersichtliche Zusammenfassung: eine Zeile pro Abschnitt, dann Gesamt.
+	local lines = {}
+	for _, section in sections do
+		local mark = if section.problems == 0 then "✓" else `✗ {section.problems}`
+		table.insert(lines, `{section.name} {mark}`)
+	end
+	local overview = table.concat(lines, "  |  ")
+
 	if #problems == 0 then
-		print(`[PlanetForge] Selbsttest bestanden: {checksRun} Prüfungen, 0 Probleme.`)
+		print(`[PlanetForge] Selbsttest bestanden ({checksRun} Prüfungen): {overview}`)
 	else
-		warn(`[PlanetForge] Selbsttest: {#problems} Problem(e) bei {checksRun} Prüfungen:`)
+		warn(`[PlanetForge] Selbsttest: {#problems} Problem(e) bei {checksRun} Prüfungen: {overview}`)
 		for _, problem in problems do
 			warn(`[PlanetForge]   - {problem}`)
 		end
