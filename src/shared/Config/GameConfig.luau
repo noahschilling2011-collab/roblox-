@@ -28,7 +28,7 @@ local GameConfig = {
 	TRADE_LOCK_SECONDS = 3, -- Sicherheitspause nach beidseitigem Akzeptieren
 
 	-- Daten
-	PROFILE_SCHEMA_VERSION = 9, -- v7: Equip; v8: PurchaseId-Log; v9: Offline-Earnings
+	PROFILE_SCHEMA_VERSION = 10, -- v8: PurchaseId-Log; v9: Offline-Earnings; v10: 2x-Boost
 	PURCHASE_LOG_LIMIT = 50, -- gemerkte PurchaseIds gegen Doppelgutschrift
 
 	-- Ausrüstung
@@ -55,6 +55,15 @@ local GameConfig = {
 	-- waehrend der Abwesenheit "weiterverdienen" (gedeckelt).
 	OFFLINE_EARNINGS_RATE = 0.5,
 	OFFLINE_EARNINGS_CAP_HOURS = 8,
+
+	-- Freunde-Boost: Bonus auf ALLE Energie-Einnahmen pro Freund, der
+	-- gleichzeitig im selben Server spielt (im HUD sichtbar, gedeckelt).
+	FRIEND_BOOST_PER_FRIEND = 0.10, -- +10% pro Freund
+	FRIEND_BOOST_MAX_FRIENDS = 3, -- Deckel: maximal +30%
+
+	-- Auto-Harvest (Gamepass): Takt des automatischen Einsammelns
+	-- (1 Objekt pro Takt; Verkaufen am SellPad bleibt Handarbeit).
+	AUTO_HARVEST_INTERVAL_SECONDS = 1,
 
 	-- Planetenname
 	PLANET_NAME_MAX_LENGTH = 24,

@@ -72,6 +72,7 @@ local function buildDefaultProfile(): Types.PlayerProfile
 		equipped = { pets = {} },
 		purchaseIds = {},
 		lastSeenAt = 0,
+		boostUntil = 0,
 	}
 end
 

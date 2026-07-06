@@ -49,6 +49,10 @@ local rebirths = 0
 local nextThreshold = math.huge
 local lifetimeEnergy = 0
 
+-- Starter-Paket-Hinweis: einmalig nach der ERSTEN Wiedergeburt (kein Popup,
+-- nur ein dezenter Toast - und maximal einmal pro Session).
+local starterHintShown = false
+
 local dialog: Frame? = nil
 local beforeLabel: TextLabel? = nil
 local afterLabel: TextLabel? = nil
@@ -261,6 +265,9 @@ local function buildUI()
 		if remote == nil then
 			return
 		end
+		-- Vor dem Aufruf festhalten, ob das die allererste Wiedergeburt war
+		-- (rebirths wird gleich vom MultiplierChanged-Event überschrieben).
+		local wasFirstRebirth = rebirths == 0
 		task.spawn(function()
 			local ok, serverOk, payload = pcall(function()
 				return remote:InvokeServer()
@@ -273,6 +280,16 @@ local function buildUI()
 				EffectsController.playSound("fanfare", 0.9)
 				EffectsController.screenShake(1.2)
 				frame.Visible = false
+
+				if wasFirstRebirth and not starterHintShown then
+					starterHintShown = true
+					task.delay(3, function()
+						UIController.showToast(
+							"🎁 Starter-Tipp: Das Energie-Paket S im Shop bringt dich nach der Wiedergeburt schneller zurück ins Spiel.",
+							"info"
+						)
+					end)
+				end
 			end
 		end)
 	end)

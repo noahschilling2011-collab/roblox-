@@ -64,8 +64,9 @@ function EnergyService.grantEnergy(player: Player, baseAmount: number): number
 		multiplier = 1
 	end
 
-	-- 2x-Gamepass wirkt auf alle Einnahmen (Hook, siehe oben).
+	-- 2x-Gamepass/Boost und Freunde-Boost wirken auf alle Einnahmen.
 	multiplier *= EnergyService.getPassMultiplier(player)
+	multiplier *= EnergyService.getFriendBonus(player)
 
 	local amount = math.floor(baseAmount * multiplier)
 	if baseAmount >= 1 then
@@ -118,11 +119,44 @@ function EnergyService.trySpend(player: Player, amount: number): boolean
 	return true
 end
 
--- Gamepass-Multiplikator auf ALLE Einnahmen (2x-Pass); der
+-- Gamepass-Multiplikator auf ALLE Einnahmen (2x-Pass, 20-Min-Boost); der
 -- MonetizationService ersetzt diese Funktion beim Start (Hook, damit
 -- keine zyklische Service-Abhängigkeit entsteht).
 EnergyService.getPassMultiplier = function(_player: Player): number
 	return 1
+end
+
+--------------------------------------------------------------------------
+-- Freunde-Boost: +10% pro Freund, der gleichzeitig im Server spielt
+-- (gedeckelt, siehe GameConfig). Die Freundschafts-Prüfung ist ein
+-- Web-Aufruf, deshalb wird das Ergebnis pro Spieler-Paar gecacht und nur
+-- bei Beitritt/Verlassen neu berechnet.
+--------------------------------------------------------------------------
+
+local friendCounts: { [Player]: number } = {}
+
+function EnergyService.getFriendBonus(player: Player): number
+	local count = math.min(friendCounts[player] or 0, GameConfig.FRIEND_BOOST_MAX_FRIENDS)
+	return 1 + count * GameConfig.FRIEND_BOOST_PER_FRIEND
+end
+
+-- Zählt für jeden Spieler die Freunde im Server neu (pcall pro Paar).
+local function refreshFriendCounts()
+	local players = Players:GetPlayers()
+	for _, player in players do
+		local count = 0
+		for _, other in players do
+			if other ~= player then
+				local ok, isFriend = pcall(function()
+					return player:IsFriendsWith(other.UserId)
+				end)
+				if ok and isFriend == true then
+					count += 1
+				end
+			end
+		end
+		friendCounts[player] = count
+	end
 end
 
 -- Schickt dem Client den aktuellen Energiestand erneut (z. B. nach einem
@@ -154,6 +188,9 @@ function EnergyService.init()
 	local offlineEvent = Remotes.getEvent("OfflineEarnings")
 
 	local function onPlayerAdded(player: Player)
+		-- Freunde-Boost aktualisieren (Web-Aufrufe, deshalb entkoppelt).
+		task.spawn(refreshFriendCounts)
+
 		task.spawn(function()
 			local profile: Types.PlayerProfile? = DataService.waitForProfile(player)
 			if profile == nil or player.Parent == nil then
@@ -189,6 +226,10 @@ function EnergyService.init()
 	end
 
 	Players.PlayerAdded:Connect(onPlayerAdded)
+	Players.PlayerRemoving:Connect(function(player)
+		friendCounts[player] = nil
+		task.spawn(refreshFriendCounts)
+	end)
 	for _, player in Players:GetPlayers() do
 		onPlayerAdded(player)
 	end

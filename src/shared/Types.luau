@@ -53,6 +53,7 @@ export type PlayerProfile = {
 	equipped: EquippedItems, -- ausgerüstete Loot-Items (Pets/Trail/Skin)
 	purchaseIds: { string }, -- verarbeitete PurchaseIds (Schutz vor Doppelgutschrift)
 	lastSeenAt: number, -- Unix-Zeit des letzten Speicherns (Offline-Earnings)
+	boostUntil: number, -- Unix-Zeit, bis zu der der gekaufte 2x-Boost läuft (0 = keiner)
 }
 
 -- Ausgerüstete Loot-Items (referenzieren OwnedCollectible.uid).

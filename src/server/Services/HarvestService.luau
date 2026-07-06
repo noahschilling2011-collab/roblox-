@@ -52,6 +52,12 @@ local rng = Random.new()
 
 local HarvestService = {}
 
+-- Auto-Harvest-Gamepass (Hook): der MonetizationService ersetzt diese
+-- Funktion beim Start (vermeidet eine zyklische Service-Abhängigkeit).
+HarvestService.hasAutoHarvest = function(_player: Player): boolean
+	return false
+end
+
 --------------------------------------------------------------------------
 -- Abgeleitete Werte aus dem Profil
 --------------------------------------------------------------------------
@@ -292,6 +298,44 @@ local function collectTick(player: Player)
 	end
 end
 
+-- Auto-Harvest (Gamepass): sammelt genau EIN liegendes Objekt ein, egal
+-- wie weit es entfernt ist. Verkaufen am SellPad bleibt bewusst Handarbeit,
+-- damit der Besitzer trotzdem aktiv bleiben muss.
+local function autoCollectOne(player: Player)
+	local profile = DataService.getProfile(player)
+	local states = zoneStates[player]
+	if profile == nil or states == nil then
+		return
+	end
+	if profile.backpack.items >= HarvestService.getBackpackCapacity(profile) then
+		return
+	end
+
+	for _, state in states do
+		for index = #state.objects, 1, -1 do
+			local object = state.objects[index]
+			if object.part.Parent == nil then
+				table.remove(state.objects, index)
+				continue
+			end
+
+			table.remove(state.objects, index)
+			profile.backpack.items += 1
+			profile.backpack.value += object.value
+			profile.stats.collected += 1
+
+			if objectCollectedEvent ~= nil then
+				(objectCollectedEvent :: RemoteEvent):FireClient(player, object.part.Position, object.value, object.color)
+			end
+			object.part:Destroy()
+
+			DataService.markDirty(player)
+			fireBackpackChanged(player, profile)
+			return -- pro Takt nur ein Objekt
+		end
+	end
+end
+
 --------------------------------------------------------------------------
 -- Reset (z. B. nach einer Wiedergeburt)
 --------------------------------------------------------------------------
@@ -409,6 +453,18 @@ function HarvestService.init()
 			task.wait(GameConfig.HARVEST_TICK_SECONDS)
 			for _, player in Players:GetPlayers() do
 				collectTick(player)
+			end
+		end
+	end)
+
+	-- Auto-Harvest-Schleife (nur Gamepass-Besitzer, 1 Objekt pro Takt).
+	task.spawn(function()
+		while true do
+			task.wait(GameConfig.AUTO_HARVEST_INTERVAL_SECONDS)
+			for _, player in Players:GetPlayers() do
+				if HarvestService.hasAutoHarvest(player) then
+					autoCollectOne(player)
+				end
 			end
 		end
 	end)

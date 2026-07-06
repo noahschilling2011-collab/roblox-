@@ -178,11 +178,14 @@ local function checkMonetization()
 		check(rules == 1, `Product {key}: braucht genau EINE Gutschrift-Regel (hat {rules})`)
 	end
 
-	-- Die drei Perk-Gamepässe der Kauf-Kette müssen existieren.
-	for _, key in { "gp_double_mult", "gp_pet_slots", "gp_vip" } do
+	-- Die Perk-Gamepässe der Kauf-Kette müssen existieren.
+	for _, key in { "gp_double_mult", "gp_pet_slots", "gp_vip", "gp_auto_harvest" } do
 		check(MonetizationConfig.Gamepasses[key] ~= nil, `Gamepass {key} fehlt`)
 	end
 	check(MonetizationConfig.DeveloperProducts["prod_instant_rebirth"] ~= nil, "Produkt prod_instant_rebirth fehlt")
+	check(MonetizationConfig.DeveloperProducts["prod_boost_2x"] ~= nil, "Produkt prod_boost_2x fehlt")
+	check(MonetizationConfig.BOOST_DURATION_SECONDS > 0, "BOOST_DURATION_SECONDS muss > 0 sein")
+	check(MonetizationConfig.BOOST_MULTIPLIER > 1, "BOOST_MULTIPLIER muss > 1 sein")
 	check(GameConfig.PURCHASE_LOG_LIMIT >= 10, "PURCHASE_LOG_LIMIT muss >= 10 sein")
 
 	-- Jede Kosmetik hat eine gültige Kategorie.
@@ -216,6 +219,12 @@ local function checkGameConfigAndRemotes()
 	check(#GameConfig.DAILY_REWARDS >= 1, "DAILY_REWARDS darf nicht leer sein")
 	check(GameConfig.OFFLINE_EARNINGS_RATE > 0 and GameConfig.OFFLINE_EARNINGS_RATE <= 1, "OFFLINE_EARNINGS_RATE muss in (0,1] liegen")
 	check(GameConfig.OFFLINE_EARNINGS_CAP_HOURS >= 1, "OFFLINE_EARNINGS_CAP_HOURS muss >= 1 sein")
+	check(
+		GameConfig.FRIEND_BOOST_PER_FRIEND > 0 and GameConfig.FRIEND_BOOST_PER_FRIEND <= 0.5,
+		"FRIEND_BOOST_PER_FRIEND muss in (0, 0.5] liegen"
+	)
+	check(GameConfig.FRIEND_BOOST_MAX_FRIENDS >= 1, "FRIEND_BOOST_MAX_FRIENDS muss >= 1 sein")
+	check(GameConfig.AUTO_HARVEST_INTERVAL_SECONDS > 0, "AUTO_HARVEST_INTERVAL_SECONDS muss > 0 sein")
 	for index = 2, #GameConfig.DAILY_REWARDS do
 		check(
 			GameConfig.DAILY_REWARDS[index] >= GameConfig.DAILY_REWARDS[index - 1],

@@ -67,6 +67,9 @@ local toastOrder = 0
 local lootPopupGeneration = 0
 local activeLootTween: Tween? = nil
 
+-- Kontextueller Kaufhinweis (Energie-Pakete): maximal einmal pro Session.
+local purchaseHintShown = false
+
 -- 1234567 -> "1.234.567" (deutsche Tausendertrennung mit Punkt).
 local function formatNumber(value: number): string
 	local text = tostring(math.floor(value + 0.5))
@@ -154,6 +157,16 @@ local function showToastInternal(message: string, kind: string)
 			toast:Destroy()
 		end)
 	end)
+
+	-- Kontextueller Kaufhinweis: Wenn dem Spieler Energie fehlt, GENAU EINMAL
+	-- pro Session freundlich auf die Energie-Pakete im Shop hinweisen
+	-- (bewusst dezent - keine Popups, kein Spam).
+	if not purchaseHintShown and kind == "error" and string.find(message, "Nicht genug Energie", 1, true) ~= nil then
+		purchaseHintShown = true
+		task.delay(0.8, function()
+			showToastInternal("💡 Tipp: Am blauen Shop-Pad gibt es Energie-Pakete, falls mal etwas fehlt.", "info")
+		end)
+	end
 end
 
 -- Öffentliche API für andere Controller (z. B. PlanetBuilderController).
@@ -289,6 +302,22 @@ local function buildGui(playerGui: PlayerGui): GuiRefs
 	statsLabel.TextColor3 = SUBTEXT_COLOR
 	statsLabel.TextXAlignment = Enum.TextXAlignment.Right
 
+	-- Boost-Zeile direkt unter der Kopfleiste: zeigt Freunde-Boost und den
+	-- gekauften 2x-Boost-Countdown; unsichtbar, solange nichts aktiv ist.
+	local boostLabel = Instance.new("TextLabel")
+	boostLabel.Name = "Boosts"
+	boostLabel.AnchorPoint = Vector2.new(0.5, 0)
+	boostLabel.Position = UDim2.new(0.5, 0, 0, 56)
+	boostLabel.Size = UDim2.new(0, 520, 0, 18)
+	boostLabel.BackgroundTransparency = 1
+	boostLabel.Font = Enum.Font.GothamBold
+	boostLabel.TextSize = 13
+	boostLabel.TextColor3 = Color3.fromRGB(214, 160, 72)
+	boostLabel.TextXAlignment = Enum.TextXAlignment.Center
+	boostLabel.Text = ""
+	boostLabel.Visible = false
+	boostLabel.Parent = screenGui
+
 	-- Buttonleiste unten Mitte.
 	local buttonBar = Instance.new("Frame")
 	buttonBar.Name = "ButtonBar"
@@ -368,6 +397,7 @@ local function buildGui(playerGui: PlayerGui): GuiRefs
 		lifetimeLabel = lifetimeLabel,
 		backpackLabel = backpackLabel,
 		multiplierLabel = multiplierLabel,
+		boostLabel = boostLabel,
 		statsLabel = statsLabel,
 		lootPopup = lootPopup,
 		lootName = lootName,
@@ -421,11 +451,22 @@ function UIController.init()
 		end
 	end)
 
-	-- Live-Multiplikator im HUD (Komma statt Punkt, eine Nachkommastelle).
+	-- Live-Multiplikator im HUD (Komma statt Punkt, eine Nachkommastelle)
+	-- plus Boost-Zeile für Freunde-Boost und 2x-Boost-Countdown.
 	Remotes.getEvent("MultiplierChanged").OnClientEvent:Connect(function(info: any)
 		if typeof(info) == "table" and typeof(info.total) == "number" then
 			local text = string.format("×%.1f", info.total)
 			refs.multiplierLabel.Text = (string.gsub(text, "%.", ","))
+
+			local parts = {}
+			if typeof(info.friendBonus) == "number" and info.friendBonus > 1.001 then
+				table.insert(parts, `👥 Freunde-Boost +{math.floor((info.friendBonus - 1) * 100 + 0.5)}%`)
+			end
+			if typeof(info.boostSecondsLeft) == "number" and info.boostSecondsLeft > 0 then
+				table.insert(parts, `🔥 2x-Boost noch {math.ceil(info.boostSecondsLeft / 60)} Min.`)
+			end
+			refs.boostLabel.Text = table.concat(parts, "   ·   ")
+			refs.boostLabel.Visible = #parts > 0
 		end
 	end)
 

@@ -30,7 +30,7 @@ local WATCHER_INTERVAL_SECONDS = 3 -- wie oft der Multiplikator neu geprüft wir
 local multiplierChangedEvent: RemoteEvent? = nil
 local notificationEvent: RemoteEvent? = nil
 
--- Zuletzt an den Client gemeldeter Gesamt-Multiplikator (für den Watcher).
+-- Zuletzt an den Client gemeldete Anzeige-Signatur (für den Watcher).
 local lastSentTotal: { [Player]: number } = {}
 
 local ProgressionService = {}
@@ -38,6 +38,12 @@ local ProgressionService = {}
 -- Pet-Bonus ausgerüsteter Pets (Produkt; 1 ohne Pets).
 ProgressionService.getPetBonus = function(profile: Types.PlayerProfile): number
 	return EquipService.getPetBonus(profile)
+end
+
+-- Restlaufzeit des gekauften 2x-Boosts (Hook): der MonetizationService
+-- ersetzt diese Funktion beim Start (vermeidet einen Service-Zyklus).
+ProgressionService.getBoostSecondsLeft = function(_player: Player): number
+	return 0
 end
 
 -- Gesamt-Multiplikator eines Spielers inklusive Pet-Bonus.
@@ -50,6 +56,14 @@ function ProgressionService.getTotalMultiplier(profile: Types.PlayerProfile): nu
 	)
 end
 
+-- Kennzahl für den Watcher: ändert sich, sobald sich der Multiplikator,
+-- der Freunde-Bonus oder die Boost-Restminute ändert (Minuten-Countdown
+-- im HUD ohne eigenes Update-Event).
+function ProgressionService.getDisplaySignature(player: Player, total: number): number
+	local boostMinutes = math.ceil(ProgressionService.getBoostSecondsLeft(player) / 60)
+	return total * 1000000 + EnergyService.getFriendBonus(player) * 1000 + boostMinutes
+end
+
 -- Schickt dem Client den aktuellen Multiplikator samt Aufschlüsselung.
 function ProgressionService.notifyMultiplier(player: Player)
 	local profile = DataService.getProfile(player)
@@ -58,7 +72,7 @@ function ProgressionService.notifyMultiplier(player: Player)
 	end
 
 	local total = ProgressionService.getTotalMultiplier(profile)
-	lastSentTotal[player] = total;
+	lastSentTotal[player] = ProgressionService.getDisplaySignature(player, total);
 	(multiplierChangedEvent :: RemoteEvent):FireClient(player, {
 		total = total,
 		biomeBonus = ProgressionConfig.getBiomeBonus(profile.biomes),
@@ -68,6 +82,8 @@ function ProgressionService.notifyMultiplier(player: Player)
 		rebirths = profile.rebirths,
 		nextThreshold = ProgressionConfig.getRebirthThreshold(profile.rebirths),
 		lifetimeEnergy = profile.lifetimeEnergy,
+		friendBonus = EnergyService.getFriendBonus(player),
+		boostSecondsLeft = ProgressionService.getBoostSecondsLeft(player),
 	})
 end
 
@@ -149,10 +165,11 @@ function ProgressionService.init()
 				local profile = DataService.getProfile(player)
 				if profile ~= nil then
 					local total = ProgressionService.getTotalMultiplier(profile)
+					local signature = ProgressionService.getDisplaySignature(player, total)
 					local last = lastSentTotal[player]
-					-- lifetimeEnergy steckt im Event (Rebirth-Fortschritt):
-					-- deshalb auch bei gleichem Multiplikator gelegentlich senden.
-					if last == nil or math.abs(total - last) > 1e-6 then
+					-- Signatur statt nur Multiplikator: so aktualisiert sich das
+					-- HUD auch bei Freunde-Boost und Boost-Countdown zeitnah.
+					if last == nil or math.abs(signature - last) > 1e-6 then
 						ProgressionService.notifyMultiplier(player)
 					end
 				end

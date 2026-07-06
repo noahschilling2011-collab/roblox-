@@ -37,7 +37,8 @@ export type GamepassDef = {
 	displayName: string,
 	description: string,
 	grantsCosmetics: { Types.CosmeticId },
-	perk: ("double_mult" | "pet_slots" | "vip")?, -- dauerhafter Spielvorteil
+	perk: ("double_mult" | "pet_slots" | "vip" | "auto_harvest")?, -- dauerhafter Spielvorteil
+	suggestedRobux: number?, -- TODO: nur Preis-VORSCHLAG; der echte Preis wird im Dashboard gesetzt
 }
 
 export type ProductDef = {
@@ -47,7 +48,8 @@ export type ProductDef = {
 	description: string,
 	grantsCosmetic: Types.CosmeticId?, -- einmalige Kosmetik-Freischaltung
 	grantsEnergy: number?, -- Währungspaket (wiederholt kaufbar)
-	perk: "instant_rebirth"?, -- Sofort-Wiedergeburt (wiederholt kaufbar)
+	perk: ("instant_rebirth" | "boost_2x")?, -- Sofort-Rebirth / 20-Min-Boost (wiederholt kaufbar)
+	suggestedRobux: number?, -- TODO: nur Preis-VORSCHLAG; der echte Preis wird im Dashboard gesetzt
 }
 
 local MonetizationConfig = {}
@@ -154,117 +156,154 @@ MonetizationConfig.Cosmetics = {
 } :: { [string]: CosmeticDef }
 
 -- Gamepässe: einmaliger Kauf, dauerhafte Freischaltung (auch nach Rejoin).
+-- suggestedRobux ist NUR ein Vorschlag - TODO: echte Preise im Dashboard setzen.
 MonetizationConfig.Gamepasses = {
 	gp_kosmische_sammlung = {
 		key = "gp_kosmische_sammlung",
-		gamePassId = 0,
+		gamePassId = 0, -- TODO: echte Gamepass-ID eintragen
 		displayName = "Kosmische Sammlung",
 		description = "Galaxie-Kern-Skin und Sternenstaub-Aura für deinen Planeten.",
 		grantsCosmetics = { "skin_galaxie", "aura_sternenstaub" },
+		suggestedRobux = 149,
 	},
 	gp_wettermeister = {
 		key = "gp_wettermeister",
-		gamePassId = 0,
+		gamePassId = 0, -- TODO: echte Gamepass-ID eintragen
 		displayName = "Wettermeister",
 		description = "Aurora und Sternschnuppen als Wettereffekte.",
 		grantsCosmetics = { "wetter_aurora", "wetter_sternschnuppen" },
+		suggestedRobux = 99,
 	},
 	gp_haustier_freund = {
 		key = "gp_haustier_freund",
-		gamePassId = 0,
+		gamePassId = 0, -- TODO: echte Gamepass-ID eintragen
 		displayName = "Haustier-Freund",
 		description = "Mini-Komet und Sternenwelpe begleiten dich.",
 		grantsCosmetics = { "haustier_mini_komet", "haustier_sternenwelpe" },
+		suggestedRobux = 199,
 	},
 	gp_double_mult = {
 		key = "gp_double_mult",
-		gamePassId = 0,
+		gamePassId = 0, -- TODO: echte Gamepass-ID eintragen
 		displayName = "2x Multiplikator",
 		description = "Verdoppelt dauerhaft ALLE Energie-Einnahmen.",
 		grantsCosmetics = {},
 		perk = "double_mult",
+		suggestedRobux = 349,
 	},
 	gp_pet_slots = {
 		key = "gp_pet_slots",
-		gamePassId = 0,
+		gamePassId = 0, -- TODO: echte Gamepass-ID eintragen
 		displayName = "+2 Pet-Slots",
 		description = "Rüste 5 statt 3 Pets gleichzeitig aus.",
 		grantsCosmetics = {},
 		perk = "pet_slots",
+		suggestedRobux = 249,
+	},
+	gp_auto_harvest = {
+		key = "gp_auto_harvest",
+		gamePassId = 0, -- TODO: echte Gamepass-ID eintragen
+		displayName = "🤖 Auto-Sammler",
+		description = "Sammelt automatisch 1 Objekt pro Sekunde auf deiner Insel ein.",
+		grantsCosmetics = {},
+		perk = "auto_harvest",
+		suggestedRobux = 299,
 	},
 	gp_vip = {
 		key = "gp_vip",
-		gamePassId = 0,
+		gamePassId = 0, -- TODO: echte Gamepass-ID eintragen
 		displayName = "👑 VIP",
 		description = "Goldener VIP-Trail, [VIP]-Chat-Tag und doppelter Tagesbonus.",
 		grantsCosmetics = {},
 		perk = "vip",
+		suggestedRobux = 399,
 	},
 } :: { [string]: GamepassDef }
 
 -- Zusätzliche Pet-Slots des +2-Gamepasses.
 MonetizationConfig.PET_SLOTS_BONUS = 2
 
+-- Zeitlich begrenzter 2x-Boost (Developer Product prod_boost_2x).
+-- Mehrfachkauf verlängert die Laufzeit; überlebt Rejoins (boostUntil im Profil).
+MonetizationConfig.BOOST_DURATION_SECONDS = 20 * 60
+MonetizationConfig.BOOST_MULTIPLIER = 2
+
 -- Developer Products: schalten je eine Kosmetik dauerhaft frei.
 -- (Bereits gekaufte Produkte zeigt der Shop als "Im Besitz" an.)
 MonetizationConfig.DeveloperProducts = {
 	prod_skin_gold = {
 		key = "prod_skin_gold",
-		productId = 0,
+		productId = 0, -- TODO: echte Produkt-ID eintragen
 		displayName = "Goldener Kern",
 		description = "Schaltet den goldenen Planetenkern frei.",
 		grantsCosmetic = "skin_gold",
+		suggestedRobux = 59,
 	},
 	prod_skin_lava = {
 		key = "prod_skin_lava",
-		productId = 0,
+		productId = 0, -- TODO: echte Produkt-ID eintragen
 		displayName = "Lava-Kern",
 		description = "Schaltet den Lava-Planetenkern frei.",
 		grantsCosmetic = "skin_lava",
+		suggestedRobux = 59,
 	},
 	prod_skin_eis = {
 		key = "prod_skin_eis",
-		productId = 0,
+		productId = 0, -- TODO: echte Produkt-ID eintragen
 		displayName = "Eiskern",
 		description = "Schaltet den Eis-Planetenkern frei.",
 		grantsCosmetic = "skin_eis",
+		suggestedRobux = 49,
 	},
 	prod_aura_regenbogen = {
 		key = "prod_aura_regenbogen",
-		productId = 0,
+		productId = 0, -- TODO: echte Produkt-ID eintragen
 		displayName = "Regenbogen-Aura",
 		description = "Schaltet die Regenbogen-Aura frei.",
 		grantsCosmetic = "aura_regenbogen",
+		suggestedRobux = 79,
 	},
 	-- Währungspakete (wiederholt kaufbar; zählen NICHT zur Gesamt-Energie,
 	-- schalten also weder Biome noch Rebirths frei).
 	prod_energie_klein = {
 		key = "prod_energie_klein",
-		productId = 0,
+		productId = 0, -- TODO: echte Produkt-ID eintragen
 		displayName = "Energie-Paket S",
 		description = "1.000 Energie sofort auf dein Konto.",
 		grantsEnergy = 1000,
+		suggestedRobux = 25,
 	},
 	prod_energie_mittel = {
 		key = "prod_energie_mittel",
-		productId = 0,
+		productId = 0, -- TODO: echte Produkt-ID eintragen
 		displayName = "Energie-Paket M",
 		description = "6.000 Energie sofort auf dein Konto.",
 		grantsEnergy = 6000,
+		suggestedRobux = 99,
 	},
 	prod_energie_gross = {
 		key = "prod_energie_gross",
-		productId = 0,
+		productId = 0, -- TODO: echte Produkt-ID eintragen
 		displayName = "Energie-Paket L",
 		description = "20.000 Energie sofort auf dein Konto.",
 		grantsEnergy = 20000,
+		suggestedRobux = 249,
 	},
 	prod_instant_rebirth = {
 		key = "prod_instant_rebirth",
-		productId = 0,
+		productId = 0, -- TODO: echte Produkt-ID eintragen
 		displayName = "Sofort-Wiedergeburt",
 		description = "Löst sofort eine Wiedergeburt aus - ohne Schwelle.",
 		perk = "instant_rebirth",
+		suggestedRobux = 149,
+	},
+	prod_boost_2x = {
+		key = "prod_boost_2x",
+		productId = 0, -- TODO: echte Produkt-ID eintragen
+		displayName = "🔥 2x-Boost (20 Min.)",
+		description = "Verdoppelt 20 Minuten lang alle Energie-Einnahmen. Stapelt die Laufzeit.",
+		perk = "boost_2x",
+		suggestedRobux = 49,
 	},
 } :: { [string]: ProductDef }
 

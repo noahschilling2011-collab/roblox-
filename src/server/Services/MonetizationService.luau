@@ -29,6 +29,7 @@ local GameConfig = require(ReplicatedStorage.Shared.Config.GameConfig)
 local DataService = require(script.Parent.DataService)
 local EnergyService = require(script.Parent.EnergyService)
 local EquipService = require(script.Parent.EquipService)
+local HarvestService = require(script.Parent.HarvestService)
 local PlanetService = require(script.Parent.PlanetService)
 local ProgressionService = require(script.Parent.ProgressionService)
 
@@ -52,6 +53,16 @@ local ownedPasses: { [Player]: { [string]: boolean } } = {}
 function MonetizationService.hasPass(player: Player, key: string): boolean
 	local passes = ownedPasses[player]
 	return passes ~= nil and passes[key] == true
+end
+
+-- Restlaufzeit des gekauften 2x-Boosts in Sekunden (0 = kein Boost aktiv).
+-- Der Ablauf steht als Unix-Zeit im Profil und überlebt so auch Rejoins.
+function MonetizationService.getBoostSecondsLeft(player: Player): number
+	local profile = DataService.getProfile(player)
+	if profile == nil then
+		return 0
+	end
+	return math.max(0, profile.boostUntil - os.time())
 end
 
 local function fireCosmeticsUpdated(player: Player)
@@ -290,6 +301,20 @@ local function grantProduct(player: Player, def: MonetizationConfig.ProductDef, 
 		end
 		return ok == true
 	end
+	if def.perk == "boost_2x" then
+		local profile = DataService.getProfile(player)
+		if profile == nil then
+			return false
+		end
+		-- Mehrfachkauf stapelt: die Laufzeit wird ans (Rest-)Ende angehängt.
+		local base = math.max(os.time(), profile.boostUntil)
+		profile.boostUntil = base + MonetizationConfig.BOOST_DURATION_SECONDS
+		DataService.markDirty(player)
+		ProgressionService.notifyMultiplier(player)
+		local minutes = math.floor((profile.boostUntil - os.time()) / 60)
+		notify(player, `🔥 2x-Boost aktiv! Alle Einnahmen verdoppelt für {minutes} Minuten.`, "success")
+		return true
+	end
 	warn(`[PlanetForge] Produkt {def.key} hat keine Gutschrift-Regel`)
 	return false
 end
@@ -467,14 +492,24 @@ function MonetizationService.init()
 		print("[PlanetForge] Studio-Testmodus für den Shop ist AKTIV (nur in Studio wirksam).")
 	end
 
-	-- Gamepass-Wirkungen als Hooks verdrahten (vermeidet Service-Zyklen):
-	-- 2x-Pass verdoppelt alle Einnahmen, +2-Pass erweitert die Pet-Slots.
+	-- Gamepass-/Produkt-Wirkungen als Hooks verdrahten (vermeidet Service-
+	-- Zyklen): 2x-Pass und 20-Min-Boost multiplizieren alle Einnahmen,
+	-- +2-Pass erweitert die Pet-Slots, Auto-Sammler aktiviert die
+	-- Auto-Harvest-Schleife, und der Boost-Rest wird im HUD angezeigt.
 	EnergyService.getPassMultiplier = function(player: Player): number
-		return if MonetizationService.hasPass(player, "gp_double_mult") then 2 else 1
+		local multiplier = if MonetizationService.hasPass(player, "gp_double_mult") then 2 else 1
+		if MonetizationService.getBoostSecondsLeft(player) > 0 then
+			multiplier *= MonetizationConfig.BOOST_MULTIPLIER
+		end
+		return multiplier
 	end
 	EquipService.getBonusPetSlots = function(player: Player): number
 		return if MonetizationService.hasPass(player, "gp_pet_slots") then MonetizationConfig.PET_SLOTS_BONUS else 0
 	end
+	HarvestService.hasAutoHarvest = function(player: Player): boolean
+		return MonetizationService.hasPass(player, "gp_auto_harvest")
+	end
+	ProgressionService.getBoostSecondsLeft = MonetizationService.getBoostSecondsLeft
 
 
 	-- Gamepass-Kauf im laufenden Spiel: Kosmetik sofort gutschreiben.

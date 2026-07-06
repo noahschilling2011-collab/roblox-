@@ -90,7 +90,7 @@ end
 test("GameConfig: Canon-Konstanten", function()
 	expect(GameConfig.PLANET_SLOTS == 12, "PLANET_SLOTS != 12")
 	expect(GameConfig.LOOT_ROLL_COST == 25, "LOOT_ROLL_COST != 25")
-	expect(GameConfig.PROFILE_SCHEMA_VERSION == 9, "Schema-Version != 9")
+	expect(GameConfig.PROFILE_SCHEMA_VERSION == 10, "Schema-Version != 10")
 	expect(GameConfig.BASE_PET_SLOTS == 3, "BASE_PET_SLOTS != 3")
 	expect(GameConfig.PURCHASE_LOG_LIMIT >= 10, "PURCHASE_LOG_LIMIT < 10")
 	expect(GameConfig.MAX_TRADE_ITEMS_PER_SIDE == 4, "Trade-Items != 4")
@@ -135,6 +135,9 @@ test("GameConfig: Tagesbonus-Tabelle", function()
 	expect(GameConfig.DAILY_REWARDS[7] == 1200, "Tag 7 != 1200 (Retention-Anker)")
 	expect(GameConfig.OFFLINE_EARNINGS_RATE == 0.5, "Offline-Rate != 0.5")
 	expect(GameConfig.OFFLINE_EARNINGS_CAP_HOURS == 8, "Offline-Cap != 8h")
+	expect(math.abs(GameConfig.FRIEND_BOOST_PER_FRIEND - 0.1) < 1e-9, "Freunde-Boost != 10% pro Freund")
+	expect(GameConfig.FRIEND_BOOST_MAX_FRIENDS == 3, "Freunde-Boost-Deckel != 3 Freunde (+30%)")
+	expect(GameConfig.AUTO_HARVEST_INTERVAL_SECONDS == 1, "Auto-Harvest-Takt != 1s")
 	for i = 2, #GameConfig.DAILY_REWARDS do
 		expect(GameConfig.DAILY_REWARDS[i] > GameConfig.DAILY_REWARDS[i - 1], "nicht streng aufsteigend bei Index " .. i)
 	end
@@ -411,7 +414,7 @@ test("MonetizationConfig: Studio-Testmodus-Flag vorhanden", function()
 end)
 
 test("MonetizationConfig: Kauf-Kette komplett (Pakete, Rebirth, Perk-Paesse)", function()
-	for _, key in { "gp_double_mult", "gp_pet_slots", "gp_vip" } do
+	for _, key in { "gp_double_mult", "gp_pet_slots", "gp_vip", "gp_auto_harvest" } do
 		expect(MonetizationConfig.Gamepasses[key] ~= nil, "Gamepass fehlt: " .. key)
 	end
 	local sizes = {}
@@ -428,6 +431,9 @@ test("MonetizationConfig: Kauf-Kette komplett (Pakete, Rebirth, Perk-Paesse)", f
 	end
 	expect(#sizes == 3, "es muss genau 3 Energie-Pakete geben")
 	expect(MonetizationConfig.DeveloperProducts["prod_instant_rebirth"].perk == "instant_rebirth", "Sofort-Rebirth fehlt")
+	expect(MonetizationConfig.DeveloperProducts["prod_boost_2x"].perk == "boost_2x", "2x-Boost-Produkt fehlt")
+	expect(MonetizationConfig.BOOST_DURATION_SECONDS == 20 * 60, "Boost-Dauer != 20 Minuten")
+	expect(MonetizationConfig.BOOST_MULTIPLIER == 2, "Boost-Multiplikator != 2")
 	expect(MonetizationConfig.PET_SLOTS_BONUS == 2, "PET_SLOTS_BONUS != 2")
 end)
 
