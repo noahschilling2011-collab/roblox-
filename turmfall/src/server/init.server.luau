@@ -15,9 +15,11 @@ Network.init()
 -- Reihenfolge bewusst: erst die Bausteine, dann die StateMachine, die sie
 -- orchestriert.
 local SERVICE_STARTUP_ORDER = {
+	"DataService", -- zuerst: Profile mit Session-Lock laden
 	"DeckService",
 	"CollapseService",
 	"TowerService",
+	"SkinService", -- nach TowerService (hängt den Optik-Hook ein)
 	"ScoreService",
 	"RoundService", -- zuletzt: schaltet die anderen an/aus
 }

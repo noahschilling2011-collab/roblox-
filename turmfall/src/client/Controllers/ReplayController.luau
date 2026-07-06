@@ -21,6 +21,11 @@ local Network = require(Shared:WaitForChild("Network") :: ModuleScript) :: {
 local PartCatalog = require(Shared:WaitForChild("Config"):WaitForChild("PartCatalog") :: ModuleScript) :: any
 local GameConfig = require(Shared:WaitForChild("Config"):WaitForChild("GameConfig") :: ModuleScript) :: any
 
+local ControllersFolder = script.Parent :: Instance
+local SkinUIController = require(ControllersFolder:WaitForChild("SkinUIController") :: ModuleScript) :: {
+	getEquippedCollapseEffect: () -> string?,
+}
+
 local CULPRIT_COLOR = Color3.fromRGB(255, 70, 60)
 local GHOST_COLOR = Color3.fromRGB(180, 185, 200)
 
@@ -86,8 +91,40 @@ local function showBanner(culpritName: string?): () -> ()
 	end
 end
 
+-- Konfetti-Kollaps (Skin-Effekt, rein clientseitig): bunter Partikel-Burst.
+local function playConfetti(position: Vector3)
+	local anchor = Instance.new("Part")
+	anchor.Anchored = true
+	anchor.CanCollide = false
+	anchor.CanQuery = false
+	anchor.Transparency = 1
+	anchor.Size = Vector3.new(1, 1, 1)
+	anchor.Position = position
+	anchor.Parent = Workspace
+
+	local emitter = Instance.new("ParticleEmitter")
+	emitter.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 90, 90)),
+		ColorSequenceKeypoint.new(0.5, Color3.fromRGB(90, 200, 255)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 220, 90)),
+	})
+	emitter.LightEmission = 0.8
+	emitter.Rate = 0
+	emitter.Lifetime = NumberRange.new(1, 2)
+	emitter.Speed = NumberRange.new(10, 22)
+	emitter.SpreadAngle = Vector2.new(180, 180)
+	emitter.Size = NumberSequence.new(0.5)
+	emitter.Parent = anchor
+	emitter:Emit(90)
+
+	task.delay(3, function()
+		anchor:Destroy()
+	end)
+end
+
 -- Spielt das Replay ab (blockiert den aufrufenden Thread bis zum Ende).
-local function playReplay(data: any)
+-- playbackScale > 1 = Zeitlupe (Skin-Effekt, rein clientseitig).
+local function playReplay(data: any, playbackScale: number)
 	local samples = data.samples :: { any }
 	if typeof(samples) ~= "table" or #samples < 2 then
 		return -- ohne Verlauf kein Replay
@@ -125,7 +162,7 @@ local function playReplay(data: any)
 	local startTime = samples[1].t
 	local endTime = samples[#samples].t
 	local timeline = math.max(endTime - startTime, 0.1)
-	local playbackSeconds = GameConfig.REPLAY_SECONDS
+	local playbackSeconds = GameConfig.REPLAY_SECONDS * playbackScale
 
 	local clockStart = os.clock()
 	while os.clock() - clockStart < playbackSeconds do
@@ -202,8 +239,25 @@ function ReplayController.init()
 			sound:Destroy()
 		end)
 
+		-- Ausgerüsteter Kollaps-Effekt (Skin, rein clientseitig visuell).
+		local effect = SkinUIController.getEquippedCollapseEffect()
+		local playbackScale = if effect == "zeitlupe" then 1.6 else 1
+		if effect == "konfetti" then
+			-- Burst am Ort des ersten Replay-Teils.
+			local firstSample = if typeof(data.samples) == "table" then (data.samples :: { any })[1] else nil
+			if typeof(firstSample) == "table" and typeof(firstSample.positions) == "table" then
+				for _, rawPosition in firstSample.positions :: { [any]: any } do
+					local position = vec3(rawPosition)
+					if position ~= nil then
+						playConfetti(position :: Vector3)
+						break
+					end
+				end
+			end
+		end
+
 		local closeBanner = showBanner(if typeof(data.culpritName) == "string" then data.culpritName else nil)
-		local ok, err = pcall(playReplay, data)
+		local ok, err = pcall(playReplay, data, playbackScale)
 		closeBanner()
 		replayRunning = false
 		if not ok then

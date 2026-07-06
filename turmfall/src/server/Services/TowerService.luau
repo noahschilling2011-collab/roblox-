@@ -67,6 +67,9 @@ TowerService.extraPlacementCheck = function(_player: Player, _cframe: CFrame): (
 	return true, nil
 end
 
+-- Hook (SkinService): dekoriert frisch platzierte Teile rein kosmetisch.
+TowerService.decoratePiece = function(_player: Player, _model: Model, _partTypeId: string) end
+
 --------------------------------------------------------------------------
 -- Arena
 --------------------------------------------------------------------------
@@ -280,6 +283,9 @@ local function handlePlacePart(player: Player, partTypeIdArg: unknown, cframeArg
 			descendant:SetNetworkOwner(nil)
 		end
 	end
+
+	-- Skin des Spielers anwenden (nur Optik, Hook vom SkinService).
+	TowerService.decoratePiece(player, model, partTypeId)
 
 	local piece: Piece = {
 		pieceId = nextPieceId,

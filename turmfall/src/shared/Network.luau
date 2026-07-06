@@ -22,11 +22,13 @@ local EVENT_NAMES = {
 	"CollapseHappened", -- (replayData: {}) Kollaps + Schuld-Replay-Daten
 	"ScoreboardChanged", -- (entries: {{userId, name, points, culprit}})
 	"Notification", -- (message: string, kind: "info"|"success"|"error")
+	"SkinsChanged", -- (ownedSkins: {string}, equipped: {slot: skinId}, truemmer: number)
 }
 
 -- Client -> Server (RemoteFunctions).
 local FUNCTION_NAMES = {
 	"PlacePart", -- (partTypeId: string, cframe: CFrame) -> (ok, err?)
+	"EquipSkin", -- (slot: string, skinId: string?) -> (ok, err?)
 }
 
 local Network = {}

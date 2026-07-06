@@ -51,3 +51,27 @@ statischer Abgleich, dass jedes benutzte Remote in Network.luau deklariert ist.
 **D9 – Einzelne Fälle räumen sich selbst auf.** Ein einzeln gefallenes Teil
 (kein Kollaps) verschwindet nach 2 Sekunden und zählt nicht mehr für Punkte.
 So sammelt sich unter der Arena kein Physik-Müll.
+
+## Meilenstein 2
+
+**D10 – Session-Locking selbst gebaut statt ProfileService.** Das Projekt
+soll ohne externe Libraries auskommen (Option laut Konzept). Der Lock lebt
+als `{ lock = {jobId, at}, data = profil }` im DataStore: UpdateAsync
+übernimmt ihn atomar, ein Heartbeat verlängert ihn, abgelaufene Locks
+(>120 s) gelten als tot. Bekommt ein Server den Lock nicht, läuft die
+Session READ-ONLY - lieber eine Session nichts speichern als Käufe
+überschreiben.
+
+**D11 – Universal-Skins belegen alle vier Teil-Slots gleichzeitig.** Ein
+Klick auf einen "alle"-Skin rüstet ihn für jeden Teiltyp aus; teilgebundene
+Skins (z. B. Eiskeil) überschreiben danach gezielt einzelne Slots. Das hält
+die UI bei einem Klick statt vier Dropdowns.
+
+**D12 – Skins wirken ab der nächsten Platzierung.** Bereits im Turm
+stehende Teile werden beim Umrüsten nicht umgefärbt: Die Optik eines Teils
+friert bei der Platzierung ein. Das spart Replikations-Traffic und macht
+den Turm zur sichtbaren "Geschichte" der Runde.
+
+**D13 – Kollaps-Effekte laufen auf dem eigenen Client.** Konfetti/Zeitlupe
+spielt der Client ab, der den Skin ausgerüstet hat - niemandem sonst wird
+Optik aufgezwungen, und der Server bleibt davon komplett unberührt.

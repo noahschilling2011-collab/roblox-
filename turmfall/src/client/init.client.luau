@@ -5,6 +5,7 @@
 
 local CONTROLLER_STARTUP_ORDER = {
 	"UIController", -- zuerst: HUD + Toast-API für alle anderen
+	"SkinUIController", -- vor dem ReplayController (Kollaps-Effekt-Abfrage)
 	"PlacementController",
 	"ReplayController",
 }

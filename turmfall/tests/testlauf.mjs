@@ -72,6 +72,7 @@ const modules = [
   ["Types", "src/shared/Types.luau"],
   ["GameConfig", "src/shared/Config/GameConfig.luau"],
   ["PartCatalog", "src/shared/Config/PartCatalog.luau"],
+  ["SkinCatalog", "src/shared/Config/SkinCatalog.luau"],
   ["BlameLogic", "src/shared/BlameLogic.luau"],
   ["ScoreLogic", "src/shared/ScoreLogic.luau"],
 ];
@@ -88,6 +89,7 @@ for (const [name, path] of modules) {
 const tests = `
 local GameConfig = __deps["GameConfig"]
 local PartCatalog = __deps["PartCatalog"]
+local SkinCatalog = __deps["SkinCatalog"]
 local BlameLogic = __deps["BlameLogic"]
 local ScoreLogic = __deps["ScoreLogic"]
 
@@ -229,6 +231,54 @@ test("ScoreLogic: leere Runde und nur-gefallene Teile", function()
 	expect(next(empty) == nil, "leere Runde muss leeres Ergebnis geben")
 	local onlyFallen = ScoreLogic.computeScores({ { ownerUserId = 100, heightAboveBase = 0, fallen = true } }, {})
 	expect(onlyFallen[100] == 0, "nur gefallene Teile -> 0 Punkte (aber Eintrag vorhanden)")
+end)
+
+-- 9) Skin-Katalog (Meilenstein 2)
+test("SkinCatalog: 12 Teil-Skins, 2 Kollaps-Effekte, alle Raritaeten", function()
+	SkinCatalog.validate() -- wirft bei jedem Regelverstoss
+	local teilCount, kollapsCount = 0, 0
+	local raritiesSeen = {}
+	for _, skin in SkinCatalog.Skins do
+		if skin.category == "teil" then
+			teilCount += 1
+		else
+			kollapsCount += 1
+		end
+		raritiesSeen[skin.rarity] = true
+	end
+	expect(teilCount == 12, "Teil-Skins != 12 (Starter-Katalog): " .. teilCount)
+	expect(kollapsCount == 2, "Kollaps-Effekte != 2: " .. kollapsCount)
+	for _, rarity in { "Common", "Rare", "Epic", "Legendary" } do
+		expect(raritiesSeen[rarity] == true, "Raritaet fehlt im Katalog: " .. rarity)
+	end
+	-- Mindestens ein Start-Skin, damit jeder sofort etwas besitzt.
+	local hasStart = false
+	for _, skin in SkinCatalog.Skins do
+		if skin.unlockCondition == "start" then
+			hasStart = true
+		end
+	end
+	expect(hasStart, "kein Start-Skin vorhanden")
+end)
+
+-- 10) Kosmetik-Guard: Physik-Felder fliegen sofort auf
+test("SkinCatalog: Guard blockiert Physik-Felder in visualData", function()
+	local holz = SkinCatalog.Skins.holz
+	local visual = holz.visualData
+	visual.density = 99 -- Sabotage-Versuch: kaufbarer Physik-Vorteil
+	local ok = pcall(SkinCatalog.validate)
+	visual.density = nil -- aufräumen
+	expect(ok == false, "validate() muss Physik-Felder ablehnen")
+	expect(pcall(SkinCatalog.validate) == true, "Katalog muss nach Aufräumen wieder gueltig sein")
+end)
+
+-- 11) Teil-Skins referenzieren nur echte Teiltypen
+test("SkinCatalog: partType-Verweise sind gueltig", function()
+	for id, skin in SkinCatalog.Skins do
+		if skin.category == "teil" and skin.partType ~= "alle" then
+			expect(PartCatalog.Parts[skin.partType] ~= nil, id .. ": unbekannter partType " .. tostring(skin.partType))
+		end
+	end
 end)
 
 table.insert(results, "")

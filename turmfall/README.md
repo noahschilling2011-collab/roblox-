@@ -75,3 +75,27 @@ turmfall/
 **Logik-Tests (ohne Studio):** `node turmfall/tests/testlauf.mjs` – prüft
 Schuld-Algorithmus, Punkteberechnung, Konfigurations-Canon und dass jedes
 benutzte Remote in `Network.luau` deklariert ist.
+
+## Meilenstein 2 – Skin-System ✅
+
+- `SkinCatalog.luau`: 12 Teil-Skins (Common bis Legendary, z. B. Holz,
+  Marmor, Goldbarren, Glasblock mit Glanz) + 2 Kollaps-Effekte
+  (Konfetti / Zeitlupe, rein clientseitig visuell) als eigene Kategorie
+- Skins sind **rein kosmetisch** – der Kommentar-Block im Katalog erklärt,
+  warum kaufbare Physik-Vorteile Turmfall zerstören würden, und
+  `SkinCatalog.validate()` erzwingt es (Guard, getestet)
+- Inventar-/Ausrüsten-UI: 🎨-Button links oben, Grid mit
+  Raritätsrahmen-Farben, Klick rüstet aus/ab
+- Persistenz: `DataService` mit DataStore **und Session-Locking**
+  (UpdateAsync-Lock + Heartbeat + Read-only-Fallback), Speicher-Retry,
+  BindToClose-Flush
+
+### So testest du Meilenstein 2
+
+1. Wie bei Meilenstein 1 mit 2 Spielern starten.
+2. Links oben **🎨 Skins** öffnen: Start-Skins (Holz, Backstein) sind
+   sofort im Besitz – anklicken zum Ausrüsten (goldener Rahmen = aktiv).
+3. Ein Teil platzieren: Es erscheint im ausgerüsteten Skin-Look.
+4. Hinweis: In Studio ohne aktivierten API-Zugriff läuft die Persistenz
+   im Read-only-Modus (Warnung in der Ausgabe) – im veröffentlichten
+   Spiel speichert sie normal.
