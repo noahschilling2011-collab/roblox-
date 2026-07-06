@@ -63,6 +63,7 @@ Planeten-Skins, Auren, Wettereffekte, Haustiere und später ein Battle Pass – 
 
 | Dokument | Inhalt |
 | --- | --- |
+| [docs/ANLEITUNG.md](docs/ANLEITUNG.md) | **Schritt-für-Schritt aufs echte Roblox** – extra einfach erklärt, ohne Vorwissen. |
 | [docs/GAME_DESIGN.md](docs/GAME_DESIGN.md) | Kernloop, Biome, Progression und Loot-System mit allen verbindlichen Balancing-Zahlen. |
 | [docs/EVENTS.md](docs/EVENTS.md) | Die fünf globalen Live-Events, Scheduler-Logik und Effekt-Stacking. |
 | [docs/MULTIPLAYER.md](docs/MULTIPLAYER.md) | Planetenbesuche, Clans/Galaxien, Handelssystem, Wettbewerbe und PvE-Bosse. |
@@ -115,7 +116,11 @@ Dazu kommt `tests/` – ein Testlauf, der die echten Shared-Module in einer Luau
 
 Das Mapping ins Roblox-DataModel definiert [`default.project.json`](default.project.json) (Rojo): `shared` wird auf Server **und** Client repliziert, `server` läuft ausschließlich serverseitig, `client` startet pro Spieler. Alle Balancing-Werte liegen in `src/shared/Config/` – Code liest sie nur, statt Zahlen zu duplizieren.
 
-## Loslegen (Entwicklung)
+## Loslegen (einfachster Weg) 🚀
+
+**Ohne Werkzeuge:** [`PlanetForge.rbxlx`](PlanetForge.rbxlx) herunterladen und doppelklicken – Roblox Studio öffnet das fertige Spiel. Danach der [Schritt-für-Schritt-Anleitung](docs/ANLEITUNG.md) folgen (Play drücken, veröffentlichen, Speichern aktivieren, öffentlich machen). Die Datei wird aus `src/` generiert (`node tools/build-rbxlx.mjs`) – Quelle der Wahrheit bleibt `src/`.
+
+## Loslegen (Entwicklung mit Rojo)
 
 Voraussetzungen: Roblox Studio und [Rokit](https://github.com/rojo-rbx/rokit) (Toolchain-Manager).
 

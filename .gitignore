@@ -3,6 +3,8 @@
 *.rbxlx
 *.rbxm
 *.rbxmx
+# Ausnahme: die fertige Spieldatei zum Direkt-Öffnen (aus src/ generiert)
+!/PlanetForge.rbxlx
 *.rbxl.lock
 *.rbxlx.lock
 
