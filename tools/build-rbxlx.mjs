@@ -73,13 +73,46 @@ const clientXml = scriptItem(
   directoryChildren(join(REPO, "src/client"))
 );
 
-// Spawn-Plattform, damit neue Charaktere festen Boden haben, bis der
-// PlanetService sie auf ihren Planeten teleportiert.
+// Ankunftsplattform: dunkle Schwebeplattform mit Neon-Ring auf Insel-Höhe,
+// auf der neue Charaktere kurz stehen, bis der PlanetService sie auf ihre
+// eigene Insel teleportiert. Von hier sieht man bereits die Lichtsäulen
+// der Inseln in der Ferne.
+const IDENTITY_ROT = `<R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>`;
+// 90° um Z gedreht (liegender Zylinder -> flache Scheibe).
+const DISC_ROT = `<R00>0</R00><R01>-1</R01><R02>0</R02><R10>1</R10><R11>0</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>`;
+
 const spawnXml = `<Item class="SpawnLocation" referent="${nextReferent()}">
 <Properties>
-<string name="Name">SpawnLocation</string>
+<string name="Name">Ankunftsplattform</string>
 <bool name="Anchored">true</bool>
-<Vector3 name="size"><X>24</X><Y>1</Y><Z>24</Z></Vector3>
+<Vector3 name="size"><X>26</X><Y>2</Y><Z>26</Z></Vector3>
+<CoordinateFrame name="CFrame"><X>0</X><Y>140</Y><Z>0</Z>${IDENTITY_ROT}</CoordinateFrame>
+<Color3uint8 name="Color3uint8">4281085498</Color3uint8>
+<token name="Material">800</token>
+</Properties>
+</Item>
+<Item class="Part" referent="${nextReferent()}">
+<Properties>
+<string name="Name">AnkunftsRing</string>
+<bool name="Anchored">true</bool>
+<bool name="CanCollide">false</bool>
+<Vector3 name="size"><X>1</X><Y>32</Y><Z>32</Z></Vector3>
+<CoordinateFrame name="CFrame"><X>0</X><Y>139.4</Y><Z>0</Z>${DISC_ROT}</CoordinateFrame>
+<Color3uint8 name="Color3uint8">4286112255</Color3uint8>
+<token name="Material">288</token>
+<token name="shape">2</token>
+</Properties>
+</Item>
+<Item class="Part" referent="${nextReferent()}">
+<Properties>
+<string name="Name">AnkunftsKern</string>
+<bool name="Anchored">true</bool>
+<bool name="CanCollide">false</bool>
+<Vector3 name="size"><X>0.4</X><Y>10</Y><Z>10</Z></Vector3>
+<CoordinateFrame name="CFrame"><X>0</X><Y>141.2</Y><Z>0</Z>${DISC_ROT}</CoordinateFrame>
+<Color3uint8 name="Color3uint8">4294955610</Color3uint8>
+<token name="Material">288</token>
+<token name="shape">2</token>
 </Properties>
 </Item>
 `;

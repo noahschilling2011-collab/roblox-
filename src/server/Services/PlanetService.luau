@@ -13,6 +13,7 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TextService = game:GetService("TextService")
+local TweenService = game:GetService("TweenService")
 local Workspace = game:GetService("Workspace")
 
 local Types = require(ReplicatedStorage.Shared.Types)
@@ -34,15 +35,21 @@ local BASE_THICKNESS = 4
 local ZONE_RING_RADIUS = 48 -- Abstand der Zonen-Mitten vom Inselzentrum
 local ZONE_WIDTH = 22 -- tangentiale Breite einer Biom-Zone
 local ZONE_DEPTH = 16 -- radiale Tiefe einer Biom-Zone
-local CORE_HEIGHT_OFFSET = 7 -- Schwebehöhe des Insel-Kristalls über dem Boden
-local SPAWN_OFFSET = Vector3.new(0, 5, -8) -- Spawnpunkt relativ zur Inselmitte
-local SELL_PAD_OFFSET = Vector3.new(0, 0, 16) -- Verkaufs-Pad südlich der Mitte
+local CORE_HEIGHT_OFFSET = 10 -- Schwebehöhe des Insel-Kristalls über dem Boden
+local PLAZA_RADIUS = 16 -- Radius der Spawn-Plaza in der Inselmitte
+local SPAWN_OFFSET = Vector3.new(0, 5, -10) -- Spawnpunkt relativ zur Inselmitte
+local SELL_PAD_OFFSET = Vector3.new(0, 0, 26) -- Verkaufs-Pad südlich der Plaza
 
 local BASE_COLOR = Color3.fromRGB(126, 158, 96)
 local LOCKED_FLOOR_COLOR = Color3.fromRGB(110, 110, 116)
 local FOG_COLOR = Color3.fromRGB(190, 195, 205)
 local SELL_PAD_COLOR = Color3.fromRGB(226, 176, 44)
+local SHOP_PAD_COLOR = Color3.fromRGB(72, 118, 200)
 local CORE_COLOR = Color3.fromRGB(150, 210, 235)
+local GOLD_COLOR = Color3.fromRGB(255, 210, 90)
+local RIM_GLOW_COLOR = Color3.fromRGB(120, 225, 255) -- türkiser Magie-Ring am Inselrand
+local DIRT_COLOR = Color3.fromRGB(124, 92, 62)
+local STONE_COLOR = Color3.fromRGB(96, 94, 100)
 
 -- Snapshot-Form für das Remote-Event PlanetUpdated.
 export type PlanetSnapshot = {
@@ -139,13 +146,13 @@ local function zoneCenter(origin: CFrame, slot: number): (Vector3, number)
 	return position, angle
 end
 
-local function createZoneLabel(parent: BasePart, text: string)
+local function createZoneLabel(parent: BasePart, text: string, big: boolean?)
 	local billboard = Instance.new("BillboardGui")
 	billboard.Name = "ZoneLabel"
-	billboard.Size = UDim2.fromOffset(160, 36)
-	billboard.StudsOffset = Vector3.new(0, 7, 0)
+	billboard.Size = if big == true then UDim2.fromOffset(240, 52) else UDim2.fromOffset(160, 36)
+	billboard.StudsOffset = Vector3.new(0, if big == true then 10 else 7, 0)
 	billboard.AlwaysOnTop = false
-	billboard.MaxDistance = 220
+	billboard.MaxDistance = if big == true then 300 else 220
 
 	local label = Instance.new("TextLabel")
 	label.Name = "Label"
@@ -429,7 +436,6 @@ local function buildLockedZone(zonePart: BasePart)
 end
 
 local function clearLockedZone(zonePart: BasePart, animated: boolean?)
-	local TweenService = game:GetService("TweenService")
 	for _, child in zonePart:GetChildren() do
 		if child.Name == "Fog" or string.sub(child.Name, 1, 5) == "Rock_" then
 			if animated == true and child:IsA("BasePart") then
@@ -480,12 +486,46 @@ local function updateZoneVisual(player: Player, slotNumber: number, placed: Type
 	BiomeVisuals.build(zonePart, placed.biomeId, placed.level, withPop == true)
 end
 
--- Baut die komplette Insel eines Spielers auf.
-local function buildIsland(player: Player, origin: CFrame)
-	local folder = Instance.new("Folder")
-	folder.Name = `Plot_{player.UserId}`
+-- Deko-Part ohne Kollision/Query (für die vielen Schmuck-Elemente der Insel).
+local function newDecoPart(parent: Instance, name: string): Part
+	local part = Instance.new("Part")
+	part.Name = name
+	part.Anchored = true
+	part.CanCollide = false
+	part.CanQuery = false
+	part.CanTouch = false
+	part.Parent = parent
+	return part
+end
 
-	-- Begehbare Inselscheibe.
+-- Endloses, sanftes Auf-und-Ab-Schweben (Server-Tween wie bei der Biom-Deko).
+-- Die Verschiebung wird VOR-multipliziert, damit sie immer entlang der
+-- Welt-Y-Achse zeigt - auch bei zufällig rotierten Felsen.
+local function addFloatTween(part: BasePart, height: number, seconds: number)
+	local tween = TweenService:Create(
+		part,
+		TweenInfo.new(seconds, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true),
+		{ CFrame = CFrame.new(0, height, 0) * part.CFrame }
+	)
+	tween:Play()
+end
+
+-- Liegender Zylinder (Scheibe/Ring) - Kurzform für die vielen Plaza-Ebenen.
+local function newDisc(parent: Instance, name: string, radius: number, thickness: number, cframe: CFrame): Part
+	local disc = newDecoPart(parent, name)
+	disc.Shape = Enum.PartType.Cylinder
+	disc.Size = Vector3.new(thickness, radius * 2, radius * 2)
+	disc.CFrame = cframe * CFrame.Angles(0, 0, math.rad(90))
+	return disc
+end
+
+-- Der Inselkörper: statt einer flachen Scheibe eine echte Schwebeinsel mit
+-- Erd- und Felsschichten, die nach unten spitz zuläuft, einem glühenden
+-- Kristall an der Unterseite, Magie-Ring am Rand und schwebenden Felsen.
+local function buildIslandBody(folder: Folder, origin: CFrame)
+	local topY = BASE_THICKNESS / 2
+
+	-- Begehbare Grasscheibe (Name "Base" ist Konvention, bleibt kollidierbar).
 	local base = newIslandPart(folder, "Base")
 	base.Shape = Enum.PartType.Cylinder
 	base.Size = Vector3.new(BASE_THICKNESS, BASE_RADIUS * 2, BASE_RADIUS * 2)
@@ -493,60 +533,267 @@ local function buildIsland(player: Player, origin: CFrame)
 	base.Material = Enum.Material.Grass
 	base.CFrame = origin * CFrame.Angles(0, 0, math.rad(90))
 
-	-- Hub-Podest: zweistufige Plattform unter dem Kristall mit Gold-Akzenten,
-	-- damit die Inselmitte wie ein gestalteter Treffpunkt wirkt.
-	local podiumBottom = newIslandPart(folder, "PodiumBottom")
-	podiumBottom.Shape = Enum.PartType.Cylinder
-	podiumBottom.Size = Vector3.new(0.8, 26, 26)
-	podiumBottom.Color = Color3.fromRGB(168, 162, 152)
-	podiumBottom.Material = Enum.Material.SmoothPlastic
-	podiumBottom.CFrame = origin * CFrame.new(0, BASE_THICKNESS / 2 + 0.4, 0) * CFrame.Angles(0, 0, math.rad(90))
+	-- Üppiger Grasüberhang: etwas breiterer, dunklerer Ring direkt unter der Kante.
+	local overhang = newDisc(folder, "GrassOverhang", BASE_RADIUS + 1.6, 1.4, origin * CFrame.new(0, topY - 1.2, 0))
+	overhang.Color = Color3.fromRGB(96, 128, 72)
+	overhang.Material = Enum.Material.Grass
 
-	local podiumTop = newIslandPart(folder, "PodiumTop")
-	podiumTop.Shape = Enum.PartType.Cylinder
-	podiumTop.Size = Vector3.new(0.8, 18, 18)
-	podiumTop.Color = Color3.fromRGB(196, 190, 178)
-	podiumTop.Material = Enum.Material.SmoothPlastic
-	podiumTop.CFrame = origin * CFrame.new(0, BASE_THICKNESS / 2 + 1.2, 0) * CFrame.Angles(0, 0, math.rad(90))
-
-	-- Vier goldene Leuchtstreifen, die vom Podest zu den Pads zeigen.
-	for i = 0, 3 do
-		local angle = i * math.pi / 2 + math.pi / 4
-		local strip = newIslandPart(folder, `HubStrip_{i + 1}`)
-		strip.Size = Vector3.new(0.6, 0.12, 9)
-		strip.Color = Color3.fromRGB(255, 210, 90)
-		strip.Material = Enum.Material.Neon
-		strip.CanCollide = false
-		strip.CFrame = origin
-			* CFrame.Angles(0, angle, 0)
-			* CFrame.new(0, BASE_THICKNESS / 2 + 0.28, -14)
+	-- Erd- und Felsschichten, nach unten schmaler (klassische Schwebeinsel-Silhouette).
+	local layers = {
+		{ radius = 58, thickness = 7, y = -BASE_THICKNESS / 2 - 3.5, color = DIRT_COLOR, material = Enum.Material.Ground },
+		{ radius = 44, thickness = 9, y = -BASE_THICKNESS / 2 - 11.5, color = STONE_COLOR, material = Enum.Material.Slate },
+		{ radius = 30, thickness = 9, y = -BASE_THICKNESS / 2 - 20.5, color = STONE_COLOR, material = Enum.Material.Slate },
+		{ radius = 17, thickness = 8, y = -BASE_THICKNESS / 2 - 29, color = STONE_COLOR, material = Enum.Material.Slate },
+		{ radius = 8, thickness = 7, y = -BASE_THICKNESS / 2 - 36.5, color = STONE_COLOR, material = Enum.Material.Slate },
+	}
+	for index, layer in layers do
+		local disc = newDisc(folder, `BodyLayer_{index}`, layer.radius, layer.thickness, origin * CFrame.new(0, layer.y, 0))
+		disc.Color = layer.color
+		disc.Material = layer.material
 	end
 
-	-- Insel-Kristall in der Mitte (Ziel für Skins/Auren, trägt das Namensschild).
+	-- Glühender Kristall an der Insel-Spitze: die "Energiequelle", die die
+	-- Insel schweben lässt - von unten und von Nachbarinseln aus sichtbar.
+	local tip = newDecoPart(folder, "TipCrystal")
+	tip.Size = Vector3.new(5, 9, 5)
+	tip.Color = RIM_GLOW_COLOR
+	tip.Material = Enum.Material.Neon
+	tip.CFrame = origin * CFrame.new(0, -BASE_THICKNESS / 2 - 43, 0) * CFrame.Angles(0, math.rad(45), 0)
+	local tipLight = Instance.new("PointLight")
+	tipLight.Color = RIM_GLOW_COLOR
+	tipLight.Range = 34
+	tipLight.Brightness = 1.4
+	tipLight.Parent = tip
+	addFloatTween(tip, 1.4, 4.5)
+
+	-- Magie-Ring: 12 türkise Neon-Segmente um die Inselkante.
+	for index = 1, 12 do
+		local angle = (index / 12) * 2 * math.pi
+		local segment = newDecoPart(folder, `RimGlow_{index}`)
+		segment.Size = Vector3.new(16, 0.7, 0.7)
+		segment.Color = RIM_GLOW_COLOR
+		segment.Material = Enum.Material.Neon
+		segment.Transparency = 0.25
+		segment.CFrame = origin
+			* CFrame.Angles(0, angle, 0)
+			* CFrame.new(0, topY - 0.5, BASE_RADIUS + 0.9)
+	end
+
+	-- Schwebende Felsbrocken unter und neben der Insel (deterministisch pro
+	-- Insel-Position), jeder mit eigenem, langsamem Schwebe-Tween.
+	local rng = Random.new(math.floor(origin.Position.X * 7 + origin.Position.Z * 13))
+	for index = 1, 6 do
+		local angle = rng:NextNumber(0, 2 * math.pi)
+		local distance = rng:NextNumber(BASE_RADIUS - 16, BASE_RADIUS + 14)
+		local size = rng:NextNumber(3, 6.5)
+		local rock = newDecoPart(folder, `FloatRock_{index}`)
+		rock.Size = Vector3.new(size, size * rng:NextNumber(0.7, 1.1), size * rng:NextNumber(0.8, 1.2))
+		rock.Color = STONE_COLOR
+		rock.Material = Enum.Material.Slate
+		rock.CFrame = origin
+			* CFrame.new(math.cos(angle) * distance, rng:NextNumber(-26, -8), math.sin(angle) * distance)
+			* CFrame.Angles(rng:NextNumber(0, math.pi), rng:NextNumber(0, math.pi), rng:NextNumber(0, math.pi))
+		addFloatTween(rock, rng:NextNumber(1.2, 2.4), rng:NextNumber(4, 8))
+	end
+end
+
+-- Die Spawn-Plaza in der Inselmitte: gestufte Steinkreise mit goldenem
+-- Leucht-Inlay, 12 Radialwege zu den Zonen und 4 Kristall-Laternen.
+local function buildHubPlaza(folder: Folder, origin: CFrame)
+	local topY = BASE_THICKNESS / 2
+
+	local outer = newDisc(folder, "PlazaOuter", PLAZA_RADIUS, 0.6, origin * CFrame.new(0, topY + 0.3, 0))
+	outer.Color = Color3.fromRGB(176, 172, 162)
+	outer.Material = Enum.Material.Slate
+	outer.CanCollide = true
+
+	-- Gold-Inlay: schmaler Neon-Ring zwischen äußerer und mittlerer Ebene.
+	local inlay = newDisc(folder, "PlazaInlay", 13.6, 0.7, origin * CFrame.new(0, topY + 0.34, 0))
+	inlay.Color = GOLD_COLOR
+	inlay.Material = Enum.Material.Neon
+	inlay.Transparency = 0.1
+
+	local mid = newDisc(folder, "PlazaMid", 12.4, 0.8, origin * CFrame.new(0, topY + 0.42, 0))
+	mid.Color = Color3.fromRGB(118, 116, 124)
+	mid.Material = Enum.Material.Slate
+	mid.CanCollide = true
+
+	local center = newDisc(folder, "PlazaCenter", 7, 0.9, origin * CFrame.new(0, topY + 0.5, 0))
+	center.Color = Color3.fromRGB(206, 184, 130)
+	center.Material = Enum.Material.Marble
+	center.CanCollide = true
+
+	-- 12 Radialwege: je einer zeigt exakt auf eine Biom-Zone.
+	for slotNumber = 1, GameConfig.PLANET_SLOTS do
+		local _, angle = zoneCenter(origin, slotNumber)
+		local innerRadius = PLAZA_RADIUS + 1.5
+		local outerRadius = ZONE_RING_RADIUS - ZONE_DEPTH / 2 - 1
+		local length = outerRadius - innerRadius
+		local path = newDecoPart(folder, `Path_{slotNumber}`)
+		path.Size = Vector3.new(3, 0.25, length)
+		path.Color = Color3.fromRGB(188, 184, 174)
+		path.Material = Enum.Material.Slate
+		path.CFrame = origin
+			* CFrame.Angles(0, -angle - math.rad(90), 0)
+			* CFrame.new(0, topY + 0.13, -(innerRadius + length / 2))
+	end
+
+	-- 4 Kristall-Laternen auf der Plaza (diagonal, damit die Wege frei bleiben).
+	for index = 0, 3 do
+		local angle = index * math.pi / 2 + math.pi / 4
+		local offset = CFrame.Angles(0, angle, 0) * CFrame.new(0, 0, -(PLAZA_RADIUS - 2))
+
+		local column = newDecoPart(folder, `LanternColumn_{index + 1}`)
+		column.Size = Vector3.new(1.4, 6, 1.4)
+		column.Color = Color3.fromRGB(140, 136, 144)
+		column.Material = Enum.Material.Slate
+		column.CFrame = origin * offset * CFrame.new(0, topY + 3.3, 0)
+
+		local crystal = newDecoPart(folder, `LanternCrystal_{index + 1}`)
+		crystal.Size = Vector3.new(1.5, 2.2, 1.5)
+		crystal.Color = GOLD_COLOR
+		crystal.Material = Enum.Material.Neon
+		crystal.CFrame = origin * offset * CFrame.new(0, topY + 7.3, 0) * CFrame.Angles(0, math.rad(45), 0)
+		local light = Instance.new("PointLight")
+		light.Color = GOLD_COLOR
+		light.Range = 18
+		light.Brightness = 0.9
+		light.Parent = crystal
+		addFloatTween(crystal, 0.4, 3 + index * 0.35)
+	end
+end
+
+-- Der große Insel-Kristall über der Plaza: schwebt und pulsiert, trägt das
+-- Namensschild, zwei Splitter-Kristalle, zwei Halo-Ringe, eine Lichtsäule
+-- in den Himmel und Funkel-Partikel. "Core" bleibt das Ziel für Skins/Auren.
+local function buildCoreCrystal(folder: Folder, origin: CFrame)
+	local coreCenter = origin * CFrame.new(0, BASE_THICKNESS / 2 + CORE_HEIGHT_OFFSET, 0)
+
 	local core = newIslandPart(folder, "Core")
-	core.Size = Vector3.new(3, 7, 3)
+	core.Size = Vector3.new(4, 10, 4)
 	core.Color = CORE_COLOR
 	core.Material = Enum.Material.Glass
 	core.CanCollide = false
-	core.CFrame = origin * CFrame.new(0, BASE_THICKNESS / 2 + CORE_HEIGHT_OFFSET, 0) * CFrame.Angles(0, math.rad(45), 0)
+	core.CanQuery = false
+	core.CFrame = coreCenter * CFrame.Angles(0, math.rad(45), 0)
+	addFloatTween(core, 1.4, 5)
 
-	-- Verkaufs-Pad: betretbarer Bereich, der den Rucksack zu Energie macht.
-	local sellPad = newIslandPart(folder, "SellPad")
-	sellPad.Shape = Enum.PartType.Cylinder
-	sellPad.Size = Vector3.new(0.5, 11, 11)
-	sellPad.Color = SELL_PAD_COLOR
-	sellPad.Material = Enum.Material.Metal
-	sellPad.CFrame = origin * CFrame.new(SELL_PAD_OFFSET + Vector3.new(0, BASE_THICKNESS / 2 + 0.25, 0)) * CFrame.Angles(0, 0, math.rad(90))
-	createZoneLabel(sellPad, "💰 Verkaufen")
+	local glow = Instance.new("PointLight")
+	glow.Name = "CoreGlow"
+	glow.Color = CORE_COLOR
+	glow.Range = 26
+	glow.Brightness = 1.1
+	glow.Parent = core
 
-	-- Shop-Pad: Betreten öffnet den Shop (zusätzlich zum Button).
-	local shopPad = newIslandPart(folder, "ShopPad")
-	shopPad.Shape = Enum.PartType.Cylinder
-	shopPad.Size = Vector3.new(0.5, 11, 11)
-	shopPad.Color = Color3.fromRGB(72, 118, 200)
-	shopPad.Material = Enum.Material.Metal
-	shopPad.CFrame = origin * CFrame.new(-SELL_PAD_OFFSET + Vector3.new(0, BASE_THICKNESS / 2 + 0.25, 0)) * CFrame.Angles(0, 0, math.rad(90))
-	createZoneLabel(shopPad, "🛒 Shop")
+	local sparkle = Instance.new("ParticleEmitter")
+	sparkle.Name = "CoreSparkle"
+	sparkle.Color = ColorSequence.new(Color3.new(1, 1, 1), CORE_COLOR)
+	sparkle.LightEmission = 1
+	sparkle.Rate = 5
+	sparkle.Lifetime = NumberRange.new(1.2, 2)
+	sparkle.Speed = NumberRange.new(1, 2.5)
+	sparkle.SpreadAngle = Vector2.new(180, 180)
+	sparkle.Size = NumberSequence.new(0.35)
+	sparkle.Parent = core
+
+	-- Zwei kleinere Splitter-Kristalle, die versetzt mitschweben.
+	for index = 1, 2 do
+		local side = if index == 1 then 1 else -1
+		local shard = newDecoPart(folder, `CoreShard_{index}`)
+		shard.Size = Vector3.new(1.7, 5, 1.7)
+		shard.Color = CORE_COLOR
+		shard.Material = Enum.Material.Glass
+		shard.Transparency = 0.15
+		shard.CFrame = coreCenter
+			* CFrame.new(side * 4.6, -1.5 + index * 0.8, side * 1.6)
+			* CFrame.Angles(math.rad(side * 14), math.rad(45), math.rad(-side * 8))
+		addFloatTween(shard, 1, 3.6 + index)
+	end
+
+	-- Zwei gekippte Halo-Ringe um den Kristall.
+	for index = 1, 2 do
+		local side = if index == 1 then 1 else -1
+		local halo = newDisc(
+			folder,
+			`CoreHalo_{index}`,
+			5.5 + index * 2,
+			0.35,
+			coreCenter * CFrame.Angles(math.rad(side * 22), 0, 0)
+		)
+		halo.Color = if index == 1 then RIM_GLOW_COLOR else GOLD_COLOR
+		halo.Material = Enum.Material.Neon
+		halo.Transparency = 0.45
+		addFloatTween(halo, side * 0.8, 4 + index * 0.7)
+	end
+
+	-- Lichtsäule in den Himmel: macht jede Insel schon von Weitem erkennbar.
+	local beam = newDecoPart(folder, "CoreBeam")
+	beam.Shape = Enum.PartType.Cylinder
+	beam.Size = Vector3.new(80, 2.6, 2.6)
+	beam.Color = CORE_COLOR
+	beam.Material = Enum.Material.Neon
+	beam.Transparency = 0.78
+	beam.CFrame = coreCenter * CFrame.new(0, 42, 0) * CFrame.Angles(0, 0, math.rad(90))
+end
+
+-- Ein aufgewertetes Boden-Pad (Verkaufen/Shop): Leucht-Ring, sanfte
+-- Lichtsäule, PointLight und aufsteigende Partikel plus großes Schild.
+local function buildPad(folder: Folder, origin: CFrame, name: string, offset: Vector3, color: Color3, labelText: string): BasePart
+	local padCenter = origin * CFrame.new(offset + Vector3.new(0, BASE_THICKNESS / 2 + 0.25, 0))
+
+	local pad = newIslandPart(folder, name)
+	pad.Shape = Enum.PartType.Cylinder
+	pad.Size = Vector3.new(0.5, 11, 11)
+	pad.Color = color
+	pad.Material = Enum.Material.Metal
+	pad.CFrame = padCenter * CFrame.Angles(0, 0, math.rad(90))
+	createZoneLabel(pad, labelText, true)
+
+	local ring = newDisc(folder, `{name}Ring`, 6.6, 0.22, padCenter * CFrame.new(0, -0.1, 0))
+	ring.Color = color
+	ring.Material = Enum.Material.Neon
+	ring.Transparency = 0.2
+
+	local beam = newDecoPart(folder, `{name}Beam`)
+	beam.Shape = Enum.PartType.Cylinder
+	beam.Size = Vector3.new(13, 8.4, 8.4)
+	beam.Color = color
+	beam.Material = Enum.Material.Neon
+	beam.Transparency = 0.86
+	beam.CFrame = padCenter * CFrame.new(0, 6.7, 0) * CFrame.Angles(0, 0, math.rad(90))
+
+	local light = Instance.new("PointLight")
+	light.Color = color
+	light.Range = 16
+	light.Brightness = 0.8
+	light.Parent = pad
+
+	local motes = Instance.new("ParticleEmitter")
+	motes.Name = "PadMotes"
+	motes.Color = ColorSequence.new(color)
+	motes.LightEmission = 0.8
+	motes.Rate = 4
+	motes.Lifetime = NumberRange.new(1.5, 2.5)
+	motes.Speed = NumberRange.new(2, 4)
+	motes.SpreadAngle = Vector2.new(12, 12)
+	motes.Size = NumberSequence.new(0.4)
+	motes.Parent = pad
+
+	return pad
+end
+
+-- Baut die komplette Insel eines Spielers auf.
+local function buildIsland(player: Player, origin: CFrame)
+	local folder = Instance.new("Folder")
+	folder.Name = `Plot_{player.UserId}`
+
+	buildIslandBody(folder, origin)
+	buildHubPlaza(folder, origin)
+	buildCoreCrystal(folder, origin)
+
+	-- Verkaufs-Pad (Rucksack -> Energie) und Shop-Pad (öffnet den Shop).
+	buildPad(folder, origin, "SellPad", SELL_PAD_OFFSET, SELL_PAD_COLOR, "💰 Verkaufen")
+	buildPad(folder, origin, "ShopPad", -SELL_PAD_OFFSET, SHOP_PAD_COLOR, "🛒 Shop")
 
 	-- Die 12 Biom-Zonen im Ring.
 	for slotNumber = 1, GameConfig.PLANET_SLOTS do
