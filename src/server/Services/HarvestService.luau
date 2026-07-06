@@ -22,6 +22,7 @@ local ProgressionConfig = require(ReplicatedStorage.Shared.Config.ProgressionCon
 
 local DataService = require(script.Parent.DataService)
 local EnergyService = require(script.Parent.EnergyService)
+local EquipService = require(script.Parent.EquipService)
 local PlanetService = require(script.Parent.PlanetService)
 
 local SELL_COOLDOWN_SECONDS = 1.5 -- Mindestabstand zwischen zwei Verkäufen
@@ -229,10 +230,14 @@ local function collectTick(player: Player)
 		profile.backpack.value = 0
 		profile.stats.sales += 1
 
-		-- Progressions-Multiplikator (Biome/Upgrades/Rebirth; Pets ab Phase 3)
-		-- auf den Verkaufswert; grantEnergy legt Event-Multiplikatoren obendrauf.
-		local multiplier =
-			ProgressionConfig.getTotalMultiplier(profile.biomes, profile.upgrades, profile.rebirths, 1)
+		-- Progressions-Multiplikator (Biome/Upgrades/Rebirth/Pets) auf den
+		-- Verkaufswert; grantEnergy legt Event-Multiplikatoren obendrauf.
+		local multiplier = ProgressionConfig.getTotalMultiplier(
+			profile.biomes,
+			profile.upgrades,
+			profile.rebirths,
+			EquipService.getPetBonus(profile)
+		)
 		local gained = EnergyService.grantEnergy(player, sellValue * multiplier)
 		DataService.markDirty(player)
 		fireBackpackChanged(player, profile)

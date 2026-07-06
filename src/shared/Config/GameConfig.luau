@@ -28,7 +28,10 @@ local GameConfig = {
 	TRADE_LOCK_SECONDS = 3, -- Sicherheitspause nach beidseitigem Akzeptieren
 
 	-- Daten
-	PROFILE_SCHEMA_VERSION = 6, -- v5: Insel-Loop; v6: Rebirths
+	PROFILE_SCHEMA_VERSION = 7, -- v5: Insel-Loop; v6: Rebirths; v7: Equip-System
+
+	-- Ausrüstung
+	BASE_PET_SLOTS = 3, -- gleichzeitig aktive Pets (per Gamepass erweiterbar)
 	DATASTORE_NAME = "PlanetForge_v1",
 	AUTOSAVE_INTERVAL_SECONDS = 120,
 

@@ -23,6 +23,7 @@
 --     UpgradesUpdated(levels: { magnet: number, backpack: number })
 --     MultiplierChanged(info: { total, biomeBonus, upgradeBonus, petBonus,
 --       rebirthMultiplier, rebirths, nextThreshold, lifetimeEnergy })
+--     EquipmentUpdated(equipped: { pets: { uid }, trail: uid?, skin: uid?, maxPetSlots: number })
 --
 --   RemoteFunctions (Client -> Server), geben immer (ok: boolean, payload: any?) zurück:
 --     PlaceBiome(biomeId: string, slot: number) -- schaltet eine Insel-Zone frei
@@ -39,6 +40,7 @@
 --     SimulatePurchase(kind: "gamepass" | "product", key: string)
 --       NUR Studio-Testmodus (Server prüft RunService:IsStudio() hart)
 --     DoRebirth() -- Wiedergeburt (Server prüft die lifetimeEnergy-Schwelle)
+--     EquipItem(uid: string, equip: boolean) -- Loot-Item aus-/anlegen
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -61,6 +63,7 @@ local EVENT_NAMES = {
 	"SoldBackpack",
 	"UpgradesUpdated",
 	"MultiplierChanged",
+	"EquipmentUpdated",
 }
 
 local FUNCTION_NAMES = {
@@ -77,6 +80,7 @@ local FUNCTION_NAMES = {
 	"TutorialAction",
 	"SimulatePurchase",
 	"DoRebirth",
+	"EquipItem",
 }
 
 local Remotes = {}

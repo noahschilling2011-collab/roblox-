@@ -14,6 +14,7 @@ local BiomeConfig = require(ReplicatedStorage.Shared.Config.BiomeConfig)
 local ProgressionConfig = require(ReplicatedStorage.Shared.Config.ProgressionConfig)
 
 local DataService = require(script.Parent.DataService)
+local EquipService = require(script.Parent.EquipService)
 local GlobalEventService = require(script.Parent.GlobalEventService)
 
 local EnergyService = {}
@@ -163,10 +164,13 @@ function EnergyService.init()
 			for _, player in Players:GetPlayers() do
 				local profile: Types.PlayerProfile? = DataService.getProfile(player)
 				if profile ~= nil then
-					-- Progression wirkt auch auf das passive Einkommen
-					-- (Pet-Bonus ergänzt Phase 3).
-					local multiplier =
-						ProgressionConfig.getTotalMultiplier(profile.biomes, profile.upgrades, profile.rebirths, 1)
+					-- Progression (inkl. Pet-Bonus) wirkt auch aufs passive Einkommen.
+					local multiplier = ProgressionConfig.getTotalMultiplier(
+						profile.biomes,
+						profile.upgrades,
+						profile.rebirths,
+						EquipService.getPetBonus(profile)
+					)
 					local income = computeIncomePerMinute(profile) * intervalMinutes * multiplier
 					if income > 0 then
 						EnergyService.grantEnergy(player, income)

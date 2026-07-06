@@ -112,6 +112,13 @@ local function checkRarityAndCollectibles()
 	-- Jedes Sammelobjekt hat eine gültige Seltenheit; jede Pool-Stufe hat Einträge.
 	for collectibleId, def in CollectibleConfig.Collectibles do
 		check(RarityConfig.Tiers[def.rarity] ~= nil, `Sammelobjekt {collectibleId}: unbekannte Seltenheit {def.rarity}`)
+		-- Equip-System: gültiger Item-Typ und sinnvoller Bonus.
+		local itemType = def.itemType
+		check(
+			itemType == "pet" or itemType == "trail" or itemType == "skin",
+			`Sammelobjekt {collectibleId}: ungültiger itemType {tostring(itemType)}`
+		)
+		check((def.bonusMultiplier or 0) >= 1, `Sammelobjekt {collectibleId}: bonusMultiplier muss >= 1 sein`)
 	end
 	for _, tierName in { "Common", "Uncommon", "Rare", "Epic", "Legendary" } do
 		check(#CollectibleConfig.getIdsByRarity(tierName) > 0, `Kein Sammelobjekt im Pool der Stufe {tierName}`)
@@ -209,8 +216,8 @@ local function checkGameConfigAndRemotes()
 				functions += 1
 			end
 		end
-		check(events == 15, `Erwartet 15 RemoteEvents, gefunden: {events}`)
-		check(functions == 13, `Erwartet 13 RemoteFunctions, gefunden: {functions}`)
+		check(events == 16, `Erwartet 16 RemoteEvents, gefunden: {events}`)
+		check(functions == 14, `Erwartet 14 RemoteFunctions, gefunden: {functions}`)
 
 		-- Kritische Einzel-Remotes (Tutorial, Sammel-Loop, Studio-Testmodus).
 		for _, name in { "TutorialUpdated", "ObjectCollected", "BackpackChanged", "SoldBackpack", "UpgradesUpdated" } do

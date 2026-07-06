@@ -90,7 +90,8 @@ end
 test("GameConfig: Canon-Konstanten", function()
 	expect(GameConfig.PLANET_SLOTS == 12, "PLANET_SLOTS != 12")
 	expect(GameConfig.LOOT_ROLL_COST == 25, "LOOT_ROLL_COST != 25")
-	expect(GameConfig.PROFILE_SCHEMA_VERSION == 6, "Schema-Version != 6")
+	expect(GameConfig.PROFILE_SCHEMA_VERSION == 7, "Schema-Version != 7")
+	expect(GameConfig.BASE_PET_SLOTS == 3, "BASE_PET_SLOTS != 3")
 	expect(GameConfig.MAX_TRADE_ITEMS_PER_SIDE == 4, "Trade-Items != 4")
 	expect(GameConfig.TRADE_LOCK_SECONDS == 3, "Trade-Lock != 3")
 	expect(GameConfig.BASE_MAGNET_RADIUS > 0, "BASE_MAGNET_RADIUS <= 0")
@@ -330,6 +331,29 @@ test("Loot-Glueck: Formel verbessert Ultra-Rare-Chance korrekt", function()
 	expect(effective(10000, 5) == 2000, "Kreaturen-Event (x5) falsch")
 	expect(effective(10000, 3) == 3333, "Meteoritenschauer (x3) falsch")
 	expect(effective(2, 100) == 1, "Untergrenze 1 verletzt")
+end)
+
+-- 6b) Equip-System: Item-Typen und Pet-Boni
+test("CollectibleConfig: jedes Item hat Typ und Bonus", function()
+	local counts = { pet = 0, trail = 0, skin = 0 }
+	for id, def in CollectibleConfig.Collectibles do
+		local itemType = def.itemType
+		expect(itemType == "pet" or itemType == "trail" or itemType == "skin", id .. ": itemType fehlt")
+		counts[itemType] += 1
+		expect((def.bonusMultiplier or 0) >= 1, id .. ": bonusMultiplier < 1")
+		if itemType ~= "pet" then
+			expect(def.bonusMultiplier == 1, id .. ": nur Pets haben Bonus > 1")
+		end
+	end
+	expect(counts.pet >= 5, "zu wenige Pets")
+	expect(counts.trail >= 3, "zu wenige Trails")
+	expect(counts.skin >= 3, "zu wenige Skins")
+	-- Seltener = stärker: Drache (Mythic) schlägt Feldmaus (Common).
+	expect(
+		CollectibleConfig.Collectibles["goldener_drache"].bonusMultiplier
+			> CollectibleConfig.Collectibles["feldmaus"].bonusMultiplier,
+		"Pet-Bonus skaliert nicht mit Seltenheit"
+	)
 end)
 
 -- 7a) Multiplikator-Formel und Rebirth (Spiegel von ProgressionConfig)

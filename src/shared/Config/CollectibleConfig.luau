@@ -6,6 +6,8 @@
 
 local Types = require(script.Parent.Parent.Types)
 
+export type ItemType = "pet" | "trail" | "skin"
+
 export type CollectibleDef = {
 	id: string,
 	displayName: string,
@@ -14,6 +16,8 @@ export type CollectibleDef = {
 	category: "Tier" | "Pflanze" | "Artefakt",
 	tradable: boolean,
 	ultraRare: boolean?, -- true = nur über Ultra-Rare-Wurf erhältlich
+	itemType: ItemType?, -- wird unten automatisch aus der Kategorie gesetzt
+	bonusMultiplier: number?, -- Pets: multiplikativer Ertrags-Bonus (unten gesetzt)
 }
 
 local CollectibleConfig = {}
@@ -239,6 +243,43 @@ function CollectibleConfig.getIdsByRarity(rarity: string): { string }
 	end
 	table.sort(ids)
 	return ids
+end
+
+--------------------------------------------------------------------------
+-- Ausrüstbare Item-Typen (Inventar/Equip-System)
+--------------------------------------------------------------------------
+
+-- Loot-Kategorie -> ausrüstbarer Typ: Tiere folgen als Pets (mit Bonus),
+-- Artefakte werden zu Trails, Pflanzen zu Spieler-Skins (Aura-Glow).
+local CATEGORY_TO_ITEM_TYPE: { [string]: ItemType } = {
+	Tier = "pet",
+	Artefakt = "trail",
+	Pflanze = "skin",
+}
+
+-- Multiplikativer Pet-Bonus je Seltenheit (nur wenn ausgerüstet).
+local PET_BONUS_BY_RARITY: { [string]: number } = {
+	Common = 1.05,
+	Uncommon = 1.1,
+	Rare = 1.2,
+	Epic = 1.35,
+	Legendary = 1.6,
+	Mythic = 2.0,
+	Cosmic = 3.0,
+}
+
+for _, def in CollectibleConfig.Collectibles do
+	def.itemType = CATEGORY_TO_ITEM_TYPE[def.category] or "pet"
+	def.bonusMultiplier = if def.itemType == "pet" then PET_BONUS_BY_RARITY[def.rarity] or 1 else 1
+end
+
+-- Effektiver Item-Typ (nie nil, nach der Zuordnung oben).
+function CollectibleConfig.getItemType(collectibleId: string): ItemType?
+	local def = CollectibleConfig.Collectibles[collectibleId]
+	if def == nil then
+		return nil
+	end
+	return def.itemType or "pet"
 end
 
 return CollectibleConfig

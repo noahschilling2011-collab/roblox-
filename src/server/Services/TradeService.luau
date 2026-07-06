@@ -24,6 +24,7 @@ local CollectibleConfig = require(ReplicatedStorage.Shared.Config.CollectibleCon
 local DataService = require(script.Parent.DataService)
 local EnergyService = require(script.Parent.EnergyService)
 local PlanetService = require(script.Parent.PlanetService)
+local EquipService = require(script.Parent.EquipService)
 
 local TradeService = {}
 
@@ -297,6 +298,8 @@ local function executeTrade(session: Types.TradeSession)
 		fireTradeUpdated(player, nil)
 		notify(player, "Handel erfolgreich abgeschlossen!", "success")
 		PlanetService.sendSnapshot(player)
+		-- Weggehandelte Items dürfen nicht ausgerüstet bleiben.
+		EquipService.validateEquipment(player)
 	end
 end
 

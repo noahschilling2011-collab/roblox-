@@ -8,6 +8,7 @@ local CONTROLLER_STARTUP_ORDER = {
 	"UIController",
 	"HarvestController",
 	"PlanetBuilderController",
+	"InventoryController",
 	"EventNotifierController",
 	"ShopController",
 	"LeaderboardController",

@@ -50,6 +50,14 @@ export type PlayerProfile = {
 	upgrades: IslandUpgrades, -- Level der Insel-Upgrades (Magnet, Rucksack)
 	stats: PlayerStats, -- Zähler für Tutorial und Statistiken
 	rebirths: number, -- Anzahl Wiedergeburten (permanenter Multiplikator)
+	equipped: EquippedItems, -- ausgerüstete Loot-Items (Pets/Trail/Skin)
+}
+
+-- Ausgerüstete Loot-Items (referenzieren OwnedCollectible.uid).
+export type EquippedItems = {
+	pets: { string }, -- max. Pet-Slots (Basis 3, per Gamepass erweiterbar)
+	trail: string?,
+	skin: string?,
 }
 
 -- Rucksack: füllt sich beim Sammeln, wird an der Verkaufs-Zone geleert.

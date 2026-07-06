@@ -69,6 +69,7 @@ local function buildDefaultProfile(): Types.PlayerProfile
 		upgrades = { magnet = 0, backpack = 0 },
 		stats = { collected = 0, sales = 0 },
 		rebirths = 0,
+		equipped = { pets = {} },
 	}
 end
 

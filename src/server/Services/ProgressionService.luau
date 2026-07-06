@@ -21,6 +21,7 @@ local ProgressionConfig = require(ReplicatedStorage.Shared.Config.ProgressionCon
 
 local DataService = require(script.Parent.DataService)
 local EnergyService = require(script.Parent.EnergyService)
+local EquipService = require(script.Parent.EquipService)
 local PlanetService = require(script.Parent.PlanetService)
 
 local WATCHER_INTERVAL_SECONDS = 3 -- wie oft der Multiplikator neu geprüft wird
@@ -33,9 +34,9 @@ local lastSentTotal: { [Player]: number } = {}
 
 local ProgressionService = {}
 
--- Pet-Bonus-Quelle; Phase 3 (EquipService) ersetzt diese Funktion.
-ProgressionService.getPetBonus = function(_profile: Types.PlayerProfile): number
-	return 1
+-- Pet-Bonus ausgerüsteter Pets (Produkt; 1 ohne Pets).
+ProgressionService.getPetBonus = function(profile: Types.PlayerProfile): number
+	return EquipService.getPetBonus(profile)
 end
 
 -- Gesamt-Multiplikator eines Spielers inklusive Pet-Bonus.
