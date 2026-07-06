@@ -64,6 +64,10 @@ local plotOrigins: { [Player]: CFrame } = {}
 local usedIndices: { [number]: boolean } = {}
 local characterConnections: { [Player]: RBXScriptConnection } = {}
 
+-- Spieler, die die Spawn-Villa bereits verlassen haben (pro Session):
+-- erst ab dann landen Respawns direkt auf der eigenen Insel.
+local enteredWorld: { [Player]: boolean } = {}
+
 local planetUpdatedEvent: RemoteEvent? = nil
 
 local PlanetService = {}
@@ -782,6 +786,177 @@ local function buildPad(folder: Folder, origin: CFrame, name: string, offset: Ve
 	return pad
 end
 
+-- Das eigene Häuschen auf der Insel: Holzhaus mit Giebeldach, Fenstern,
+-- Laterne und kleiner Einrichtung. Steht zwischen zwei Radialwegen und
+-- die Tür zeigt zur Plaza - DAS macht die Insel zum echten Zuhause.
+local function buildHomeCottage(folder: Folder, origin: CFrame)
+	local topY = BASE_THICKNESS / 2
+	-- Anker zwischen zwei Wegen; lokal zeigt +Z zurück zur Inselmitte.
+	local anchor = origin * CFrame.Angles(0, -math.rad(15), 0) * CFrame.new(0, topY, -28)
+
+	local WALL_COLOR = Color3.fromRGB(232, 220, 196)
+	local WOOD_COLOR = Color3.fromRGB(133, 100, 64)
+	local ROOF_COLOR = Color3.fromRGB(152, 72, 60)
+
+	-- Sockel/Boden.
+	local sockel = newIslandPart(folder, "HausSockel")
+	sockel.Size = Vector3.new(13, 0.5, 11)
+	sockel.Color = WOOD_COLOR
+	sockel.Material = Enum.Material.WoodPlanks
+	sockel.CFrame = anchor * CFrame.new(0, 0.25, 0)
+
+	-- Wände (Tür-Lücke vorn Richtung Plaza).
+	local function wall(name: string, size: Vector3, offset: CFrame)
+		local part = newIslandPart(folder, name)
+		part.Size = size
+		part.Color = WALL_COLOR
+		part.Material = Enum.Material.SmoothPlastic
+		part.CFrame = anchor * offset
+	end
+	wall("HausWandHinten", Vector3.new(13, 5.5, 0.6), CFrame.new(0, 3.25, -5.2))
+	wall("HausWandLinks", Vector3.new(0.6, 5.5, 11), CFrame.new(-6.2, 3.25, 0))
+	wall("HausWandRechts", Vector3.new(0.6, 5.5, 11), CFrame.new(6.2, 3.25, 0))
+	wall("HausWandVornL", Vector3.new(4.7, 5.5, 0.6), CFrame.new(-4.15, 3.25, 5.2))
+	wall("HausWandVornR", Vector3.new(4.7, 5.5, 0.6), CFrame.new(4.15, 3.25, 5.2))
+	wall("HausTuersturz", Vector3.new(3.6, 1.5, 0.6), CFrame.new(0, 5.25, 5.2))
+
+	-- Fenster (Glas, leicht nach innen versetzt).
+	for _, side in { -1, 1 } do
+		local window = newDecoPart(folder, `HausFenster_{side}`)
+		window.Size = Vector3.new(0.2, 2.5, 3)
+		window.Color = Color3.fromRGB(178, 220, 240)
+		window.Material = Enum.Material.Glass
+		window.Transparency = 0.4
+		window.CFrame = anchor * CFrame.new(side * 6.0, 3.4, 0)
+	end
+
+	-- Giebeldach aus zwei Keilen.
+	for _, side in { -1, 1 } do
+		local wedge = Instance.new("WedgePart")
+		wedge.Name = `HausDach_{side}`
+		wedge.Anchored = true
+		wedge.Size = Vector3.new(13.8, 3.2, 6.1)
+		wedge.Color = ROOF_COLOR
+		wedge.Material = Enum.Material.Slate
+		wedge.CFrame = anchor
+			* CFrame.new(0, 7.6, side * 3.05)
+			* CFrame.Angles(0, if side == 1 then math.pi else 0, 0)
+		wedge.Parent = folder
+	end
+
+	-- Schornstein (trägt das Schild, damit es frei über dem Dach schwebt).
+	local chimney = newIslandPart(folder, "HausSchornstein")
+	chimney.Size = Vector3.new(1.4, 2.6, 1.4)
+	chimney.Color = Color3.fromRGB(110, 108, 114)
+	chimney.Material = Enum.Material.Slate
+	chimney.CFrame = anchor * CFrame.new(4, 9.2, -2)
+	createZoneLabel(chimney, "🏠 Dein Zuhause")
+
+	-- Fußmatte und Laterne an der Tür.
+	local mat = newDecoPart(folder, "HausMatte")
+	mat.Size = Vector3.new(3.4, 0.15, 1.6)
+	mat.Color = Color3.fromRGB(94, 70, 48)
+	mat.Material = Enum.Material.Fabric
+	mat.CFrame = anchor * CFrame.new(0, 0.58, 6.2)
+
+	local post = newDecoPart(folder, "HausLaterne")
+	post.Size = Vector3.new(0.5, 3, 0.5)
+	post.Color = Color3.fromRGB(70, 68, 76)
+	post.Material = Enum.Material.Metal
+	post.CFrame = anchor * CFrame.new(5.4, 1.5, 6.4)
+	local lampe = newDecoPart(folder, "HausLaternenlicht")
+	lampe.Size = Vector3.new(0.9, 0.9, 0.9)
+	lampe.Color = GOLD_COLOR
+	lampe.Material = Enum.Material.Neon
+	lampe.CFrame = anchor * CFrame.new(5.4, 3.3, 6.4)
+	local lampLight = Instance.new("PointLight")
+	lampLight.Color = GOLD_COLOR
+	lampLight.Range = 12
+	lampLight.Brightness = 0.8
+	lampLight.Parent = lampe
+
+	-- Mini-Einrichtung (durch die Tür sichtbar): Bett, Teppich, Regal.
+	local bett = newDecoPart(folder, "HausBett")
+	bett.Size = Vector3.new(4, 0.9, 2.2)
+	bett.Color = Color3.fromRGB(90, 120, 180)
+	bett.Material = Enum.Material.Fabric
+	bett.CFrame = anchor * CFrame.new(-3.6, 0.95, -3.4)
+	local kissen = newDecoPart(folder, "HausKissen")
+	kissen.Size = Vector3.new(1, 0.5, 1.8)
+	kissen.Color = Color3.new(1, 1, 1)
+	kissen.Material = Enum.Material.Fabric
+	kissen.CFrame = anchor * CFrame.new(-5.2, 1.65, -3.4)
+	local teppich = newDisc(folder, "HausTeppich", 2, 0.12, anchor * CFrame.new(0.5, 0.56, 0.5))
+	teppich.Color = Color3.fromRGB(178, 84, 76)
+	teppich.Material = Enum.Material.Fabric
+	local regal = newDecoPart(folder, "HausRegal")
+	regal.Size = Vector3.new(0.7, 2.6, 3)
+	regal.Color = WOOD_COLOR
+	regal.Material = Enum.Material.WoodPlanks
+	regal.CFrame = anchor * CFrame.new(5.5, 1.85, -3.2)
+end
+
+-- Kleiner Garten auf der gegenüberliegenden Inselseite: Bäume, Blumen
+-- und eine Bank mit Blick auf den Kristall.
+local function buildGarden(folder: Folder, origin: CFrame)
+	local topY = BASE_THICKNESS / 2
+	local anchor = origin * CFrame.Angles(0, -math.rad(195), 0) * CFrame.new(0, topY, -27)
+
+	-- Zwei Bäume mit rundem Stamm und zwei Kronen-Kugeln.
+	for index, offset in { Vector3.new(-6, 0, -2), Vector3.new(6.5, 0, 1) } do
+		local trunk = newDecoPart(folder, `GartenStamm_{index}`)
+		trunk.Shape = Enum.PartType.Cylinder
+		trunk.Size = Vector3.new(4.6, 1.1, 1.1)
+		trunk.Color = Color3.fromRGB(110, 82, 54)
+		trunk.Material = Enum.Material.Wood
+		trunk.CFrame = anchor * CFrame.new(offset + Vector3.new(0, 2.3, 0)) * CFrame.Angles(0, 0, math.rad(90))
+		for crown = 1, 2 do
+			local leaves = newDecoPart(folder, `GartenKrone_{index}_{crown}`)
+			leaves.Shape = Enum.PartType.Ball
+			local size = 4.6 - crown * 1.1
+			leaves.Size = Vector3.new(size, size * 0.85, size)
+			leaves.Color = Color3.fromRGB(92 + crown * 18, 150 + crown * 14, 84)
+			leaves.Material = Enum.Material.Grass
+			leaves.CFrame = anchor * CFrame.new(offset + Vector3.new(0, 4 + crown * 1.4, 0))
+		end
+	end
+
+	-- Bank mit Blick zur Inselmitte.
+	local seat = newIslandPart(folder, "GartenBank")
+	seat.Size = Vector3.new(4, 0.4, 1.4)
+	seat.Color = Color3.fromRGB(133, 100, 64)
+	seat.Material = Enum.Material.WoodPlanks
+	seat.CFrame = anchor * CFrame.new(0, 1.2, 3)
+	local lehne = newDecoPart(folder, "GartenBankLehne")
+	lehne.Size = Vector3.new(4, 1.4, 0.3)
+	lehne.Color = seat.Color
+	lehne.Material = Enum.Material.WoodPlanks
+	lehne.CFrame = anchor * CFrame.new(0, 2.1, 2.45)
+	for _, side in { -1, 1 } do
+		local leg = newDecoPart(folder, `GartenBankFuss_{side}`)
+		leg.Size = Vector3.new(0.4, 1, 1.2)
+		leg.Color = Color3.fromRGB(90, 68, 44)
+		leg.Material = Enum.Material.Wood
+		leg.CFrame = anchor * CFrame.new(side * 1.6, 0.5, 3)
+	end
+
+	-- Blumen: bunte Mini-Kugeln auf Stielen.
+	local flowerColors = { Color3.fromRGB(240, 110, 130), Color3.fromRGB(255, 200, 80), Color3.fromRGB(150, 120, 230) }
+	for index, color in flowerColors do
+		local stem = newDecoPart(folder, `GartenStiel_{index}`)
+		stem.Size = Vector3.new(0.18, 1.1, 0.18)
+		stem.Color = Color3.fromRGB(88, 140, 70)
+		stem.Material = Enum.Material.Grass
+		stem.CFrame = anchor * CFrame.new(-3 + index * 2.1, 0.55, 5.4)
+		local bloom = newDecoPart(folder, `GartenBluete_{index}`)
+		bloom.Shape = Enum.PartType.Ball
+		bloom.Size = Vector3.new(0.7, 0.7, 0.7)
+		bloom.Color = color
+		bloom.Material = Enum.Material.Neon
+		bloom.CFrame = anchor * CFrame.new(-3 + index * 2.1, 1.25, 5.4)
+	end
+end
+
 -- Baut die komplette Insel eines Spielers auf.
 local function buildIsland(player: Player, origin: CFrame)
 	local folder = Instance.new("Folder")
@@ -790,6 +965,8 @@ local function buildIsland(player: Player, origin: CFrame)
 	buildIslandBody(folder, origin)
 	buildHubPlaza(folder, origin)
 	buildCoreCrystal(folder, origin)
+	buildHomeCottage(folder, origin)
+	buildGarden(folder, origin)
 
 	-- Verkaufs-Pad (Rucksack -> Energie) und Shop-Pad (öffnet den Shop).
 	buildPad(folder, origin, "SellPad", SELL_PAD_OFFSET, SELL_PAD_COLOR, "💰 Verkaufen")
@@ -811,6 +988,11 @@ local function buildIsland(player: Player, origin: CFrame)
 end
 
 local function teleportToPlot(player: Player, character: Model)
+	-- Erster Spawn der Session: der Spieler startet in der Spawn-Villa
+	-- (LobbyService) und kommt erst über deren Portal auf seine Insel.
+	if not enteredWorld[player] then
+		return
+	end
 	local origin = plotOrigins[player]
 	if origin == nil then
 		return
@@ -819,6 +1001,27 @@ local function teleportToPlot(player: Player, character: Model)
 	if root ~= nil and root:IsA("BasePart") then
 		character:PivotTo(origin * CFrame.new(SPAWN_OFFSET))
 	end
+end
+
+-- Merkt sich, dass der Spieler die Villa verlassen hat (Respawns landen
+-- ab jetzt direkt auf der Insel) - z. B. nach Portal, GoHome oder Besuch.
+function PlanetService.markEntered(player: Player)
+	enteredWorld[player] = true
+end
+
+-- Teleportiert den Spieler auf die Plaza seiner Insel (Portal/GoHome).
+function PlanetService.teleportHome(player: Player): boolean
+	local origin = plotOrigins[player]
+	local character = player.Character
+	if origin == nil or character == nil then
+		return false
+	end
+	if character:FindFirstChild("HumanoidRootPart") == nil then
+		return false
+	end
+	enteredWorld[player] = true
+	character:PivotTo(origin * CFrame.new(SPAWN_OFFSET))
+	return true
 end
 
 --------------------------------------------------------------------------
@@ -1016,6 +1219,7 @@ local function onPlayerRemoving(player: Player)
 	end
 	plotIndices[player] = nil
 	plotOrigins[player] = nil
+	enteredWorld[player] = nil
 
 	local plotFolder = getPlotFolder(player)
 	if plotFolder ~= nil then

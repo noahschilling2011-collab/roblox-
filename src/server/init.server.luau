@@ -26,6 +26,7 @@ local SERVICE_STARTUP_ORDER = {
 	"TradeService",
 	"MonetizationService",
 	"LeaderboardService",
+	"LobbyService", -- Spawn-Villa (braucht PlanetService + LeaderboardService)
 	"DailyRewardService",
 	"QuestService",
 	"TutorialService",

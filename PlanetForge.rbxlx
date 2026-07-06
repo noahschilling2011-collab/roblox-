@@ -1,44 +1,20 @@
 <roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4">
-<Item class="Workspace" referent="PF51">
+<Item class="Workspace" referent="PF50">
 <Properties>
 <string name="Name">Workspace</string>
 </Properties>
-<Item class="SpawnLocation" referent="PF48">
+<Item class="SpawnLocation" referent="PF49">
 <Properties>
-<string name="Name">Ankunftsplattform</string>
+<string name="Name">VillaSpawn</string>
 <bool name="Anchored">true</bool>
-<Vector3 name="size"><X>26</X><Y>2</Y><Z>26</Z></Vector3>
-<CoordinateFrame name="CFrame"><X>0</X><Y>140</Y><Z>0</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
-<Color3uint8 name="Color3uint8">4281085498</Color3uint8>
-<token name="Material">800</token>
-</Properties>
-</Item>
-<Item class="Part" referent="PF49">
-<Properties>
-<string name="Name">AnkunftsRing</string>
-<bool name="Anchored">true</bool>
-<bool name="CanCollide">false</bool>
-<Vector3 name="size"><X>1</X><Y>32</Y><Z>32</Z></Vector3>
-<CoordinateFrame name="CFrame"><X>0</X><Y>139.4</Y><Z>0</Z><R00>0</R00><R01>-1</R01><R02>0</R02><R10>1</R10><R11>0</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
-<Color3uint8 name="Color3uint8">4286112255</Color3uint8>
-<token name="Material">288</token>
-<token name="shape">2</token>
-</Properties>
-</Item>
-<Item class="Part" referent="PF50">
-<Properties>
-<string name="Name">AnkunftsKern</string>
-<bool name="Anchored">true</bool>
-<bool name="CanCollide">false</bool>
-<Vector3 name="size"><X>0.4</X><Y>10</Y><Z>10</Z></Vector3>
-<CoordinateFrame name="CFrame"><X>0</X><Y>141.2</Y><Z>0</Z><R00>0</R00><R01>-1</R01><R02>0</R02><R10>1</R10><R11>0</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
-<Color3uint8 name="Color3uint8">4294955610</Color3uint8>
-<token name="Material">288</token>
-<token name="shape">2</token>
+<Vector3 name="size"><X>12</X><Y>0.4</Y><Z>12</Z></Vector3>
+<CoordinateFrame name="CFrame"><X>0</X><Y>141.25</Y><Z>16</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
+<Color3uint8 name="Color3uint8">4287375918</Color3uint8>
+<token name="Material">1312</token>
 </Properties>
 </Item>
 </Item>
-<Item class="ReplicatedStorage" referent="PF52">
+<Item class="ReplicatedStorage" referent="PF51">
 <Properties>
 <string name="Name">ReplicatedStorage</string>
 </Properties>
@@ -1555,11 +1531,11 @@ return WeightedRandom
 </Item>
 </Item>
 </Item>
-<Item class="ServerScriptService" referent="PF53">
+<Item class="ServerScriptService" referent="PF52">
 <Properties>
 <string name="Name">ServerScriptService</string>
 </Properties>
-<Item class="Script" referent="PF32">
+<Item class="Script" referent="PF33">
 <Properties>
 <string name="Name">Server</string>
 <ProtectedString name="Source">--!strict
@@ -1590,6 +1566,7 @@ local SERVICE_STARTUP_ORDER = {
 	"TradeService",
 	"MonetizationService",
 	"LeaderboardService",
+	"LobbyService", -- Spawn-Villa (braucht PlanetService + LeaderboardService)
 	"DailyRewardService",
 	"QuestService",
 	"TutorialService",
@@ -1613,7 +1590,7 @@ end
 print("[PlanetForge] Server bereit")
 </ProtectedString>
 </Properties>
-<Item class="Folder" referent="PF31">
+<Item class="Folder" referent="PF32">
 <Properties>
 <string name="Name">Services</string>
 </Properties>
@@ -4087,6 +4064,12 @@ local function broadcastSnapshot()
 	(leaderboardUpdatedEvent :: RemoteEvent):FireAllClients(lastSnapshot)
 end
 
+-- Zuletzt gelesener Ranglisten-Stand (z. B. für die Tafeln in der
+-- Spawn-Villa des LobbyService).
+function LeaderboardService.getSnapshot(): LeaderboardSnapshot
+	return lastSnapshot
+end
+
 function LeaderboardService.init()
 	leaderboardUpdatedEvent = Remotes.getEvent("LeaderboardUpdated")
 
@@ -4167,6 +4150,580 @@ return LeaderboardService
 </Properties>
 </Item>
 <Item class="ModuleScript" referent="PF22">
+<Properties>
+<string name="Name">LobbyService</string>
+<ProtectedString name="Source">--!strict
+-- LobbyService: die Spawn-Villa, in der jede Session beginnt.
+--
+-- Neue Spieler (und jeder Session-Start) landen in einer schwebenden
+-- Marmor-Villa am Weltursprung: Eingangshalle mit rotem Teppich,
+-- Kronleuchter, zwei großen Bestenliste-Tafeln (Energie und Likes aus dem
+-- LeaderboardService), goldener Kristall-Statue, Galerie mit Treppe zum
+-- Erkunden - und am Ende ein leuchtendes Portal. Erst wer durch das Portal
+-- geht, kommt auf seine eigene Insel (PlanetService.teleportHome); ab dann
+-- landen Respawns direkt auf der Insel.
+--
+-- Die Villa wird EINMAL beim Serverstart gebaut (geteilte Lobby, kein
+-- Per-Spieler-Aufbau). Der SpawnLocation-Part aus der Place-Datei wird in
+-- den Eingangsbereich verschoben bzw. dort erzeugt, falls er fehlt.
+
+local Players = game:GetService("Players")
+local Workspace = game:GetService("Workspace")
+
+local LeaderboardService = require(script.Parent.LeaderboardService)
+local PlanetService = require(script.Parent.PlanetService)
+
+-- Villa-Ursprung: Mittelpunkt der Bodenplatte; Oberkante liegt bei Y=141.
+local LOBBY_ORIGIN = CFrame.new(0, 140, 0)
+local FLOOR_TOP = 1 -- Oberkante der Bodenplatte relativ zum Ursprung
+
+local HALL_HALF_WIDTH = 28 -- Innenraum: X von -28 bis +28
+local HALL_HALF_DEPTH = 24 -- Innenraum: Z von -24 bis +24 (Tür bei +Z)
+local WALL_HEIGHT = 14
+
+local MARBLE_COLOR = Color3.fromRGB(226, 222, 212)
+local MARBLE_DARK = Color3.fromRGB(188, 182, 170)
+local GOLD_COLOR = Color3.fromRGB(255, 210, 90)
+local CARPET_COLOR = Color3.fromRGB(140, 42, 46)
+local GLASS_COLOR = Color3.fromRGB(178, 220, 240)
+local PORTAL_COLOR = Color3.fromRGB(120, 225, 255)
+local WOOD_COLOR = Color3.fromRGB(112, 84, 56)
+local BOARD_COLOR = Color3.fromRGB(34, 36, 48)
+
+local LEADERBOARD_BOARD_REFRESH_SECONDS = 20
+local PORTAL_COOLDOWN_SECONDS = 3
+
+local LobbyService = {}
+
+-- Zeilen-Labels der beiden Tafeln (werden periodisch neu befüllt).
+local energyRows: { TextLabel } = {}
+local likesRows: { TextLabel } = {}
+
+local lastPortalUse: { [Player]: number } = {}
+
+-- 1234567 -&gt; "1.234.567" (deutsche Tausendertrennung).
+local function formatNumber(value: number): string
+	local text = tostring(math.floor(value))
+	while true do
+		local replaced: number
+		text, replaced = text:gsub("^(-?%d+)(%d%d%d)", "%1.%2")
+		if replaced == 0 then
+			break
+		end
+	end
+	return text
+end
+
+local function newPart(parent: Instance, name: string, collide: boolean): Part
+	local part = Instance.new("Part")
+	part.Name = name
+	part.Anchored = true
+	part.CanCollide = collide
+	part.CanQuery = false
+	part.CanTouch = false
+	part.Parent = parent
+	return part
+end
+
+-- Liegender Zylinder (Scheibe) - für Teppiche, Ringe und Podeste.
+local function newDisc(parent: Instance, name: string, radius: number, thickness: number, cframe: CFrame, collide: boolean): Part
+	local disc = newPart(parent, name, collide)
+	disc.Shape = Enum.PartType.Cylinder
+	disc.Size = Vector3.new(thickness, radius * 2, radius * 2)
+	disc.CFrame = cframe * CFrame.Angles(0, 0, math.rad(90))
+	return disc
+end
+
+--------------------------------------------------------------------------
+-- Gebäude
+--------------------------------------------------------------------------
+
+local function buildShell(folder: Folder)
+	-- Bodenplatte (vorn 14 Studs Veranda vor der Tür).
+	local floor = newPart(folder, "VillaBoden", true)
+	floor.Size = Vector3.new(96, 2, 90)
+	floor.Color = MARBLE_COLOR
+	floor.Material = Enum.Material.Marble
+	floor.CFrame = LOBBY_ORIGIN * CFrame.new(0, 0, 7)
+
+	-- Goldene Bordüre um die Bodenplatte.
+	for _, edge in
+		{
+			{ size = Vector3.new(96, 0.4, 1), offset = Vector3.new(0, FLOOR_TOP + 0.2, 7 + 44.5) },
+			{ size = Vector3.new(96, 0.4, 1), offset = Vector3.new(0, FLOOR_TOP + 0.2, 7 - 44.5) },
+			{ size = Vector3.new(1, 0.4, 90), offset = Vector3.new(47.5, FLOOR_TOP + 0.2, 7) },
+			{ size = Vector3.new(1, 0.4, 90), offset = Vector3.new(-47.5, FLOOR_TOP + 0.2, 7) },
+		}
+	do
+		local trim = newPart(folder, "VillaBorduere", false)
+		trim.Size = edge.size
+		trim.Color = GOLD_COLOR
+		trim.Material = Enum.Material.Neon
+		trim.Transparency = 0.35
+		trim.CFrame = LOBBY_ORIGIN * CFrame.new(edge.offset)
+	end
+
+	-- Wände: hinten, links, rechts, vorn mit 12 Studs breiter Tür-Öffnung.
+	local wallY = FLOOR_TOP + WALL_HEIGHT / 2
+	local function wall(name: string, size: Vector3, offset: Vector3)
+		local part = newPart(folder, name, true)
+		part.Size = size
+		part.Color = MARBLE_COLOR
+		part.Material = Enum.Material.Marble
+		part.CFrame = LOBBY_ORIGIN * CFrame.new(offset)
+	end
+	wall("VillaWandHinten", Vector3.new(HALL_HALF_WIDTH * 2 + 2, WALL_HEIGHT, 1), Vector3.new(0, wallY, -HALL_HALF_DEPTH - 0.5))
+	wall("VillaWandLinks", Vector3.new(1, WALL_HEIGHT, HALL_HALF_DEPTH * 2 + 2), Vector3.new(-HALL_HALF_WIDTH - 0.5, wallY, 0))
+	wall("VillaWandRechts", Vector3.new(1, WALL_HEIGHT, HALL_HALF_DEPTH * 2 + 2), Vector3.new(HALL_HALF_WIDTH + 0.5, wallY, 0))
+	local frontSegmentWidth = (HALL_HALF_WIDTH * 2 - 12) / 2
+	wall("VillaWandVornL", Vector3.new(frontSegmentWidth, WALL_HEIGHT, 1), Vector3.new(-(6 + frontSegmentWidth / 2), wallY, HALL_HALF_DEPTH + 0.5))
+	wall("VillaWandVornR", Vector3.new(frontSegmentWidth, WALL_HEIGHT, 1), Vector3.new(6 + frontSegmentWidth / 2, wallY, HALL_HALF_DEPTH + 0.5))
+	wall("VillaTuersturz", Vector3.new(12, WALL_HEIGHT - 10, 1), Vector3.new(0, FLOOR_TOP + 10 + (WALL_HEIGHT - 10) / 2, HALL_HALF_DEPTH + 0.5))
+
+	-- Fenster in den Seitenwänden (Glas, von innen und außen sichtbar).
+	for _, side in { -1, 1 } do
+		for index = -1, 1 do
+			local window = newPart(folder, `VillaFenster_{side}_{index}`, false)
+			window.Size = Vector3.new(1.2, 6, 8)
+			window.Color = GLASS_COLOR
+			window.Material = Enum.Material.Glass
+			window.Transparency = 0.45
+			window.CFrame = LOBBY_ORIGIN * CFrame.new(side * (HALL_HALF_WIDTH + 0.5), FLOOR_TOP + 7.5, index * 14)
+		end
+	end
+
+	-- Dach mit Glaskuppel und goldener Kante.
+	local roof = newPart(folder, "VillaDach", true)
+	roof.Size = Vector3.new(HALL_HALF_WIDTH * 2 + 4, 1, HALL_HALF_DEPTH * 2 + 4)
+	roof.Color = MARBLE_DARK
+	roof.Material = Enum.Material.Marble
+	roof.CFrame = LOBBY_ORIGIN * CFrame.new(0, FLOOR_TOP + WALL_HEIGHT + 0.5, 0)
+
+	-- Glaskuppel: sitzt auf dem Dach, nur eine flache Kappe ragt in die Halle.
+	local dome = newPart(folder, "VillaKuppel", false)
+	dome.Shape = Enum.PartType.Ball
+	dome.Size = Vector3.new(20, 20, 20)
+	dome.Color = GLASS_COLOR
+	dome.Material = Enum.Material.Glass
+	dome.Transparency = 0.55
+	dome.CFrame = LOBBY_ORIGIN * CFrame.new(0, FLOOR_TOP + WALL_HEIGHT + 7, 0)
+
+	for _, side in { -1, 1 } do
+		local trimX = newPart(folder, "VillaDachkante", false)
+		trimX.Size = Vector3.new(HALL_HALF_WIDTH * 2 + 4, 0.6, 0.6)
+		trimX.Color = GOLD_COLOR
+		trimX.Material = Enum.Material.Neon
+		trimX.CFrame = LOBBY_ORIGIN * CFrame.new(0, FLOOR_TOP + WALL_HEIGHT + 1.2, side * (HALL_HALF_DEPTH + 1.7))
+		local trimZ = newPart(folder, "VillaDachkante", false)
+		trimZ.Size = Vector3.new(0.6, 0.6, HALL_HALF_DEPTH * 2 + 4)
+		trimZ.Color = GOLD_COLOR
+		trimZ.Material = Enum.Material.Neon
+		trimZ.CFrame = LOBBY_ORIGIN * CFrame.new(side * (HALL_HALF_WIDTH + 1.7), FLOOR_TOP + WALL_HEIGHT + 1.2, 0)
+	end
+
+	-- Veranda: 4 Säulen mit Golddeckel vor dem Eingang.
+	for index = 0, 3 do
+		local x = -13.5 + index * 9
+		local column = newPart(folder, `VillaSaeule_{index + 1}`, true)
+		column.Shape = Enum.PartType.Cylinder
+		column.Size = Vector3.new(12, 2.2, 2.2)
+		column.Color = MARBLE_COLOR
+		column.Material = Enum.Material.Marble
+		column.CFrame = LOBBY_ORIGIN * CFrame.new(x, FLOOR_TOP + 6, HALL_HALF_DEPTH + 12) * CFrame.Angles(0, 0, math.rad(90))
+		local cap = newPart(folder, `VillaSaeulenDeckel_{index + 1}`, false)
+		cap.Size = Vector3.new(3, 0.8, 3)
+		cap.Color = GOLD_COLOR
+		cap.Material = Enum.Material.Metal
+		cap.CFrame = LOBBY_ORIGIN * CFrame.new(x, FLOOR_TOP + 12.4, HALL_HALF_DEPTH + 12)
+	end
+	local porchRoof = newPart(folder, "VillaVerandadach", true)
+	porchRoof.Size = Vector3.new(34, 1, 18)
+	porchRoof.Color = MARBLE_DARK
+	porchRoof.Material = Enum.Material.Marble
+	porchRoof.CFrame = LOBBY_ORIGIN * CFrame.new(0, FLOOR_TOP + 13.3, HALL_HALF_DEPTH + 9)
+end
+
+local function buildInterior(folder: Folder)
+	-- Roter Teppich von der Tür bis zum Portal.
+	local carpet = newPart(folder, "VillaTeppich", false)
+	carpet.Size = Vector3.new(10, 0.15, 46)
+	carpet.Color = CARPET_COLOR
+	carpet.Material = Enum.Material.Fabric
+	carpet.CFrame = LOBBY_ORIGIN * CFrame.new(0, FLOOR_TOP + 0.1, 1)
+
+	-- Kronleuchter unter der Kuppel.
+	local ring = newDisc(folder, "VillaKronleuchter", 4, 0.5, LOBBY_ORIGIN * CFrame.new(0, FLOOR_TOP + 10.5, 0), false)
+	ring.Color = GOLD_COLOR
+	ring.Material = Enum.Material.Metal
+	for index = 0, 5 do
+		local angle = (index / 6) * 2 * math.pi
+		local candle = newPart(folder, `VillaKerze_{index + 1}`, false)
+		candle.Shape = Enum.PartType.Ball
+		candle.Size = Vector3.new(0.9, 0.9, 0.9)
+		candle.Color = Color3.fromRGB(255, 236, 170)
+		candle.Material = Enum.Material.Neon
+		candle.CFrame = LOBBY_ORIGIN * CFrame.new(math.cos(angle) * 4, FLOOR_TOP + 11, math.sin(angle) * 4)
+	end
+	local chandelierLight = Instance.new("PointLight")
+	chandelierLight.Color = Color3.fromRGB(255, 226, 170)
+	chandelierLight.Range = 42
+	chandelierLight.Brightness = 1.3
+	chandelierLight.Parent = ring
+
+	-- Goldene Kristall-Statue auf Marmor-Podest (Mitte rechts).
+	local pedestal = newDisc(folder, "VillaPodest", 3, 1.4, LOBBY_ORIGIN * CFrame.new(16, FLOOR_TOP + 0.7, -8), true)
+	pedestal.Color = MARBLE_DARK
+	pedestal.Material = Enum.Material.Marble
+	local statue = newPart(folder, "VillaStatue", false)
+	statue.Size = Vector3.new(2.2, 6, 2.2)
+	statue.Color = GOLD_COLOR
+	statue.Material = Enum.Material.Metal
+	statue.Reflectance = 0.25
+	statue.CFrame = LOBBY_ORIGIN * CFrame.new(16, FLOOR_TOP + 4.4, -8) * CFrame.Angles(0, math.rad(45), 0)
+	local statueLight = Instance.new("PointLight")
+	statueLight.Color = GOLD_COLOR
+	statueLight.Range = 16
+	statueLight.Brightness = 0.8
+	statueLight.Parent = statue
+
+	-- Sitzecke (links): zwei Sofas und ein Tisch auf rundem Teppich.
+	local rug = newDisc(folder, "VillaSitzteppich", 7, 0.12, LOBBY_ORIGIN * CFrame.new(-14, FLOOR_TOP + 0.1, 6), false)
+	rug.Color = Color3.fromRGB(120, 110, 140)
+	rug.Material = Enum.Material.Fabric
+	for index, offset in { CFrame.new(-14, 0, 12) * CFrame.Angles(0, math.pi, 0), CFrame.new(-14, 0, 0) } do
+		local seat = newPart(folder, `VillaSofa_{index}`, true)
+		seat.Size = Vector3.new(7, 1.2, 2.6)
+		seat.Color = Color3.fromRGB(86, 60, 110)
+		seat.Material = Enum.Material.Fabric
+		seat.CFrame = LOBBY_ORIGIN * offset * CFrame.new(0, FLOOR_TOP + 0.6, 0)
+		local back = newPart(folder, `VillaSofaLehne_{index}`, false)
+		back.Size = Vector3.new(7, 1.6, 0.6)
+		back.Color = seat.Color
+		back.Material = Enum.Material.Fabric
+		back.CFrame = LOBBY_ORIGIN * offset * CFrame.new(0, FLOOR_TOP + 2, -1)
+	end
+	local couchTable = newPart(folder, "VillaTisch", true)
+	couchTable.Size = Vector3.new(3.4, 1.1, 3.4)
+	couchTable.Color = WOOD_COLOR
+	couchTable.Material = Enum.Material.WoodPlanks
+	couchTable.CFrame = LOBBY_ORIGIN * CFrame.new(-14, FLOOR_TOP + 0.55, 6)
+
+	-- Pflanzen in den vier Ecken.
+	for index, corner in
+		{
+			Vector3.new(-HALL_HALF_WIDTH + 3, 0, -HALL_HALF_DEPTH + 3),
+			Vector3.new(HALL_HALF_WIDTH - 3, 0, -HALL_HALF_DEPTH + 3),
+			Vector3.new(-HALL_HALF_WIDTH + 3, 0, HALL_HALF_DEPTH - 3),
+			Vector3.new(HALL_HALF_WIDTH - 3, 0, HALL_HALF_DEPTH - 3),
+		}
+	do
+		local pot = newPart(folder, `VillaTopf_{index}`, true)
+		pot.Shape = Enum.PartType.Cylinder
+		pot.Size = Vector3.new(1.6, 2, 2)
+		pot.Color = Color3.fromRGB(146, 96, 66)
+		pot.Material = Enum.Material.Slate
+		pot.CFrame = LOBBY_ORIGIN * CFrame.new(corner + Vector3.new(0, FLOOR_TOP + 0.8, 0)) * CFrame.Angles(0, 0, math.rad(90))
+		local leaves = newPart(folder, `VillaPflanze_{index}`, false)
+		leaves.Shape = Enum.PartType.Ball
+		leaves.Size = Vector3.new(3, 3.6, 3)
+		leaves.Color = Color3.fromRGB(96, 150, 88)
+		leaves.Material = Enum.Material.Grass
+		leaves.CFrame = LOBBY_ORIGIN * CFrame.new(corner + Vector3.new(0, FLOOR_TOP + 3.4, 0))
+	end
+
+	-- Drei "Gemälde" an der Rückwand (bunte Leinwände mit Goldrahmen).
+	local paintingColors = { Color3.fromRGB(96, 140, 200), Color3.fromRGB(214, 130, 80), Color3.fromRGB(120, 180, 120) }
+	for index, color in paintingColors do
+		local x = -14 + (index - 1) * 14
+		local frame = newPart(folder, `VillaRahmen_{index}`, false)
+		frame.Size = Vector3.new(6.4, 4.6, 0.3)
+		frame.Color = GOLD_COLOR
+		frame.Material = Enum.Material.Metal
+		frame.CFrame = LOBBY_ORIGIN * CFrame.new(x, FLOOR_TOP + 8, -HALL_HALF_DEPTH + 0.25)
+		local canvas = newPart(folder, `VillaGemaelde_{index}`, false)
+		canvas.Size = Vector3.new(5.6, 3.8, 0.2)
+		canvas.Color = color
+		canvas.Material = Enum.Material.SmoothPlastic
+		canvas.CFrame = LOBBY_ORIGIN * CFrame.new(x, FLOOR_TOP + 8, -HALL_HALF_DEPTH + 0.1)
+	end
+
+	-- Galerie: Treppe an der linken Wand hinauf zu einem Balkon mit Geländer.
+	for step = 1, 10 do
+		local tread = newPart(folder, `VillaStufe_{step}`, true)
+		tread.Size = Vector3.new(4, 0.8, 2.4)
+		tread.Color = MARBLE_DARK
+		tread.Material = Enum.Material.Marble
+		tread.CFrame = LOBBY_ORIGIN * CFrame.new(-HALL_HALF_WIDTH + 2.5, FLOOR_TOP + step * 0.7 - 0.35, HALL_HALF_DEPTH - 2 - step * 2.2)
+	end
+	local balcony = newPart(folder, "VillaBalkon", true)
+	balcony.Size = Vector3.new(10, 0.8, 24)
+	balcony.Color = MARBLE_COLOR
+	balcony.Material = Enum.Material.Marble
+	balcony.CFrame = LOBBY_ORIGIN * CFrame.new(-HALL_HALF_WIDTH + 5.5, FLOOR_TOP + 7.35, -HALL_HALF_DEPTH + 12)
+	local railing = newPart(folder, "VillaGelaender", true)
+	railing.Size = Vector3.new(0.4, 2.4, 24)
+	railing.Color = GOLD_COLOR
+	railing.Material = Enum.Material.Metal
+	railing.Transparency = 0.2
+	railing.CFrame = LOBBY_ORIGIN * CFrame.new(-HALL_HALF_WIDTH + 10.3, FLOOR_TOP + 8.9, -HALL_HALF_DEPTH + 12)
+end
+
+--------------------------------------------------------------------------
+-- Bestenliste-Tafeln
+--------------------------------------------------------------------------
+
+-- Baut eine Wandtafel mit Titel und 10 Zeilen; gibt die Zeilen zurück.
+local function buildBoard(folder: Folder, cframe: CFrame, title: string): { TextLabel }
+	local backing = newPart(folder, "VillaTafel", false)
+	backing.Size = Vector3.new(14, 9, 0.6)
+	backing.Color = BOARD_COLOR
+	backing.Material = Enum.Material.SmoothPlastic
+	backing.CFrame = cframe
+
+	local trim = newPart(folder, "VillaTafelRahmen", false)
+	trim.Size = Vector3.new(14.8, 9.8, 0.4)
+	trim.Color = GOLD_COLOR
+	trim.Material = Enum.Material.Metal
+	trim.CFrame = cframe * CFrame.new(0, 0, 0.15)
+
+	local gui = Instance.new("SurfaceGui")
+	gui.Name = "BoardGui"
+	gui.Face = Enum.NormalId.Front
+	gui.CanvasSize = Vector2.new(700, 450)
+	gui.LightInfluence = 0
+	gui.Brightness = 1.4
+	gui.Parent = backing
+
+	local titleLabel = Instance.new("TextLabel")
+	titleLabel.BackgroundTransparency = 1
+	titleLabel.Size = UDim2.new(1, 0, 0, 64)
+	titleLabel.Font = Enum.Font.GothamBold
+	titleLabel.TextSize = 40
+	titleLabel.TextColor3 = GOLD_COLOR
+	titleLabel.Text = title
+	titleLabel.Parent = gui
+
+	local rows: { TextLabel } = {}
+	for index = 1, 10 do
+		local row = Instance.new("TextLabel")
+		row.Name = `Row_{index}`
+		row.BackgroundTransparency = 1
+		row.Position = UDim2.new(0, 40, 0, 64 + (index - 1) * 38)
+		row.Size = UDim2.new(1, -80, 0, 36)
+		row.Font = Enum.Font.GothamMedium
+		row.TextSize = 26
+		row.TextXAlignment = Enum.TextXAlignment.Left
+		row.TextColor3 = Color3.fromRGB(235, 238, 245)
+		row.Text = `{index}.  –`
+		row.Parent = gui
+		table.insert(rows, row)
+	end
+	return rows
+end
+
+-- Befüllt die Zeilen einer Tafel mit einem Ranglisten-Ausschnitt.
+local function fillBoard(rows: { TextLabel }, entries: { LeaderboardService.LeaderboardEntry })
+	for index, row in rows do
+		local entry = entries[index]
+		if entry ~= nil then
+			local medal = if index == 1 then "🥇" elseif index == 2 then "🥈" elseif index == 3 then "🥉" else `{index}.`
+			row.Text = `{medal}  {entry.name}  –  {formatNumber(entry.value)}`
+			row.TextColor3 = if index &lt;= 3 then GOLD_COLOR else Color3.fromRGB(235, 238, 245)
+		else
+			row.Text = `{index}.  –`
+			row.TextColor3 = Color3.fromRGB(120, 126, 148)
+		end
+	end
+end
+
+--------------------------------------------------------------------------
+-- Portal und Spawn
+--------------------------------------------------------------------------
+
+local function buildPortal(folder: Folder)
+	local portalCenter = LOBBY_ORIGIN * CFrame.new(0, FLOOR_TOP, -HALL_HALF_DEPTH + 2)
+
+	-- Goldener Torbogen.
+	for _, side in { -1, 1 } do
+		local pillar = newPart(folder, "PortalPfeiler", true)
+		pillar.Size = Vector3.new(2, 12, 2)
+		pillar.Color = MARBLE_DARK
+		pillar.Material = Enum.Material.Marble
+		pillar.CFrame = portalCenter * CFrame.new(side * 6, 6, 0)
+	end
+	local arch = newPart(folder, "PortalBogen", false)
+	arch.Size = Vector3.new(14, 2, 2)
+	arch.Color = GOLD_COLOR
+	arch.Material = Enum.Material.Metal
+	arch.CFrame = portalCenter * CFrame.new(0, 13, 0)
+
+	-- Leuchtende Portal-Scheibe (senkrecht, Achse zeigt durch den Bogen).
+	local disc = newPart(folder, "PortalScheibe", false)
+	disc.Shape = Enum.PartType.Cylinder
+	disc.Size = Vector3.new(0.8, 10, 10)
+	disc.Color = PORTAL_COLOR
+	disc.Material = Enum.Material.Neon
+	disc.Transparency = 0.35
+	disc.CFrame = portalCenter * CFrame.new(0, 6, 0) * CFrame.Angles(0, math.rad(90), 0)
+
+	local swirl = Instance.new("ParticleEmitter")
+	swirl.Name = "PortalPartikel"
+	swirl.Color = ColorSequence.new(PORTAL_COLOR, Color3.new(1, 1, 1))
+	swirl.LightEmission = 1
+	swirl.Rate = 14
+	swirl.Lifetime = NumberRange.new(1, 1.8)
+	swirl.Speed = NumberRange.new(2, 4)
+	swirl.SpreadAngle = Vector2.new(180, 180)
+	swirl.Size = NumberSequence.new(0.5)
+	swirl.Parent = disc
+
+	local portalLight = Instance.new("PointLight")
+	portalLight.Color = PORTAL_COLOR
+	portalLight.Range = 24
+	portalLight.Brightness = 1.2
+	portalLight.Parent = disc
+
+	-- Schild über dem Portal.
+	local billboard = Instance.new("BillboardGui")
+	billboard.Size = UDim2.fromOffset(320, 60)
+	billboard.StudsOffset = Vector3.new(0, 9, 0)
+	billboard.MaxDistance = 120
+	local label = Instance.new("TextLabel")
+	label.Size = UDim2.fromScale(1, 1)
+	label.BackgroundTransparency = 1
+	label.Font = Enum.Font.GothamBold
+	label.TextScaled = true
+	label.TextColor3 = PORTAL_COLOR
+	label.TextStrokeTransparency = 0.4
+	label.Text = "🌍 Zu deiner Insel"
+	label.Parent = billboard
+	billboard.Parent = disc
+
+	-- Unsichtbarer Auslöser: Berührung teleportiert auf die eigene Insel.
+	local touch = newPart(folder, "PortalAusloeser", false)
+	touch.Size = Vector3.new(11, 12, 3)
+	touch.Transparency = 1
+	touch.CanTouch = true
+	touch.CFrame = portalCenter * CFrame.new(0, 6, 0)
+
+	touch.Touched:Connect(function(hit: BasePart)
+		local character = hit.Parent
+		if character == nil then
+			return
+		end
+		local player = Players:GetPlayerFromCharacter(character)
+		if player == nil then
+			return
+		end
+		local now = os.clock()
+		if now - (lastPortalUse[player] or 0) &lt; PORTAL_COOLDOWN_SECONDS then
+			return
+		end
+		lastPortalUse[player] = now
+
+		if PlanetService.teleportHome(player) then
+			local sound = Instance.new("Sound")
+			sound.SoundId = "rbxasset://sounds/swoosh.wav"
+			sound.Volume = 0.7
+			sound.Parent = touch
+			sound:Play()
+			task.delay(2, function()
+				sound:Destroy()
+			end)
+		end
+	end)
+end
+
+-- Willkommensschild neben der Tür (innen).
+local function buildWelcomeSign(folder: Folder)
+	local sign = newPart(folder, "VillaWillkommen", false)
+	sign.Size = Vector3.new(9, 5, 0.5)
+	sign.Color = BOARD_COLOR
+	sign.Material = Enum.Material.SmoothPlastic
+	-- Identität: die Front-Fläche zeigt in Richtung -Z, also in die Halle.
+	sign.CFrame = LOBBY_ORIGIN * CFrame.new(14, FLOOR_TOP + 6, HALL_HALF_DEPTH - 0.3)
+
+	local gui = Instance.new("SurfaceGui")
+	gui.Face = Enum.NormalId.Front
+	gui.CanvasSize = Vector2.new(450, 250)
+	gui.LightInfluence = 0
+	gui.Brightness = 1.4
+	gui.Parent = sign
+
+	local text = Instance.new("TextLabel")
+	text.BackgroundTransparency = 1
+	text.Size = UDim2.fromScale(1, 1)
+	text.Font = Enum.Font.GothamBold
+	text.TextSize = 30
+	text.TextWrapped = true
+	text.TextColor3 = Color3.fromRGB(235, 238, 245)
+	text.Text = "🏰 Willkommen in Planet Forge!\n\nSchau dich um, bestaune die Bestenliste - und spring dann durch das Portal zu deiner eigenen Insel! 🌍"
+	text.Parent = gui
+end
+
+-- Verschiebt den SpawnLocation-Part in den Eingangsbereich der Villa
+-- (oder erzeugt ihn, falls die Place-Datei keinen enthält).
+local function ensureSpawnLocation()
+	local spawnLocation = Workspace:FindFirstChildWhichIsA("SpawnLocation", true)
+	if spawnLocation == nil then
+		spawnLocation = Instance.new("SpawnLocation")
+		spawnLocation.Name = "VillaSpawn"
+		spawnLocation.Anchored = true
+		spawnLocation.Parent = Workspace
+	end
+	local spawnPad = spawnLocation :: SpawnLocation
+	spawnPad.Size = Vector3.new(12, 0.4, 12)
+	spawnPad.Color = CARPET_COLOR
+	spawnPad.Material = Enum.Material.Fabric
+	spawnPad.CFrame = LOBBY_ORIGIN * CFrame.new(0, FLOOR_TOP + 0.25, 16)
+	spawnPad.Duration = 0
+end
+
+function LobbyService.init()
+	local folder = Instance.new("Folder")
+	folder.Name = "SpawnVilla"
+
+	buildShell(folder)
+	buildInterior(folder)
+	buildPortal(folder)
+	buildWelcomeSign(folder)
+
+	-- Bestenliste-Tafeln links und rechts vom Portal an der Rückwand
+	-- (180° gedreht, damit die Front-Fläche in die Halle zeigt).
+	energyRows = buildBoard(
+		folder,
+		LOBBY_ORIGIN * CFrame.new(-17, FLOOR_TOP + 7.5, -HALL_HALF_DEPTH + 0.8) * CFrame.Angles(0, math.rad(180), 0),
+		"⚡ Bestenliste – Energie"
+	)
+	likesRows = buildBoard(
+		folder,
+		LOBBY_ORIGIN * CFrame.new(17, FLOOR_TOP + 7.5, -HALL_HALF_DEPTH + 0.8) * CFrame.Angles(0, math.rad(180), 0),
+		"❤️ Bestenliste – Likes"
+	)
+
+	folder.Parent = Workspace
+	ensureSpawnLocation()
+
+	Players.PlayerRemoving:Connect(function(player)
+		lastPortalUse[player] = nil
+	end)
+
+	-- Tafeln periodisch mit dem Ranglisten-Stand befüllen.
+	task.spawn(function()
+		while true do
+			local snapshot = LeaderboardService.getSnapshot()
+			fillBoard(energyRows, snapshot.energy)
+			fillBoard(likesRows, snapshot.likes)
+			task.wait(LEADERBOARD_BOARD_REFRESH_SECONDS)
+		end
+	end)
+end
+
+return LobbyService
+</ProtectedString>
+</Properties>
+</Item>
+<Item class="ModuleScript" referent="PF23">
 <Properties>
 <string name="Name">LootService</string>
 <ProtectedString name="Source">--!strict
@@ -4309,7 +4866,7 @@ return LootService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="PF23">
+<Item class="ModuleScript" referent="PF24">
 <Properties>
 <string name="Name">MonetizationService</string>
 <ProtectedString name="Source">--!strict
@@ -4887,7 +5444,7 @@ return MonetizationService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="PF24">
+<Item class="ModuleScript" referent="PF25">
 <Properties>
 <string name="Name">PlanetService</string>
 <ProtectedString name="Source">--!strict
@@ -4955,6 +5512,10 @@ local plotIndices: { [Player]: number } = {}
 local plotOrigins: { [Player]: CFrame } = {}
 local usedIndices: { [number]: boolean } = {}
 local characterConnections: { [Player]: RBXScriptConnection } = {}
+
+-- Spieler, die die Spawn-Villa bereits verlassen haben (pro Session):
+-- erst ab dann landen Respawns direkt auf der eigenen Insel.
+local enteredWorld: { [Player]: boolean } = {}
 
 local planetUpdatedEvent: RemoteEvent? = nil
 
@@ -5674,6 +6235,177 @@ local function buildPad(folder: Folder, origin: CFrame, name: string, offset: Ve
 	return pad
 end
 
+-- Das eigene Häuschen auf der Insel: Holzhaus mit Giebeldach, Fenstern,
+-- Laterne und kleiner Einrichtung. Steht zwischen zwei Radialwegen und
+-- die Tür zeigt zur Plaza - DAS macht die Insel zum echten Zuhause.
+local function buildHomeCottage(folder: Folder, origin: CFrame)
+	local topY = BASE_THICKNESS / 2
+	-- Anker zwischen zwei Wegen; lokal zeigt +Z zurück zur Inselmitte.
+	local anchor = origin * CFrame.Angles(0, -math.rad(15), 0) * CFrame.new(0, topY, -28)
+
+	local WALL_COLOR = Color3.fromRGB(232, 220, 196)
+	local WOOD_COLOR = Color3.fromRGB(133, 100, 64)
+	local ROOF_COLOR = Color3.fromRGB(152, 72, 60)
+
+	-- Sockel/Boden.
+	local sockel = newIslandPart(folder, "HausSockel")
+	sockel.Size = Vector3.new(13, 0.5, 11)
+	sockel.Color = WOOD_COLOR
+	sockel.Material = Enum.Material.WoodPlanks
+	sockel.CFrame = anchor * CFrame.new(0, 0.25, 0)
+
+	-- Wände (Tür-Lücke vorn Richtung Plaza).
+	local function wall(name: string, size: Vector3, offset: CFrame)
+		local part = newIslandPart(folder, name)
+		part.Size = size
+		part.Color = WALL_COLOR
+		part.Material = Enum.Material.SmoothPlastic
+		part.CFrame = anchor * offset
+	end
+	wall("HausWandHinten", Vector3.new(13, 5.5, 0.6), CFrame.new(0, 3.25, -5.2))
+	wall("HausWandLinks", Vector3.new(0.6, 5.5, 11), CFrame.new(-6.2, 3.25, 0))
+	wall("HausWandRechts", Vector3.new(0.6, 5.5, 11), CFrame.new(6.2, 3.25, 0))
+	wall("HausWandVornL", Vector3.new(4.7, 5.5, 0.6), CFrame.new(-4.15, 3.25, 5.2))
+	wall("HausWandVornR", Vector3.new(4.7, 5.5, 0.6), CFrame.new(4.15, 3.25, 5.2))
+	wall("HausTuersturz", Vector3.new(3.6, 1.5, 0.6), CFrame.new(0, 5.25, 5.2))
+
+	-- Fenster (Glas, leicht nach innen versetzt).
+	for _, side in { -1, 1 } do
+		local window = newDecoPart(folder, `HausFenster_{side}`)
+		window.Size = Vector3.new(0.2, 2.5, 3)
+		window.Color = Color3.fromRGB(178, 220, 240)
+		window.Material = Enum.Material.Glass
+		window.Transparency = 0.4
+		window.CFrame = anchor * CFrame.new(side * 6.0, 3.4, 0)
+	end
+
+	-- Giebeldach aus zwei Keilen.
+	for _, side in { -1, 1 } do
+		local wedge = Instance.new("WedgePart")
+		wedge.Name = `HausDach_{side}`
+		wedge.Anchored = true
+		wedge.Size = Vector3.new(13.8, 3.2, 6.1)
+		wedge.Color = ROOF_COLOR
+		wedge.Material = Enum.Material.Slate
+		wedge.CFrame = anchor
+			* CFrame.new(0, 7.6, side * 3.05)
+			* CFrame.Angles(0, if side == 1 then math.pi else 0, 0)
+		wedge.Parent = folder
+	end
+
+	-- Schornstein (trägt das Schild, damit es frei über dem Dach schwebt).
+	local chimney = newIslandPart(folder, "HausSchornstein")
+	chimney.Size = Vector3.new(1.4, 2.6, 1.4)
+	chimney.Color = Color3.fromRGB(110, 108, 114)
+	chimney.Material = Enum.Material.Slate
+	chimney.CFrame = anchor * CFrame.new(4, 9.2, -2)
+	createZoneLabel(chimney, "🏠 Dein Zuhause")
+
+	-- Fußmatte und Laterne an der Tür.
+	local mat = newDecoPart(folder, "HausMatte")
+	mat.Size = Vector3.new(3.4, 0.15, 1.6)
+	mat.Color = Color3.fromRGB(94, 70, 48)
+	mat.Material = Enum.Material.Fabric
+	mat.CFrame = anchor * CFrame.new(0, 0.58, 6.2)
+
+	local post = newDecoPart(folder, "HausLaterne")
+	post.Size = Vector3.new(0.5, 3, 0.5)
+	post.Color = Color3.fromRGB(70, 68, 76)
+	post.Material = Enum.Material.Metal
+	post.CFrame = anchor * CFrame.new(5.4, 1.5, 6.4)
+	local lampe = newDecoPart(folder, "HausLaternenlicht")
+	lampe.Size = Vector3.new(0.9, 0.9, 0.9)
+	lampe.Color = GOLD_COLOR
+	lampe.Material = Enum.Material.Neon
+	lampe.CFrame = anchor * CFrame.new(5.4, 3.3, 6.4)
+	local lampLight = Instance.new("PointLight")
+	lampLight.Color = GOLD_COLOR
+	lampLight.Range = 12
+	lampLight.Brightness = 0.8
+	lampLight.Parent = lampe
+
+	-- Mini-Einrichtung (durch die Tür sichtbar): Bett, Teppich, Regal.
+	local bett = newDecoPart(folder, "HausBett")
+	bett.Size = Vector3.new(4, 0.9, 2.2)
+	bett.Color = Color3.fromRGB(90, 120, 180)
+	bett.Material = Enum.Material.Fabric
+	bett.CFrame = anchor * CFrame.new(-3.6, 0.95, -3.4)
+	local kissen = newDecoPart(folder, "HausKissen")
+	kissen.Size = Vector3.new(1, 0.5, 1.8)
+	kissen.Color = Color3.new(1, 1, 1)
+	kissen.Material = Enum.Material.Fabric
+	kissen.CFrame = anchor * CFrame.new(-5.2, 1.65, -3.4)
+	local teppich = newDisc(folder, "HausTeppich", 2, 0.12, anchor * CFrame.new(0.5, 0.56, 0.5))
+	teppich.Color = Color3.fromRGB(178, 84, 76)
+	teppich.Material = Enum.Material.Fabric
+	local regal = newDecoPart(folder, "HausRegal")
+	regal.Size = Vector3.new(0.7, 2.6, 3)
+	regal.Color = WOOD_COLOR
+	regal.Material = Enum.Material.WoodPlanks
+	regal.CFrame = anchor * CFrame.new(5.5, 1.85, -3.2)
+end
+
+-- Kleiner Garten auf der gegenüberliegenden Inselseite: Bäume, Blumen
+-- und eine Bank mit Blick auf den Kristall.
+local function buildGarden(folder: Folder, origin: CFrame)
+	local topY = BASE_THICKNESS / 2
+	local anchor = origin * CFrame.Angles(0, -math.rad(195), 0) * CFrame.new(0, topY, -27)
+
+	-- Zwei Bäume mit rundem Stamm und zwei Kronen-Kugeln.
+	for index, offset in { Vector3.new(-6, 0, -2), Vector3.new(6.5, 0, 1) } do
+		local trunk = newDecoPart(folder, `GartenStamm_{index}`)
+		trunk.Shape = Enum.PartType.Cylinder
+		trunk.Size = Vector3.new(4.6, 1.1, 1.1)
+		trunk.Color = Color3.fromRGB(110, 82, 54)
+		trunk.Material = Enum.Material.Wood
+		trunk.CFrame = anchor * CFrame.new(offset + Vector3.new(0, 2.3, 0)) * CFrame.Angles(0, 0, math.rad(90))
+		for crown = 1, 2 do
+			local leaves = newDecoPart(folder, `GartenKrone_{index}_{crown}`)
+			leaves.Shape = Enum.PartType.Ball
+			local size = 4.6 - crown * 1.1
+			leaves.Size = Vector3.new(size, size * 0.85, size)
+			leaves.Color = Color3.fromRGB(92 + crown * 18, 150 + crown * 14, 84)
+			leaves.Material = Enum.Material.Grass
+			leaves.CFrame = anchor * CFrame.new(offset + Vector3.new(0, 4 + crown * 1.4, 0))
+		end
+	end
+
+	-- Bank mit Blick zur Inselmitte.
+	local seat = newIslandPart(folder, "GartenBank")
+	seat.Size = Vector3.new(4, 0.4, 1.4)
+	seat.Color = Color3.fromRGB(133, 100, 64)
+	seat.Material = Enum.Material.WoodPlanks
+	seat.CFrame = anchor * CFrame.new(0, 1.2, 3)
+	local lehne = newDecoPart(folder, "GartenBankLehne")
+	lehne.Size = Vector3.new(4, 1.4, 0.3)
+	lehne.Color = seat.Color
+	lehne.Material = Enum.Material.WoodPlanks
+	lehne.CFrame = anchor * CFrame.new(0, 2.1, 2.45)
+	for _, side in { -1, 1 } do
+		local leg = newDecoPart(folder, `GartenBankFuss_{side}`)
+		leg.Size = Vector3.new(0.4, 1, 1.2)
+		leg.Color = Color3.fromRGB(90, 68, 44)
+		leg.Material = Enum.Material.Wood
+		leg.CFrame = anchor * CFrame.new(side * 1.6, 0.5, 3)
+	end
+
+	-- Blumen: bunte Mini-Kugeln auf Stielen.
+	local flowerColors = { Color3.fromRGB(240, 110, 130), Color3.fromRGB(255, 200, 80), Color3.fromRGB(150, 120, 230) }
+	for index, color in flowerColors do
+		local stem = newDecoPart(folder, `GartenStiel_{index}`)
+		stem.Size = Vector3.new(0.18, 1.1, 0.18)
+		stem.Color = Color3.fromRGB(88, 140, 70)
+		stem.Material = Enum.Material.Grass
+		stem.CFrame = anchor * CFrame.new(-3 + index * 2.1, 0.55, 5.4)
+		local bloom = newDecoPart(folder, `GartenBluete_{index}`)
+		bloom.Shape = Enum.PartType.Ball
+		bloom.Size = Vector3.new(0.7, 0.7, 0.7)
+		bloom.Color = color
+		bloom.Material = Enum.Material.Neon
+		bloom.CFrame = anchor * CFrame.new(-3 + index * 2.1, 1.25, 5.4)
+	end
+end
+
 -- Baut die komplette Insel eines Spielers auf.
 local function buildIsland(player: Player, origin: CFrame)
 	local folder = Instance.new("Folder")
@@ -5682,6 +6414,8 @@ local function buildIsland(player: Player, origin: CFrame)
 	buildIslandBody(folder, origin)
 	buildHubPlaza(folder, origin)
 	buildCoreCrystal(folder, origin)
+	buildHomeCottage(folder, origin)
+	buildGarden(folder, origin)
 
 	-- Verkaufs-Pad (Rucksack -&gt; Energie) und Shop-Pad (öffnet den Shop).
 	buildPad(folder, origin, "SellPad", SELL_PAD_OFFSET, SELL_PAD_COLOR, "💰 Verkaufen")
@@ -5703,6 +6437,11 @@ local function buildIsland(player: Player, origin: CFrame)
 end
 
 local function teleportToPlot(player: Player, character: Model)
+	-- Erster Spawn der Session: der Spieler startet in der Spawn-Villa
+	-- (LobbyService) und kommt erst über deren Portal auf seine Insel.
+	if not enteredWorld[player] then
+		return
+	end
 	local origin = plotOrigins[player]
 	if origin == nil then
 		return
@@ -5711,6 +6450,27 @@ local function teleportToPlot(player: Player, character: Model)
 	if root ~= nil and root:IsA("BasePart") then
 		character:PivotTo(origin * CFrame.new(SPAWN_OFFSET))
 	end
+end
+
+-- Merkt sich, dass der Spieler die Villa verlassen hat (Respawns landen
+-- ab jetzt direkt auf der Insel) - z. B. nach Portal, GoHome oder Besuch.
+function PlanetService.markEntered(player: Player)
+	enteredWorld[player] = true
+end
+
+-- Teleportiert den Spieler auf die Plaza seiner Insel (Portal/GoHome).
+function PlanetService.teleportHome(player: Player): boolean
+	local origin = plotOrigins[player]
+	local character = player.Character
+	if origin == nil or character == nil then
+		return false
+	end
+	if character:FindFirstChild("HumanoidRootPart") == nil then
+		return false
+	end
+	enteredWorld[player] = true
+	character:PivotTo(origin * CFrame.new(SPAWN_OFFSET))
+	return true
 end
 
 --------------------------------------------------------------------------
@@ -5908,6 +6668,7 @@ local function onPlayerRemoving(player: Player)
 	end
 	plotIndices[player] = nil
 	plotOrigins[player] = nil
+	enteredWorld[player] = nil
 
 	local plotFolder = getPlotFolder(player)
 	if plotFolder ~= nil then
@@ -6124,7 +6885,7 @@ return PlanetService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="PF25">
+<Item class="ModuleScript" referent="PF26">
 <Properties>
 <string name="Name">ProgressionService</string>
 <ProtectedString name="Source">--!strict
@@ -6311,7 +7072,7 @@ return ProgressionService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="PF26">
+<Item class="ModuleScript" referent="PF27">
 <Properties>
 <string name="Name">QuestService</string>
 <ProtectedString name="Source">--!strict
@@ -6478,7 +7239,7 @@ return QuestService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="PF27">
+<Item class="ModuleScript" referent="PF28">
 <Properties>
 <string name="Name">SelfCheckService</string>
 <ProtectedString name="Source">--!strict
@@ -6883,7 +7644,7 @@ return SelfCheckService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="PF28">
+<Item class="ModuleScript" referent="PF29">
 <Properties>
 <string name="Name">TradeService</string>
 <ProtectedString name="Source">--!strict
@@ -7372,7 +8133,7 @@ return TradeService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="PF29">
+<Item class="ModuleScript" referent="PF30">
 <Properties>
 <string name="Name">TutorialService</string>
 <ProtectedString name="Source">--!strict
@@ -7512,7 +8273,7 @@ return TutorialService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="PF30">
+<Item class="ModuleScript" referent="PF31">
 <Properties>
 <string name="Name">VisitService</string>
 <ProtectedString name="Source">--!strict
@@ -7530,10 +8291,8 @@ local DataService = require(script.Parent.DataService)
 local PlanetService = require(script.Parent.PlanetService)
 
 -- Versatz beim Besuch: ~20 Studs neben dem Ziel-Plot-Ursprung, leicht erhöht,
--- damit der Charakter auf den Slot-Plattformen bzw. dem Kernrand landet.
+-- damit der Charakter auf der Plaza der fremden Insel landet.
 local VISIT_OFFSET = CFrame.new(20, 8, 0)
--- Versatz für die Heimkehr: oberhalb des eigenen Planetenkerns (Kernradius 12 + Puffer).
-local HOME_OFFSET = CFrame.new(0, 16, 0)
 
 -- Session-Sets: pro Besucher die Ziele, die bereits gezählt wurden.
 local countedVisits: { [Player]: { [Player]: boolean } } = {}
@@ -7610,6 +8369,9 @@ local function handleRequestVisit(player: Player, targetUserIdArg: unknown): (bo
 	end
 
 	character:PivotTo(origin * VISIT_OFFSET)
+	-- Wer eine Insel besucht, hat die Spawn-Villa verlassen: Respawns
+	-- landen ab jetzt auf der eigenen Insel statt in der Villa.
+	PlanetService.markEntered(player)
 
 	-- Besuchszähler: nur einmal pro (Besucher, Ziel) und Session erhöhen.
 	-- Ist das Zielprofil noch nicht geladen, wird NICHT markiert, damit ein
@@ -7627,19 +8389,13 @@ local function handleRequestVisit(player: Player, targetUserIdArg: unknown): (bo
 end
 
 -- Remote-Handler: GoHome() -&gt; (ok, nil | Fehlermeldung)
+-- Nutzt PlanetService.teleportHome: landet auf der Plaza und merkt sich,
+-- dass der Spieler die Spawn-Villa verlassen hat.
 local function handleGoHome(player: Player): (boolean, any?)
-	local origin = PlanetService.getPlotOrigin(player)
-	if origin == nil then
-		return false, "Dein Planet ist noch nicht bereit."
+	if not PlanetService.teleportHome(player) then
+		return false, "Dein Planet oder Charakter ist gerade nicht bereit."
 	end
-
-	local character = getCharacterWithRoot(player)
-	if character == nil then
-		return false, "Dein Charakter ist gerade nicht bereit."
-	end
-
-	character:PivotTo(origin * HOME_OFFSET)
-	notify(player, "Willkommen zurück auf deinem Planeten.", "info")
+	notify(player, "Willkommen zurück auf deiner Insel.", "info")
 	return true
 end
 
@@ -7695,21 +8451,21 @@ return VisitService
 </Item>
 </Item>
 </Item>
-<Item class="Lighting" referent="PF54">
+<Item class="Lighting" referent="PF53">
 <Properties>
 <string name="Name">Lighting</string>
 <token name="Technology">4</token>
 </Properties>
 </Item>
-<Item class="StarterPlayer" referent="PF55">
+<Item class="StarterPlayer" referent="PF54">
 <Properties>
 <string name="Name">StarterPlayer</string>
 </Properties>
-<Item class="StarterPlayerScripts" referent="PF56">
+<Item class="StarterPlayerScripts" referent="PF55">
 <Properties>
 <string name="Name">StarterPlayerScripts</string>
 </Properties>
-<Item class="LocalScript" referent="PF47">
+<Item class="LocalScript" referent="PF48">
 <Properties>
 <string name="Name">Client</string>
 <ProtectedString name="Source">--!strict
@@ -7751,11 +8507,11 @@ for _, controllerName in CONTROLLER_STARTUP_ORDER do
 end
 </ProtectedString>
 </Properties>
-<Item class="Folder" referent="PF46">
+<Item class="Folder" referent="PF47">
 <Properties>
 <string name="Name">Controllers</string>
 </Properties>
-<Item class="ModuleScript" referent="PF33">
+<Item class="ModuleScript" referent="PF34">
 <Properties>
 <string name="Name">ChatTagController</string>
 <ProtectedString name="Source">--!strict
@@ -7789,7 +8545,7 @@ return ChatTagController
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="PF34">
+<Item class="ModuleScript" referent="PF35">
 <Properties>
 <string name="Name">EffectsController</string>
 <ProtectedString name="Source">--!strict
@@ -8181,7 +8937,7 @@ return EffectsController
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="PF35">
+<Item class="ModuleScript" referent="PF36">
 <Properties>
 <string name="Name">EventNotifierController</string>
 <ProtectedString name="Source">--!strict
@@ -8417,7 +9173,7 @@ return EventNotifierController
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="PF36">
+<Item class="ModuleScript" referent="PF37">
 <Properties>
 <string name="Name">HarvestController</string>
 <ProtectedString name="Source">--!strict
@@ -8551,7 +9307,7 @@ return HarvestController
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="PF37">
+<Item class="ModuleScript" referent="PF38">
 <Properties>
 <string name="Name">InventoryController</string>
 <ProtectedString name="Source">--!strict
@@ -9021,7 +9777,7 @@ return InventoryController
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="PF38">
+<Item class="ModuleScript" referent="PF39">
 <Properties>
 <string name="Name">LeaderboardController</string>
 <ProtectedString name="Source">--!strict
@@ -9258,7 +10014,7 @@ return LeaderboardController
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="PF39">
+<Item class="ModuleScript" referent="PF40">
 <Properties>
 <string name="Name">PlanetBuilderController</string>
 <ProtectedString name="Source">--!strict
@@ -9809,7 +10565,7 @@ return PlanetBuilderController
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="PF40">
+<Item class="ModuleScript" referent="PF41">
 <Properties>
 <string name="Name">PlanetNameController</string>
 <ProtectedString name="Source">--!strict
@@ -9948,7 +10704,7 @@ return PlanetNameController
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="PF41">
+<Item class="ModuleScript" referent="PF42">
 <Properties>
 <string name="Name">QuestController</string>
 <ProtectedString name="Source">--!strict
@@ -10060,7 +10816,7 @@ return QuestController
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="PF42">
+<Item class="ModuleScript" referent="PF43">
 <Properties>
 <string name="Name">RebirthController</string>
 <ProtectedString name="Source">--!strict
@@ -10400,7 +11156,7 @@ return RebirthController
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="PF43">
+<Item class="ModuleScript" referent="PF44">
 <Properties>
 <string name="Name">ShopController</string>
 <ProtectedString name="Source">--!strict
@@ -11103,7 +11859,7 @@ return ShopController
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="PF44">
+<Item class="ModuleScript" referent="PF45">
 <Properties>
 <string name="Name">TutorialController</string>
 <ProtectedString name="Source">--!strict
@@ -11512,7 +12268,7 @@ return TutorialController
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="PF45">
+<Item class="ModuleScript" referent="PF46">
 <Properties>
 <string name="Name">UIController</string>
 <ProtectedString name="Source">--!strict

@@ -13,10 +13,8 @@ local DataService = require(script.Parent.DataService)
 local PlanetService = require(script.Parent.PlanetService)
 
 -- Versatz beim Besuch: ~20 Studs neben dem Ziel-Plot-Ursprung, leicht erhöht,
--- damit der Charakter auf den Slot-Plattformen bzw. dem Kernrand landet.
+-- damit der Charakter auf der Plaza der fremden Insel landet.
 local VISIT_OFFSET = CFrame.new(20, 8, 0)
--- Versatz für die Heimkehr: oberhalb des eigenen Planetenkerns (Kernradius 12 + Puffer).
-local HOME_OFFSET = CFrame.new(0, 16, 0)
 
 -- Session-Sets: pro Besucher die Ziele, die bereits gezählt wurden.
 local countedVisits: { [Player]: { [Player]: boolean } } = {}
@@ -93,6 +91,9 @@ local function handleRequestVisit(player: Player, targetUserIdArg: unknown): (bo
 	end
 
 	character:PivotTo(origin * VISIT_OFFSET)
+	-- Wer eine Insel besucht, hat die Spawn-Villa verlassen: Respawns
+	-- landen ab jetzt auf der eigenen Insel statt in der Villa.
+	PlanetService.markEntered(player)
 
 	-- Besuchszähler: nur einmal pro (Besucher, Ziel) und Session erhöhen.
 	-- Ist das Zielprofil noch nicht geladen, wird NICHT markiert, damit ein
@@ -110,19 +111,13 @@ local function handleRequestVisit(player: Player, targetUserIdArg: unknown): (bo
 end
 
 -- Remote-Handler: GoHome() -> (ok, nil | Fehlermeldung)
+-- Nutzt PlanetService.teleportHome: landet auf der Plaza und merkt sich,
+-- dass der Spieler die Spawn-Villa verlassen hat.
 local function handleGoHome(player: Player): (boolean, any?)
-	local origin = PlanetService.getPlotOrigin(player)
-	if origin == nil then
-		return false, "Dein Planet ist noch nicht bereit."
+	if not PlanetService.teleportHome(player) then
+		return false, "Dein Planet oder Charakter ist gerade nicht bereit."
 	end
-
-	local character = getCharacterWithRoot(player)
-	if character == nil then
-		return false, "Dein Charakter ist gerade nicht bereit."
-	end
-
-	character:PivotTo(origin * HOME_OFFSET)
-	notify(player, "Willkommen zurück auf deinem Planeten.", "info")
+	notify(player, "Willkommen zurück auf deiner Insel.", "info")
 	return true
 end
 

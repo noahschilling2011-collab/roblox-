@@ -174,6 +174,12 @@ local function broadcastSnapshot()
 	(leaderboardUpdatedEvent :: RemoteEvent):FireAllClients(lastSnapshot)
 end
 
+-- Zuletzt gelesener Ranglisten-Stand (z. B. für die Tafeln in der
+-- Spawn-Villa des LobbyService).
+function LeaderboardService.getSnapshot(): LeaderboardSnapshot
+	return lastSnapshot
+end
+
 function LeaderboardService.init()
 	leaderboardUpdatedEvent = Remotes.getEvent("LeaderboardUpdated")
 
