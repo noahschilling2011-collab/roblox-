@@ -17,6 +17,7 @@
 local MarketplaceService = game:GetService("MarketplaceService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 
 local Types = require(ReplicatedStorage.Shared.Types)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
@@ -251,6 +252,50 @@ local function processReceipt(receiptInfo: { [string]: any }): Enum.ProductPurch
 	return Enum.ProductPurchaseDecision.PurchaseGranted
 end
 
+-- Studio-Testmodus: Käufe dürfen NUR simuliert werden, wenn das Config-Flag
+-- gesetzt ist UND der Server in Roblox Studio läuft. In einem
+-- veröffentlichten Spiel gibt diese Funktion immer false zurück - das ist
+-- die harte Absicherung, die der SelfCheckService zusätzlich überwacht.
+function MonetizationService.isTestPurchaseAllowed(): boolean
+	return MonetizationConfig.testModeInStudio == true and RunService:IsStudio()
+end
+
+-- Handler für SimulatePurchase(kind, key): simuliert im Studio-Testmodus
+-- den erfolgreichen Kauf eines noch nicht konfigurierten Produkts (ID 0),
+-- damit Equip/Haustiere/Effekte ohne echte IDs testbar sind.
+local function onSimulatePurchase(player: Player, kindArg: any, keyArg: any): (boolean, any?)
+	if not MonetizationService.isTestPurchaseAllowed() then
+		return false, "Test-Käufe sind nur im Studio-Testmodus möglich."
+	end
+	if typeof(kindArg) ~= "string" or typeof(keyArg) ~= "string" then
+		return false, "Ungültige Anfrage."
+	end
+
+	if kindArg == "gamepass" then
+		local def = MonetizationConfig.Gamepasses[keyArg]
+		if def == nil then
+			return false, "Unbekannter Gamepass."
+		end
+		if def.gamePassId ~= 0 then
+			return false, "Dieser Gamepass hat eine echte ID - bitte regulär kaufen."
+		end
+		grantCosmetics(player, def.grantsCosmetics, `{def.displayName} (Test)`)
+		return true, nil
+	elseif kindArg == "product" then
+		local def = MonetizationConfig.DeveloperProducts[keyArg]
+		if def == nil then
+			return false, "Unbekanntes Produkt."
+		end
+		if def.productId ~= 0 then
+			return false, "Dieses Produkt hat eine echte ID - bitte regulär kaufen."
+		end
+		grantCosmetics(player, { def.grantsCosmetic }, `{def.displayName} (Test)`)
+		return true, nil
+	end
+
+	return false, "Unbekannte Kaufart."
+end
+
 local function onPlayerAdded(player: Player)
 	local profile = DataService.waitForProfile(player)
 	if profile == nil then
@@ -275,6 +320,11 @@ function MonetizationService.init()
 	cosmeticsUpdatedEvent = Remotes.getEvent("CosmeticsUpdated")
 	notificationEvent = Remotes.getEvent("Notification")
 	Remotes.getFunction("EquipCosmetic").OnServerInvoke = onEquipCosmetic
+	Remotes.getFunction("SimulatePurchase").OnServerInvoke = onSimulatePurchase
+
+	if MonetizationService.isTestPurchaseAllowed() then
+		print("[PlanetForge] Studio-Testmodus für den Shop ist AKTIV (nur in Studio wirksam).")
+	end
 
 	-- Gamepass-Kauf im laufenden Spiel: Kosmetik sofort gutschreiben.
 	MarketplaceService.PromptGamePassPurchaseFinished:Connect(

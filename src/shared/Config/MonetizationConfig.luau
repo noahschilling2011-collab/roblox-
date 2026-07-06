@@ -49,6 +49,13 @@ export type ProductDef = {
 
 local MonetizationConfig = {}
 
+-- STUDIO-TESTMODUS: Solange Produkt-IDs 0 sind, simuliert ein Klick im Shop
+-- den erfolgreichen Kauf - ABER ausschliesslich in Roblox Studio. Der Server
+-- prüft RunService:IsStudio() hart (MonetizationService.isTestPurchaseAllowed);
+-- in einem veröffentlichten Spiel hat dieses Flag deshalb NIE eine Wirkung.
+-- So lassen sich Equip, Haustiere und Effekte ohne echte IDs testen.
+MonetizationConfig.testModeInStudio = true
+
 MonetizationConfig.Categories = { "skin", "aura", "wetter", "haustier" }
 
 MonetizationConfig.CategoryNames = {

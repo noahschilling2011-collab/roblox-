@@ -30,6 +30,8 @@
 --     EquipCosmetic(category: string, cosmeticId: string?) -- nil = Kategorie ablegen
 --     RenamePlanet(name: string) -- gibt bei ok den gefilterten Namen zurück
 --     TutorialAction(action: "advance" | "skip") -- Server validiert den Fortschritt
+--     SimulatePurchase(kind: "gamepass" | "product", key: string)
+--       NUR Studio-Testmodus (Server prüft RunService:IsStudio() hart)
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -61,6 +63,7 @@ local FUNCTION_NAMES = {
 	"EquipCosmetic",
 	"RenamePlanet",
 	"TutorialAction",
+	"SimulatePurchase",
 }
 
 local Remotes = {}
