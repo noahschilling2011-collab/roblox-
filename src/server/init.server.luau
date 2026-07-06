@@ -21,6 +21,7 @@ local SERVICE_STARTUP_ORDER = {
 	"GlobalEventService",
 	"VisitService",
 	"TradeService",
+	"MonetizationService",
 }
 
 local servicesFolder = script:WaitForChild("Services")

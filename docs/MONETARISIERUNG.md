@@ -250,3 +250,22 @@ Gemessen wird pro Kohorte (siehe Analytics-Setup in der [Architektur](ARCHITEKTU
 ### 7.3 Bewusst ausgelassene Umsatzquellen
 
 Zur Klarheit, was trotz Branchenüblichkeit **nicht** kommt: Energie-Pakete, Zeit-Skips, kosmetische Lootboxen, kaufbare Battle-Pass-Stufen, Handelsgebühren in Robux, "VIP-Gamepasses" mit Einkommens-Boni. Jede dieser Quellen würde kurzfristig Umsatz bringen und langfristig das Kernversprechen beschädigen. Die Wette dieses Dokuments: Ein glaubwürdiges "nur Aussehen" erzeugt über Vertrauen, Sichtbarkeit und Saison-Rhythmus mehr Lifetime-Umsatz als jede dieser Abkürzungen.
+
+---
+
+## 8. Umsetzung im Code (Stand P0)
+
+Der erste Ausbau des Robux-Shops ist im Skeleton implementiert:
+
+| Baustein | Datei | Inhalt |
+|---|---|---|
+| Katalog & Produkt-IDs | `src/shared/Config/MonetizationConfig.luau` | 10 Kosmetiken in 4 Kategorien (Planeten-Skins, Auren, Wettereffekte, Haustiere), 3 Gamepässe, 4 Developer Products. |
+| Server-Logik | `src/server/Services/MonetizationService.luau` | Gamepass-Prüfung beim Beitritt (`UserOwnsGamePassAsync`), Kauf im Spiel (`PromptGamePassPurchaseFinished`), idempotentes `ProcessReceipt` für Developer Products, `EquipCosmetic`-Validierung, Haustier-Begleiter. |
+| Sichtbare Effekte | `src/server/Services/PlanetService.luau` (`applyCosmetics`) | Skins ändern Material/Farbe/Glow des Planetenkerns, Auren und Wetter sind ParticleEmitter am Plot – für jeden Besucher sichtbar. |
+| Shop-UI | `src/client/Controllers/ShopController.luau` | Shop-Panel mit Preisanzeige (`GetProductInfo`), offiziellen Roblox-Kaufdialogen und "Meine Kosmetik" zum Ausrüsten. Fairness-Hinweis fest im Panel. |
+
+**Einrichtung:** Die IDs in `MonetizationConfig.luau` sind Platzhalter (`0`). Im Roblox Creator Dashboard unter *Monetarisierung* die drei Gamepässe und vier Developer Products anlegen und die echten IDs eintragen – bis dahin zeigt der Shop die Einträge als "Bald..." und deaktiviert den Kauf.
+
+**Eingebaute Fairness-Garantien (überprüfbar im Code):** `MonetizationService` vergibt ausschließlich Einträge aus dem Kosmetik-Katalog – es existiert kein Codepfad von Robux zu Energie, Fund-Würfen oder Loot-Chancen. Kosmetik liegt in eigenen Profilfeldern (`ownedCosmetics`/`equippedCosmetics`), die von `EnergyService`, `LootService` und `TradeService` nicht gelesen werden (Regel aus Abschnitt 5). Kosmetik ist nicht handelbar.
+
+Noch offen für spätere Phasen: Live-Vorschau vor dem Kauf, rotierender Shop (4.1), Event-Kosmetik (4.2) und der Sternenpass (Abschnitt 3).

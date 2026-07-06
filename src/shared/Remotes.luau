@@ -13,6 +13,7 @@
 --     GlobalEventEnded(eventId: string)
 --     TradeUpdated(tradeSnapshot: any?) -- nil = keine aktive Handelssitzung
 --     Notification(message: string, kind: "info" | "success" | "error")
+--     CosmeticsUpdated(owned: { string }, equipped: { [string]: string })
 --
 --   RemoteFunctions (Client -> Server), geben immer (ok: boolean, payload: any?) zurück:
 --     PlaceBiome(biomeId: string, slot: number)
@@ -23,6 +24,7 @@
 --     GoHome()
 --     LikePlanet(targetUserId: number)
 --     TradeAction(action: "invite" | "acceptInvite" | "setOffer" | "toggleAccept" | "cancel", payload: any?)
+--     EquipCosmetic(category: string, cosmeticId: string?) -- nil = Kategorie ablegen
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -37,6 +39,7 @@ local EVENT_NAMES = {
 	"GlobalEventEnded",
 	"TradeUpdated",
 	"Notification",
+	"CosmeticsUpdated",
 }
 
 local FUNCTION_NAMES = {
@@ -48,6 +51,7 @@ local FUNCTION_NAMES = {
 	"GoHome",
 	"LikePlanet",
 	"TradeAction",
+	"EquipCosmetic",
 }
 
 local Remotes = {}

@@ -40,10 +40,11 @@ Zusätzlich setzt das Projektfile `Workspace.FilteringEnabled = true` und `Light
 | 5 | `GlobalEventService` | Multiplikatoren für Energie und Loot; Scheduler darf erst laufen, wenn die Empfänger stehen. |
 | 6 | `VisitService` | Reine Aufsatz-Funktionalität über PlanetService. |
 | 7 | `TradeService` | Höchste Schicht: braucht Energie, Items und stabile Profile. |
+| 8 | `MonetizationService` | Robux-Käufe und Kosmetik; braucht Profile (1) und den fertigen Plot-Aufbau (2) für sichtbare Effekte. |
 
 Querverweise zwischen Services werden zur Aufrufzeit per `require` aufgelöst, nicht im `init()` — dadurch ist die Reihenfolge nur für den *Datenfluss* kritisch (Profile zuerst), nicht für die Modulauflösung. Jeder Service-Start ist in `pcall` gekapselt: Ein fehlschlagender Service blockiert den Serverstart nicht, sondern loggt eine Warnung.
 
-**Client** (`src/client/init.client.luau`): startet `UIController` → `PlanetBuilderController` → `EventNotifierController`, jeweils entkoppelt per `task.spawn`, weil Controller in `init()` auf Remotes warten dürfen (`WaitForChild` auf `PlanetForgeRemotes`). So blockiert ein wartender Controller nie die anderen.
+**Client** (`src/client/init.client.luau`): startet `UIController` → `PlanetBuilderController` → `EventNotifierController` → `ShopController`, jeweils entkoppelt per `task.spawn`, weil Controller in `init()` auf Remotes warten dürfen (`WaitForChild` auf `PlanetForgeRemotes`). So blockiert ein wartender Controller nie die anderen.
 
 ## 2. Architekturprinzipien
 
@@ -69,6 +70,8 @@ graph TD
     Visit --> Planet
     Trade --> Energy
     Trade --> Planet
+    Monetization[MonetizationService] --> Data
+    Monetization --> Planet
 ```
 
 Lesart: `EnergyService` fragt beim Gutschreiben den aktuellen Energie-Multiplikator beim `GlobalEventService` ab; `LootService` zieht Wurfkosten über `EnergyService` ein, holt den Loot-Glücks-Multiplikator vom `GlobalEventService` und stößt Planeten-Snapshots über `PlanetService` an; `TradeService` bewegt Energie über `EnergyService.addRaw` (bewusst ohne Event-Multiplikator) und Items über die Profil-/Snapshot-Pfade.
@@ -84,6 +87,7 @@ Lesart: `EnergyService` fragt beim Gutschreiben den aktuellen Energie-Multiplika
 | `GlobalEventService` | `getEnergyMultiplier()`, `getLootLuckMultiplier()` | Scheduler-Schleife alle 60 s: startet mit 25 % Chance ein gewichtetes Event, wenn keines läuft und das letzte ≥ 15 min her ist. Publiziert Start/Ende über MessagingService-Topic `PF_GLOBAL_EVENT`, damit alle Server dasselbe Event zeigen; broadcastet `GlobalEventStarted`/`GlobalEventEnded` an Clients. Andere Services *ziehen* die Multiplikatoren zum Zeitpunkt der Gutschrift/des Wurfs. |
 | `VisitService` | Handler für `RequestVisit`, `GoHome`, `LikePlanet` | Teleport des Charakters zum Ziel-Plot **im selben Server**. Zählt `visits` einmal pro (Besucher, Ziel, Session); `LikePlanet` maximal einmal pro Session und nie für den eigenen Planeten. |
 | `TradeService` | Handler für `TradeAction` | Zustandsmaschine pro Sitzung: `negotiating → locked → completed` (bzw. `cancelled`). Max. 4 Item-`uid`s plus Energie pro Seite. Jede Angebotsänderung setzt beide `accepted`-Flags zurück. Nach beidseitigem Akzeptieren 3 s Lock (keine Änderungen möglich), dann **Revalidierung** (beide online, uids noch im Besitz, Energie noch gedeckt) und atomarer Transfer ohne Yields; danach `markDirty` für beide Profile. |
+| `MonetizationService` | Handler für `EquipCosmetic`, `ProcessReceipt` | Robux-Käufe strikt kosmetisch (siehe [Monetarisierung](MONETARISIERUNG.md), Abschnitt 8): prüft Gamepässe beim Beitritt (`UserOwnsGamePassAsync`), verarbeitet Live-Käufe (`PromptGamePassPurchaseFinished`) und Developer Products (idempotentes `ProcessReceipt`; bei Offline-Spieler/ladendem Profil `NotProcessedYet`). Schreibt nur `ownedCosmetics`/`equippedCosmetics`; sichtbare Effekte via `PlanetService.applyCosmetics`, Haustier-Begleiter in eigener Folgeschleife. Kein Codepfad zu Energie, Loot oder Handel. |
 
 ## 4. Datenmodell
 
@@ -91,13 +95,15 @@ Lesart: `EnergyService` fragt beim Gutschreiben den aktuellen Energie-Multiplika
 
 | Feld | Typ | Zweck |
 |---|---|---|
-| `version` | `number` | Schema-Version des gespeicherten Blobs, aktuell `1` (`GameConfig.PROFILE_SCHEMA_VERSION`). |
+| `version` | `number` | Schema-Version des gespeicherten Blobs, aktuell `2` (`GameConfig.PROFILE_SCHEMA_VERSION`; v2 ergänzt die Kosmetik-Felder). |
 | `energy` | `number` | Ausgebbares Guthaben. Sinkt durch Käufe, Loot-Würfe, Handel. |
 | `lifetimeEnergy` | `number` | Monoton wachsend: jede *verdiente* Energie zählt hier hinein, Ausgaben nie. Steuert Biom-Freischaltungen — dadurch schaltet Ausgeben nichts zurück, und Fortschritt ist nicht durch Handel kaufbar (`addRaw` erhöht `lifetimeEnergy` bewusst nicht). |
 | `biomes` | `{ PlacedBiome }` | Belegte Slots: `biomeId`, `slot` (1–12), `level` (1–5), `placedAt`. Maximal 12 Einträge. |
 | `collectibles` | `{ OwnedCollectible }` | Inventar: `uid`, `collectibleId`, `obtainedAt`, `source` (`loot`/`event`/`trade`). Die `uid` (GUID) identifiziert die konkrete Instanz — nur so kann der Handel exakt „dieses eine Item" übertragen und Duplikate erkennen, statt nur Stückzahlen zu verschieben. |
 | `visits` / `likes` | `number` | Sozialzähler, geschrieben nur vom `VisitService`. |
 | `createdAt` | `number` | Unix-Zeitstempel der Profilerstellung. |
+| `ownedCosmetics` | `{ CosmeticId }` | Per Robux freigeschaltete Kosmetik (seit Schema v2). Wird nur vom `MonetizationService` geschrieben; nicht handelbar. |
+| `equippedCosmetics` | `{ [Kategorie]: CosmeticId }` | Aktuell ausgerüstete Kosmetik je Kategorie (`skin`/`aura`/`wetter`/`haustier`). |
 
 ### 4.2 Schema-Versionierung und Migration
 
@@ -126,6 +132,7 @@ Alle Remotes werden von `Remotes.init()` serverseitig unter `ReplicatedStorage.P
 | `GlobalEventEnded` | `(eventId: string)` | Event-UI beenden. |
 | `TradeUpdated` | `(tradeSnapshot: any?)` | Aktueller Sitzungszustand; `nil` = keine aktive Handelssitzung. |
 | `Notification` | `(message: string, kind: "info" \| "success" \| "error")` | Generische Toast-Meldungen (u. a. Ablehnungsgründe). |
+| `CosmeticsUpdated` | `(owned: { string }, equipped: { [string]: string })` | Kosmetik-Stand nach Beitritt, Kauf oder Ausrüsten (für den Shop). |
 
 ### 5.2 RemoteFunctions (Client → Server), Rückgabe immer `(ok: boolean, payload: any?)`
 
@@ -139,6 +146,7 @@ Alle Remotes werden von `Remotes.init()` serverseitig unter `ReplicatedStorage.P
 | `GoHome` | `()` | Zurück zum eigenen Plot. |
 | `LikePlanet` | `(targetUserId: number)` | Like vergeben (einmal pro Session, nicht selbst). |
 | `TradeAction` | `(action: "invite" \| "acceptInvite" \| "setOffer" \| "toggleAccept" \| "cancel", payload: any?)` | Sämtliche Handelsschritte über einen einzigen validierten Endpunkt. |
+| `EquipCosmetic` | `(category: string, cosmeticId: string?)` | Besessene Kauf-Kosmetik ausrüsten; `nil` legt die Kategorie ab. |
 
 ## 6. Persistenz
 

@@ -21,7 +21,7 @@ local GameConfig = {
 	TRADE_LOCK_SECONDS = 3, -- Sicherheitspause nach beidseitigem Akzeptieren
 
 	-- Daten
-	PROFILE_SCHEMA_VERSION = 1,
+	PROFILE_SCHEMA_VERSION = 2, -- v2: ownedCosmetics/equippedCosmetics ergänzt
 	DATASTORE_NAME = "PlanetForge_v1",
 	AUTOSAVE_INTERVAL_SECONDS = 120,
 

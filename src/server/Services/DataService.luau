@@ -57,6 +57,8 @@ local function buildDefaultProfile(): Types.PlayerProfile
 		visits = 0,
 		likes = 0,
 		createdAt = os.time(),
+		ownedCosmetics = {},
+		equippedCosmetics = {},
 	}
 end
 

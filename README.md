@@ -54,7 +54,7 @@ Event-Loot-Glück verbessert diese Chancen direkt (Divisor durch den Multiplikat
 Besuche fremder Planeten mit Bewertungssystem, Clans, die gemeinsam Galaxien bauen, sicheres Handelssystem (max. 4 Items + Energie pro Seite, 3 s Sicherheits-Lock, atomare Ausführung), Wettbewerbe für den schönsten Planeten und PvE-Bosse für Gruppen. Konzept: [Multiplayer](docs/MULTIPLAYER.md).
 
 ### 💰 Monetarisierung: nur Kosmetik
-Planeten-Skins, Wettereffekte, Haustiere, Emotes, Animationen und ein Battle Pass – **keine** kaufbaren Gameplay-Vorteile. Richtlinien und Compliance: [Monetarisierung](docs/MONETARISIERUNG.md).
+Planeten-Skins, Auren, Wettereffekte, Haustiere und später ein Battle Pass – **keine** kaufbaren Gameplay-Vorteile. Der Robux-Shop (Gamepässe + Einzelkäufe über die offiziellen Roblox-Kaufdialoge) ist bereits implementiert; im Creator Dashboard angelegte Produkt-IDs werden in `MonetizationConfig.luau` eingetragen. Richtlinien und Compliance: [Monetarisierung](docs/MONETARISIERUNG.md).
 
 ## Dokumentation
 
@@ -79,7 +79,8 @@ src/
 │   │   ├── BiomeConfig.luau         Die 10 Biome: Kosten, Freischaltung, Einkommen
 │   │   ├── RarityConfig.luau        Seltenheits-Tiers und Gewichte (Common 60 … Legendary 1)
 │   │   ├── CollectibleConfig.luau   Sammelobjekte inkl. der drei Ultra-Rares
-│   │   └── EventConfig.luau         Die fünf globalen Events (Dauer, Effekt, Gewicht)
+│   │   ├── EventConfig.luau         Die fünf globalen Events (Dauer, Effekt, Gewicht)
+│   │   └── MonetizationConfig.luau  Robux-Shop: Kosmetik-Katalog, Gamepässe, Products
 │   └── Util/
 │       └── WeightedRandom.luau      Gewichtete Zufallsauswahl für Loot und Events
 ├── server/                          → ServerScriptService.Server
@@ -91,13 +92,15 @@ src/
 │       ├── LootService.luau         Fund-Würfe inkl. Ultra-Rare-Rolls
 │       ├── GlobalEventService.luau  Event-Scheduler und aktive Multiplikatoren
 │       ├── VisitService.luau        Besuche und Bewertungen fremder Planeten
-│       └── TradeService.luau        Handel mit Lock-Phase und atomarer Ausführung
+│       ├── TradeService.luau        Handel mit Lock-Phase und atomarer Ausführung
+│       └── MonetizationService.luau Robux-Käufe, Kosmetik-Freischaltung, Haustiere
 └── client/                          → StarterPlayer.StarterPlayerScripts.Client
     ├── init.client.luau             Client-Bootstrap: startet alle Controller
     └── Controllers/
-        ├── UIController.luau        HUD, Energie-Anzeige, Menüs
-        ├── PlanetBuilderController.luau   Bau-Interface für Biom-Slots (geplant)
-        └── EventNotifierController.luau   Banner/Effekte bei globalen Events (geplant)
+        ├── UIController.luau        HUD, Energie-Anzeige, Toasts, Loot-Popup
+        ├── PlanetBuilderController.luau   Bau-Interface für Biom-Slots
+        ├── EventNotifierController.luau   Banner/Effekte bei globalen Events
+        └── ShopController.luau      Robux-Shop und "Meine Kosmetik"
 ```
 
 Das Mapping ins Roblox-DataModel definiert [`default.project.json`](default.project.json) (Rojo): `shared` wird auf Server **und** Client repliziert, `server` läuft ausschließlich serverseitig, `client` startet pro Spieler. Alle Balancing-Werte liegen in `src/shared/Config/` – Code liest sie nur, statt Zahlen zu duplizieren.
@@ -134,12 +137,12 @@ Voraussetzungen: Roblox Studio und [Rokit](https://github.com/rojo-rbx/rokit) (T
 - Loot-Rolls für 25 Energie inkl. der drei Ultra-Rare-Würfe (1:10.000 / 1:100.000 / 1:1.000.000)
 - Globaler Event-Scheduler mit den fünf Events und wirksamen Energie-/Loot-Multiplikatoren
 - Besuche und Handel innerhalb eines Servers (4 Items + Energie, 3-s-Lock, atomare Ausführung)
+- Robux-Kosmetik-Shop: Gamepässe und Einzelkäufe, sichtbare Skins/Auren/Wetter auf dem Planeten, Haustier-Begleiter (Produkt-IDs müssen im Creator Dashboard angelegt und in `MonetizationConfig.luau` eingetragen werden)
 
 **Fehlt noch (bewusst nicht in P0):**
 - Minispiele und Kämpfe als aktive Energie-Quellen
 - Clans/Galaxien und Cross-Server-Besuche
 - PvE-Bosse, Wettbewerbe und Bewertungs-Leaderboards
-- Monetarisierung (Kosmetik-Shop, Battle Pass) und jegliche 3D-Assets/Polish
-- `PlanetBuilderController` und `EventNotifierController` auf dem Client
+- Battle Pass, rotierender Shop und jegliche 3D-Assets/Polish
 
 Feedback und Beiträge sind willkommen – Startpunkt ist das [Game Design](docs/GAME_DESIGN.md), technisch die [Architektur](docs/ARCHITEKTUR.md).

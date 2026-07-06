@@ -11,6 +11,7 @@ local Types = require(ReplicatedStorage.Shared.Types)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local GameConfig = require(ReplicatedStorage.Shared.Config.GameConfig)
 local BiomeConfig = require(ReplicatedStorage.Shared.Config.BiomeConfig)
+local MonetizationConfig = require(ReplicatedStorage.Shared.Config.MonetizationConfig)
 
 local DataService = require(script.Parent.DataService)
 local EnergyService = require(script.Parent.EnergyService)
@@ -203,6 +204,118 @@ local function buildPlot(player: Player, origin: CFrame)
 	folder.Parent = getPlotsRoot()
 end
 
+-- Holt oder erstellt einen ParticleEmitter mit festem Namen unter parent.
+local function ensureEmitter(parent: Instance, name: string): ParticleEmitter
+	local existing = parent:FindFirstChild(name)
+	if existing ~= nil and existing:IsA("ParticleEmitter") then
+		return existing
+	end
+	local emitter = Instance.new("ParticleEmitter")
+	emitter.Name = name
+	emitter.Parent = parent
+	return emitter
+end
+
+-- Wendet die ausgerüstete Kauf-Kosmetik (Skin/Aura/Wetter) auf den Plot an.
+-- Idempotent: stellt ohne ausgerüstete Kosmetik den Standard-Look wieder her.
+-- Haustiere verwaltet der MonetizationService selbst.
+function PlanetService.applyCosmetics(player: Player)
+	local profile = DataService.getProfile(player)
+	local plotFolder = getPlotFolder(player)
+	if profile == nil or plotFolder == nil then
+		return
+	end
+	local coreInstance = plotFolder:FindFirstChild("Core")
+	if coreInstance == nil or not coreInstance:IsA("BasePart") then
+		return
+	end
+	local core = coreInstance :: BasePart
+	local equipped = profile.equippedCosmetics
+
+	-- Skin: Farbe und Material des Planetenkerns.
+	local skinId = equipped.skin
+	local skinDef = if skinId ~= nil then MonetizationConfig.Cosmetics[skinId] else nil
+	if skinDef ~= nil and skinDef.category == "skin" then
+		core.Color = skinDef.visual.color or CORE_COLOR
+		core.Material = skinDef.visual.material or Enum.Material.Slate
+	else
+		skinDef = nil
+		core.Color = CORE_COLOR
+		core.Material = Enum.Material.Slate
+	end
+
+	-- Glow-Licht des Skins.
+	local light = core:FindFirstChild("CosmeticLight")
+	if skinDef ~= nil and skinDef.visual.glow == true then
+		local pointLight: PointLight
+		if light ~= nil and light:IsA("PointLight") then
+			pointLight = light
+		else
+			pointLight = Instance.new("PointLight")
+			pointLight.Name = "CosmeticLight"
+			pointLight.Range = 40
+			pointLight.Brightness = 1.5
+			pointLight.Parent = core
+		end
+		pointLight.Color = skinDef.visual.color or Color3.new(1, 1, 1)
+	elseif light ~= nil then
+		light:Destroy()
+	end
+
+	-- Aura: Partikel direkt am Kern.
+	local auraId = equipped.aura
+	local auraDef = if auraId ~= nil then MonetizationConfig.Cosmetics[auraId] else nil
+	if auraDef ~= nil and auraDef.category == "aura" then
+		local emitter = ensureEmitter(core, "AuraEmitter")
+		local mainColor = auraDef.visual.color or Color3.new(1, 1, 1)
+		emitter.Color = ColorSequence.new(mainColor, auraDef.visual.secondaryColor or mainColor)
+		emitter.LightEmission = 0.8
+		emitter.Rate = 14
+		emitter.Lifetime = NumberRange.new(1.5, 2.5)
+		emitter.Speed = NumberRange.new(3, 6)
+		emitter.Size = NumberSequence.new(0.6)
+		emitter.SpreadAngle = Vector2.new(180, 180)
+	else
+		local emitter = core:FindFirstChild("AuraEmitter")
+		if emitter ~= nil then
+			emitter:Destroy()
+		end
+	end
+
+	-- Wetter: Partikel regnen aus einer unsichtbaren Fläche über dem Planeten.
+	local wetterId = equipped.wetter
+	local wetterDef = if wetterId ~= nil then MonetizationConfig.Cosmetics[wetterId] else nil
+	local weatherInstance = plotFolder:FindFirstChild("WeatherPart")
+	if wetterDef ~= nil and wetterDef.category == "wetter" then
+		local weatherPart: BasePart
+		if weatherInstance ~= nil and weatherInstance:IsA("BasePart") then
+			weatherPart = weatherInstance
+		else
+			weatherPart = Instance.new("Part")
+			weatherPart.Name = "WeatherPart"
+			weatherPart.Size =
+				Vector3.new(SLOT_RING_RADIUS * 2 + SLOT_DIAMETER, 1, SLOT_RING_RADIUS * 2 + SLOT_DIAMETER)
+			weatherPart.Transparency = 1
+			weatherPart.Anchored = true
+			weatherPart.CanCollide = false
+			weatherPart.CanQuery = false
+			weatherPart.CFrame = (plotOrigins[player] or core.CFrame) * CFrame.new(0, CORE_DIAMETER * 1.5, 0)
+			weatherPart.Parent = plotFolder
+		end
+		local emitter = ensureEmitter(weatherPart, "WeatherEmitter")
+		local mainColor = wetterDef.visual.color or Color3.new(1, 1, 1)
+		emitter.Color = ColorSequence.new(mainColor, wetterDef.visual.secondaryColor or mainColor)
+		emitter.LightEmission = 0.6
+		emitter.Rate = 20
+		emitter.Lifetime = NumberRange.new(2, 3)
+		emitter.Speed = NumberRange.new(8, 14)
+		emitter.Size = NumberSequence.new(0.8)
+		emitter.EmissionDirection = Enum.NormalId.Bottom
+	elseif weatherInstance ~= nil then
+		weatherInstance:Destroy()
+	end
+end
+
 local function teleportToPlot(player: Player, character: Model)
 	local origin = plotOrigins[player]
 	if origin == nil then
@@ -346,6 +459,7 @@ local function onPlayerAdded(player: Player)
 	for _, placed in profile.biomes do
 		updateSlotVisual(player, placed.slot, placed)
 	end
+	PlanetService.applyCosmetics(player)
 	PlanetService.sendSnapshot(player)
 end
 

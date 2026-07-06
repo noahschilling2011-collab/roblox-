@@ -6,6 +6,10 @@
 export type BiomeId = string
 export type CollectibleId = string
 export type GlobalEventId = string
+export type CosmeticId = string
+
+-- Kategorien kaufbarer Kosmetik (nur Optik, niemals Spielvorteile).
+export type CosmeticCategory = "skin" | "aura" | "wetter" | "haustier"
 
 export type RarityTier = "Common" | "Uncommon" | "Rare" | "Epic" | "Legendary" | "Mythic" | "Cosmic"
 
@@ -36,6 +40,8 @@ export type PlayerProfile = {
 	visits: number, -- wie oft dieser Planet besucht wurde
 	likes: number, -- Bewertungen anderer Spieler
 	createdAt: number,
+	ownedCosmetics: { CosmeticId }, -- per Robux freigeschaltete Kosmetik
+	equippedCosmetics: { [string]: CosmeticId }, -- Kategorie -> ausgerüstete Kosmetik
 }
 
 -- Ein aktuell laufendes globales Event.
