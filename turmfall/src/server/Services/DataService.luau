@@ -42,6 +42,7 @@ export type Profile = {
 	truemmer: number, -- Zweitwährung (erspielt, nicht kaufbar)
 	receiptIds: { string }, -- verarbeitete Kauf-Belege (Idempotenz, M3)
 	roundsPlayed: number,
+	xp: number, -- Erfahrungspunkte (LevelLogic: sichtbare Langzeit-Progression)
 }
 
 type SessionEntry = {
@@ -83,6 +84,7 @@ local function buildDefaultProfile(): Profile
 		truemmer = 0,
 		receiptIds = {},
 		roundsPlayed = 0,
+		xp = 0,
 	}
 end
 

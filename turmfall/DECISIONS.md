@@ -121,6 +121,19 @@ Simpel, ein Wert pro Sekunde über ein Remote, keine Per-Teil-Replikation.
 
 ## Nach Release-Feedback
 
+**D22 – Katastrophen setzen die Schuld aus.** Wind und Erdbeben können
+den Turm kippen; das Schuld-System würde dann den letzten Bauer bestrafen,
+der nichts falsch gemacht hat. Deshalb ist die Schuld-Zuweisung während
+eines Events plus Schonfrist ausgesetzt - das Replay läuft trotzdem, mit
+dem Banner "Die Katastrophe war schuld". Der Goldrausch ist bewusst das
+Gegenstück: ein reines Belohnungs-Event, damit "Event" nicht nur "Gefahr"
+bedeutet.
+
+**D23 – Level sind rein kosmetische Progression.** XP/Level schalten
+NICHTS frei, was Physik oder Punkte beeinflusst (gleiche Regel wie bei
+Skins/Käufen). Sie sind die sichtbare "Ich war fleißig"-Zahl im
+Leaderboard - der stärkste kostenlose Bindungs-Treiber der Topspiele.
+
 **D21 – Solo-Modus als automatischer Fallback statt Button.** Wer allein
 im Server ist (Studio-Play, leere Server zur Randzeit), startet nach 8
 Sekunden automatisch eine Übungsrunde - ohne Menü, ohne Extra-Klick. Der

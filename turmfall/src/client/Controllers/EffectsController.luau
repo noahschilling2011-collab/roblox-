@@ -26,10 +26,18 @@ local GameConfig = require(Shared:WaitForChild("Config"):WaitForChild("GameConfi
 local SHAKE_START_SCORE = 60 -- ab hier beginnt das Wackeln
 local CREAK_COOLDOWN_SECONDS = 2.5
 
+-- Anzeige-Texte der Katastrophen (DisasterService).
+local DISASTER_LABELS: { [string]: { warnung: string, start: string } } = {
+	windboe = { warnung = "💨 WINDBÖE IM ANFLUG!", start = "💨 WINDBÖE!" },
+	erdbeben = { warnung = "🌍 ERDBEBEN-WARNUNG!", start = "🌍 ERDBEBEN!" },
+	goldrausch = { warnung = "✨ GOLDRAUSCH KOMMT!", start = "✨ GOLDRAUSCH – BAUT JETZT!" },
+}
+
 local EffectsController = {}
 
 local stabilityScore = 100
 local lastCreakAt = 0
+local forcedShakeUntil = 0 -- Erdbeben: Kamera wackelt unabhängig vom Score
 local rng = Random.new()
 
 local stabilityBar: Frame? = nil
@@ -93,6 +101,43 @@ local function playCreak(intensity: number)
 	end)
 end
 
+-- Großes Katastrophen-Banner in der Bildmitte (kurzlebig).
+local function showDisasterBanner(text: string, color: Color3, seconds: number)
+	local playerGui = Players.LocalPlayer:WaitForChild("PlayerGui")
+	local screenGui = Instance.new("ScreenGui")
+	screenGui.Name = "TurmfallKatastrophe"
+	screenGui.DisplayOrder = 40
+	screenGui.Parent = playerGui
+
+	local label = Instance.new("TextLabel")
+	label.AnchorPoint = Vector2.new(0.5, 0.5)
+	label.Position = UDim2.new(0.5, 0, 0.28, 0)
+	label.Size = UDim2.new(0, 640, 0, 64)
+	label.BackgroundTransparency = 1
+	label.Font = Enum.Font.GothamBlack
+	label.TextSize = 40
+	label.TextColor3 = color
+	label.TextStrokeTransparency = 0.2
+	label.Text = text
+	label.Parent = screenGui
+
+	task.delay(seconds, function()
+		screenGui:Destroy()
+	end)
+end
+
+local function playDisasterSound(pitch: number, volume: number)
+	local sound = Instance.new("Sound")
+	sound.SoundId = "rbxasset://sounds/swoosh.wav"
+	sound.Volume = volume
+	sound.PlaybackSpeed = pitch
+	sound.Parent = Workspace
+	sound:Play()
+	task.delay(3, function()
+		sound:Destroy()
+	end)
+end
+
 -- Finale-Zeitlupe: Farbkorrektur + FOV für die letzten Sekunden (nur Optik).
 local function playFinaleVisuals()
 	local color = Instance.new("ColorCorrectionEffect")
@@ -133,6 +178,28 @@ function EffectsController.init()
 
 	Network.getEvent("FinaleStarted").OnClientEvent:Connect(playFinaleVisuals)
 
+	-- Katastrophen: Banner + Sound + (beim Erdbeben) erzwungenes Wackeln.
+	Network.getEvent("DisasterEvent").OnClientEvent:Connect(function(eventId: any, stage: any)
+		if typeof(eventId) ~= "string" or typeof(stage) ~= "string" then
+			return
+		end
+		local labels = DISASTER_LABELS[eventId]
+		if labels == nil then
+			return
+		end
+		if stage == "warnung" then
+			showDisasterBanner(labels.warnung, Color3.fromRGB(255, 120, 80), GameConfig.DISASTER_WARNING_SECONDS)
+			playDisasterSound(0.7, 0.7)
+		elseif stage == "start" then
+			local color = if eventId == "goldrausch" then Color3.fromRGB(255, 210, 80) else Color3.fromRGB(230, 70, 60)
+			showDisasterBanner(labels.start, color, 3)
+			playDisasterSound(if eventId == "goldrausch" then 1.4 else 0.5, 0.9)
+			if eventId == "erdbeben" then
+				forcedShakeUntil = os.clock() + GameConfig.QUAKE_DURATION_SECONDS
+			end
+		end
+	end)
+
 	-- Kamerawackeln proportional zur Instabilität.
 	RunService.RenderStepped:Connect(function()
 		local character = Players.LocalPlayer.Character
@@ -140,11 +207,14 @@ function EffectsController.init()
 		if humanoid == nil then
 			return
 		end
-		if stabilityScore >= SHAKE_START_SCORE then
+		local quakeShaking = os.clock() < forcedShakeUntil
+		if stabilityScore >= SHAKE_START_SCORE and not quakeShaking then
 			humanoid.CameraOffset = Vector3.zero
 			return
 		end
-		local amplitude = ((SHAKE_START_SCORE - stabilityScore) / SHAKE_START_SCORE) * 0.35
+		local amplitude = if quakeShaking
+			then 0.5
+			else ((SHAKE_START_SCORE - stabilityScore) / SHAKE_START_SCORE) * 0.35
 		humanoid.CameraOffset = Vector3.new(
 			rng:NextNumber(-amplitude, amplitude),
 			rng:NextNumber(-amplitude, amplitude),

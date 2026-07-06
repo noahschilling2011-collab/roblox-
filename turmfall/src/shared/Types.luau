@@ -36,6 +36,7 @@ export type ReplayData = {
 	culpritPieceId: number?,
 	culpritUserId: number?,
 	culpritName: string?,
+	disasterCaused: boolean?, -- true = Katastrophe war schuld, niemand zahlt
 }
 
 -- Eintrag fürs Punkte-Board.
@@ -44,6 +45,7 @@ export type ScoreEntry = {
 	name: string,
 	points: number,
 	culprit: boolean, -- hat diese Runde einen Kollaps verursacht
+	level: number?, -- XP-Level (LevelLogic), sichtbare Langzeit-Progression
 }
 
 -- Reine Sicht auf ein Teil für die Punkteberechnung (ScoreLogic).
@@ -51,6 +53,7 @@ export type ScoringPiece = {
 	ownerUserId: number,
 	heightAboveBase: number, -- Y-Höhe der Teil-Mitte über der Plattform-Oberkante
 	fallen: boolean,
+	multiplier: number?, -- z. B. 3 für goldene Teile (Goldrausch); nil = 1
 }
 
 return {}

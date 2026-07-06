@@ -32,7 +32,9 @@ function ScoreLogic.computeScores(
 		if piece.fallen then
 			continue -- gefallene Teile zählen nicht
 		end
-		scores[piece.ownerUserId] += ScoreLogic.pointsForPiece(piece.heightAboveBase)
+		-- Goldene Teile (Goldrausch-Event) zählen mehrfach.
+		local multiplier = piece.multiplier or 1
+		scores[piece.ownerUserId] += ScoreLogic.pointsForPiece(piece.heightAboveBase) * multiplier
 	end
 
 	-- Verursacher verlieren ihren kompletten Einsatz.

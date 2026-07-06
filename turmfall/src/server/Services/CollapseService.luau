@@ -58,6 +58,11 @@ local recentFalls: { { pieceId: number, at: number } } = {}
 
 local detectionActive = false
 
+-- Solange dieser Zeitpunkt in der Zukunft liegt, ist die Schuld-Zuweisung
+-- ausgesetzt (Katastrophen-Events: für Wind/Erdbeben verliert NIEMAND
+-- seinen Einsatz - das wäre unfair und fühlbar falsch).
+local blameSuspendedUntil = 0
+
 local collapseEvent: RemoteEvent? = nil
 
 --------------------------------------------------------------------------
@@ -92,10 +97,16 @@ function CollapseService.resetRound()
 	table.clear(ringSamples)
 	ringWriteIndex = 0
 	table.clear(recentFalls)
+	blameSuspendedUntil = 0
 end
 
 function CollapseService.setActive(active: boolean)
 	detectionActive = active
+end
+
+-- Setzt die Schuld-Zuweisung für einige Sekunden aus (DisasterService).
+function CollapseService.suspendBlame(seconds: number)
+	blameSuspendedUntil = math.max(blameSuspendedUntil, os.clock() + seconds)
 end
 
 --------------------------------------------------------------------------
@@ -156,16 +167,23 @@ local function getFallThresholdY(): number
 end
 
 local function triggerCollapse(fallenSet: { [number]: boolean })
+	-- Katastrophen-Kollaps: keine Schuld, niemand verliert den Einsatz.
+	local disasterCaused = os.clock() < blameSuspendedUntil
+
 	-- Schuld ermitteln (purer, getesteter Algorithmus).
-	local placements: { Types.PlacementRecord } = {}
-	local radii: { [number]: number } = {}
-	for pieceId, piece in tracked do
-		table.insert(placements, { pieceId = pieceId, ownerUserId = piece.ownerUserId, placedAt = piece.placedAt })
-		radii[pieceId] = PartCatalog.getApproxRadius(piece.partTypeId)
+	local culpritPieceId: number? = nil
+	local culpritUserId: number? = nil
+	if not disasterCaused then
+		local placements: { Types.PlacementRecord } = {}
+		local radii: { [number]: number } = {}
+		for pieceId, piece in tracked do
+			table.insert(placements, { pieceId = pieceId, ownerUserId = piece.ownerUserId, placedAt = piece.placedAt })
+			radii[pieceId] = PartCatalog.getApproxRadius(piece.partTypeId)
+		end
+		local allSamples = getOrderedSamples(GameConfig.RING_BUFFER_SECONDS, nil)
+		culpritPieceId, culpritUserId =
+			BlameLogic.findCulprit(placements, allSamples, fallenSet, radii, GameConfig.BLAME_CONTACT_MARGIN_STUDS)
 	end
-	local allSamples = getOrderedSamples(GameConfig.RING_BUFFER_SECONDS, nil)
-	local culpritPieceId, culpritUserId =
-		BlameLogic.findCulprit(placements, allSamples, fallenSet, radii, GameConfig.BLAME_CONTACT_MARGIN_STUDS)
 
 	-- Replay-Daten: nur Kaskade + Verursacher-Teil, letzte REPLAY_SECONDS.
 	local replayIds: { [number]: boolean } = table.clone(fallenSet)
@@ -194,6 +212,7 @@ local function triggerCollapse(fallenSet: { [number]: boolean })
 		culpritPieceId = culpritPieceId,
 		culpritUserId = culpritUserId,
 		culpritName = culpritName,
+		disasterCaused = disasterCaused,
 	}
 
 	-- Wertung informieren (Verursacher verliert den Einsatz) und senden.

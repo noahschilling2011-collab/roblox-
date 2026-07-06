@@ -158,3 +158,32 @@ benutzte Remote in `Network.luau` deklariert ist.
    gelb/rot, Kamera wackelt, es knarzt.
 4. Mobile testen: In Studio **Test → Emulation → Device** wählen –
    die Touch-Buttons 🧱/🔄 erscheinen automatisch.
+
+## Spannungs-Update – von den Roblox-Topspielen gelernt ✅
+
+Analyse der erfolgreichsten Roblox-Spiele (Natural Disaster Survival,
+Blox Fruits, Grow a Garden, Steal a Brainrot): Was sie tragen, sind
+Runden-Variation durch Events, sichtbare Langzeit-Progression und
+Jackpot-Momente. Daraus in Turmfall:
+
+- **Katastrophen-Events** (mit 4 s Vorwarnung, frühestens 40 s nach
+  Phasenstart): 💨 **Windböe** drückt seitlich gegen alle aktiven Teile,
+  🌍 **Erdbeben** rüttelt den Turm durch, ✨ **Goldrausch** schenkt jedem
+  ein Teil – und alles, was im 20-Sekunden-Fenster gebaut wird, ist
+  GOLD und zählt 3-fach
+- **Fairness-Regel:** Kollabiert der Turm durch eine Katastrophe, ist
+  NIEMAND schuld („Die Katastrophe war schuld!") – niemand verliert
+  seinen Einsatz für etwas, das er nicht getan hat
+- **XP & Level:** Jede Runde gibt XP (Teilnahme + Punkte), das Level
+  steht im Leaderboard (`[Lv.7]`); Level-Aufstiege werden gefeiert
+- **Sieger-Feier:** Der Rundensieger trägt in der Wertung eine goldene
+  Krone mit Konfetti-Regen
+
+### So testest du das Spannungs-Update
+
+1. Runde spielen und ~6 Teile bauen – ab dann würfelt der Server alle
+   10 s über ein Event (im Schnitt eines pro Minute).
+2. Bei „✨ GOLDRAUSCH" schnell bauen: goldene Teile glitzern und zählen
+   3-fach in der Wertung.
+3. Runde beenden → „+N 🧱 Trümmer und +M XP verdient!", bei genug XP
+   „⬆️ LEVEL-AUFSTIEG!" – das Level erscheint im Leaderboard.

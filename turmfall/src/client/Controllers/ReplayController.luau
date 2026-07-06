@@ -41,7 +41,7 @@ local function vec3(v: any): Vector3?
 end
 
 -- Banner "💥 KOLLAPS - Schuld: X" für die Dauer des Replays.
-local function showBanner(culpritName: string?): () -> ()
+local function showBanner(subtitleText: string): () -> ()
 	local playerGui = Players.LocalPlayer:WaitForChild("PlayerGui")
 	local screenGui = Instance.new("ScreenGui")
 	screenGui.Name = "TurmfallReplay"
@@ -81,9 +81,7 @@ local function showBanner(culpritName: string?): () -> ()
 	subtitle.Font = Enum.Font.GothamMedium
 	subtitle.TextSize = 16
 	subtitle.TextColor3 = Color3.fromRGB(235, 238, 245)
-	subtitle.Text = if culpritName ~= nil
-		then `Schuld: {culpritName}  ·  REPLAY`
-		else "Kein eindeutiger Verursacher  ·  REPLAY"
+	subtitle.Text = subtitleText
 	subtitle.Parent = banner
 
 	return function()
@@ -256,7 +254,12 @@ function ReplayController.init()
 			end
 		end
 
-		local closeBanner = showBanner(if typeof(data.culpritName) == "string" then data.culpritName else nil)
+		-- Katastrophen-Kollaps: niemand ist schuld (DisasterService).
+		local subtitleText = if data.disasterCaused == true
+			then "🌪️ Die Katastrophe war schuld - niemand verliert den Einsatz!"
+			elseif typeof(data.culpritName) == "string" then `Schuld: {data.culpritName}  ·  REPLAY`
+			else "Kein eindeutiger Verursacher  ·  REPLAY"
+		local closeBanner = showBanner(subtitleText)
 		local ok, err = pcall(playReplay, data, playbackScale)
 		closeBanner()
 		replayRunning = false

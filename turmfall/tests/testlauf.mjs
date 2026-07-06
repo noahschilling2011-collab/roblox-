@@ -75,6 +75,7 @@ const modules = [
   ["SkinCatalog", "src/shared/Config/SkinCatalog.luau"],
   ["MonetizationCatalog", "src/shared/Config/MonetizationCatalog.luau"],
   ["ReceiptLogic", "src/shared/ReceiptLogic.luau"],
+  ["LevelLogic", "src/shared/LevelLogic.luau"],
   ["BlameLogic", "src/shared/BlameLogic.luau"],
   ["ScoreLogic", "src/shared/ScoreLogic.luau"],
 ];
@@ -94,6 +95,7 @@ local PartCatalog = __deps["PartCatalog"]
 local SkinCatalog = __deps["SkinCatalog"]
 local MonetizationCatalog = __deps["MonetizationCatalog"]
 local ReceiptLogic = __deps["ReceiptLogic"]
+local LevelLogic = __deps["LevelLogic"]
 local BlameLogic = __deps["BlameLogic"]
 local ScoreLogic = __deps["ScoreLogic"]
 
@@ -361,6 +363,47 @@ test("GameConfig: Finale, Sabotage und Stabilitaets-Feedback", function()
 	expect(GameConfig.SABOTAGE_SUPPORT_MAX_DROP > 0, "Sabotage-Stuetzhoehe unplausibel")
 	expect(GameConfig.STABILITY_BROADCAST_SECONDS > 0, "Stabilitaets-Takt unplausibel")
 	expect(GameConfig.STABILITY_SPEED_FOR_ZERO > 0, "Stabilitaets-Skala unplausibel")
+end)
+
+-- 17) Level-Kurve
+test("LevelLogic: Kurve steigt monoton und startet bei Level 1", function()
+	expect(LevelLogic.levelForXp(0) == 1, "0 XP muss Level 1 sein")
+	expect(LevelLogic.levelForXp(99) == 1, "99 XP muss noch Level 1 sein")
+	expect(LevelLogic.levelForXp(100) == 2, "100 XP muss Level 2 sein")
+	expect(LevelLogic.levelForXp(250) == 3, "100+150 XP muss Level 3 sein")
+	expect(LevelLogic.levelForXp(-50) == 1, "negative XP duerfen nicht crashen")
+	-- Monotonie-Stichprobe.
+	local last = 0
+	for xp = 0, 5000, 100 do
+		local level = LevelLogic.levelForXp(xp)
+		expect(level >= last, "Level darf nie sinken")
+		last = level
+	end
+	-- Fortschritts-Anzeige liefert plausible Werte.
+	local current, needed = LevelLogic.progressInLevel(120)
+	expect(current == 20 and needed == 150, "progressInLevel(120) falsch")
+end)
+
+-- 18) Goldrausch: goldene Teile zaehlen mehrfach
+test("ScoreLogic: Gold-Multiplikator wirkt nur auf ueberlebende Teile", function()
+	local pieces = {
+		{ ownerUserId = 100, heightAboveBase = 10, fallen = false, multiplier = 3 },
+		{ ownerUserId = 100, heightAboveBase = 10, fallen = false },
+		{ ownerUserId = 100, heightAboveBase = 10, fallen = true, multiplier = 3 },
+	}
+	local scores = ScoreLogic.computeScores(pieces, {})
+	expect(scores[100] == 30 + 10, "Gold muss 3-fach zaehlen, gefallenes Gold gar nicht: " .. tostring(scores[100]))
+end)
+
+-- 19) Katastrophen- und XP-Konstanten
+test("GameConfig: Katastrophen und XP sind plausibel konfiguriert", function()
+	expect(GameConfig.DISASTER_WARNING_SECONDS >= 2, "Vorwarnzeit zu kurz (unfair)")
+	expect(GameConfig.DISASTER_MIN_GAP_SECONDS >= 20, "Events zu dicht")
+	expect(GameConfig.DISASTER_CHANCE_PER_CHECK > 0 and GameConfig.DISASTER_CHANCE_PER_CHECK < 1, "Event-Chance ausserhalb (0,1)")
+	expect(GameConfig.DISASTER_BLAME_GRACE_SECONDS > 0, "Schuld-Schonfrist fehlt")
+	expect(GameConfig.GOLD_SCORE_MULTIPLIER >= 2, "Gold-Multiplikator zu klein")
+	expect(GameConfig.GOLDRUSH_WINDOW_SECONDS > 0, "Goldrausch-Fenster fehlt")
+	expect(GameConfig.XP_ROUND_BONUS > 0 and GameConfig.XP_PER_POINT > 0, "XP-Vergabe unplausibel")
 end)
 
 table.insert(results, "")

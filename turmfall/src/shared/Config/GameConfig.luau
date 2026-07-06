@@ -68,6 +68,24 @@ local GameConfig = {
 	-- (Kamerawackeln + Knarz-Sounds).
 	STABILITY_BROADCAST_SECONDS = 1,
 	STABILITY_SPEED_FOR_ZERO = 9, -- mittlere Geschwindigkeit (Studs/s), die Score 0 bedeutet
+
+	-- Katastrophen-Events (inspiriert von Natural Disaster Survival):
+	-- Mitten in der Bauphase kommt mit Vorwarnung ein zufälliges Ereignis.
+	DISASTER_MIN_GAP_SECONDS = 40, -- frühestens so lange nach Phasenstart/letztem Event
+	DISASTER_CHANCE_PER_CHECK = 0.5, -- Chance pro Prüfintervall (alle 10 s)
+	DISASTER_CHECK_SECONDS = 10,
+	DISASTER_WARNING_SECONDS = 4, -- Vorwarnzeit ("⚠️ ... im Anflug!")
+	WIND_DURATION_SECONDS = 4, -- Windböe: seitliche Stöße auf alle aktiven Teile
+	WIND_IMPULSE_SPEED = 6, -- zusätzliche Geschwindigkeit pro Stoß (Studs/s)
+	QUAKE_DURATION_SECONDS = 5, -- Erdbeben: zufällige Rüttel-Stöße
+	QUAKE_IMPULSE_SPEED = 3,
+	DISASTER_BLAME_GRACE_SECONDS = 6, -- so lange nach dem Event ist NIEMAND schuld
+	GOLDRUSH_WINDOW_SECONDS = 20, -- Goldrausch: in dieser Zeit platzierte Teile sind golden
+	GOLD_SCORE_MULTIPLIER = 3, -- goldene Teile zählen 3-fach
+
+	-- XP & Level (sichtbare Langzeit-Progression wie in den Top-Spielen).
+	XP_ROUND_BONUS = 20, -- Teilnahme-XP pro Runde
+	XP_PER_POINT = 1, -- zusätzlich 1 XP pro Punkt
 }
 
 return GameConfig

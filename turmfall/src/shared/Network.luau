@@ -25,6 +25,7 @@ local EVENT_NAMES = {
 	"SkinsChanged", -- (ownedSkins: {string}, equipped: {slot: skinId}, truemmer: number)
 	"FinaleStarted", -- () "Letzter Stein"-Finale beginnt (Zeitlupe nur visuell)
 	"StabilityChanged", -- (score: number) Stabilitäts-Score 0..100 des Turms
+	"DisasterEvent", -- (eventId: string, stage: "warnung"|"start"|"ende") Katastrophen
 }
 
 -- Client -> Server (RemoteFunctions).

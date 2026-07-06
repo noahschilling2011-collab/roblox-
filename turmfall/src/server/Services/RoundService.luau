@@ -21,6 +21,7 @@ local DeckService = require(script.Parent.DeckService)
 local CollapseService = require(script.Parent.CollapseService)
 local ScoreService = require(script.Parent.ScoreService)
 local MonetizationService = require(script.Parent.MonetizationService)
+local DisasterService = require(script.Parent.DisasterService)
 
 local RoundService = {}
 
@@ -45,6 +46,7 @@ local function setPhase(phase: Types.RoundPhase)
 	DeckService.setDropsActive(phase == "Bauphase")
 	CollapseService.setActive(phase == "Bauphase")
 	ScoreService.setLiveUpdates(phase == "Bauphase")
+	DisasterService.setActive(phase == "Bauphase")
 end
 
 local function notifyAll(message: string, kind: string)
@@ -157,6 +159,50 @@ local function runBuild()
 	TowerService.setFinaleMode(false)
 end
 
+-- Sieger-Feier: goldene Krone + Konfetti über dem Gewinner für die Dauer
+-- der Wertung - der Moment, für den man die nächste Runde bleibt.
+local function celebrateWinner(winnerUserId: number)
+	local winner = Players:GetPlayerByUserId(winnerUserId)
+	local character = if winner ~= nil then winner.Character else nil
+	local head = if character ~= nil then character:FindFirstChild("Head") else nil
+	if head == nil or not head:IsA("BasePart") then
+		return
+	end
+
+	local crown = Instance.new("Part")
+	crown.Name = "SiegerKrone"
+	crown.Shape = Enum.PartType.Cylinder
+	crown.Size = Vector3.new(0.4, 1.8, 1.8)
+	crown.Color = Color3.fromRGB(235, 186, 60)
+	crown.Material = Enum.Material.Neon
+	crown.CanCollide = false
+	crown.Massless = true
+	crown.CFrame = (head :: BasePart).CFrame * CFrame.new(0, 1.2, 0) * CFrame.Angles(0, 0, math.rad(90))
+	local weld = Instance.new("WeldConstraint")
+	weld.Part0 = head :: BasePart
+	weld.Part1 = crown
+	weld.Parent = crown
+	crown.Parent = character
+
+	local confetti = Instance.new("ParticleEmitter")
+	confetti.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 90, 90)),
+		ColorSequenceKeypoint.new(0.5, Color3.fromRGB(90, 200, 255)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 220, 90)),
+	})
+	confetti.LightEmission = 0.8
+	confetti.Rate = 25
+	confetti.Lifetime = NumberRange.new(1, 2)
+	confetti.Speed = NumberRange.new(6, 12)
+	confetti.SpreadAngle = Vector2.new(180, 180)
+	confetti.Size = NumberSequence.new(0.4)
+	confetti.Parent = crown
+
+	task.delay(GameConfig.SCORING_SECONDS, function()
+		crown:Destroy()
+	end)
+end
+
 local function runScoring()
 	setPhase("Wertung")
 
@@ -164,6 +210,7 @@ local function runScoring()
 	local winner = entries[1]
 	if winner ~= nil and winner.points > 0 then
 		notifyAll(`🏆 Runde vorbei! Sieger: {winner.name} mit {winner.points} Punkten!`, "success")
+		celebrateWinner(winner.userId)
 	else
 		notifyAll("Runde vorbei - niemand hat gepunktet. Nächster Versuch!", "info")
 	end

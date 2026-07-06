@@ -321,7 +321,8 @@ local function refreshBoard(entries: { any })
 		row.TextXAlignment = Enum.TextXAlignment.Left
 		row.TextTruncate = Enum.TextTruncate.AtEnd
 		local marker = if entry.culprit == true then "💥 " else `{rank}. `
-		row.Text = `{marker}{entry.name}  –  {entry.points}`
+		local levelText = if typeof(entry.level) == "number" then ` [Lv.{entry.level}]` else ""
+		row.Text = `{marker}{entry.name}{levelText}  –  {entry.points}`
 		row.TextColor3 = if entry.culprit == true
 			then DANGER_COLOR
 			elseif rank == 1 and entry.points > 0 then ACCENT_COLOR

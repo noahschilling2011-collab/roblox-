@@ -20,9 +20,11 @@ local RunService = game:GetService("RunService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Network = require(Shared.Network)
+local GameConfig = require(Shared.Config.GameConfig)
 local SkinCatalog = require(Shared.Config.SkinCatalog)
 local MonetizationCatalog = require(Shared.Config.MonetizationCatalog)
 local ReceiptLogic = require(Shared.ReceiptLogic)
+local LevelLogic = require(Shared.LevelLogic)
 local Types = require(Shared.Types)
 
 local DataService = require(script.Parent.DataService)
@@ -116,7 +118,9 @@ end
 -- Trümmer: erspielte Zweitwährung
 --------------------------------------------------------------------------
 
--- Rundenabschluss: Trümmer aus Punkten + Teilnahme-Bonus (RoundService).
+-- Rundenabschluss: Trümmer + XP aus Punkten und Teilnahme (RoundService).
+-- Level-Aufstiege werden gefeiert - sichtbare Progression nach JEDER Runde
+-- ist einer der stärksten Bindungs-Treiber der Roblox-Topspiele.
 function MonetizationService.awardRoundDebris(entries: { Types.ScoreEntry })
 	for _, entry in entries do
 		local player = Players:GetPlayerByUserId(entry.userId)
@@ -131,9 +135,19 @@ function MonetizationService.awardRoundDebris(entries: { Types.ScoreEntry })
 			+ math.floor(entry.points / MonetizationCatalog.DEBRIS_PER_POINTS)
 		profile.truemmer += earned
 		profile.roundsPlayed += 1
+
+		-- XP + Level-Aufstieg.
+		local earnedXp = GameConfig.XP_ROUND_BONUS + entry.points * GameConfig.XP_PER_POINT
+		local levelBefore = LevelLogic.levelForXp(profile.xp)
+		profile.xp += earnedXp
+		local levelAfter = LevelLogic.levelForXp(profile.xp)
+
 		DataService.markDirty(player)
 		SkinService.refresh(player)
-		notify(player, `+{earned} 🧱 Trümmer verdient!`, "info")
+		notify(player, `+{earned} 🧱 Trümmer und +{earnedXp} XP verdient!`, "info")
+		if levelAfter > levelBefore then
+			notify(player, `⬆️ LEVEL-AUFSTIEG! Du bist jetzt Level {levelAfter}! 🎉`, "success")
+		end
 	end
 end
 

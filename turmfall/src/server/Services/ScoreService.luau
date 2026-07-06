@@ -13,8 +13,10 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Network = require(Shared.Network)
 local GameConfig = require(Shared.Config.GameConfig)
 local ScoreLogic = require(Shared.ScoreLogic)
+local LevelLogic = require(Shared.LevelLogic)
 local Types = require(Shared.Types)
 
+local DataService = require(script.Parent.DataService)
 local TowerService = require(script.Parent.TowerService)
 local CollapseService = require(script.Parent.CollapseService)
 
@@ -34,11 +36,13 @@ local function buildEntries(): { Types.ScoreEntry }
 
 	local entries: { Types.ScoreEntry } = {}
 	for _, player in Players:GetPlayers() do
+		local profile = DataService.getProfile(player)
 		table.insert(entries, {
 			userId = player.UserId,
 			name = player.DisplayName,
 			points = scores[player.UserId] or 0,
 			culprit = culprits[player.UserId] == true,
+			level = LevelLogic.levelForXp(if profile ~= nil then profile.xp else 0),
 		})
 	end
 	table.sort(entries, function(a, b)

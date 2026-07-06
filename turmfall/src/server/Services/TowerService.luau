@@ -46,6 +46,7 @@ export type Piece = {
 	placedAt: number,
 	petrified: boolean,
 	fallen: boolean,
+	golden: boolean, -- im Goldrausch platziert -> zählt mehrfach
 }
 
 local TowerService = {}
@@ -64,6 +65,9 @@ local sabotageCooldownUntil: { [Player]: number } = {}
 -- "Letzter Stein"-Finale (M4): genau eine Platzierung pro Spieler.
 local finaleActive = false
 local finalePlacementUsed: { [Player]: boolean } = {}
+
+-- Goldrausch (DisasterService): bis dahin platzierte Teile sind golden.
+local goldRushUntil = 0
 
 local towerFolder: Folder? = nil
 local basePlatform: BasePart? = nil
@@ -396,6 +400,27 @@ local function handlePlacePart(player: Player, partTypeIdArg: unknown, cframeArg
 	-- Skin des Spielers anwenden (nur Optik, Hook vom SkinService).
 	TowerService.decoratePiece(player, model, partTypeId)
 
+	-- Goldrausch-Optik ÜBERSCHREIBT den Skin: Gold muss man sehen.
+	if piece.golden then
+		for _, descendant in model:GetDescendants() do
+			if descendant:IsA("BasePart") then
+				descendant.Color = Color3.fromRGB(235, 186, 60)
+				descendant.Material = Enum.Material.Metal
+				descendant.Reflectance = 0.25
+			end
+		end
+		local sparkle = Instance.new("ParticleEmitter")
+		sparkle.Name = "GoldFunkeln"
+		sparkle.Color = ColorSequence.new(Color3.fromRGB(255, 220, 120))
+		sparkle.LightEmission = 1
+		sparkle.Rate = 4
+		sparkle.Lifetime = NumberRange.new(0.6, 1.2)
+		sparkle.Speed = NumberRange.new(0.5, 1.5)
+		sparkle.SpreadAngle = Vector2.new(180, 180)
+		sparkle.Size = NumberSequence.new(0.3)
+		sparkle.Parent = piece.primaryPart
+	end
+
 	-- Finale: der eine Stein ist gesetzt.
 	if finaleActive then
 		finalePlacementUsed[player] = true
@@ -426,6 +451,7 @@ local function handlePlacePart(player: Player, partTypeIdArg: unknown, cframeArg
 		placedAt = now,
 		petrified = false,
 		fallen = false,
+		golden = now < goldRushUntil,
 	}
 	nextPieceId += 1
 	table.insert(pieces, piece)
@@ -520,6 +546,24 @@ function TowerService.setFinaleMode(active: boolean)
 	table.clear(finalePlacementUsed)
 end
 
+-- Öffnet das Goldrausch-Fenster (DisasterService).
+function TowerService.setGoldRush(seconds: number)
+	goldRushUntil = os.clock() + seconds
+end
+
+-- PrimaryParts aller aktiven (nicht versteinerten/gefallenen) Teile -
+-- für Wind- und Erdbeben-Stöße des DisasterService.
+function TowerService.getActivePrimaryParts(): { BasePart }
+	local parts: { BasePart } = {}
+	for _, piece in pieces do
+		if piece.fallen or piece.petrified or piece.model.Parent == nil then
+			continue
+		end
+		table.insert(parts, piece.primaryPart)
+	end
+	return parts
+end
+
 -- Entfernt alle Teile (neue Runde).
 function TowerService.resetTower()
 	for _, piece in pieces do
@@ -533,6 +577,7 @@ function TowerService.resetTower()
 	table.clear(sabotageCooldownUntil)
 	table.clear(finalePlacementUsed)
 	finaleActive = false
+	goldRushUntil = 0
 end
 
 -- Stabilitäts-Score 0..100 aus der mittleren Geschwindigkeit der aktiven
@@ -580,6 +625,7 @@ function TowerService.getScoringPieces(): { Types.ScoringPiece }
 			ownerUserId = piece.ownerUserId,
 			heightAboveBase = if stillThere then piece.primaryPart.Position.Y - baseTopY else 0,
 			fallen = not stillThere,
+			multiplier = if piece.golden then GameConfig.GOLD_SCORE_MULTIPLIER else 1,
 		})
 	end
 	return result
