@@ -270,3 +270,16 @@ neben der Arena (man sieht den Turm von dort):
   „✅ Verstanden – los geht's!"-Button; der **❓ Hilfe**-Button (links)
   öffnet sie jederzeit wieder. Auf Touch-Geräten passen sich die
   Steuerungs-Hinweise automatisch an.
+
+## Teile-Rework – gute Bau-Teile ✅
+
+- **3 neue Bau-Teile:** 🟫 **Fundament** (6×2×6, breite Plattform),
+  🏛️ **Säule** (2×6×2 – +6 Studs Höhe pro Teil!), ➖ **Balken**
+  (6×2×2, überbrückt Lücken)
+- **Drops zu 92 % bau-freundlich:** Fundament/Säule/Balken/Schwer-/
+  Leichtblock dominieren; ◣ Keil (5 %) und 🌀 Feder (3 %) bleiben
+  seltene Würze
+- **Griffige Physik:** Reibung 1 + minimale Elastizität für alle Teile –
+  Blöcke rutschen nicht mehr voneinander, Türme stehen endlich stabil
+  (identisch für alle Spieler = fair)
+- **Goldrausch** verschenkt jetzt Säulen (das beste Höhen-Teil)

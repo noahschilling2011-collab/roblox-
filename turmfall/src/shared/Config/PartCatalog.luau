@@ -22,13 +22,48 @@ export type PartDef = {
 local PartCatalog = {}
 
 -- Größen in Studs: 1 Rastereinheit = 2 Studs (aus dem Konzept "2x1x2" usw.).
+--
+-- TEILE-REWORK (D33): Die Drops bestehen fast nur noch aus BAU-freundlichen
+-- Teilen (flach, gerade, stapelbar) - Säule/Balken/Fundament sind neu und
+-- machen Höhe und Brücken leicht. Schrägkeil und Federblock bleiben als
+-- seltene Würze (Risiko/Sabotage), dominieren aber nie wieder die Hotbar.
 PartCatalog.Parts = {
+	fundament = {
+		id = "fundament",
+		displayName = "Fundament",
+		description = "Breite, flache Platte - der perfekte Boden für jede neue Etage.",
+		icon = "🟫",
+		dropWeight = 20,
+		size = { x = 6, y = 2, z = 6 },
+		density = 2,
+		color = { r = 128, g = 116, b = 100 },
+	},
+	saeule = {
+		id = "saeule",
+		displayName = "Säule",
+		description = "Hoch und gerade - +6 Studs Höhe mit einem einzigen Teil!",
+		icon = "🏛️",
+		dropWeight = 25,
+		size = { x = 2, y = 6, z = 2 },
+		density = 1,
+		color = { r = 214, g = 208, b = 196 },
+	},
+	balken = {
+		id = "balken",
+		displayName = "Balken",
+		description = "Langer, gerader Träger - überbrückt Lücken und verbindet Türme.",
+		icon = "➖",
+		dropWeight = 20,
+		size = { x = 6, y = 2, z = 2 },
+		density = 1,
+		color = { r = 168, g = 132, b = 88 },
+	},
 	schwerblock = {
 		id = "schwerblock",
 		displayName = "Schwerblock",
 		description = "Massiv und träge - die sichere Basis für jeden Turm.",
 		icon = "⬛",
-		dropWeight = 30,
+		dropWeight = 15,
 		size = { x = 4, y = 2, z = 4 },
 		density = 4,
 		color = { r = 90, g = 94, b = 104 },
@@ -38,7 +73,7 @@ PartCatalog.Parts = {
 		displayName = "Leichtblock",
 		description = "Klein und leicht - schnell hoch gebaut, schnell gekippt.",
 		icon = "⬜",
-		dropWeight = 35,
+		dropWeight = 12,
 		size = { x = 2, y = 2, z = 2 },
 		density = 0.5,
 		color = { r = 222, g = 214, b = 190 },
@@ -46,9 +81,9 @@ PartCatalog.Parts = {
 	schraegkeil = {
 		id = "schraegkeil",
 		displayName = "Schrägkeil",
-		description = "45-Grad-Keil - perfekt für riskante Überhänge und fiese Rampen.",
+		description = "45-Grad-Keil - selten, riskant, perfekt für fiese Rampen.",
 		icon = "◣",
-		dropWeight = 20,
+		dropWeight = 5,
 		size = { x = 3, y = 3, z = 3 },
 		density = 1.5,
 		color = { r = 196, g = 148, b = 88 },
@@ -56,14 +91,17 @@ PartCatalog.Parts = {
 	federblock = {
 		id = "federblock",
 		displayName = "Federblock",
-		description = "Zwei Platten auf einer Feder - wippt, wackelt und überrascht.",
+		description = "Zwei Platten auf einer Feder - selten, wippt und überrascht.",
 		icon = "🌀",
-		dropWeight = 15,
+		dropWeight = 3,
 		size = { x = 2, y = 2.2, z = 2 },
 		density = 0.7,
 		color = { r = 120, g = 190, b = 150 },
 	},
 } :: { [string]: PartDef }
+
+-- Teile, die sich gut stapeln lassen (für Tests/Balancing-Checks).
+PartCatalog.STACKABLE_IDS = { "fundament", "saeule", "balken", "schwerblock", "leichtblock" }
 
 -- Sortierte IDs für stabile Anzeigen/Verteilungen.
 function PartCatalog.getSortedIds(): { string }
@@ -91,7 +129,11 @@ end
 local function applyCommon(part: BasePart, def: PartDef)
 	part.Color = Color3.fromRGB(def.color.r, def.color.g, def.color.b)
 	part.Material = Enum.Material.SmoothPlastic
-	part.CustomPhysicalProperties = PhysicalProperties.new(def.density, 0.4, 0.3)
+	-- GRIFFIGE Physik (D33): hohe Reibung (1) mit hohem Reibungs-Gewicht
+	-- und fast keine Elastizität - Teile rutschen nicht mehr voneinander
+	-- und federn nicht beim Aufsetzen. DAS macht hohe Türme erst möglich.
+	-- Gilt identisch für ALLE Spieler und alle Teile (Fairness).
+	part.CustomPhysicalProperties = PhysicalProperties.new(def.density, 1, 0.05, 10, 1)
 	part.Anchored = false
 	part.CanCollide = true
 end

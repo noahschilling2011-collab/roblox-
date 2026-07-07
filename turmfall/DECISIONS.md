@@ -193,6 +193,17 @@ großem "Los geht's!"-Button erklärt ihn schneller als jede geführte Tour.
 Der ❓-Hilfe-Button holt die Erklärung jederzeit zurück; auf reinen
 Touch-Geräten formulieren sich die Steuerungs-Zeilen automatisch um.
 
+**D33 – Teile-Rework: gute Bau-Teile dominieren die Drops.** Praxistest:
+Mit 35% Keil/Feder in den Drops bestand die Hotbar oft nur aus Teilen,
+mit denen man nicht sinnvoll stapeln kann - Frust statt Höhe. Jetzt gibt
+es drei neue, bau-freundliche Teile (Fundament 6×2×6, Säule 2×6×2 für +6
+Studs pro Teil, Balken 6×2×2 für Brücken), die zusammen mit Schwer- und
+Leichtblock 92% der Drops stellen; Keil (5%) und Feder (3%) bleiben als
+seltene Würze. Zusätzlich sind ALLE Teile griffiger geworden (Reibung 1
+mit hohem Reibungs-Gewicht, Elastizität 0,05): Blöcke rutschen nicht mehr
+voneinander - identisch für alle Spieler, also weiterhin fair. Der
+Goldrausch verschenkt jetzt Säulen statt Leichtblöcke.
+
 **D21 – Solo-Modus als automatischer Fallback statt Button.** Wer allein
 im Server ist (Studio-Play, leere Server zur Randzeit), startet nach 8
 Sekunden automatisch eine Übungsrunde - ohne Menü, ohne Extra-Klick. Der

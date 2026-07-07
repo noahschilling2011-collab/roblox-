@@ -145,10 +145,10 @@ test("GameConfig: Kern-Konstanten des Konzepts", function()
 end)
 
 -- 2) Teilkatalog
-test("PartCatalog: vier Typen mit sinnvollen Werten", function()
+test("PartCatalog: sieben Typen, gute Bau-Teile dominieren (D33)", function()
 	local ids = PartCatalog.getSortedIds()
-	expect(#ids == 4, "Teiltypen != 4")
-	for _, id in { "schwerblock", "leichtblock", "schraegkeil", "federblock" } do
+	expect(#ids == 7, "Teiltypen != 7")
+	for _, id in { "fundament", "saeule", "balken", "schwerblock", "leichtblock", "schraegkeil", "federblock" } do
 		local def = PartCatalog.Parts[id]
 		expect(def ~= nil, "Teiltyp fehlt: " .. id)
 		expect(def.dropWeight > 0, id .. ": dropWeight <= 0")
@@ -161,6 +161,20 @@ test("PartCatalog: vier Typen mit sinnvollen Werten", function()
 	)
 	expect(PartCatalog.getApproxRadius("schwerblock") == 2, "Radius-Naeherung Schwerblock falsch")
 	expect(PartCatalog.getApproxRadius("unbekannt") == 2, "Fallback-Radius falsch")
+
+	-- Gute (stapelbare) Teile muessen die Drops klar dominieren.
+	local totalWeight, stackableWeight = 0, 0
+	for id, def in PartCatalog.Parts do
+		totalWeight += def.dropWeight
+		if table.find(PartCatalog.STACKABLE_IDS, id) ~= nil then
+			stackableWeight += def.dropWeight
+		end
+	end
+	expect(stackableWeight / totalWeight >= 0.85, "stapelbare Teile < 85% der Drops")
+	-- Die Saeule ist DAS Hoehen-Teil: deutlich hoeher als breit.
+	expect(PartCatalog.Parts.saeule.size.y >= PartCatalog.Parts.saeule.size.x * 2, "Saeule nicht hoch genug")
+	-- Fundament ist die breiteste flache Platte.
+	expect(PartCatalog.Parts.fundament.size.x > PartCatalog.Parts.fundament.size.y, "Fundament nicht flach")
 end)
 
 -- 3) Schuld-Algorithmus: Verursacher ist selbst Teil der Kaskade

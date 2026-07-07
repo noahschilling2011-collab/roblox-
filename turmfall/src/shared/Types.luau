@@ -4,8 +4,15 @@
 -- Rundenphasen der Server-StateMachine (RoundService = Source of Truth).
 export type RoundPhase = "Lobby" | "Aufbau" | "Bauphase" | "Wertung"
 
--- IDs der vier Bauteil-Typen (PartCatalog).
-export type PartTypeId = "schwerblock" | "leichtblock" | "schraegkeil" | "federblock"
+-- IDs der Bauteil-Typen (PartCatalog).
+export type PartTypeId =
+	"fundament"
+	| "saeule"
+	| "balken"
+	| "schwerblock"
+	| "leichtblock"
+	| "schraegkeil"
+	| "federblock"
 
 -- Ein Eintrag im Platzierungs-Log (Schuld-System).
 export type PlacementRecord = {

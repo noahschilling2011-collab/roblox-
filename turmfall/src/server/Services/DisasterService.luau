@@ -195,10 +195,11 @@ local function runMeteor()
 end
 
 local function runGoldRush()
-	-- Jeder bekommt sofort ein Teil; das Gold-Fenster öffnet der TowerService.
+	-- Jeder bekommt sofort eine SÄULE (bestes Höhen-Teil); das Gold-Fenster
+	-- öffnet der TowerService.
 	TowerService.setGoldRush(GameConfig.GOLDRUSH_WINDOW_SECONDS)
 	for _, player in Players:GetPlayers() do
-		DeckService.grantPart(player, "leichtblock")
+		DeckService.grantPart(player, "saeule")
 	end
 	notifyAll(
 		`✨ GOLDRAUSCH: {GameConfig.GOLDRUSH_WINDOW_SECONDS} Sekunden lang zählen neue Teile {GameConfig.GOLD_SCORE_MULTIPLIER}-fach!`,
