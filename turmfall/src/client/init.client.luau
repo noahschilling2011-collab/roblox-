@@ -6,9 +6,11 @@
 local CONTROLLER_STARTUP_ORDER = {
 	"UIController", -- zuerst: HUD + Toast-API für alle anderen
 	"SkinUIController", -- vor dem ReplayController (Kollaps-Effekt-Abfrage)
+	"ShopUIController", -- 🛒 Robux- & Trümmer-Shop
+	"QuestUIController", -- 🎯 Session-Aufträge
 	"PlacementController",
 	"ReplayController",
-	"EffectsController", -- Stabilitäts-Feedback + Finale-Visuals
+	"EffectsController", -- Stabilitäts-Feedback + Finale-/Katastrophen-Visuals
 }
 
 local controllersFolder = script:WaitForChild("Controllers")

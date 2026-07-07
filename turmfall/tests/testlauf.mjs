@@ -76,6 +76,8 @@ const modules = [
   ["MonetizationCatalog", "src/shared/Config/MonetizationCatalog.luau"],
   ["ReceiptLogic", "src/shared/ReceiptLogic.luau"],
   ["LevelLogic", "src/shared/LevelLogic.luau"],
+  ["DailyLogic", "src/shared/DailyLogic.luau"],
+  ["QuestConfig", "src/shared/Config/QuestConfig.luau"],
   ["BlameLogic", "src/shared/BlameLogic.luau"],
   ["ScoreLogic", "src/shared/ScoreLogic.luau"],
 ];
@@ -96,6 +98,8 @@ local SkinCatalog = __deps["SkinCatalog"]
 local MonetizationCatalog = __deps["MonetizationCatalog"]
 local ReceiptLogic = __deps["ReceiptLogic"]
 local LevelLogic = __deps["LevelLogic"]
+local DailyLogic = __deps["DailyLogic"]
+local QuestConfig = __deps["QuestConfig"]
 local BlameLogic = __deps["BlameLogic"]
 local ScoreLogic = __deps["ScoreLogic"]
 
@@ -404,6 +408,53 @@ test("GameConfig: Katastrophen und XP sind plausibel konfiguriert", function()
 	expect(GameConfig.GOLD_SCORE_MULTIPLIER >= 2, "Gold-Multiplikator zu klein")
 	expect(GameConfig.GOLDRUSH_WINDOW_SECONDS > 0, "Goldrausch-Fenster fehlt")
 	expect(GameConfig.XP_ROUND_BONUS > 0 and GameConfig.XP_PER_POINT > 0, "XP-Vergabe unplausibel")
+end)
+
+-- 20) Tages-Bonus-Regeln
+test("DailyLogic: Serie, Reset und Deckelung", function()
+	local rewards = GameConfig.DAILY_REWARDS
+	expect(#rewards == 7, "DAILY_REWARDS braucht 7 Eintraege")
+	for index = 2, #rewards do
+		expect(rewards[index] > rewards[index - 1], "DAILY_REWARDS muss streng steigen")
+	end
+	-- Allererster Login.
+	local reward, streak = DailyLogic.claim(0, 20000, 0, rewards)
+	expect(reward == rewards[1] and streak == 1, "erster Login falsch")
+	-- Folgetag erhoeht die Serie.
+	reward, streak = DailyLogic.claim(19999, 20000, 3, rewards)
+	expect(reward == rewards[4] and streak == 4, "Folgetag falsch")
+	-- Verpasster Tag setzt zurueck.
+	reward, streak = DailyLogic.claim(19997, 20000, 6, rewards)
+	expect(reward == rewards[1] and streak == 1, "Reset nach Pause falsch")
+	-- Serie ueber Tabellenende: letzter Wert.
+	reward, streak = DailyLogic.claim(19999, 20000, 9, rewards)
+	expect(reward == rewards[7] and streak == 10, "Deckelung falsch")
+	-- Heute schon kassiert.
+	reward = DailyLogic.claim(20000, 20000, 5, rewards)
+	expect(reward == nil, "Doppel-Auszahlung moeglich!")
+	-- Tagesnummer.
+	expect(DailyLogic.dayNumber(86400 * 5 + 100) == 5, "dayNumber falsch")
+end)
+
+-- 21) Session-Auftraege
+test("QuestConfig: drei erreichbare Auftraege mit Belohnung", function()
+	expect(#QuestConfig.Quests == 3, "es muessen genau 3 Auftraege sein")
+	local seenIds = {}
+	for _, quest in QuestConfig.Quests do
+		expect(quest.target > 0, quest.id .. ": target <= 0")
+		expect(quest.rewardDebris > 0, quest.id .. ": Belohnung <= 0")
+		expect(seenIds[quest.id] == nil, "doppelte Quest-ID: " .. quest.id)
+		seenIds[quest.id] = true
+	end
+	expect(seenIds["platzieren"] and seenIds["katastrophe"] and seenIds["gold"], "Quest-IDs muessen zu den Hooks passen")
+end)
+
+-- 22) Meteor- und Rekord-Konstanten
+test("GameConfig: Meteor und Rekorde plausibel", function()
+	expect(GameConfig.METEOR_FALL_SECONDS > 0, "Meteor-Fallzeit <= 0")
+	expect(GameConfig.METEOR_BLAST_RADIUS > 0, "Meteor-Radius <= 0")
+	expect(GameConfig.METEOR_BLAST_SPEED > 0, "Meteor-Druckwelle <= 0")
+	expect(type(GameConfig.RECORD_STORE_NAME) == "string" and #GameConfig.RECORD_STORE_NAME > 0, "Rekord-Store fehlt")
 end)
 
 table.insert(results, "")

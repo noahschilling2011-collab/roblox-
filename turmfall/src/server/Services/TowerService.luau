@@ -76,6 +76,9 @@ local partPlacedEvent: RemoteEvent? = nil
 local notificationEvent: RemoteEvent? = nil
 local stabilityEvent: RemoteEvent? = nil
 
+-- Schild des Denkmal-Sockels (RecordService trägt hier die Rekorde ein).
+local monumentLabel: TextLabel? = nil
+
 -- Hook (RoundService/M4): zusätzliche Platzierungsregeln, z. B. das Finale.
 TowerService.extraPlacementCheck = function(_player: Player, _cframe: CFrame): (boolean, string?)
 	return true, nil
@@ -83,6 +86,9 @@ end
 
 -- Hook (SkinService): dekoriert frisch platzierte Teile rein kosmetisch.
 TowerService.decoratePiece = function(_player: Player, _model: Model, _partTypeId: string) end
+
+-- Hook (QuestService): wird nach jeder erfolgreichen Platzierung gefeuert.
+TowerService.onPlaced = function(_player: Player, _golden: boolean) end
 
 --------------------------------------------------------------------------
 -- Arena
@@ -172,6 +178,7 @@ function TowerService.buildArena()
 	plaqueText.Text = "🏆 Höchster Turm der Woche\n– bald verewigt –"
 	plaqueText.Parent = plaque
 	plaque.Parent = trophy
+	monumentLabel = plaqueText
 
 	-- Spawn auf der Plattform (vorhandenen SpawnLocation umziehen oder anlegen).
 	local spawnLocation = Workspace:FindFirstChildWhichIsA("SpawnLocation", true)
@@ -463,6 +470,7 @@ local function handlePlacePart(player: Player, partTypeIdArg: unknown, cframeArg
 	if partPlacedEvent ~= nil then
 		(partPlacedEvent :: RemoteEvent):FireAllClients(cframe.Position, partTypeId)
 	end
+	TowerService.onPlaced(player, piece.golden)
 	return true, nil
 end
 
@@ -549,6 +557,26 @@ end
 -- Öffnet das Goldrausch-Fenster (DisasterService).
 function TowerService.setGoldRush(seconds: number)
 	goldRushUntil = os.clock() + seconds
+end
+
+-- Aktuelle Turmhöhe in Studs (höchstes überlebendes Teil über der Plattform).
+function TowerService.getMaxTowerHeightStuds(): number
+	local baseTopY = TowerService.getBaseTopY()
+	local maxHeight = 0
+	for _, piece in pieces do
+		if piece.fallen or piece.model.Parent == nil then
+			continue
+		end
+		maxHeight = math.max(maxHeight, piece.primaryPart.Position.Y - baseTopY)
+	end
+	return math.floor(maxHeight)
+end
+
+-- Schreibt den Rekord-Text aufs Denkmal-Schild (RecordService).
+function TowerService.updateMonument(text: string)
+	if monumentLabel ~= nil then
+		(monumentLabel :: TextLabel).Text = text
+	end
 end
 
 -- PrimaryParts aller aktiven (nicht versteinerten/gefallenen) Teile -

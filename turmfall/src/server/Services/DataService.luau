@@ -43,6 +43,8 @@ export type Profile = {
 	receiptIds: { string }, -- verarbeitete Kauf-Belege (Idempotenz, M3)
 	roundsPlayed: number,
 	xp: number, -- Erfahrungspunkte (LevelLogic: sichtbare Langzeit-Progression)
+	dailyStreak: number, -- aufeinanderfolgende Login-Tage (Tages-Bonus)
+	lastDailyClaimDay: number, -- UTC-Tagesnummer des letzten Tages-Bonus
 }
 
 type SessionEntry = {
@@ -85,6 +87,8 @@ local function buildDefaultProfile(): Profile
 		receiptIds = {},
 		roundsPlayed = 0,
 		xp = 0,
+		dailyStreak = 0,
+		lastDailyClaimDay = 0,
 	}
 end
 

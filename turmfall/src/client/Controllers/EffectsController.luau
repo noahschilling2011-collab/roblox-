@@ -31,6 +31,7 @@ local DISASTER_LABELS: { [string]: { warnung: string, start: string } } = {
 	windboe = { warnung = "💨 WINDBÖE IM ANFLUG!", start = "💨 WINDBÖE!" },
 	erdbeben = { warnung = "🌍 ERDBEBEN-WARNUNG!", start = "🌍 ERDBEBEN!" },
 	goldrausch = { warnung = "✨ GOLDRAUSCH KOMMT!", start = "✨ GOLDRAUSCH – BAUT JETZT!" },
+	meteor = { warnung = "☄️ METEOR IM ANFLUG!", start = "☄️ EINSCHLAG!" },
 }
 
 local EffectsController = {}

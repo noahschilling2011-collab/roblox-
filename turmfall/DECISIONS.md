@@ -134,6 +134,22 @@ NICHTS frei, was Physik oder Punkte beeinflusst (gleiche Regel wie bei
 Skins/Käufen). Sie sind die sichtbare "Ich war fleißig"-Zahl im
 Leaderboard - der stärkste kostenlose Bindungs-Treiber der Topspiele.
 
+**D24 – Der Shop ist ein Schaufenster, keine neue Kaufmechanik.** Das
+Shop-Panel nutzt ausschließlich die bestehenden, geprüften Wege
+(PromptProductPurchase/PromptGamePassPurchase/BuySkinWithDebris) - es gibt
+keinen neuen Server-Endpunkt und damit keine neue Angriffsfläche. Der
+Kosmetik-Guard aus Meilenstein 3 gilt unverändert.
+
+**D25 – Tagesbonus wird automatisch beim Join gutgeschrieben.** Kein
+Claim-Popup: Kinder verpassen sonst den Bonus oder werden beim Betreten
+mit Dialogen beworfen. Read-only-Sessions (Session-Lock verpasst) sind
+ausgenommen, sonst könnte man den Bonus durch Rejoins mehrfach kassieren.
+
+**D26 – Rekorde schreiben nur über UpdateAsync-if-better.** Zwei Server,
+die gleichzeitig Runden beenden, können sich so nie gegenseitig den
+höheren Rekord überschreiben; der Callback gibt nil zurück, wenn der
+gespeicherte Wert besser ist (= kein Schreibvorgang).
+
 **D21 – Solo-Modus als automatischer Fallback statt Button.** Wer allein
 im Server ist (Studio-Play, leere Server zur Randzeit), startet nach 8
 Sekunden automatisch eine Übungsrunde - ohne Menü, ohne Extra-Klick. Der

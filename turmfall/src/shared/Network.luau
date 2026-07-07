@@ -26,6 +26,7 @@ local EVENT_NAMES = {
 	"FinaleStarted", -- () "Letzter Stein"-Finale beginnt (Zeitlupe nur visuell)
 	"StabilityChanged", -- (score: number) Stabilitäts-Score 0..100 des Turms
 	"DisasterEvent", -- (eventId: string, stage: "warnung"|"start"|"ende") Katastrophen
+	"QuestsChanged", -- (quests: {{text, progress, target, reward, done}}) Session-Aufträge
 }
 
 -- Client -> Server (RemoteFunctions).

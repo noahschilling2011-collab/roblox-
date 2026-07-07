@@ -22,6 +22,7 @@ local CollapseService = require(script.Parent.CollapseService)
 local ScoreService = require(script.Parent.ScoreService)
 local MonetizationService = require(script.Parent.MonetizationService)
 local DisasterService = require(script.Parent.DisasterService)
+local RecordService = require(script.Parent.RecordService)
 
 local RoundService = {}
 
@@ -217,6 +218,9 @@ local function runScoring()
 
 	-- Trümmer-Ausschüttung (erspielte Zweitwährung, Meilenstein 3).
 	MonetizationService.awardRoundDebris(entries)
+
+	-- Turmhöhe gegen Wochen-/Allzeit-Rekord prüfen (Denkmal).
+	RecordService.submitRound(entries)
 
 	for secondsLeft = GameConfig.SCORING_SECONDS, 1, -1 do
 		broadcastState(secondsLeft, { final = true })

@@ -86,6 +86,18 @@ local GameConfig = {
 	-- XP & Level (sichtbare Langzeit-Progression wie in den Top-Spielen).
 	XP_ROUND_BONUS = 20, -- Teilnahme-XP pro Runde
 	XP_PER_POINT = 1, -- zusätzlich 1 XP pro Punkt
+
+	-- Tages-Bonus (Trümmer je aufeinanderfolgendem Login-Tag; Tag 7+ = Maximum).
+	-- Tägliches Wiederkommen ist der stärkste Retention-Treiber der Topspiele.
+	DAILY_REWARDS = { 25, 50, 75, 100, 150, 200, 300 },
+
+	-- Meteor-Katastrophe: Feuerball schlägt in den Turm ein (Druckwelle).
+	METEOR_FALL_SECONDS = 1.2,
+	METEOR_BLAST_RADIUS = 14, -- Teile in diesem Radius bekommen die Druckwelle
+	METEOR_BLAST_SPEED = 16, -- Geschwindigkeit der Druckwelle (Studs/s)
+
+	-- Server-Rekorde (höchster Turm) fürs Denkmal.
+	RECORD_STORE_NAME = "Turmfall_Rekorde_v1",
 }
 
 return GameConfig

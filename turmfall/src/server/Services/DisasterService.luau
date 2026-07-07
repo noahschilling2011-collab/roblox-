@@ -26,15 +26,19 @@ local DeckService = require(script.Parent.DeckService)
 local CollapseService = require(script.Parent.CollapseService)
 local TowerService = require(script.Parent.TowerService)
 
-export type DisasterId = "windboe" | "erdbeben" | "goldrausch"
+export type DisasterId = "windboe" | "erdbeben" | "goldrausch" | "meteor"
 
 local DISASTERS: { { id: DisasterId, weight: number, label: string } } = {
-	{ id = "windboe", weight = 35, label = "💨 WINDBÖE im Anflug - haltet euch fest!" },
-	{ id = "erdbeben", weight = 30, label = "🌍 ERDBEBEN! Der Boden fängt gleich an zu beben!" },
-	{ id = "goldrausch", weight = 35, label = "✨ GOLDRAUSCH! Gleich zählt jedes neue Teil 3-fach!" },
+	{ id = "windboe", weight = 28, label = "💨 WINDBÖE im Anflug - haltet euch fest!" },
+	{ id = "erdbeben", weight = 24, label = "🌍 ERDBEBEN! Der Boden fängt gleich an zu beben!" },
+	{ id = "goldrausch", weight = 28, label = "✨ GOLDRAUSCH! Gleich zählt jedes neue Teil 3-fach!" },
+	{ id = "meteor", weight = 20, label = "☄️ METEOR IM ANFLUG - weg vom Turm!" },
 }
 
 local DisasterService = {}
+
+-- Hook (QuestService): wird nach jedem beendeten Event gefeuert.
+DisasterService.onDisasterEnded = function(_eventId: string) end
 
 local active = false
 local eventRunning = false
@@ -108,6 +112,88 @@ local function runQuake()
 	end
 end
 
+-- Meteor: Feuerball stürzt auf den höchsten Turmbereich, Druckwelle
+-- schleudert Teile im Umkreis weg. Reines Physik-Spektakel - Charaktere
+-- bleiben unberührt (kinderfreundlich), Schuld ist ausgesetzt.
+local function runMeteor()
+	CollapseService.suspendBlame(GameConfig.METEOR_FALL_SECONDS + GameConfig.DISASTER_BLAME_GRACE_SECONDS)
+
+	-- Ziel: Position eines zufälligen aktiven Teils (sonst Plattform-Mitte).
+	local parts = TowerService.getActivePrimaryParts()
+	local targetPosition = Vector3.new(0, TowerService.getBaseTopY(), 0)
+	if #parts > 0 then
+		targetPosition = parts[rng:NextInteger(1, #parts)].Position
+	end
+
+	local meteor = Instance.new("Part")
+	meteor.Name = "Meteor"
+	meteor.Shape = Enum.PartType.Ball
+	meteor.Size = Vector3.new(6, 6, 6)
+	meteor.Color = Color3.fromRGB(255, 130, 50)
+	meteor.Material = Enum.Material.Neon
+	meteor.Anchored = true
+	meteor.CanCollide = false
+	meteor.CanQuery = false
+	meteor.CanTouch = false
+	meteor.Position = targetPosition + Vector3.new(24, 90, 24)
+
+	local trail = Instance.new("ParticleEmitter")
+	trail.Color = ColorSequence.new(Color3.fromRGB(255, 130, 50), Color3.fromRGB(120, 60, 30))
+	trail.LightEmission = 0.8
+	trail.Rate = 50
+	trail.Lifetime = NumberRange.new(0.4, 0.9)
+	trail.Speed = NumberRange.new(1, 3)
+	trail.Size = NumberSequence.new(1.6)
+	trail.Parent = meteor
+	meteor.Parent = workspace
+
+	-- Sturz als Server-Tween (alle sehen exakt dasselbe).
+	local TweenService = game:GetService("TweenService")
+	local fall = TweenService:Create(
+		meteor,
+		TweenInfo.new(GameConfig.METEOR_FALL_SECONDS, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
+		{ Position = targetPosition }
+	)
+	fall:Play()
+	fall.Completed:Wait()
+
+	-- Einschlag: Knall + Druckwelle auf Teile im Radius.
+	local burst = Instance.new("ParticleEmitter")
+	burst.Color = ColorSequence.new(Color3.fromRGB(255, 160, 70), Color3.new(1, 1, 1))
+	burst.LightEmission = 1
+	burst.Rate = 0
+	burst.Lifetime = NumberRange.new(0.5, 1)
+	burst.Speed = NumberRange.new(14, 26)
+	burst.SpreadAngle = Vector2.new(180, 180)
+	burst.Size = NumberSequence.new(1.2)
+	burst.Parent = meteor
+	burst:Emit(50)
+
+	local sound = Instance.new("Sound")
+	sound.SoundId = "rbxasset://sounds/impact_water.mp3"
+	sound.Volume = 1
+	sound.PlaybackSpeed = 0.5
+	sound.RollOffMaxDistance = 300
+	sound.Parent = meteor
+	sound:Play()
+
+	for _, part in TowerService.getActivePrimaryParts() do
+		local offset = part.Position - targetPosition
+		local distance = offset.Magnitude
+		if distance <= GameConfig.METEOR_BLAST_RADIUS then
+			local falloff = 1 - distance / GameConfig.METEOR_BLAST_RADIUS
+			local direction = if distance > 0.1 then offset.Unit else Vector3.new(0, 1, 0)
+			part.AssemblyLinearVelocity += (direction + Vector3.new(0, 0.4, 0))
+				* GameConfig.METEOR_BLAST_SPEED
+				* falloff
+		end
+	end
+
+	task.delay(1.5, function()
+		meteor:Destroy()
+	end)
+end
+
 local function runGoldRush()
 	-- Jeder bekommt sofort ein Teil; das Gold-Fenster öffnet der TowerService.
 	TowerService.setGoldRush(GameConfig.GOLDRUSH_WINDOW_SECONDS)
@@ -141,10 +227,13 @@ local function runDisaster()
 			runWind()
 		elseif disaster.id == "erdbeben" then
 			runQuake()
+		elseif disaster.id == "meteor" then
+			runMeteor()
 		else
 			runGoldRush()
 		end
 		fireStage(disaster.id, "ende")
+		DisasterService.onDisasterEnded(disaster.id)
 	end
 
 	lastEventAt = os.clock()

@@ -187,3 +187,35 @@ Jackpot-Momente. Daraus in Turmfall:
    3-fach in der Wertung.
 3. Runde beenden → „+N 🧱 Trümmer und +M XP verdient!", bei genug XP
    „⬆️ LEVEL-AUFSTIEG!" – das Level erscheint im Leaderboard.
+
+## Viral-Update – Shop, Tagesbonus, Aufträge, Rekorde, Meteor ✅
+
+- **🛒 Shop-Panel** (Button links oben): drei Bereiche – ⭐ Season-Pass
+  (Gamepass), 🎁 Skins & Bundles (Robux, `PromptProductPurchase`) und
+  🧱 Trümmer-Skins (erspielte Währung). Platzhalter-IDs zeigen „Bald
+  verfügbar" (in Studio: Testkauf); Besitz wird live markiert.
+  Weiterhin gilt der Guard: NUR Kosmetik, kein Pay-to-Win.
+- **🎁 Tages-Bonus:** Login-Serie mit steigenden Trümmer-Belohnungen
+  (Tag 1: 25 … Tag 7+: 300), pure `DailyLogic` (getestet), automatisch
+  beim Beitritt – Read-only-Sessions sind ausgenommen (kein Doppel-Farming)
+- **🎯 Session-Aufträge** (Panel unten links): 15 Teile platzieren,
+  1 Katastrophe erleben, 2 goldene Teile bauen – serverseitig über Hooks
+  gezählt, Belohnung in Trümmern
+- **🏆 Rekord-Denkmal:** Wochen- und Allzeit-Rekord des höchsten Turms
+  werden im DataStore geführt (UpdateAsync – zwei Server können sich
+  nicht gegenseitig überschreiben) und stehen auf dem Denkmal-Schild;
+  neue Rekorde werden serverweit gefeiert
+- **☄️ Meteor** als vierte Katastrophe: Feuerball stürzt sichtbar auf den
+  Turm, Druckwelle schleudert Teile im Radius weg – Charaktere bleiben
+  unversehrt, Schuld ist ausgesetzt
+
+### So testest du das Viral-Update
+
+1. **Shop:** 🛒-Button → Trümmer-Skin kaufen (Guthaben oben rechts);
+   R$-Karten zeigen in Studio „Testkauf".
+2. **Tagesbonus:** Beim ersten Join des Tages kommt der 🎁-Toast.
+3. **Aufträge:** Panel unten links füllt sich beim Bauen; Belohnungs-Toast
+   bei Abschluss.
+4. **Rekord:** Runde mit hohem Turm beenden → „🏆 NEUER WOCHEN-REKORD!"
+   und der Wert steht am Denkmal (braucht DataStore-Zugriff, sonst nur
+   Session-intern).

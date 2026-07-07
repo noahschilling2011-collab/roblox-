@@ -191,10 +191,11 @@ local function buildUI()
 	boardRows = rows
 
 	-- Toast-Feed links oben.
+	-- Unter den Buttons "Skins" (y=12) und "Shop" (y=54).
 	local toasts = Instance.new("Frame")
 	toasts.Name = "Toasts"
-	toasts.Position = UDim2.new(0, 12, 0, 80)
-	toasts.Size = UDim2.new(0, 300, 1, -200)
+	toasts.Position = UDim2.new(0, 12, 0, 100)
+	toasts.Size = UDim2.new(0, 300, 1, -240)
 	toasts.BackgroundTransparency = 1
 	toasts.Parent = screenGui
 	local toastLayout = Instance.new("UIListLayout")
