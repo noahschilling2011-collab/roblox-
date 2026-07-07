@@ -21,7 +21,9 @@ local GameConfig = {
 	HOTBAR_MAX_ITEMS = 3, -- ist die Hotbar voll, verfällt der Drop
 
 	-- Platzierung (TowerService validiert ALLES serverseitig).
-	PLACE_REACH_STUDS = 12, -- max. Abstand Spieler -> Zielposition
+	-- Reichweite von 12 auf 20 erhöht (D29): Mit 12 war Höherbauen kaum
+	-- möglich - zusammen mit Sprungpads + Baugerüst ist 20 der Sweet Spot.
+	PLACE_REACH_STUDS = 20, -- max. Abstand Spieler -> Zielposition
 	PLACE_ADJACENCY_STUDS = 3, -- max. Lücke zum nächsten Teil / zur Plattform
 	PLACE_COOLDOWN_SECONDS = 1, -- Anti-Spam pro Spieler
 	PLACE_MAX_TILT_DEGREES = 0, -- Client darf nur um die Y-Achse rotieren
@@ -98,6 +100,17 @@ local GameConfig = {
 
 	-- Server-Rekorde (höchster Turm) fürs Denkmal.
 	RECORD_STORE_NAME = "Turmfall_Rekorde_v1",
+
+	-- Bau-Hilfen in der Arena: OHNE Weg nach oben endet jeder Turm bei
+	-- Sprunghöhe. Vier Sprungpads katapultieren auf drei feste
+	-- Baugerüst-Ringe um den Turm - von dort baut man in der Höhe weiter.
+	SCAFFOLD_RING_HEIGHTS = { 14, 28, 42 }, -- Höhen der Ringe über der Plattform
+	SCAFFOLD_RING_RADIUS = 15, -- Abstand der Ringe von der Turmmitte
+	SCAFFOLD_WALK_WIDTH = 4, -- Breite der Laufstege
+
+	-- Runden-Beitritt: Vor jeder Runde wird gefragt (Mitspielen/Zuschauen).
+	-- Keine Antwort = Mitspielen (niemand wird aus Versehen ausgesperrt).
+	INVITE_DEFAULT_JOIN = true,
 
 	-- Lobby-Insel: eigener Wartebereich mit Blick auf die Arena.
 	-- Zwischen den Runden hängen alle hier ab (Shop-Stand, Denkmal,

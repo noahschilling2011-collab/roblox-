@@ -133,6 +133,72 @@ function TowerService.buildArena()
 	marker.Transparency = 0.5
 	marker.Parent = arena
 
+	-- BAU-HILFEN: Ohne Weg nach oben endet jeder Turm bei Sprunghöhe -
+	-- deshalb katapultieren vier Sprungpads in den Ecken auf drei feste
+	-- Baugerüst-Ringe um die Turmmitte. Die Ringe sind ANCHORED Arena-Möbel:
+	-- sie zählen nicht zum Physik-Budget, geben KEINE Nachbarschaft fürs
+	-- Bauen (gebaut wird weiter nur an Turm/Plattform) und fallen nie.
+	for _, ringHeight in GameConfig.SCAFFOLD_RING_HEIGHTS do
+		for segment = 0, 7 do
+			-- 8 Segmente mit Lücken: ein "Gerüst", kein geschlossener Boden.
+			local angle = (segment / 8) * 2 * math.pi
+			local walkway = Instance.new("Part")
+			walkway.Name = "Baugeruest"
+			walkway.Size = Vector3.new(9, 0.8, GameConfig.SCAFFOLD_WALK_WIDTH)
+			walkway.CFrame = CFrame.new(0, GameConfig.BASE_PLATFORM_Y + ringHeight, 0)
+				* CFrame.Angles(0, angle, 0)
+				* CFrame.new(0, 0, -GameConfig.SCAFFOLD_RING_RADIUS)
+			walkway.Anchored = true
+			walkway.Material = Enum.Material.DiamondPlate
+			walkway.Color = Color3.fromRGB(120, 118, 126)
+			walkway.Parent = arena
+		end
+	end
+
+	-- Sprungpads in den vier Ecken (gleiche Mechanik wie in der Lobby).
+	local padCooldown: { [Player]: number } = {}
+	for index, corner in
+		{
+			Vector3.new(-1, 0, -1),
+			Vector3.new(1, 0, -1),
+			Vector3.new(-1, 0, 1),
+			Vector3.new(1, 0, 1),
+		}
+	do
+		local pad = Instance.new("Part")
+		pad.Name = `ArenaSprungpad_{index}`
+		pad.Shape = Enum.PartType.Cylinder
+		pad.Size = Vector3.new(0.5, 5, 5)
+		pad.CFrame = CFrame.new(
+			corner * (GameConfig.BASE_PLATFORM_SIZE / 2 - 4)
+				+ Vector3.new(0, GameConfig.BASE_PLATFORM_Y + GameConfig.BASE_PLATFORM_THICKNESS / 2 + 0.3, 0)
+		) * CFrame.Angles(0, 0, math.rad(90))
+		pad.Anchored = true
+		pad.Material = Enum.Material.Neon
+		pad.Color = Color3.fromRGB(90, 220, 120)
+		pad.CanTouch = true
+		pad.Parent = arena
+
+		pad.Touched:Connect(function(hit: BasePart)
+			local character = hit.Parent
+			local player = if character ~= nil then Players:GetPlayerFromCharacter(character) else nil
+			if player == nil or character == nil then
+				return
+			end
+			if os.clock() - (padCooldown[player] or 0) < 1 then
+				return
+			end
+			padCooldown[player] = os.clock()
+			local root = character:FindFirstChild("HumanoidRootPart")
+			if root ~= nil and root:IsA("BasePart") then
+				(root :: BasePart).AssemblyLinearVelocity = Vector3.new(0, GameConfig.JUMP_PAD_SPEED, 0)
+			end
+		end)
+	end
+	Players.PlayerRemoving:Connect(function(player)
+		padCooldown[player] = nil
+	end)
+
 	-- Hinweis: Der Spawn und das Rekord-Denkmal leben in der LOBBY
 	-- (LobbyService) - die Arena ist nur noch der Wettkampf-Ort.
 	arena.Parent = Workspace
@@ -629,12 +695,16 @@ function TowerService.init()
 		end
 	end)
 
-	-- Turm-Schwank-Feedback: Stabilitäts-Score an alle Clients (M4).
+	-- Turm-Schwank-Feedback: Stabilitäts-Score + aktuelle Turmhöhe an
+	-- alle Clients (die Höhe motiviert: "noch 12 Studs bis zum Rekord!").
 	task.spawn(function()
 		while true do
 			task.wait(GameConfig.STABILITY_BROADCAST_SECONDS)
 			if stabilityEvent ~= nil then
-				(stabilityEvent :: RemoteEvent):FireAllClients(TowerService.computeStabilityScore())
+				(stabilityEvent :: RemoteEvent):FireAllClients(
+					TowerService.computeStabilityScore(),
+					TowerService.getMaxTowerHeightStuds()
+				)
 			end
 		end
 	end)

@@ -22,6 +22,11 @@ local CollapseService = require(script.Parent.CollapseService)
 
 local ScoreService = {}
 
+-- Hook (RoundService): Zuschauer erscheinen während der Runde nicht im Board.
+ScoreService.isParticipating = function(_player: Player): boolean
+	return true
+end
+
 -- Verursacher der laufenden Runde (userId -> true).
 local culprits: { [number]: boolean } = {}
 
@@ -36,6 +41,9 @@ local function buildEntries(): { Types.ScoreEntry }
 
 	local entries: { Types.ScoreEntry } = {}
 	for _, player in Players:GetPlayers() do
+		if not ScoreService.isParticipating(player) then
+			continue
+		end
 		local profile = DataService.getProfile(player)
 		table.insert(entries, {
 			userId = player.UserId,

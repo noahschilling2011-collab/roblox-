@@ -37,6 +37,7 @@ local localPlayer = Players.LocalPlayer
 
 local ghostModel: Model? = nil
 local ghostHighlight: Highlight? = nil
+local ghostHintLabel: TextLabel? = nil
 local ghostTypeId: string? = nil
 local ghostYaw = 0 -- Rotation in 45°-Schritten (Radiant)
 local ghostValid = false
@@ -54,6 +55,7 @@ local function destroyGhost()
 	end
 	ghostModel = nil
 	ghostHighlight = nil
+	ghostHintLabel = nil
 	ghostTypeId = nil
 end
 
@@ -83,6 +85,25 @@ local function ensureGhost(partTypeId: string)
 	highlight.OutlineTransparency = 0.1
 	highlight.Adornee = model
 	highlight.Parent = model
+
+	-- Hinweis-Schild am Ghost: erklärt, WARUM eine Platzierung rot ist
+	-- ("ich check das net"-Fix - Feedback statt stummem Rot).
+	local hint = Instance.new("BillboardGui")
+	hint.Name = "GhostHinweis"
+	hint.Size = UDim2.fromOffset(230, 34)
+	hint.StudsOffset = Vector3.new(0, 3.5, 0)
+	hint.AlwaysOnTop = true
+	local hintLabel = Instance.new("TextLabel")
+	hintLabel.Size = UDim2.fromScale(1, 1)
+	hintLabel.BackgroundTransparency = 1
+	hintLabel.Font = Enum.Font.GothamBold
+	hintLabel.TextScaled = true
+	hintLabel.TextColor3 = INVALID_COLOR
+	hintLabel.TextStrokeTransparency = 0.3
+	hintLabel.Text = ""
+	hintLabel.Parent = hint
+	hint.Parent = model.PrimaryPart or model
+	ghostHintLabel = hintLabel
 
 	model.Parent = Workspace
 	ghostModel = model
@@ -114,17 +135,21 @@ local function raycastTarget(): RaycastResult?
 	return Workspace:Raycast(ray.Origin, ray.Direction * 200, params)
 end
 
--- Grobe Client-Sicht der Gültigkeit (nur für die Farbe; Server entscheidet).
-local function checkClientValidity(targetPosition: Vector3): boolean
+-- Grobe Client-Sicht der Gültigkeit (nur für Farbe + Hinweis-Text;
+-- der Server entscheidet). Rückgabe: (gültig, Grund bei ungültig).
+local function checkClientValidity(targetPosition: Vector3): (boolean, string?)
 	if UIController.getPhase() ~= "Bauphase" then
-		return false
+		return false, "⏳ Warte auf die Bauphase!"
 	end
 	local character = localPlayer.Character
 	local root = if character ~= nil then character:FindFirstChild("HumanoidRootPart") else nil
 	if root == nil or not root:IsA("BasePart") then
-		return false
+		return false, nil
 	end
-	return ((root :: BasePart).Position - targetPosition).Magnitude <= GameConfig.PLACE_REACH_STUDS
+	if ((root :: BasePart).Position - targetPosition).Magnitude > GameConfig.PLACE_REACH_STUDS then
+		return false, "📏 Zu weit weg! Klettere hoch oder nimm Sprungpad + Gerüst!"
+	end
+	return true, nil
 end
 
 -- Position auf ein halbes Stud rastern (ordentliche Türme, weniger Kanten-Chaos).
@@ -166,11 +191,15 @@ local function updateGhost()
 	local cframe = CFrame.new(position) * CFrame.Angles(0, ghostYaw, 0)
 	model:PivotTo(cframe)
 
-	ghostValid = checkClientValidity(position)
+	local valid, reason = checkClientValidity(position)
+	ghostValid = valid
 	local highlight = ghostHighlight
 	if highlight ~= nil then
 		highlight.FillColor = if ghostValid then VALID_COLOR else INVALID_COLOR
 		highlight.OutlineColor = highlight.FillColor
+	end
+	if ghostHintLabel ~= nil then
+		(ghostHintLabel :: TextLabel).Text = if ghostValid then "" else (reason or "")
 	end
 end
 

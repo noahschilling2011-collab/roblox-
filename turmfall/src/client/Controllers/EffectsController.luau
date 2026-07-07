@@ -43,6 +43,7 @@ local rng = Random.new()
 
 local stabilityBar: Frame? = nil
 local stabilityFill: Frame? = nil
+local heightLabel: TextLabel? = nil
 
 local function buildStabilityBar()
 	local playerGui = Players.LocalPlayer:WaitForChild("PlayerGui")
@@ -73,6 +74,21 @@ local function buildStabilityBar()
 	fillCorner.CornerRadius = UDim.new(0, 5)
 	fillCorner.Parent = fill
 	fill.Parent = bar
+
+	-- Turmhöhe unter dem Balken: das sichtbare Ziel ("wie hoch sind wir?").
+	local height = Instance.new("TextLabel")
+	height.Name = "TowerHeight"
+	height.AnchorPoint = Vector2.new(0.5, 0)
+	height.Position = UDim2.new(0.5, 0, 0, 84)
+	height.Size = UDim2.new(0, 220, 0, 16)
+	height.BackgroundTransparency = 1
+	height.Font = Enum.Font.GothamBold
+	height.TextSize = 13
+	height.TextColor3 = Color3.fromRGB(235, 238, 245)
+	height.TextStrokeTransparency = 0.5
+	height.Text = ""
+	height.Parent = screenGui
+	heightLabel = height
 
 	stabilityBar = bar
 	stabilityFill = fill
@@ -163,12 +179,16 @@ end
 function EffectsController.init()
 	buildStabilityBar()
 
-	Network.getEvent("StabilityChanged").OnClientEvent:Connect(function(score: any)
+	Network.getEvent("StabilityChanged").OnClientEvent:Connect(function(score: any, towerHeight: any)
 		if typeof(score) ~= "number" then
 			return
 		end
 		stabilityScore = math.clamp(score, 0, 100)
 		updateStabilityBar()
+
+		if heightLabel ~= nil and typeof(towerHeight) == "number" then
+			(heightLabel :: TextLabel).Text = if towerHeight > 0 then `🏗️ Turmhöhe: {towerHeight} Studs` else ""
+		end
 
 		-- Knarzen, wenn der Turm arbeitet (gedrosselt, Intensität skaliert).
 		if stabilityScore < SHAKE_START_SCORE and os.clock() - lastCreakAt > CREAK_COOLDOWN_SECONDS then

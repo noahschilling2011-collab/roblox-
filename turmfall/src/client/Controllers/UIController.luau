@@ -50,6 +50,7 @@ local slotButtons: { TextButton } = {}
 local boardRows: Frame? = nil
 local toastContainer: Frame? = nil
 local toastOrder = 0
+local inviteDialog: Frame? = nil
 
 local function addCorner(instance: Instance, radius: number)
 	local corner = Instance.new("UICorner")
@@ -191,6 +192,68 @@ local function buildUI()
 	boardRows = rows
 
 	-- Toast-Feed links oben.
+	-- Beitritts-Dialog: "Nächste Runde - bist du dabei?" (RoundInvite).
+	local invite = Instance.new("Frame")
+	invite.Name = "RoundInvite"
+	invite.AnchorPoint = Vector2.new(0.5, 0)
+	invite.Position = UDim2.new(0.5, 0, 0, 90)
+	invite.Size = UDim2.new(0, 380, 0, 110)
+	invite.BackgroundColor3 = PANEL_COLOR
+	invite.BackgroundTransparency = 0.05
+	invite.Visible = false
+	addCorner(invite, 12)
+	addStroke(invite, ACCENT_COLOR)
+	invite.Parent = screenGui
+	inviteDialog = invite
+
+	local inviteText = Instance.new("TextLabel")
+	inviteText.BackgroundTransparency = 1
+	inviteText.Position = UDim2.new(0, 12, 0, 10)
+	inviteText.Size = UDim2.new(1, -24, 0, 40)
+	inviteText.Font = Enum.Font.GothamBold
+	inviteText.TextSize = 16
+	inviteText.TextColor3 = TEXT_COLOR
+	inviteText.TextWrapped = true
+	inviteText.Text = "🏗️ Die nächste Runde startet gleich - bist du dabei?"
+	inviteText.Parent = invite
+
+	local function inviteButton(text: string, color: Color3, xScale: number): TextButton
+		local button = Instance.new("TextButton")
+		button.AnchorPoint = Vector2.new(0.5, 1)
+		button.Position = UDim2.new(xScale, 0, 1, -10)
+		button.Size = UDim2.new(0, 165, 0, 40)
+		button.BackgroundColor3 = color
+		button.Font = Enum.Font.GothamBold
+		button.TextSize = 14
+		button.TextColor3 = TEXT_COLOR
+		button.Text = text
+		addCorner(button, 10)
+		button.Parent = invite
+		return button
+	end
+
+	local joinButton = inviteButton("✅ Mitspielen!", OK_COLOR, 0.27)
+	local watchButton = inviteButton("👀 Nur zuschauen", Color3.fromRGB(70, 74, 92), 0.73)
+
+	local function answerInvite(join: boolean)
+		invite.Visible = false
+		task.spawn(function()
+			pcall(function()
+				return Network.getFunction("JoinRound"):InvokeServer(join)
+			end)
+		end)
+		UIController.showToast(
+			if join then "✅ Du bist dabei - gleich geht's in die Arena!" else "👀 Alles klar, du schaust zu.",
+			"info"
+		)
+	end
+	joinButton.Activated:Connect(function()
+		answerInvite(true)
+	end)
+	watchButton.Activated:Connect(function()
+		answerInvite(false)
+	end)
+
 	-- Unter den Buttons "Skins" (y=12) und "Shop" (y=54).
 	local toasts = Instance.new("Frame")
 	toasts.Name = "Toasts"
@@ -369,6 +432,19 @@ function UIController.init()
 		-- Nach der Bauphase ist keine Auswahl mehr sinnvoll.
 		if phase ~= "Bauphase" and selectedIndex ~= nil then
 			UIController.selectSlot(nil)
+		end
+
+		-- Dialog schließen, sobald die Runde wirklich startet (keine Antwort
+		-- = automatisch Mitspielen, siehe Server).
+		if phase ~= "Lobby" and inviteDialog ~= nil then
+			(inviteDialog :: Frame).Visible = false
+		end
+	end)
+
+	-- Beitritts-Frage vor jeder Runde einblenden.
+	Network.getEvent("RoundInvite").OnClientEvent:Connect(function()
+		if inviteDialog ~= nil then
+			(inviteDialog :: Frame).Visible = true
 		end
 	end)
 

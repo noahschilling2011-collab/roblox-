@@ -134,7 +134,7 @@ test("GameConfig: Kern-Konstanten des Konzepts", function()
 	expect(GameConfig.LOBBY_MIN_PLAYERS == 2, "Start nicht ab 2 Spielern")
 	expect(GameConfig.PART_DROP_INTERVAL_SECONDS == 15, "Teilvergabe != alle 15 s")
 	expect(GameConfig.HOTBAR_MAX_ITEMS == 3, "Hotbar != max. 3")
-	expect(GameConfig.PLACE_REACH_STUDS == 12, "Reichweite != 12 Studs")
+	expect(GameConfig.PLACE_REACH_STUDS == 20, "Reichweite != 20 Studs (D29: 12 machte Hoeherbauen unmoeglich)")
 	expect(GameConfig.MAX_PHYSICS_PARTS == 400, "Physik-Limit != 400")
 	expect(GameConfig.FALL_WINDOW_SECONDS == 5, "Kollaps-Fenster != 5 s")
 	expect(math.abs(GameConfig.FALL_COLLAPSE_RATIO - 0.3) < 1e-9, "Kollaps-Schwelle != 30%")
@@ -457,7 +457,22 @@ test("GameConfig: Meteor und Rekorde plausibel", function()
 	expect(type(GameConfig.RECORD_STORE_NAME) == "string" and #GameConfig.RECORD_STORE_NAME > 0, "Rekord-Store fehlt")
 end)
 
--- 23) Lobby-Konstanten
+-- 23) Bau-Hilfen: Geruest-Ringe muessen mit der Reichweite erreichbar sein
+test("GameConfig: Baugeruest-Ringe passen zur Reichweite", function()
+	expect(#GameConfig.SCAFFOLD_RING_HEIGHTS >= 2, "zu wenige Geruest-Ringe")
+	local previous = 0
+	for _, ringHeight in GameConfig.SCAFFOLD_RING_HEIGHTS do
+		expect(ringHeight > previous, "Ring-Hoehen muessen aufsteigen")
+		-- Vom Ring aus muss man mit der Reichweite an die Turmmitte kommen
+		-- (Ring-Radius als horizontale Distanz).
+		expect(GameConfig.SCAFFOLD_RING_RADIUS < GameConfig.PLACE_REACH_STUDS, "Ringe zu weit von der Turmmitte")
+		previous = ringHeight
+	end
+	expect(GameConfig.SCAFFOLD_WALK_WIDTH >= 3, "Laufstege zu schmal zum Landen")
+	expect(GameConfig.INVITE_DEFAULT_JOIN == true, "Keine Antwort muss Mitspielen bedeuten (kinderfreundlich)")
+end)
+
+-- 24) Lobby-Konstanten
 test("GameConfig: Lobby liegt klar getrennt neben der Arena", function()
 	-- Lobby-Rand darf die Arena-Plattform nicht beruehren.
 	local lobbyNearEdge = GameConfig.LOBBY_OFFSET_X - GameConfig.LOBBY_SIZE / 2

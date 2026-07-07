@@ -162,6 +162,23 @@ Session +15 Trümmer: genug, dass sich das Erkunden lohnt, zu wenig, um
 das Runden-Spielen zu ersetzen. Das Sprungpad gibt gar nichts - es ist
 einfach da, weil Lobbys Spielplatz sein sollen.
 
+**D29 – Reichweite 12 → 20 Studs plus Baugerüst.** Praxistest-Feedback:
+Mit 12 Studs Reichweite war ab der zweiten Block-Lage Schluss - es gab
+schlicht keinen Weg nach oben. Statt die Physik aufzuweichen bekommen die
+Spieler Infrastruktur: vier Sprungpads katapultieren auf drei feste
+Gerüst-Ringe (14/28/42 Studs) um die Turmmitte, von denen aus man mit der
+neuen Reichweite 20 weiterbaut. Die Ringe sind geankert, zählen nicht zum
+Physik-Budget und geben KEINE Bau-Nachbarschaft - gebaut wird weiterhin
+nur an Turm und Plattform. Der Ghost erklärt jetzt außerdem in Worten,
+warum eine Platzierung rot ist.
+
+**D30 – Beitritts-Frage mit "Mitspielen" als Default.** Vor jedem
+Countdown fragt ein Dialog "Mitspielen oder Zuschauen?". Wer nicht
+antwortet, spielt MIT - ein Kind, das den Dialog übersieht, darf nicht
+ausgesperrt am Lobby-Rand stehen. Zuschauer bleiben in der Lobby,
+bekommen keine Teile, tauchen nicht im Board auf und werden bei der
+nächsten Runde wieder gefragt.
+
 **D21 – Solo-Modus als automatischer Fallback statt Button.** Wer allein
 im Server ist (Studio-Play, leere Server zur Randzeit), startet nach 8
 Sekunden automatisch eine Übungsrunde - ohne Menü, ohne Extra-Klick. Der

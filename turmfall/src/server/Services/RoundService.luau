@@ -29,6 +29,13 @@ local RoundService = {}
 
 local currentPhase: Types.RoundPhase = "Lobby"
 
+-- Runden-Beitritt: Vor jeder Runde wird gefragt (RoundInvite/JoinRound).
+-- Keine Antwort = Mitspielen (INVITE_DEFAULT_JOIN); "Zuschauen" = in der
+-- Lobby bleiben, keine Teile, keine Wertung.
+local roundAnswers: { [Player]: boolean } = {}
+local participants: { [Player]: boolean } = {}
+local roundActive = false
+
 local stateEvent: RemoteEvent? = nil
 local notificationEvent: RemoteEvent? = nil
 
@@ -89,6 +96,10 @@ local function runLobby()
 		local playerCount = #Players:GetPlayers()
 
 		if playerCount >= GameConfig.LOBBY_MIN_PLAYERS then
+			-- Beitritts-Frage an alle (Mitspielen/Zuschauen), dann Countdown.
+			table.clear(roundAnswers)
+			Network.getEvent("RoundInvite"):FireAllClients(GameConfig.LOBBY_COUNTDOWN_SECONDS)
+
 			-- Multiplayer-Countdown; abbrechen, wenn jemand geht.
 			local aborted = false
 			for secondsLeft = GameConfig.LOBBY_COUNTDOWN_SECONDS, 1, -1 do
@@ -130,12 +141,41 @@ end
 local function runSetup()
 	setPhase("Aufbau")
 
+	-- Teilnehmer festlegen: Wer nicht "Zuschauen" gewählt hat, spielt mit.
+	table.clear(participants)
+	local players = Players:GetPlayers()
+	for _, player in players do
+		local answer = roundAnswers[player]
+		participants[player] = if answer ~= nil then answer else GameConfig.INVITE_DEFAULT_JOIN
+	end
+	roundActive = true
+
 	-- Frische Runde: Turm weg, Schuld-Gedächtnis weg, Punkte weg.
 	TowerService.resetTower()
 	CollapseService.resetRound()
 	ScoreService.resetRound()
-	DeckService.resetRound(true) -- inkl. Startteil, damit sofort gebaut wird
-	teleportPlayersToPlatform()
+	DeckService.resetRound(true) -- inkl. Startteil (nur an Teilnehmer)
+
+	-- Nur Teilnehmer in die Arena; Zuschauer bleiben in der Lobby.
+	local participantIndex = 0
+	local participantCount = 0
+	for _, player in players do
+		if participants[player] == true then
+			participantCount += 1
+		end
+	end
+	for _, player in players do
+		if participants[player] == true then
+			participantIndex += 1
+			teleportPlayerToPlatform(player, participantIndex, participantCount)
+		elseif notificationEvent ~= nil then
+			(notificationEvent :: RemoteEvent):FireClient(
+				player,
+				"👀 Du schaust diese Runde zu - beim nächsten Countdown bist du wieder gefragt!",
+				"info"
+			)
+		end
+	end
 
 	for secondsLeft = GameConfig.SETUP_SECONDS, 1, -1 do
 		broadcastState(secondsLeft)
@@ -233,12 +273,15 @@ local function runScoring()
 		task.wait(1)
 	end
 
-	-- Zurück in die Lobby: dort wartet man auf die nächste Runde
-	-- (Shop-Stand, Denkmal, Sprungpad, Parkour).
+	-- Nur die Teilnehmer zurück in die Lobby (Zuschauer sind schon dort
+	-- und würden sonst mitten im Parkour weggerissen).
 	local players = Players:GetPlayers()
 	for index, player in players do
-		LobbyService.teleportToLobby(player, index, #players)
+		if participants[player] == true then
+			LobbyService.teleportToLobby(player, index, #players)
+		end
 	end
+	roundActive = false
 end
 
 function RoundService.getPhase(): Types.RoundPhase
@@ -249,13 +292,44 @@ function RoundService.init()
 	stateEvent = Network.getEvent("RoundStateChanged")
 	notificationEvent = Network.getEvent("Notification")
 
+	-- Beitritts-Antworten entgegennehmen (Mitspielen = true, Zuschauen = false).
+	Network.getFunction("JoinRound").OnServerInvoke = function(player: Player, joinArg: unknown): (boolean, any?)
+		if typeof(joinArg) ~= "boolean" then
+			return false, "Ungültige Antwort."
+		end
+		roundAnswers[player] = joinArg :: boolean
+		return true, nil
+	end
+
+	-- Teilnahme-Hooks: Zuschauer bekommen keine Teile und dürfen nicht
+	-- bauen; im Scoreboard tauchen während der Runde nur Teilnehmer auf.
+	DeckService.isEligible = function(player: Player): boolean
+		return not roundActive or participants[player] == true
+	end
+	TowerService.extraPlacementCheck = function(player: Player, _cframe: CFrame): (boolean, string?)
+		if roundActive and participants[player] ~= true then
+			return false, "👀 Du schaust diese Runde nur zu - beim nächsten Countdown bist du dabei!"
+		end
+		return true, nil
+	end
+	ScoreService.isParticipating = function(player: Player): boolean
+		return not roundActive or participants[player] == true
+	end
+
+	Players.PlayerRemoving:Connect(function(player)
+		roundAnswers[player] = nil
+		participants[player] = nil
+	end)
+
 	-- Neuen Spielern sofort den aktuellen Zustand spiegeln; Respawns
 	-- während der Bauphase zurück in die Arena bringen (der Spawn liegt
 	-- in der Lobby - ohne das wäre man nach einem Sturz ausgesperrt).
 	local function watchRespawns(player: Player)
 		player.CharacterAdded:Connect(function()
 			task.wait(0.6)
-			if currentPhase == "Bauphase" or currentPhase == "Aufbau" then
+			-- Nur Runden-TEILNEHMER zurück in die Arena; Zuschauer bleiben
+			-- nach einem Parkour-Sturz natürlich in der Lobby.
+			if (currentPhase == "Bauphase" or currentPhase == "Aufbau") and participants[player] == true then
 				teleportPlayerToPlatform(player, math.random(1, 12), 12)
 			end
 		end)

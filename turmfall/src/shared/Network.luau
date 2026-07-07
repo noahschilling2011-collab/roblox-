@@ -27,6 +27,7 @@ local EVENT_NAMES = {
 	"StabilityChanged", -- (score: number) Stabilitäts-Score 0..100 des Turms
 	"DisasterEvent", -- (eventId: string, stage: "warnung"|"start"|"ende") Katastrophen
 	"QuestsChanged", -- (quests: {{text, progress, target, reward, done}}) Session-Aufträge
+	"RoundInvite", -- (secondsLeft: number) Beitritts-Frage vor Rundenstart
 }
 
 -- Client -> Server (RemoteFunctions).
@@ -35,6 +36,7 @@ local FUNCTION_NAMES = {
 	"EquipSkin", -- (slot: string, skinId: string?) -> (ok, err?)
 	"BuySkinWithDebris", -- (skinId: string) -> (ok, err?) Trümmer-Kauf
 	"SimulatePurchase", -- (productKey: string) -> (ok, err?) NUR Studio-Testmodus
+	"JoinRound", -- (join: boolean) -> (ok) Antwort auf die Beitritts-Frage
 }
 
 local Network = {}

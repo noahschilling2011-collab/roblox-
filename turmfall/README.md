@@ -242,3 +242,18 @@ neben der Arena (man sieht den Turm von dort):
 3. Parkour hochspringen und den Gold-Kristall berühren → +15 🧱.
 4. Countdown abwarten → Teleport in die Arena; nach der Wertung geht es
    automatisch zurück in die Lobby.
+
+## Höher-Bauen-Fix + Runden-Beitritt ✅
+
+- **Endlich hoch bauen:** Reichweite 12 → 20 Studs, vier 🟢 Sprungpads in
+  den Arena-Ecken und drei **Baugerüst-Ringe** (14/28/42 Studs) um die
+  Turmmitte – hochspringen, auf dem Steg landen, weiterbauen. Die Ringe
+  sind fest verankert, zählen nicht zum Physik-Budget und geben keine
+  Bau-Nachbarschaft (gebaut wird nur an Turm/Plattform).
+- **Verständliches Feedback:** Der rote Ghost sagt jetzt WARUM
+  („📏 Zu weit weg! Klettere hoch oder nimm Sprungpad + Gerüst!") und
+  unter dem Stabilitäts-Balken steht live die 🏗️ Turmhöhe.
+- **Beitritts-Frage:** Vor jedem Countdown erscheint der Dialog
+  „Bist du dabei?" mit ✅ Mitspielen / 👀 Nur zuschauen. Keine Antwort =
+  Mitspielen. Zuschauer bleiben in der Lobby (keine Teile, kein Board,
+  kein Arena-Teleport) und werden nächste Runde wieder gefragt.

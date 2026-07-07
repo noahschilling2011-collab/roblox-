@@ -17,6 +17,11 @@ local PartCatalog = require(Shared.Config.PartCatalog)
 
 local DeckService = {}
 
+-- Hook (RoundService): Zuschauer bekommen keine Teile.
+DeckService.isEligible = function(_player: Player): boolean
+	return true
+end
+
 local hotbars: { [Player]: { string } } = {}
 local dropsActive = false
 
@@ -56,8 +61,12 @@ local function rollPartType(): string
 	return "leichtblock" -- numerischer Randfall
 end
 
--- Gibt einem Spieler ein Teil (false, wenn die Hotbar voll ist).
+-- Gibt einem Spieler ein Teil (false, wenn die Hotbar voll ist oder der
+-- Spieler diese Runde nur zuschaut).
 function DeckService.grantPart(player: Player, partTypeId: string): boolean
+	if not DeckService.isEligible(player) then
+		return false
+	end
 	local hotbar = hotbars[player]
 	if hotbar == nil then
 		hotbar = {}
@@ -126,6 +135,9 @@ function DeckService.init()
 				continue
 			end
 			for _, player in Players:GetPlayers() do
+				if not DeckService.isEligible(player) then
+					continue -- Zuschauer bekommen keine Drops (und keinen Spam)
+				end
 				local partTypeId = rollPartType()
 				if DeckService.grantPart(player, partTypeId) then
 					local def = PartCatalog.Parts[partTypeId]
