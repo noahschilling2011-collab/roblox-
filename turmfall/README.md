@@ -219,3 +219,26 @@ Jackpot-Momente. Daraus in Turmfall:
 4. **Rekord:** Runde mit hohem Turm beenden → „🏆 NEUER WOCHEN-REKORD!"
    und der Wert steht am Denkmal (braucht DataStore-Zugriff, sonst nur
    Session-intern).
+
+## Lobby-Update – eine echte Lobby zum Abhängen ✅
+
+Wie in jedem großen Rundenspiel gibt es jetzt eine **eigene Lobby-Insel**
+neben der Arena (man sieht den Turm von dort):
+
+- **Spawn in der Lobby**, Teleport in die Arena zur Bauphase und zurück
+  nach der Wertung
+- **🛒 Shop-Stand** mit blauem Pad – drauf laufen öffnet den Shop
+  automatisch (weglaufen schließt ihn)
+- **🏆 Rekord-Denkmal** steht jetzt hier (Wochen- + Allzeit-Rekord)
+- **🟢 Sprungpad**, das dich in die Luft katapultiert
+- **🪂 Trümmer-Parkour**: Spiralaufstieg aus Schwebeplattformen – wer den
+  goldenen Gipfel-Kristall berührt, bekommt einmal pro Session
+  +15 🧱 (serverseitig geprüft)
+
+### So testest du das Lobby-Update
+
+1. Play drücken → du spawnst in der Lobby (Arena links in der Ferne).
+2. Aufs blaue Shop-Pad laufen → Shop öffnet sich; weglaufen → zu.
+3. Parkour hochspringen und den Gold-Kristall berühren → +15 🧱.
+4. Countdown abwarten → Teleport in die Arena; nach der Wertung geht es
+   automatisch zurück in die Lobby.

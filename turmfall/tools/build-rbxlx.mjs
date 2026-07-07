@@ -73,15 +73,15 @@ const clientXml = scriptItem(
   directoryChildren(join(PROJECT, "src/client"))
 );
 
-// Statischer Spawn auf Plattform-Höhe, bis der TowerService die Arena baut
+// Statischer Spawn auf Lobby-Höhe, bis der LobbyService die Lobby baut
 // und den Spawn übernimmt (er verschiebt einen vorhandenen SpawnLocation).
 const IDENTITY_ROT = `<R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>`;
 const spawnXml = `<Item class="SpawnLocation" referent="${nextReferent()}">
 <Properties>
-<string name="Name">ArenaSpawn</string>
+<string name="Name">LobbySpawn</string>
 <bool name="Anchored">true</bool>
-<Vector3 name="size"><X>8</X><Y>0.4</Y><Z>8</Z></Vector3>
-<CoordinateFrame name="CFrame"><X>0</X><Y>21.2</Y><Z>15</Z>${IDENTITY_ROT}</CoordinateFrame>
+<Vector3 name="size"><X>10</X><Y>0.4</Y><Z>10</Z></Vector3>
+<CoordinateFrame name="CFrame"><X>240</X><Y>21.4</Y><Z>20</Z>${IDENTITY_ROT}</CoordinateFrame>
 <Color3uint8 name="Color3uint8">4282137674</Color3uint8>
 </Properties>
 </Item>

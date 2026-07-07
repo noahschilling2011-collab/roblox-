@@ -16,6 +16,7 @@ local GameConfig = require(Shared.Config.GameConfig)
 local Types = require(Shared.Types)
 
 local TowerService = require(script.Parent.TowerService)
+local LobbyService = require(script.Parent.LobbyService)
 
 type Record = {
 	height: number,
@@ -77,7 +78,7 @@ local function updateMonument()
 	local allTime = allTimeRecord
 	local weekText = if week ~= nil then `{week.height} Studs ({week.name})` else "– noch offen –"
 	local allTimeText = if allTime ~= nil then `{allTime.height} Studs ({allTime.name})` else "– noch offen –"
-	TowerService.updateMonument(`🏆 Höchster Turm der Woche\n{weekText}\n⭐ Allzeit: {allTimeText}`)
+	LobbyService.setMonumentText(`🏆 Höchster Turm der Woche\n{weekText}\n⭐ Allzeit: {allTimeText}`)
 end
 
 -- Rundenabschluss: Turmhöhe gegen die Rekorde prüfen (RoundService).

@@ -98,6 +98,15 @@ local GameConfig = {
 
 	-- Server-Rekorde (höchster Turm) fürs Denkmal.
 	RECORD_STORE_NAME = "Turmfall_Rekorde_v1",
+
+	-- Lobby-Insel: eigener Wartebereich mit Blick auf die Arena.
+	-- Zwischen den Runden hängen alle hier ab (Shop-Stand, Denkmal,
+	-- Sprungpad, Parkour); zur Bauphase wird in die Arena teleportiert.
+	LOBBY_OFFSET_X = 240, -- Abstand der Lobby-Mitte von der Arena (Studs)
+	LOBBY_SIZE = 56, -- quadratische Lobby-Plattform
+	LOBBY_Y = 20, -- gleiche Höhe wie die Arena (Mitte der Bodenplatte)
+	PARKOUR_REWARD_DEBRIS = 15, -- Belohnung für den Lobby-Parkour (1x pro Session)
+	JUMP_PAD_SPEED = 90, -- Abschuss-Geschwindigkeit des Sprungpads (Studs/s)
 }
 
 return GameConfig

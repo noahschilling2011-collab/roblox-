@@ -150,6 +150,18 @@ die gleichzeitig Runden beenden, können sich so nie gegenseitig den
 höheren Rekord überschreiben; der Callback gibt nil zurück, wenn der
 gespeicherte Wert besser ist (= kein Schreibvorgang).
 
+**D27 – Die Lobby ist eine eigene Insel mit Sichtkontakt zur Arena.**
+Abstand 240 Studs: weit genug, dass niemand aus der Lobby in den Turm
+bauen kann (Reichweite 12), nah genug, dass der wachsende Turm und die
+Meteore von der Lobby aus sichtbar sind - Zuschauen macht Lust auf die
+nächste Runde. Zwischen den Phasen wird teleportiert; der Spawn liegt
+dauerhaft in der Lobby (Mitten-in-der-Runde-Joiner stören den Turm nicht).
+
+**D28 – Lobby-Belohnungen sind bewusst klein.** Parkour gibt einmal pro
+Session +15 Trümmer: genug, dass sich das Erkunden lohnt, zu wenig, um
+das Runden-Spielen zu ersetzen. Das Sprungpad gibt gar nichts - es ist
+einfach da, weil Lobbys Spielplatz sein sollen.
+
 **D21 – Solo-Modus als automatischer Fallback statt Button.** Wer allein
 im Server ist (Studio-Play, leere Server zur Randzeit), startet nach 8
 Sekunden automatisch eine Übungsrunde - ohne Menü, ohne Extra-Klick. Der

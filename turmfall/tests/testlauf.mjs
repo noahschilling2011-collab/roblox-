@@ -457,6 +457,19 @@ test("GameConfig: Meteor und Rekorde plausibel", function()
 	expect(type(GameConfig.RECORD_STORE_NAME) == "string" and #GameConfig.RECORD_STORE_NAME > 0, "Rekord-Store fehlt")
 end)
 
+-- 23) Lobby-Konstanten
+test("GameConfig: Lobby liegt klar getrennt neben der Arena", function()
+	-- Lobby-Rand darf die Arena-Plattform nicht beruehren.
+	local lobbyNearEdge = GameConfig.LOBBY_OFFSET_X - GameConfig.LOBBY_SIZE / 2
+	local arenaFarEdge = GameConfig.BASE_PLATFORM_SIZE / 2
+	expect(lobbyNearEdge > arenaFarEdge + 50, "Lobby zu nah an der Arena")
+	-- Aus der Lobby darf man nicht in den Turm bauen koennen.
+	expect(lobbyNearEdge > arenaFarEdge + GameConfig.PLACE_REACH_STUDS, "Bauen aus der Lobby waere moeglich")
+	expect(GameConfig.LOBBY_Y == GameConfig.BASE_PLATFORM_Y, "Lobby und Arena sollten auf gleicher Hoehe liegen")
+	expect(GameConfig.PARKOUR_REWARD_DEBRIS > 0, "Parkour-Belohnung <= 0")
+	expect(GameConfig.JUMP_PAD_SPEED > 0, "Sprungpad-Speed <= 0")
+end)
+
 table.insert(results, "")
 table.insert(results, "ERGEBNIS: " .. passed .. " bestanden, " .. failed .. " fehlgeschlagen (" .. (passed + failed) .. " Tests)")
 return table.concat(results, "\\n"), failed

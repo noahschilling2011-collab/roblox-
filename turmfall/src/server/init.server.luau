@@ -23,6 +23,7 @@ local SERVICE_STARTUP_ORDER = {
 	"MonetizationService", -- nach SkinService (vergibt Skins)
 	"ScoreService",
 	"DisasterService", -- Katastrophen-Events (Wind, Erdbeben, Goldrausch, Meteor)
+	"LobbyService", -- Lobby-Insel mit Spawn, Shop-Stand, Denkmal, Parkour
 	"DailyRewardService", -- Tages-Bonus (nach DataService/SkinService)
 	"QuestService", -- Session-Aufträge (hängt Hooks in Tower/Disaster)
 	"RecordService", -- Rekorde + Denkmal

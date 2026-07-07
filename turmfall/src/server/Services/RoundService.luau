@@ -23,6 +23,7 @@ local ScoreService = require(script.Parent.ScoreService)
 local MonetizationService = require(script.Parent.MonetizationService)
 local DisasterService = require(script.Parent.DisasterService)
 local RecordService = require(script.Parent.RecordService)
+local LobbyService = require(script.Parent.LobbyService)
 
 local RoundService = {}
 
@@ -56,20 +57,25 @@ local function notifyAll(message: string, kind: string)
 	end
 end
 
+-- Teleportiert EINEN Spieler an den Rand der Basisplattform.
+local function teleportPlayerToPlatform(player: Player, index: number, totalPlayers: number)
+	local character = player.Character
+	if character == nil then
+		return
+	end
+	local radius = GameConfig.BASE_PLATFORM_SIZE / 2 - 4
+	local topY = TowerService.getBaseTopY()
+	local angle = (index / math.max(totalPlayers, 1)) * 2 * math.pi
+	local position = Vector3.new(math.cos(angle) * radius, topY + 4, math.sin(angle) * radius)
+	-- Blick zur Mitte.
+	character:PivotTo(CFrame.lookAt(position, Vector3.new(0, topY + 4, 0)))
+end
+
 -- Teleportiert alle Spieler an den Rand der Basisplattform (im Kreis).
 local function teleportPlayersToPlatform()
 	local players = Players:GetPlayers()
-	local radius = GameConfig.BASE_PLATFORM_SIZE / 2 - 4
-	local topY = TowerService.getBaseTopY()
 	for index, player in players do
-		local character = player.Character
-		if character == nil then
-			continue
-		end
-		local angle = (index / math.max(#players, 1)) * 2 * math.pi
-		local position = Vector3.new(math.cos(angle) * radius, topY + 4, math.sin(angle) * radius)
-		-- Blick zur Mitte.
-		character:PivotTo(CFrame.lookAt(position, Vector3.new(0, topY + 4, 0)))
+		teleportPlayerToPlatform(player, index, #players)
 	end
 end
 
@@ -226,6 +232,13 @@ local function runScoring()
 		broadcastState(secondsLeft, { final = true })
 		task.wait(1)
 	end
+
+	-- Zurück in die Lobby: dort wartet man auf die nächste Runde
+	-- (Shop-Stand, Denkmal, Sprungpad, Parkour).
+	local players = Players:GetPlayers()
+	for index, player in players do
+		LobbyService.teleportToLobby(player, index, #players)
+	end
 end
 
 function RoundService.getPhase(): Types.RoundPhase
@@ -236,12 +249,27 @@ function RoundService.init()
 	stateEvent = Network.getEvent("RoundStateChanged")
 	notificationEvent = Network.getEvent("Notification")
 
-	-- Neuen Spielern sofort den aktuellen Zustand spiegeln.
-	Players.PlayerAdded:Connect(function()
+	-- Neuen Spielern sofort den aktuellen Zustand spiegeln; Respawns
+	-- während der Bauphase zurück in die Arena bringen (der Spawn liegt
+	-- in der Lobby - ohne das wäre man nach einem Sturz ausgesperrt).
+	local function watchRespawns(player: Player)
+		player.CharacterAdded:Connect(function()
+			task.wait(0.6)
+			if currentPhase == "Bauphase" or currentPhase == "Aufbau" then
+				teleportPlayerToPlatform(player, math.random(1, 12), 12)
+			end
+		end)
+	end
+
+	Players.PlayerAdded:Connect(function(player)
+		watchRespawns(player)
 		task.wait(1)
 		broadcastState(0)
 		ScoreService.broadcast()
 	end)
+	for _, player in Players:GetPlayers() do
+		watchRespawns(player)
+	end
 
 	-- Die eigentliche StateMachine als Endlos-Schleife.
 	task.spawn(function()

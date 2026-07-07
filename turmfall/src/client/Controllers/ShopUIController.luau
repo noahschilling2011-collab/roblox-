@@ -354,10 +354,46 @@ local function buildUI()
 	end)
 end
 
+-- Shop-Stand in der Lobby: Wer aufs blaue Pad läuft, öffnet den Shop
+-- automatisch (und beim Weglaufen schließt er wieder). Reine Client-Nähe -
+-- die Käufe selbst validiert weiterhin komplett der Server.
+local function watchShopPad()
+	task.spawn(function()
+		local Workspace = game:GetService("Workspace")
+		local lobby = Workspace:WaitForChild("Lobby", 30)
+		if lobby == nil then
+			return
+		end
+		local pad = lobby:WaitForChild("ShopPad", 30)
+		if pad == nil or not pad:IsA("BasePart") then
+			return
+		end
+
+		local wasNear = false
+		while true do
+			task.wait(0.4)
+			local character = Players.LocalPlayer.Character
+			local root = if character ~= nil then character:FindFirstChild("HumanoidRootPart") else nil
+			if root == nil or not root:IsA("BasePart") then
+				continue
+			end
+			local near = ((root :: BasePart).Position - (pad :: BasePart).Position).Magnitude <= 7
+			if near and not wasNear and panel ~= nil then
+				(panel :: Frame).Visible = true
+				refreshList()
+			elseif not near and wasNear and panel ~= nil then
+				(panel :: Frame).Visible = false
+			end
+			wasNear = near
+		end
+	end)
+end
+
 function ShopUIController.init()
 	buyDebrisFunction = Network.getFunction("BuySkinWithDebris")
 	simulateFunction = Network.getFunction("SimulatePurchase")
 	buildUI()
+	watchShopPad()
 
 	Network.getEvent("SkinsChanged").OnClientEvent:Connect(function(owned: any, _equipped: any, truemmerArg: any)
 		if typeof(owned) == "table" then

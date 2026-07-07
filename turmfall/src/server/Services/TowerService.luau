@@ -76,9 +76,6 @@ local partPlacedEvent: RemoteEvent? = nil
 local notificationEvent: RemoteEvent? = nil
 local stabilityEvent: RemoteEvent? = nil
 
--- Schild des Denkmal-Sockels (RecordService trägt hier die Rekorde ein).
-local monumentLabel: TextLabel? = nil
-
 -- Hook (RoundService/M4): zusätzliche Platzierungsregeln, z. B. das Finale.
 TowerService.extraPlacementCheck = function(_player: Player, _cframe: CFrame): (boolean, string?)
 	return true, nil
@@ -136,68 +133,8 @@ function TowerService.buildArena()
 	marker.Transparency = 0.5
 	marker.Parent = arena
 
-	-- Denkmal-Sockel für den höchsten Turm der Woche (M4, Platzhalter:
-	-- die Persistenz der Wochen-Bestleistung folgt nach dem ersten Release).
-	local pedestal = Instance.new("Part")
-	pedestal.Name = "DenkmalSockel"
-	pedestal.Shape = Enum.PartType.Cylinder
-	pedestal.Size = Vector3.new(3, 8, 8)
-	pedestal.CFrame = CFrame.new(
-		-GameConfig.BASE_PLATFORM_SIZE / 2 + 6,
-		GameConfig.BASE_PLATFORM_Y + GameConfig.BASE_PLATFORM_THICKNESS / 2 + 1.5,
-		-GameConfig.BASE_PLATFORM_SIZE / 2 + 6
-	) * CFrame.Angles(0, 0, math.rad(90))
-	pedestal.Anchored = true
-	pedestal.Material = Enum.Material.Marble
-	pedestal.Color = Color3.fromRGB(210, 206, 196)
-	pedestal.Parent = arena
-
-	local trophy = Instance.new("Part")
-	trophy.Name = "DenkmalTrophaee"
-	trophy.Size = Vector3.new(2, 2.6, 2)
-	trophy.CFrame = pedestal.CFrame * CFrame.new(2.9, 0, 0) * CFrame.Angles(0, 0, math.rad(-90)) * CFrame.Angles(0, math.rad(45), 0)
-	trophy.Anchored = true
-	trophy.CanCollide = false
-	trophy.Material = Enum.Material.Metal
-	trophy.Color = Color3.fromRGB(235, 186, 60)
-	trophy.Reflectance = 0.3
-	trophy.Parent = arena
-
-	local plaque = Instance.new("BillboardGui")
-	plaque.Name = "DenkmalSchild"
-	plaque.Size = UDim2.fromOffset(220, 44)
-	plaque.StudsOffset = Vector3.new(0, 3.5, 0)
-	plaque.MaxDistance = 120
-	local plaqueText = Instance.new("TextLabel")
-	plaqueText.Size = UDim2.fromScale(1, 1)
-	plaqueText.BackgroundTransparency = 1
-	plaqueText.Font = Enum.Font.GothamBold
-	plaqueText.TextScaled = true
-	plaqueText.TextColor3 = Color3.fromRGB(255, 210, 90)
-	plaqueText.TextStrokeTransparency = 0.4
-	plaqueText.Text = "🏆 Höchster Turm der Woche\n– bald verewigt –"
-	plaqueText.Parent = plaque
-	plaque.Parent = trophy
-	monumentLabel = plaqueText
-
-	-- Spawn auf der Plattform (vorhandenen SpawnLocation umziehen oder anlegen).
-	local spawnLocation = Workspace:FindFirstChildWhichIsA("SpawnLocation", true)
-	if spawnLocation == nil then
-		spawnLocation = Instance.new("SpawnLocation")
-		spawnLocation.Name = "ArenaSpawn"
-		spawnLocation.Anchored = true
-		spawnLocation.Parent = arena
-	end
-	local spawnPad = spawnLocation :: SpawnLocation
-	spawnPad.Size = Vector3.new(8, 0.4, 8)
-	spawnPad.CFrame = CFrame.new(
-		0,
-		GameConfig.BASE_PLATFORM_Y + GameConfig.BASE_PLATFORM_THICKNESS / 2 + 0.2,
-		GameConfig.BASE_PLATFORM_SIZE / 2 - 5
-	)
-	spawnPad.Color = Color3.fromRGB(60, 62, 74)
-	spawnPad.Duration = 0
-
+	-- Hinweis: Der Spawn und das Rekord-Denkmal leben in der LOBBY
+	-- (LobbyService) - die Arena ist nur noch der Wettkampf-Ort.
 	arena.Parent = Workspace
 end
 
@@ -570,13 +507,6 @@ function TowerService.getMaxTowerHeightStuds(): number
 		maxHeight = math.max(maxHeight, piece.primaryPart.Position.Y - baseTopY)
 	end
 	return math.floor(maxHeight)
-end
-
--- Schreibt den Rekord-Text aufs Denkmal-Schild (RecordService).
-function TowerService.updateMonument(text: string)
-	if monumentLabel ~= nil then
-		(monumentLabel :: TextLabel).Text = text
-	end
 end
 
 -- PrimaryParts aller aktiven (nicht versteinerten/gefallenen) Teile -
