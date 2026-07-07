@@ -470,6 +470,20 @@ test("GameConfig: Baugeruest-Ringe passen zur Reichweite", function()
 	end
 	expect(GameConfig.SCAFFOLD_WALK_WIDTH >= 3, "Laufstege zu schmal zum Landen")
 	expect(GameConfig.INVITE_DEFAULT_JOIN == true, "Keine Antwort muss Mitspielen bedeuten (kinderfreundlich)")
+
+	-- Mitwachsendes Geruest: Sprungpad-Physik muss den Ring-Abstand schaffen.
+	-- Sprunghoehe = v^2 / (2 * 196.2 Studs/s^2 Roblox-Gravitation).
+	local jumpHeight = GameConfig.JUMP_PAD_SPEED ^ 2 / (2 * 196.2)
+	expect(jumpHeight > GameConfig.SCAFFOLD_RING_SPACING + 2, "Sprungpad schafft den Ring-Abstand nicht")
+	expect(GameConfig.SCAFFOLD_GROW_MARGIN > 0, "Wachstums-Marge fehlt")
+	expect(GameConfig.SCAFFOLD_MAX_HEIGHT >= 300, "Gerüst-Deckel zu niedrig fuer 'so hoch du willst'")
+	-- Meilensteine streng aufsteigend.
+	for index = 2, #GameConfig.HEIGHT_MILESTONES do
+		expect(
+			GameConfig.HEIGHT_MILESTONES[index] > GameConfig.HEIGHT_MILESTONES[index - 1],
+			"HEIGHT_MILESTONES muss streng steigen"
+		)
+	end
 end)
 
 -- 24) Lobby-Konstanten

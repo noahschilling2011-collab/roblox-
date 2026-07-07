@@ -257,3 +257,16 @@ neben der Arena (man sieht den Turm von dort):
   „Bist du dabei?" mit ✅ Mitspielen / 👀 Nur zuschauen. Keine Antwort =
   Mitspielen. Zuschauer bleiben in der Lobby (keine Teile, kein Board,
   kein Arena-Teleport) und werden nächste Runde wieder gefragt.
+
+## Unendlich hoch + Spielerklärung ✅
+
+- **Bau so hoch du willst:** Das Baugerüst **wächst mit** – nähert sich
+  der Turm dem obersten Ring, spawnt der Server automatisch den nächsten
+  (+14 Studs, mit eigenem 🟢 Sprungpad zum Weiterklettern), bis 500 Studs.
+  Ein Test rechnet nach, dass die Sprungpad-Physik den Ring-Abstand schafft.
+- **Höhen-Meilensteine:** Bei 25/50/75/100/150/200/300/400/500 Studs gibt
+  es eine serverweite Ansage – gemeinsames Hype-Ziel für alle.
+- **Spielerklärung beim Start:** 6 klare Schritte mit Emojis und großem
+  „✅ Verstanden – los geht's!"-Button; der **❓ Hilfe**-Button (links)
+  öffnet sie jederzeit wieder. Auf Touch-Geräten passen sich die
+  Steuerungs-Hinweise automatisch an.

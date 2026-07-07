@@ -179,6 +179,20 @@ ausgesperrt am Lobby-Rand stehen. Zuschauer bleiben in der Lobby,
 bekommen keine Teile, tauchen nicht im Board auf und werden bei der
 nächsten Runde wieder gefragt.
 
+**D31 – Das Baugerüst wächst mit dem Turm mit.** Feste Ringe deckeln die
+Bauhöhe künstlich. Jetzt spawnt der Server automatisch den nächsten Ring
+(+14 Studs, mit eigenem Sprungpad), sobald der Turm dem obersten nahekommt -
+bis zum Sicherheitsdeckel von 500 Studs, also praktisch "so hoch du
+willst". Das Physik-Budget bleibt durch das Versteinern der unteren Teile
+unabhängig von der Höhe gedeckelt. Ein Test rechnet nach, dass die
+Sprungpad-Physik (v²/2g) den Ring-Abstand wirklich schafft.
+
+**D32 – Erklärung als Startbildschirm statt Schritt-Tutorial.** Turmfall
+ist EIN Loop (bauen, hoch, nicht umwerfen) - ein 6-Zeilen-Intro mit
+großem "Los geht's!"-Button erklärt ihn schneller als jede geführte Tour.
+Der ❓-Hilfe-Button holt die Erklärung jederzeit zurück; auf reinen
+Touch-Geräten formulieren sich die Steuerungs-Zeilen automatisch um.
+
 **D21 – Solo-Modus als automatischer Fallback statt Button.** Wer allein
 im Server ist (Studio-Play, leere Server zur Randzeit), startet nach 8
 Sekunden automatisch eine Übungsrunde - ohne Menü, ohne Extra-Klick. Der

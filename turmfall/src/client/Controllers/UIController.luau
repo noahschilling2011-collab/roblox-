@@ -254,11 +254,11 @@ local function buildUI()
 		answerInvite(false)
 	end)
 
-	-- Unter den Buttons "Skins" (y=12) und "Shop" (y=54).
+	-- Unter den Buttons "Skins" (y=12), "Shop" (y=54) und "Hilfe" (y=96).
 	local toasts = Instance.new("Frame")
 	toasts.Name = "Toasts"
-	toasts.Position = UDim2.new(0, 12, 0, 100)
-	toasts.Size = UDim2.new(0, 300, 1, -240)
+	toasts.Position = UDim2.new(0, 12, 0, 142)
+	toasts.Size = UDim2.new(0, 300, 1, -280)
 	toasts.BackgroundTransparency = 1
 	toasts.Parent = screenGui
 	local toastLayout = Instance.new("UIListLayout")

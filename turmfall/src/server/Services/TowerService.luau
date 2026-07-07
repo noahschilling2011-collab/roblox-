@@ -71,6 +71,16 @@ local goldRushUntil = 0
 
 local towerFolder: Folder? = nil
 local basePlatform: BasePart? = nil
+local arenaFolder: Folder? = nil
+
+-- Mitwachsendes Baugerüst: höchster bereits gebauter Ring (über Plattform).
+local highestRingHeight = 0
+
+-- Höhen-Meilensteine der laufenden Runde (Index in HEIGHT_MILESTONES).
+local lastMilestoneIndex = 0
+
+-- Gemeinsamer Cooldown aller Sprungpads (Arena-Ecken + Gerüst-Ringe).
+local jumpPadCooldown: { [Player]: number } = {}
 
 local partPlacedEvent: RemoteEvent? = nil
 local notificationEvent: RemoteEvent? = nil
@@ -100,6 +110,65 @@ local function getTowerFolder(): Folder
 	folder.Parent = Workspace
 	towerFolder = folder
 	return folder
+end
+
+-- Macht ein Part zum Sprungpad (Katapult nach oben, mit Spieler-Cooldown).
+local function attachJumpPad(pad: BasePart)
+	pad.CanTouch = true
+	pad.Touched:Connect(function(hit: BasePart)
+		local character = hit.Parent
+		local player = if character ~= nil then Players:GetPlayerFromCharacter(character) else nil
+		if player == nil or character == nil then
+			return
+		end
+		if os.clock() - (jumpPadCooldown[player] or 0) < 1 then
+			return
+		end
+		jumpPadCooldown[player] = os.clock()
+		local root = character:FindFirstChild("HumanoidRootPart")
+		if root ~= nil and root:IsA("BasePart") then
+			(root :: BasePart).AssemblyLinearVelocity = Vector3.new(0, GameConfig.JUMP_PAD_SPEED, 0)
+		end
+	end)
+end
+
+-- Baut EINEN Baugerüst-Ring (8 Laufsteg-Segmente mit Lücken + eigenes
+-- Sprungpad zum nächsthöheren Ring). Die Ringe sind ANCHORED Arena-Möbel:
+-- sie zählen nicht zum Physik-Budget, geben KEINE Nachbarschaft fürs
+-- Bauen (gebaut wird weiter nur an Turm/Plattform) und fallen nie.
+local function addScaffoldRing(ringHeight: number)
+	local parent = arenaFolder
+	if parent == nil then
+		return
+	end
+	for segment = 0, 7 do
+		local angle = (segment / 8) * 2 * math.pi
+		local walkway = Instance.new("Part")
+		walkway.Name = "Baugeruest"
+		walkway.Size = Vector3.new(9, 0.8, GameConfig.SCAFFOLD_WALK_WIDTH)
+		walkway.CFrame = CFrame.new(0, GameConfig.BASE_PLATFORM_Y + ringHeight, 0)
+			* CFrame.Angles(0, angle, 0)
+			* CFrame.new(0, 0, -GameConfig.SCAFFOLD_RING_RADIUS)
+		walkway.Anchored = true
+		walkway.Material = Enum.Material.DiamondPlate
+		walkway.Color = Color3.fromRGB(120, 118, 126)
+		walkway.Parent = parent
+
+		-- Segment 0 trägt das Sprungpad zum nächsten Ring (Kette nach oben).
+		if segment == 0 then
+			local pad = Instance.new("Part")
+			pad.Name = "RingSprungpad"
+			pad.Shape = Enum.PartType.Cylinder
+			pad.Size = Vector3.new(0.4, 4, 4)
+			pad.CFrame = walkway.CFrame * CFrame.new(0, 0.6, 0) * CFrame.Angles(0, 0, math.rad(90))
+			pad.Anchored = true
+			pad.Material = Enum.Material.Neon
+			pad.Color = Color3.fromRGB(90, 220, 120)
+			attachJumpPad(pad)
+			pad.Parent = parent
+		end
+	end
+	highestRingHeight = math.max(highestRingHeight, ringHeight)
 end
 
 -- Baut die schwebende Arena: Basisplattform über dem Abgrund plus Spawn.
@@ -133,30 +202,16 @@ function TowerService.buildArena()
 	marker.Transparency = 0.5
 	marker.Parent = arena
 
-	-- BAU-HILFEN: Ohne Weg nach oben endet jeder Turm bei Sprunghöhe -
-	-- deshalb katapultieren vier Sprungpads in den Ecken auf drei feste
-	-- Baugerüst-Ringe um die Turmmitte. Die Ringe sind ANCHORED Arena-Möbel:
-	-- sie zählen nicht zum Physik-Budget, geben KEINE Nachbarschaft fürs
-	-- Bauen (gebaut wird weiter nur an Turm/Plattform) und fallen nie.
+	arenaFolder = arena
+
+	-- BAU-HILFEN: Ohne Weg nach oben endet jeder Turm bei Sprunghöhe.
+	-- Start-Ringe des Baugerüsts; weitere spawnen automatisch, sobald der
+	-- Turm dem obersten Ring nahekommt (siehe Wachstums-Check in init).
 	for _, ringHeight in GameConfig.SCAFFOLD_RING_HEIGHTS do
-		for segment = 0, 7 do
-			-- 8 Segmente mit Lücken: ein "Gerüst", kein geschlossener Boden.
-			local angle = (segment / 8) * 2 * math.pi
-			local walkway = Instance.new("Part")
-			walkway.Name = "Baugeruest"
-			walkway.Size = Vector3.new(9, 0.8, GameConfig.SCAFFOLD_WALK_WIDTH)
-			walkway.CFrame = CFrame.new(0, GameConfig.BASE_PLATFORM_Y + ringHeight, 0)
-				* CFrame.Angles(0, angle, 0)
-				* CFrame.new(0, 0, -GameConfig.SCAFFOLD_RING_RADIUS)
-			walkway.Anchored = true
-			walkway.Material = Enum.Material.DiamondPlate
-			walkway.Color = Color3.fromRGB(120, 118, 126)
-			walkway.Parent = arena
-		end
+		addScaffoldRing(ringHeight)
 	end
 
 	-- Sprungpads in den vier Ecken (gleiche Mechanik wie in der Lobby).
-	local padCooldown: { [Player]: number } = {}
 	for index, corner in
 		{
 			Vector3.new(-1, 0, -1),
@@ -176,27 +231,11 @@ function TowerService.buildArena()
 		pad.Anchored = true
 		pad.Material = Enum.Material.Neon
 		pad.Color = Color3.fromRGB(90, 220, 120)
-		pad.CanTouch = true
+		attachJumpPad(pad)
 		pad.Parent = arena
-
-		pad.Touched:Connect(function(hit: BasePart)
-			local character = hit.Parent
-			local player = if character ~= nil then Players:GetPlayerFromCharacter(character) else nil
-			if player == nil or character == nil then
-				return
-			end
-			if os.clock() - (padCooldown[player] or 0) < 1 then
-				return
-			end
-			padCooldown[player] = os.clock()
-			local root = character:FindFirstChild("HumanoidRootPart")
-			if root ~= nil and root:IsA("BasePart") then
-				(root :: BasePart).AssemblyLinearVelocity = Vector3.new(0, GameConfig.JUMP_PAD_SPEED, 0)
-			end
-		end)
 	end
 	Players.PlayerRemoving:Connect(function(player)
-		padCooldown[player] = nil
+		jumpPadCooldown[player] = nil
 	end)
 
 	-- Hinweis: Der Spawn und das Rekord-Denkmal leben in der LOBBY
@@ -602,6 +641,7 @@ function TowerService.resetTower()
 	table.clear(finalePlacementUsed)
 	finaleActive = false
 	goldRushUntil = 0
+	lastMilestoneIndex = 0
 end
 
 -- Stabilitäts-Score 0..100 aus der mittleren Geschwindigkeit der aktiven
@@ -696,15 +736,37 @@ function TowerService.init()
 	end)
 
 	-- Turm-Schwank-Feedback: Stabilitäts-Score + aktuelle Turmhöhe an
-	-- alle Clients (die Höhe motiviert: "noch 12 Studs bis zum Rekord!").
+	-- alle Clients. Dieselbe Schleife lässt das BAUGERÜST MITWACHSEN
+	-- (neuer Ring, sobald der Turm dem obersten nahekommt - so hoch bauen,
+	-- wie man will) und ruft Höhen-MEILENSTEINE aus.
 	task.spawn(function()
 		while true do
 			task.wait(GameConfig.STABILITY_BROADCAST_SECONDS)
+			local height = TowerService.getMaxTowerHeightStuds()
 			if stabilityEvent ~= nil then
-				(stabilityEvent :: RemoteEvent):FireAllClients(
-					TowerService.computeStabilityScore(),
-					TowerService.getMaxTowerHeightStuds()
-				)
+				(stabilityEvent :: RemoteEvent):FireAllClients(TowerService.computeStabilityScore(), height)
+			end
+
+			-- Gerüst nachwachsen lassen.
+			if
+				height > highestRingHeight - GameConfig.SCAFFOLD_GROW_MARGIN
+				and highestRingHeight + GameConfig.SCAFFOLD_RING_SPACING <= GameConfig.SCAFFOLD_MAX_HEIGHT
+			then
+				addScaffoldRing(highestRingHeight + GameConfig.SCAFFOLD_RING_SPACING)
+			end
+
+			-- Meilenstein-Ansagen (pro Runde einmal je Schwelle).
+			while
+				lastMilestoneIndex < #GameConfig.HEIGHT_MILESTONES
+				and height >= GameConfig.HEIGHT_MILESTONES[lastMilestoneIndex + 1]
+			do
+				lastMilestoneIndex += 1
+				if notificationEvent ~= nil then
+					(notificationEvent :: RemoteEvent):FireAllClients(
+						`🏗️ {GameConfig.HEIGHT_MILESTONES[lastMilestoneIndex]} STUDS! Der Turm wächst - weiter so!`,
+						"success"
+					)
+				end
 			end
 		end
 	end)

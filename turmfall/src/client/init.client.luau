@@ -5,6 +5,7 @@
 
 local CONTROLLER_STARTUP_ORDER = {
 	"UIController", -- zuerst: HUD + Toast-API für alle anderen
+	"IntroController", -- Spielerklärung beim Start + ❓-Hilfe-Button
 	"SkinUIController", -- vor dem ReplayController (Kollaps-Effekt-Abfrage)
 	"ShopUIController", -- 🛒 Robux- & Trümmer-Shop
 	"QuestUIController", -- 🎯 Session-Aufträge

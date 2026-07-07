@@ -102,11 +102,19 @@ local GameConfig = {
 	RECORD_STORE_NAME = "Turmfall_Rekorde_v1",
 
 	-- Bau-Hilfen in der Arena: OHNE Weg nach oben endet jeder Turm bei
-	-- Sprunghöhe. Vier Sprungpads katapultieren auf drei feste
-	-- Baugerüst-Ringe um den Turm - von dort baut man in der Höhe weiter.
-	SCAFFOLD_RING_HEIGHTS = { 14, 28, 42 }, -- Höhen der Ringe über der Plattform
+	-- Sprunghöhe. Vier Sprungpads katapultieren auf Baugerüst-Ringe um
+	-- den Turm - und das Gerüst WÄCHST MIT: Nähert sich der Turm dem
+	-- obersten Ring, spawnt der Server automatisch den nächsten (jeder
+	-- Ring trägt ein eigenes Sprungpad). Bau so hoch du willst.
+	SCAFFOLD_RING_HEIGHTS = { 14, 28, 42 }, -- Start-Ringe über der Plattform
 	SCAFFOLD_RING_RADIUS = 15, -- Abstand der Ringe von der Turmmitte
 	SCAFFOLD_WALK_WIDTH = 4, -- Breite der Laufstege
+	SCAFFOLD_RING_SPACING = 14, -- Abstand neu wachsender Ringe
+	SCAFFOLD_GROW_MARGIN = 20, -- neuer Ring, sobald der Turm so nah am obersten ist
+	SCAFFOLD_MAX_HEIGHT = 500, -- Sicherheitsdeckel (praktisch "unendlich")
+
+	-- Höhen-Meilensteine: serverweite Ansage, wenn der Turm sie knackt.
+	HEIGHT_MILESTONES = { 25, 50, 75, 100, 150, 200, 300, 400, 500 },
 
 	-- Runden-Beitritt: Vor jeder Runde wird gefragt (Mitspielen/Zuschauen).
 	-- Keine Antwort = Mitspielen (niemand wird aus Versehen ausgesperrt).
