@@ -27,6 +27,10 @@ export const COLOR_SCHEMES: ColorScheme[] = [
   { id: "ember", name: "Ember", price: 80, body: 0x40342e, accent: 0xff8b3d, hands: 0x8c6f5a },
   { id: "toxin", name: "Toxin", price: 80, body: 0x2e4034, accent: 0x7dff8b, hands: 0x5a8c6f },
   { id: "royal", name: "Royal", price: 120, body: 0x342e40, accent: 0xd37dff, hands: 0xc9a9e8 },
+  { id: "midnight", name: "Midnight", price: 120, body: 0x1c2233, accent: 0x3f6dff, hands: 0x39415c },
+  { id: "bubblegum", name: "Bubblegum", price: 150, body: 0xf2e6ee, accent: 0xff6fb0, hands: 0xffd9ea },
+  { id: "neon", name: "Neon Circuit", price: 180, body: 0x101410, accent: 0x39ff5c, hands: 0x1f2b1f },
+  { id: "goldrush", name: "Gold Rush", price: 250, body: 0x201d16, accent: 0xffc93a, hands: 0x3c342a },
 ];
 
 export const SAVE_KEY = "nova-surge-save-v1";

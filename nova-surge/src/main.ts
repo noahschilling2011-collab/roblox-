@@ -2,6 +2,7 @@ import * as THREE from "three";
 import "./style.css";
 import { Sfx } from "./audio/Sfx";
 import { ENEMIES, type EnemyType } from "./config/enemies";
+import { getArena } from "./config/arena";
 import { COIN_DIVISOR, COLOR_SCHEMES } from "./config/meta";
 import { Keyboard } from "./controls/Keyboard";
 import { LookControls } from "./controls/LookControls";
@@ -36,7 +37,7 @@ async function boot(): Promise<void> {
   renderer.setPixelRatio(basePixelRatio);
   renderer.setSize(window.innerWidth, window.innerHeight);
 
-  const { scene, camera } = createScene(window.innerWidth / window.innerHeight);
+  const { scene, camera, showArena } = createScene(window.innerWidth / window.innerHeight);
   scene.add(camera); // nötig, damit die kamera-gebundene Waffe gerendert wird
 
   const input = createInput();
@@ -76,6 +77,8 @@ async function boot(): Promise<void> {
     const scheme = COLOR_SCHEMES.find((c) => c.id === save.state.selectedScheme) ?? COLOR_SCHEMES[0]!;
     weaponView.applyScheme(scheme);
     weaponView.equip(save.state.selectedWeapon);
+    // Arena-Optik sofort umschalten (auch im Menü-Hintergrund sichtbar)
+    showArena(getArena(save.state.selectedArena));
   }
 
   // ---- Screens (Menü/Pause/Tod) ----
@@ -86,7 +89,7 @@ async function boot(): Promise<void> {
       coinsDoubled = false;
       wasNewHighscore = false;
       rewardsGranted = false;
-      sim.startRun(save.state.selectedWeapon);
+      sim.startRun(save.state.selectedWeapon, getArena(save.state.selectedArena));
       applyCosmetics();
       screens.enterPlaying();
     },
@@ -327,7 +330,7 @@ async function boot(): Promise<void> {
       handlePhaseTransitions();
       rig.update(dt, alpha, sim.player, input, sim.weapon);
       weaponView.update(dt, sim.weapon, input, rig.bobPhase, sim.player.moveIntensity);
-      enemyRenderer.update(sim.enemies, alpha, sim.player.pos.x, sim.player.pos.z, performance.now() / 1000);
+      enemyRenderer.update(sim.enemies, alpha, dt, sim.player.pos.x, sim.player.pos.z, performance.now() / 1000);
       particles.update(dt);
       tracers.update(dt);
       drainEvents();
@@ -341,6 +344,7 @@ async function boot(): Promise<void> {
   window.addEventListener("resize", applySize);
 
   screens.showHome();
+  applyCosmetics(); // gewählte Arena/Waffe/Farben aus dem Save anwenden
   loop.setPaused(false); // Menü-Hintergrund rendert; Sim idlet in "menu"
   loop.start();
   sdk.loadingDone();

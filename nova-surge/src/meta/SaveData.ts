@@ -14,6 +14,7 @@ export interface SaveState {
   selectedWeapon: WeaponId;
   unlockedSchemes: string[];
   selectedScheme: string;
+  selectedArena: string;
   /** Mobile-Feuermodus: true = Auto-Fire, false = Feuer-Button (Phase 5). */
   autoFire: boolean;
 }
@@ -29,6 +30,7 @@ function defaults(): SaveState {
     selectedWeapon: STARTING_WEAPON,
     unlockedSchemes: ["default"],
     selectedScheme: "default",
+    selectedArena: "foundry",
     autoFire: true,
   };
 }

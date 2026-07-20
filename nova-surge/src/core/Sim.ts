@@ -3,6 +3,7 @@
 // Rendering — die Präsentation liest Zustand + Events.
 
 import { RUN } from "../config/tuning";
+import { ARENAS, type ArenaDef } from "../config/arena";
 import { COIN_DIVISOR } from "../config/meta";
 import type { WeaponId } from "../config/weapons";
 import type { UpgradeId } from "../config/upgrades";
@@ -25,7 +26,8 @@ const _eye = vec3();
 const _hitPoint = vec3();
 
 export class Sim {
-  readonly world = buildCollisionWorld();
+  arena: ArenaDef = ARENAS[0]!;
+  world = buildCollisionWorld(this.arena);
   readonly player = new Player();
   readonly weapon = new Weapon();
   readonly enemies = new EnemyManager();
@@ -62,8 +64,14 @@ export class Sim {
     return n;
   }
 
-  startRun(weaponId: WeaponId): void {
-    this.player.reset();
+  setArena(arena: ArenaDef): void {
+    this.arena = arena;
+    this.world = buildCollisionWorld(arena);
+  }
+
+  startRun(weaponId: WeaponId, arena: ArenaDef): void {
+    this.setArena(arena);
+    this.player.reset(arena.playerSpawn);
     this.weapon.mods.damageMult = 1;
     this.weapon.mods.fireRateMult = 1;
     this.weapon.mods.magSizeMult = 1;
@@ -132,7 +140,7 @@ export class Sim {
         this.events.emit(Ev.WaveStart, 0, 0, 0, this.waveNumber);
       }
     } else if (this.phase === "wave") {
-      this.spawner.update(dt, this.enemies, p.pos, this.waveNumber);
+      this.spawner.update(dt, this.enemies, p.pos, this.waveNumber, this.arena.enemySpawns);
       if (this.spawner.pendingCount() === 0 && this.enemies.aliveCount() === 0) {
         this.events.emit(Ev.WaveCleared, 0, 0, 0, this.waveNumber);
         this.upgradeOffer = this.upgrades.rollOffer();
@@ -142,7 +150,7 @@ export class Sim {
     }
 
     // Spieler + Waffe (auch in Pausenphasen — Bewegung bleibt flüssig)
-    p.update(dt, this.input, this.world.solids, this.events);
+    p.update(dt, this.input, this.world, this.events);
     _eye.x = p.pos.x;
     _eye.y = p.eyeY;
     _eye.z = p.pos.z;
@@ -151,16 +159,7 @@ export class Sim {
     }
 
     // Gegner
-    this.enemies.update(
-      dt,
-      p.pos,
-      p.eyeY,
-      p.alive,
-      this.world.solids,
-      this.world.losBlockers,
-      this.events,
-      this.enemyCallbacks
-    );
+    this.enemies.update(dt, p.pos, p.eyeY, p.alive, this.world, this.events, this.enemyCallbacks);
 
     // Projektile
     this.projectiles.update(dt, this.world.solids, this.projectileHitTest, this.projectileOnHit);

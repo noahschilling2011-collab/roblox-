@@ -1,8 +1,8 @@
-// Kollisionswelt der Simulation: aus der Arena-Config gebaute AABBs.
+// Kollisionswelt der Simulation: aus einer Arena-Definition gebaute AABBs.
 // Ein gemeinsamer Body-Mover für Spieler UND Bots (Kapsel als Box angenähert,
 // Achsen nacheinander aufgelöst — stabil und billig).
 
-import { ARENA_BOXES, ARENA } from "../config/arena";
+import type { ArenaDef } from "../config/arena";
 import type { Aabb, Vec3 } from "./math";
 
 export interface CollisionWorld {
@@ -10,12 +10,14 @@ export interface CollisionWorld {
   solids: readonly Aabb[];
   /** Nur Sicht-Blocker (Wände + hohe Blöcke) — für LOS-Checks auf Augenhöhe. */
   losBlockers: readonly Aabb[];
+  /** Halbe Arena-Kantenlänge (Sicherheitsnetz-Klammer). */
+  halfSize: number;
 }
 
-export function buildCollisionWorld(): CollisionWorld {
+export function buildCollisionWorld(arena: ArenaDef): CollisionWorld {
   const solids: Aabb[] = [];
   const losBlockers: Aabb[] = [];
-  for (const b of ARENA_BOXES) {
+  for (const b of arena.boxes) {
     const box: Aabb = {
       minX: b.x - b.sx / 2,
       minY: 0,
@@ -27,10 +29,8 @@ export function buildCollisionWorld(): CollisionWorld {
     solids.push(box);
     if (b.kind !== "low") losBlockers.push(box);
   }
-  return { solids, losBlockers };
+  return { solids, losBlockers, halfSize: arena.size / 2 };
 }
-
-const HALF = ARENA.size / 2;
 
 /**
  * Bewegt einen stehenden Körper (Fußpunkt `pos`, Radius, Höhe) um vel*dt und
@@ -43,8 +43,10 @@ export function moveBody(
   radius: number,
   height: number,
   dt: number,
-  solids: readonly Aabb[]
+  world: CollisionWorld
 ): boolean {
+  const solids = world.solids;
+  const half = world.halfSize;
   // --- X ---
   pos.x += vel.x * dt;
   for (let i = 0; i < solids.length; i++) {
@@ -68,10 +70,10 @@ export function moveBody(
     }
   }
   // Sicherheitsnetz: nie aus der Arena fallen
-  if (pos.x < -HALF + 0.5) pos.x = -HALF + 0.5;
-  if (pos.x > HALF - 0.5) pos.x = HALF - 0.5;
-  if (pos.z < -HALF + 0.5) pos.z = -HALF + 0.5;
-  if (pos.z > HALF - 0.5) pos.z = HALF - 0.5;
+  if (pos.x < -half + 0.5) pos.x = -half + 0.5;
+  if (pos.x > half - 0.5) pos.x = half - 0.5;
+  if (pos.z < -half + 0.5) pos.z = -half + 0.5;
+  if (pos.z > half - 0.5) pos.z = half - 0.5;
 
   // --- Y (Boden = höchste Blockoberkante unter dem Körper, sonst 0) ---
   pos.y += vel.y * dt;

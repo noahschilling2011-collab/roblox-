@@ -1,7 +1,21 @@
 # Nova Surge — Projektstand
 
-Letzte Session: 2026-07-20 · Stand: **Phasen 0–6 komplett gebaut** ·
+Letzte Session: 2026-07-20 · Stand: **Phasen 0–6 komplett + Content-Update** ·
 Code-seitige Gates bestanden, manuelle Checks für Noah unten.
+
+## Content-Update (nach Phase 6, auf Noahs Wunsch)
+Scope-Entscheidung: Multiplayer/Open World abgelehnt (harte Constraints),
+stattdessen Content-Ausbau innerhalb der Regeln:
+- **3 Arenen** statt 1, im Menü frei wählbar, Auswahl persistent:
+  Foundry (symmetrisch, ausgewogen) · Frostworks (enge Lanes, 56 m) ·
+  Sunreach (offener Canyon, 72 m, DMR-freundlich). Alle Arenen sind reine
+  Config (`src/config/arena.ts`) — neue Map = neuer Eintrag, kein Code.
+- **Bot-Optik überarbeitet:** Beine mit Laufanimation, Arme/Klingen,
+  Schulterpanzer, Glow-Augen/-Kerne, Shooter-Lauf mit Burst-Rückstoß,
+  Rusher lehnen sich beim Sprinten vor. Weiterhin 100% Primitiven.
+- **8 Farbschemata** statt 4 (Preise 80–250, Gold Rush als Grind-Ziel).
+- Headless verifiziert: Map-Wechsel 6/6, kompletter Bot-Run auf Frostworks
+  (Ergebnis siehe unten), Konsole fehlerfrei.
 
 > Hinweis zur Arbeitsweise: Auf ausdrückliche Anweisung („mach alles jetzt")
 > wurden Phasen 1–6 in EINEM Auftrag gebaut — abweichend von der

@@ -2,15 +2,14 @@
 // Reibung, sofortige Richtungswechsel), HP mit verzögerter Regeneration.
 
 import { MOVE, PLAYER } from "../config/tuning";
-import { PLAYER_SPAWN } from "../config/arena";
-import { moveBody } from "./collision";
-import { vec3, type Aabb, type Vec3, clamp } from "./math";
+import { moveBody, type CollisionWorld } from "./collision";
+import { vec3, type Vec3, clamp } from "./math";
 import type { InputState } from "./input";
 import { EventQueue, Ev } from "./events";
 
 export class Player {
-  readonly pos: Vec3 = vec3(PLAYER_SPAWN.x, 0, PLAYER_SPAWN.z); // Fußpunkt
-  readonly prevPos: Vec3 = vec3(PLAYER_SPAWN.x, 0, PLAYER_SPAWN.z);
+  readonly pos: Vec3 = vec3(0, 0, 12); // Fußpunkt; echter Spawn via reset()
+  readonly prevPos: Vec3 = vec3(0, 0, 12);
   readonly vel: Vec3 = vec3();
   hp: number = PLAYER.maxHp;
   alive = true;
@@ -26,10 +25,10 @@ export class Player {
   speedMult = 1;
   lifesteal = 0;
 
-  reset(): void {
-    this.pos.x = PLAYER_SPAWN.x;
+  reset(spawn: { x: number; z: number }): void {
+    this.pos.x = spawn.x;
     this.pos.y = 0;
-    this.pos.z = PLAYER_SPAWN.z;
+    this.pos.z = spawn.z;
     this.prevPos.x = this.pos.x;
     this.prevPos.y = this.pos.y;
     this.prevPos.z = this.pos.z;
@@ -48,7 +47,7 @@ export class Player {
     return this.pos.y + MOVE.playerHeight;
   }
 
-  update(dt: number, input: InputState, solids: readonly Aabb[], events: EventQueue): void {
+  update(dt: number, input: InputState, world: CollisionWorld, events: EventQueue): void {
     this.prevPos.x = this.pos.x;
     this.prevPos.y = this.pos.y;
     this.prevPos.z = this.pos.z;
@@ -100,7 +99,7 @@ export class Player {
     this.vel.y -= MOVE.gravity * dt;
     const fallSpeed = -this.vel.y;
     const wasGround = this.onGround;
-    this.onGround = moveBody(this.pos, this.vel, MOVE.playerRadius, MOVE.playerHeight, dt, solids);
+    this.onGround = moveBody(this.pos, this.vel, MOVE.playerRadius, MOVE.playerHeight, dt, world);
     if (this.onGround && !wasGround && fallSpeed > 6) {
       events.emit(Ev.Land, 0, 0, 0, fallSpeed);
     }

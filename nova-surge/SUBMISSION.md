@@ -26,9 +26,10 @@ the brutal close-range Scatter Gun and the precise, hard-hitting Longshot DMR.
 How far can you get before the arena overruns you?
 
 - Fast, responsive movement — sprint, jump, strafe
+- 3 arenas with distinct layouts: balanced, tight lanes, wide-open canyon
 - 3 enemy types with clear roles, endless scaling waves
 - 1-of-3 upgrade choice after every wave
-- 3 unlockable weapons + color schemes
+- 3 weapons with unique handling + 8 unlockable color schemes
 - Highscore chase, quick runs, instant restarts
 - Works on desktop and mobile
 

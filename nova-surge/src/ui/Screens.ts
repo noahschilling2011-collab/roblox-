@@ -3,9 +3,9 @@
 // der Pointer gelockt ist. Auf Touch gibt es keinen Lock — dort steuert der
 // Pause-Button die Modi.
 
-import { COLOR_SCHEMES } from "../config/meta";
+import { ARENAS } from "../config/arena";
+import { COLOR_SCHEMES, WEAPON_PRICES } from "../config/meta";
 import { WEAPONS, type WeaponId } from "../config/weapons";
-import { WEAPON_PRICES } from "../config/meta";
 import type { SaveData } from "../meta/SaveData";
 
 export type ScreenMode = "home" | "playing" | "pause" | "death";
@@ -36,6 +36,7 @@ export class Screens {
   private readonly subtitle = el<HTMLParagraphElement>("menu-subtitle");
   private readonly statCoins = el<HTMLSpanElement>("stat-coins");
   private readonly statHighscore = el<HTMLSpanElement>("stat-highscore");
+  private readonly mapRow = el<HTMLDivElement>("map-select");
   private readonly weaponRow = el<HTMLDivElement>("weapon-select");
   private readonly schemeRow = el<HTMLDivElement>("scheme-select");
   private readonly autofireRow = el<HTMLLabelElement>("autofire-row");
@@ -183,8 +184,29 @@ export class Screens {
     this.statCoins.textContent = `🪙 ${s.coins}`;
     this.statHighscore.textContent = `🏆 ${s.highscore}`;
     this.autofireToggle.checked = s.autoFire;
+    this.buildMapRow();
     this.buildWeaponRow();
     this.buildSchemeRow();
+  }
+
+  private buildMapRow(): void {
+    const s = this.save.state;
+    this.mapRow.replaceChildren();
+    for (const arena of ARENAS) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "select-item";
+      if (arena.id === s.selectedArena) btn.classList.add("selected");
+      btn.innerHTML = `${arena.name}<span class="sub">${arena.sub}</span>`;
+      btn.addEventListener("click", () => {
+        s.selectedArena = arena.id;
+        this.save.save();
+        this.cb.onUiClick();
+        this.cb.onSelectionChanged();
+        this.refreshHome();
+      });
+      this.mapRow.append(btn);
+    }
   }
 
   private buildWeaponRow(): void {

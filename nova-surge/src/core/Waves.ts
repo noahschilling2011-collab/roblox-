@@ -1,7 +1,6 @@
 // Wellen-Spawner: arbeitet die Tabelle aus config/waves.ts ab und tröpfelt
 // Gegner an den vier Toren ein — nie direkt neben dem Spieler.
 
-import { ENEMY_SPAWNS } from "../config/arena";
 import { ENEMY_AI, type EnemyType } from "../config/enemies";
 import { getWave, SPAWN_TRICKLE } from "../config/waves";
 import type { EnemyManager } from "./Enemy";
@@ -33,7 +32,13 @@ export class WaveSpawner {
     return this.pendingRusher + this.pendingShooter + this.pendingTank;
   }
 
-  update(dt: number, enemies: EnemyManager, playerPos: Vec3, waveNumber: number): void {
+  update(
+    dt: number,
+    enemies: EnemyManager,
+    playerPos: Vec3,
+    waveNumber: number,
+    spawns: readonly { x: number; z: number }[]
+  ): void {
     if (this.pendingCount() === 0) return;
     if (enemies.aliveCount() >= ENEMY_AI.maxAlive) return;
     this.spawnTimer -= dt;
@@ -44,8 +49,8 @@ export class WaveSpawner {
     if (!type) return;
 
     // Spawnpunkt: rotierend, aber nicht direkt beim Spieler
-    for (let attempt = 0; attempt < ENEMY_SPAWNS.length; attempt++) {
-      const sp = ENEMY_SPAWNS[(this.nextTypeIdx + attempt) % ENEMY_SPAWNS.length]!;
+    for (let attempt = 0; attempt < spawns.length; attempt++) {
+      const sp = spawns[(this.nextTypeIdx + attempt) % spawns.length]!;
       const dx = sp.x - playerPos.x;
       const dz = sp.z - playerPos.z;
       if (dx * dx + dz * dz < MIN_SPAWN_DIST * MIN_SPAWN_DIST) continue;
@@ -56,7 +61,7 @@ export class WaveSpawner {
       return;
     }
     // Alle Tore zu nah (Spieler campt ein Tor): nimm das gegenüberliegende
-    const far = ENEMY_SPAWNS.reduce((best, sp) => {
+    const far = spawns.reduce((best, sp) => {
       const d = (sp.x - playerPos.x) ** 2 + (sp.z - playerPos.z) ** 2;
       const bd = (best.x - playerPos.x) ** 2 + (best.z - playerPos.z) ** 2;
       return d > bd ? sp : best;

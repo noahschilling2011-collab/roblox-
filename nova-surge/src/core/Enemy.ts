@@ -4,7 +4,7 @@
 
 import { ENEMIES, ENEMY_AI, type EnemyDef, type EnemyType } from "../config/enemies";
 import { waveHpScale } from "../config/waves";
-import { moveBody } from "./collision";
+import { moveBody, type CollisionWorld } from "./collision";
 import { rayVsAabb, segmentClear, vec3, type Aabb, type Vec3 } from "./math";
 import { EventQueue, Ev } from "./events";
 
@@ -123,11 +123,12 @@ export class EnemyManager {
     playerPos: Vec3,
     playerEyeY: number,
     playerAlive: boolean,
-    solids: readonly Aabb[],
-    losBlockers: readonly Aabb[],
+    world: CollisionWorld,
     events: EventQueue,
     callbacks: EnemyCallbacks
   ): void {
+    const solids = world.solids;
+    const losBlockers = world.losBlockers;
     for (let i = 0; i < MAX_SLOTS; i++) {
       const e = this.slots[i]!;
       if (!e.active) continue;
@@ -145,20 +146,20 @@ export class EnemyManager {
       }
       if (e.fsm === "hitreact") {
         e.stateTimer -= dt;
-        this.applyPhysics(e, 0, 0, dt, solids);
+        this.applyPhysics(e, 0, 0, dt, world);
         if (e.stateTimer <= 0) e.fsm = "attack";
         continue;
       }
       if (e.fsm === "alert") {
         e.stateTimer -= dt;
         if (e.stateTimer <= 0) e.fsm = "attack";
-        this.applyPhysics(e, 0, 0, dt, solids);
+        this.applyPhysics(e, 0, 0, dt, world);
         continue;
       }
 
       // ---- Attack-Verhalten nach Typ ----
       if (!playerAlive) {
-        this.applyPhysics(e, 0, 0, dt, solids);
+        this.applyPhysics(e, 0, 0, dt, world);
         continue;
       }
 
@@ -248,7 +249,7 @@ export class EnemyManager {
       // Hindernis-Umfließen + Separation
       this.steer(e, moveX, moveZ, solids, dt);
       this.separate(e);
-      this.applyPhysics(e, _desired.x, _desired.z, dt, solids);
+      this.applyPhysics(e, _desired.x, _desired.z, dt, world);
     }
   }
 
@@ -309,11 +310,11 @@ export class EnemyManager {
     }
   }
 
-  private applyPhysics(e: Enemy, velX: number, velZ: number, dt: number, solids: readonly Aabb[]): void {
+  private applyPhysics(e: Enemy, velX: number, velZ: number, dt: number, world: CollisionWorld): void {
     // Sanftes Beschleunigen Richtung Wunschgeschwindigkeit (wirkt organischer)
     e.vel.x += (velX - e.vel.x) * Math.min(1, 12 * dt);
     e.vel.z += (velZ - e.vel.z) * Math.min(1, 12 * dt);
     e.vel.y -= 24 * dt;
-    e.onGround = moveBody(e.pos, e.vel, e.def.radius, e.def.height, dt, solids);
+    e.onGround = moveBody(e.pos, e.vel, e.def.radius, e.def.height, dt, world);
   }
 }
