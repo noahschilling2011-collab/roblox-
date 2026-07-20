@@ -137,6 +137,11 @@ async function boot(): Promise<void> {
     else sdk.gameplayStop();
   };
 
+  // Mobile hat kein ESC: der Pause-Button oben rechts übernimmt das
+  document.getElementById("btn-touch-pause")!.addEventListener("click", () => {
+    if (screens.mode === "playing") screens.showPause();
+  });
+
   sdk.onAdPause = (paused) => {
     sfx.setMuted(paused);
     if (paused) loop.setPaused(true);
