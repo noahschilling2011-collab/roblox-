@@ -15,7 +15,8 @@ stattdessen Content-Ausbau innerhalb der Regeln:
   Rusher lehnen sich beim Sprinten vor. Weiterhin 100% Primitiven.
 - **8 Farbschemata** statt 4 (Preise 80–250, Gold Rush als Grind-Ziel).
 - Headless verifiziert: Map-Wechsel 6/6, kompletter Bot-Run auf Frostworks
-  (Ergebnis siehe unten), Konsole fehlerfrei.
+  **13/13** (Tod nach 154 s in Welle 7, kein Bot steckengeblieben trotz enger
+  Lanes, Heap-Drift 1,09 MB, Konsole fehlerfrei).
 
 > Hinweis zur Arbeitsweise: Auf ausdrückliche Anweisung („mach alles jetzt")
 > wurden Phasen 1–6 in EINEM Auftrag gebaut — abweichend von der
