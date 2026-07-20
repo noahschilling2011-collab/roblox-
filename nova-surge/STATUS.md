@@ -18,6 +18,21 @@ stattdessen Content-Ausbau innerhalb der Regeln:
   **13/13** (Tod nach 154 s in Welle 7, kein Bot steckengeblieben trotz enger
   Lanes, Heap-Drift 1,09 MB, Konsole fehlerfrei).
 
+## Update 2 (gleiche Session): Themen-Maps Yacht + Einkaufszentrum
+- **5 Arenen** insgesamt. Neu: **Azure Deck** (Sonnendeck einer Yacht bei
+  Sonnenuntergang — Deck-Spielfläche 26×40 m, Bordwände, Kabine als Deckung,
+  Pool, Bugspitze im Wasser, Spawns als Leucht-Pads) und **Grand Gallery**
+  (helles Einkaufszentrum — 8 Ladenfronten mit Neonschildern, Springbrunnen,
+  Pflanzkübel, Glasdach-Träger).
+- Neues **Props-System**: rein dekorative Elemente pro Arena (ohne Kollision;
+  Regel: nie auf Körperhöhe im Laufweg — nur flach, auf Deckungen oder über
+  Kopf). Grid pro Arena abschaltbar (Yacht: aus, Mall: Fliesenfugen).
+- Headless: Map-Test 8/8 über alle 5 Arenen · Bot-Run auf der Yacht **13/13**
+  (Tod nach 173 s in Welle 8, kein Bot steckengeblieben, Heap-Drift 1,09 MB,
+  Konsole fehlerfrei).
+- Multi-Agent-Bug-Jagd über den kompletten Code gestartet (Ergebnis unten,
+  sobald ausgewertet).
+
 > Hinweis zur Arbeitsweise: Auf ausdrückliche Anweisung („mach alles jetzt")
 > wurden Phasen 1–6 in EINEM Auftrag gebaut — abweichend von der
 > Eine-Phase-Regel in CLAUDE.md. Alle automatisiert prüfbaren Gates wurden
