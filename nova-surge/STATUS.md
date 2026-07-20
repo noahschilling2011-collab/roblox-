@@ -1,6 +1,7 @@
 # Nova Surge — Projektstand
 
-Letzte Session: 2026-07-20 · Aktuelle Phase: **0 (Setup & Loop)** — Gate-Check läuft
+Letzte Session: 2026-07-20 · Aktuelle Phase: **0 (Setup & Loop)** —
+**Gate bestanden** (headless 11/11; 60-FPS-Bestätigung auf echter Hardware siehe Checkliste)
 
 ## Phase 0 — erledigt
 - Vite + three + TypeScript (strict) aufgesetzt, `npm run dev/build/preview` laufen.
@@ -30,7 +31,10 @@ Letzte Session: 2026-07-20 · Aktuelle Phase: **0 (Setup & Loop)** — Gate-Chec
 | Unlock → Pause-Menü, 0 Sim-Ticks während Pause | PASS |
 | Resume → Lock + Sim laufen weiter (60 Ticks/s) | PASS |
 | Resize: Canvas + Kamera-Aspect folgen | PASS |
-| 5-Min-Heap-Soak (Drift nach GC < 1 MB) | läuft — Zwischenstand: konstant 4,55–4,56 MB über 2 Min |
+| 5-Min-Heap-Soak (Drift nach GC < 1 MB) | PASS — 4,55 → 4,59 MB, Drift 0,04 MB |
+| Konsole fehlerfrei über gesamte Laufzeit (~6 Min) | PASS |
+
+**Ergebnis: 11/11 Checks bestanden.**
 
 Hinweis: Headless-Render-FPS sind ohne GPU/vsync nicht aussagekräftig; entscheidend
 ist, dass die Simulation davon unabhängig exakt 60 Hz hält (tut sie). Echte
@@ -44,8 +48,8 @@ FPS-Messung: Debug-Overlay (F3) auf echter Hardware — manuelle Checkliste unte
 - [ ] Fenster resizen → Bild folgt ohne Verzerrung
 
 ## Offen / Nächster Auftrag
-- Heap-Soak-Endergebnis eintragen (läuft gerade, Zwischenstand sauber).
-- Danach: **Phase 1 — Gunfeel** (Movement WASD/Sprint/Sprung, Hitscan-Waffe,
+- Manuelle Checkliste oben von Noah abhaken (v.a. echte 60 FPS per F3-Overlay).
+- Nächster Auftrag: **Phase 1 — Gunfeel** (Movement WASD/Sprint/Sprung, Hitscan-Waffe,
   prozeduraler WebAudio-Sound, Schießstand mit Dummies). Wichtigste Phase,
   Gate = 30-Sekunden-Test.
 
