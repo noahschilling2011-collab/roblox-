@@ -16,13 +16,97 @@
   <body>
     <canvas id="game-canvas"></canvas>
 
-    <!-- Start-/Pause-Overlay (DOM statt WebGL: billig, scharf, auf Mobile identisch) -->
+    <!-- ======== HUD (nur während des Runs sichtbar) ======== -->
+    <div id="hud" hidden>
+      <div id="vignette"></div>
+      <div id="dmg-indicator"></div>
+      <div id="crosshair">
+        <span class="ch-line ch-top"></span>
+        <span class="ch-line ch-bottom"></span>
+        <span class="ch-line ch-left"></span>
+        <span class="ch-line ch-right"></span>
+        <span class="ch-dot"></span>
+      </div>
+      <div id="hitmarker">
+        <span class="hm l1"></span><span class="hm l2"></span>
+        <span class="hm l3"></span><span class="hm l4"></span>
+      </div>
+
+      <div id="hud-top">
+        <div id="wave-label">WAVE 1</div>
+        <div id="score-box">
+          <span id="score">0</span>
+          <span id="mult">×1.0</span>
+        </div>
+      </div>
+      <div id="banner" hidden></div>
+
+      <div id="hud-bottom-left">
+        <div id="hp-bar"><div id="hp-fill"></div></div>
+      </div>
+      <div id="hud-bottom-right">
+        <div id="ammo"><span id="ammo-cur">30</span><span id="ammo-sep">/</span><span id="ammo-max">30</span></div>
+      </div>
+
+      <div id="upgrade-overlay" hidden>
+        <h2>CHOOSE AN UPGRADE</h2>
+        <div id="upgrade-cards"></div>
+        <p id="upgrade-hint">Press 1, 2 or 3</p>
+      </div>
+
+      <!-- Touch-Steuerung (erscheint nur auf Touch-Geräten) -->
+      <div id="touch-ui" hidden>
+        <div id="stick-base" hidden><div id="stick-nub"></div></div>
+        <button id="btn-fire" type="button">FIRE</button>
+        <button id="btn-jump" type="button">JUMP</button>
+        <button id="btn-touch-reload" type="button">R</button>
+        <button id="btn-touch-pause" type="button">II</button>
+      </div>
+    </div>
+
+    <!-- ======== Menü-Overlay (Home / Pause / Tod) ======== -->
     <div id="menu-overlay">
       <div id="menu-panel">
         <h1 id="menu-title">NOVA SURGE</h1>
-        <p id="menu-subtitle">Wave shooter &mdash; work in progress</p>
-        <button id="menu-button" type="button">CLICK TO PLAY</button>
-        <p id="menu-hint">ESC = pause &middot; F3 = debug overlay</p>
+
+        <div id="menu-home">
+          <p id="menu-subtitle">Fast-paced arena wave shooter</p>
+          <button id="btn-play" type="button" class="btn-primary">PLAY</button>
+          <div id="menu-stats">
+            <span id="stat-coins">🪙 0</span>
+            <span id="stat-highscore">🏆 0</span>
+          </div>
+          <div class="select-label">WEAPON</div>
+          <div id="weapon-select" class="select-row"></div>
+          <div class="select-label">COLORS</div>
+          <div id="scheme-select" class="select-row"></div>
+          <label id="autofire-row" hidden>
+            <input type="checkbox" id="autofire-toggle" />
+            Auto-fire when aiming at enemies
+          </label>
+          <p id="menu-hint">WASD move &middot; Shift sprint &middot; Space jump &middot; R reload &middot; ESC pause &middot; F3 debug</p>
+        </div>
+
+        <div id="menu-pause" hidden>
+          <p class="menu-state">PAUSED</p>
+          <button id="btn-resume" type="button" class="btn-primary">RESUME</button>
+          <button id="btn-quit" type="button" class="btn-secondary">QUIT TO MENU</button>
+        </div>
+
+        <div id="menu-death" hidden>
+          <p class="menu-state" id="death-title">RUN OVER</p>
+          <div id="death-stats">
+            <div class="death-row"><span>Score</span><span id="death-score">0</span></div>
+            <div class="death-row"><span>Wave</span><span id="death-wave">0</span></div>
+            <div class="death-row"><span>Kills</span><span id="death-kills">0</span></div>
+            <div class="death-row"><span>Coins earned</span><span id="death-coins">0</span></div>
+          </div>
+          <div id="death-highscore" hidden>NEW HIGHSCORE!</div>
+          <button id="btn-revive" type="button" class="btn-ad" hidden>▶ WATCH AD — REVIVE</button>
+          <button id="btn-coins2" type="button" class="btn-ad" hidden>▶ WATCH AD — COINS ×2</button>
+          <button id="btn-again" type="button" class="btn-primary">PLAY AGAIN</button>
+          <button id="btn-menu" type="button" class="btn-secondary">MENU</button>
+        </div>
       </div>
     </div>
 

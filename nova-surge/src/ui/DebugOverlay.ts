@@ -44,7 +44,8 @@ export class DebugOverlay {
       `sim       ${stats.simTicksPerSecond}/s (tick ${stats.simTicksTotal})`,
       `draws     ${renderer.info.render.calls}`,
       `tris      ${renderer.info.render.triangles}`,
-      `entities  ${sim.entities.length}`,
+      `entities  ${sim.entityCount()}`,
+      `phase     ${sim.phase} (wave ${sim.waveNumber})`,
       heapLine,
     ].join("\n");
   }

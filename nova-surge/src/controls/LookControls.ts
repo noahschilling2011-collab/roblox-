@@ -1,26 +1,24 @@
-import * as THREE from "three";
+// Maus-Look bei aktivem Pointer Lock. Schreibt Yaw/Pitch in den InputState —
+// die Kamera liest daraus (CameraRig), die Sim nutzt dieselben Winkel zum
+// Schießen. Eine Quelle der Wahrheit für die Blickrichtung.
 
-// Maus-Look bei aktivem Pointer Lock: Yaw um die Weltachse, Pitch geklemmt.
-// Nur Kamera-Rotation — Bewegung (WASD) ist Phase 1.
+import type { InputState } from "../core/input";
 
 const SENSITIVITY = 0.0022;
 const MAX_PITCH = Math.PI / 2 - 0.01;
 
 export class LookControls {
-  private readonly camera: THREE.PerspectiveCamera;
-  private readonly euler = new THREE.Euler(0, 0, 0, "YXZ");
+  private readonly input: InputState;
   enabled = false;
 
-  constructor(camera: THREE.PerspectiveCamera) {
-    this.camera = camera;
-    document.addEventListener("mousemove", this.onMouseMove);
+  constructor(input: InputState) {
+    this.input = input;
+    document.addEventListener("mousemove", (event) => {
+      if (!this.enabled) return;
+      this.input.yaw -= event.movementX * SENSITIVITY;
+      this.input.pitch -= event.movementY * SENSITIVITY;
+      if (this.input.pitch > MAX_PITCH) this.input.pitch = MAX_PITCH;
+      if (this.input.pitch < -MAX_PITCH) this.input.pitch = -MAX_PITCH;
+    });
   }
-
-  private onMouseMove = (event: MouseEvent): void => {
-    if (!this.enabled) return;
-    this.euler.y -= event.movementX * SENSITIVITY;
-    this.euler.x -= event.movementY * SENSITIVITY;
-    this.euler.x = Math.max(-MAX_PITCH, Math.min(MAX_PITCH, this.euler.x));
-    this.camera.quaternion.setFromEuler(this.euler);
-  };
 }

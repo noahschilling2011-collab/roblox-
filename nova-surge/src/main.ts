@@ -1,59 +1,360 @@
 import * as THREE from "three";
 import "./style.css";
-import { GameLoop } from "./core/GameLoop";
-import { Sim } from "./core/Sim";
-import { createScene } from "./render/createScene";
+import { Sfx } from "./audio/Sfx";
+import { ENEMIES, type EnemyType } from "./config/enemies";
+import { COIN_DIVISOR, COLOR_SCHEMES } from "./config/meta";
+import { Keyboard } from "./controls/Keyboard";
 import { LookControls } from "./controls/LookControls";
-import { PauseMenu } from "./ui/PauseMenu";
+import { isTouchDevice, TouchControls } from "./controls/TouchControls";
+import { GameLoop } from "./core/GameLoop";
+import { createInput } from "./core/input";
+import { Ev } from "./core/events";
+import { Sim } from "./core/Sim";
+import { SaveData } from "./meta/SaveData";
+import { CrazySdk } from "./platform/CrazySdk";
+import { CameraRig } from "./render/CameraRig";
+import { createScene } from "./render/createScene";
+import { EnemyRenderer } from "./render/EnemyRenderer";
+import { Particles } from "./render/Particles";
+import { Tracers } from "./render/Tracers";
+import { WeaponView } from "./render/WeaponView";
 import { DebugOverlay } from "./ui/DebugOverlay";
+import { Hud } from "./ui/Hud";
+import { Screens } from "./ui/Screens";
 
 const SIM_HZ = 60;
+const ENEMY_TYPES: EnemyType[] = ["rusher", "shooter", "tank"];
 
-const canvas = document.getElementById("game-canvas") as HTMLCanvasElement;
+async function boot(): Promise<void> {
+  const sdk = new CrazySdk();
+  await sdk.init(); // no-op außerhalb der CrazyGames-Umgebung
 
-const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-renderer.setSize(window.innerWidth, window.innerHeight);
-
-const { scene, camera } = createScene(window.innerWidth / window.innerHeight);
-const controls = new LookControls(camera);
-const sim = new Sim();
-const debugOverlay = new DebugOverlay();
-
-const loop = new GameLoop(SIM_HZ, {
-  simulate(dt) {
-    sim.update(dt);
-  },
-  render(_alpha) {
-    // _alpha wird ab Phase 1 für die Interpolation bewegter Objekte genutzt.
-    renderer.render(scene, camera);
-    debugOverlay.update(loop, sim, renderer);
-  },
-});
-
-new PauseMenu(canvas, {
-  onResume() {
-    controls.enabled = true;
-    loop.setPaused(false);
-  },
-  onPause() {
-    controls.enabled = false;
-    loop.setPaused(true);
-  },
-});
-
-window.addEventListener("resize", () => {
-  camera.aspect = window.innerWidth / window.innerHeight;
-  camera.updateProjectionMatrix();
+  const isTouch = isTouchDevice();
+  const canvas = document.getElementById("game-canvas") as HTMLCanvasElement;
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: !isTouch });
+  const basePixelRatio = Math.min(window.devicePixelRatio, 2);
+  renderer.setPixelRatio(basePixelRatio);
   renderer.setSize(window.innerWidth, window.innerHeight);
-});
 
-loop.start();
+  const { scene, camera } = createScene(window.innerWidth / window.innerHeight);
+  scene.add(camera); // nötig, damit die kamera-gebundene Waffe gerendert wird
 
-// Debug-Handle für automatisierte Tests (Headless-Browser) und die Konsole.
+  const input = createInput();
+  const sim = new Sim(input);
+  const save = new SaveData();
+  save.load();
+
+  const sfx = new Sfx();
+  const keyboard = new Keyboard(input);
+  const look = new LookControls(input);
+  const touch = new TouchControls(input);
+  const rig = new CameraRig(camera);
+  const weaponView = new WeaponView(camera);
+  const enemyRenderer = new EnemyRenderer(scene);
+  const particles = new Particles(scene);
+  const tracers = new Tracers(scene);
+  const hud = new Hud();
+  const debugOverlay = new DebugOverlay();
+
+  // ---- Run-Belohnungen (Münzen/Highscore) — einmal pro Run beim Verlassen ----
+  let rewardsGranted = true;
+  let coinsDoubled = false;
+  let wasNewHighscore = false;
+
+  function grantRunRewards(): void {
+    if (rewardsGranted) return;
+    rewardsGranted = true;
+    const coins = sim.phase === "dead" ? sim.coinsEarned : Math.floor(sim.score / COIN_DIVISOR);
+    save.state.coins += coins;
+    save.state.runsPlayed++;
+    if (sim.score > save.state.highscore) save.state.highscore = sim.score;
+    if (sim.waveNumber > save.state.bestWave) save.state.bestWave = sim.waveNumber;
+    save.save();
+  }
+
+  function applyCosmetics(): void {
+    const scheme = COLOR_SCHEMES.find((c) => c.id === save.state.selectedScheme) ?? COLOR_SCHEMES[0]!;
+    weaponView.applyScheme(scheme);
+    weaponView.equip(save.state.selectedWeapon);
+  }
+
+  // ---- Screens (Menü/Pause/Tod) ----
+  const screens = new Screens(canvas, isTouch, save, {
+    onPlay() {
+      grantRunRewards();
+      sfx.init();
+      coinsDoubled = false;
+      wasNewHighscore = false;
+      rewardsGranted = false;
+      sim.startRun(save.state.selectedWeapon);
+      applyCosmetics();
+      screens.enterPlaying();
+    },
+    onResume() {
+      screens.enterPlaying();
+    },
+    onQuit() {
+      grantRunRewards();
+      sim.quitToMenu();
+      screens.releaseLock();
+      screens.showHome();
+    },
+    onRevive() {
+      void sdk.requestRewarded().then((granted) => {
+        if (!granted) return;
+        sim.revive();
+        screens.hideReviveButton();
+        screens.showPause(); // ein Klick auf RESUME — sauberer Lock-Neustart
+      });
+    },
+    onCoinsX2() {
+      void sdk.requestRewarded().then((granted) => {
+        if (!granted) return;
+        sim.coinsEarned *= 2;
+        coinsDoubled = true;
+        screens.updateDeathCoins(sim.coinsEarned, false);
+      });
+    },
+    onSelectionChanged() {
+      applyCosmetics();
+    },
+    onUiClick() {
+      sfx.init(); // frühester User-Gesten-Moment
+      sfx.uiClick();
+    },
+  });
+
+  screens.onModeChanged = (mode) => {
+    const playing = mode === "playing";
+    hud[playing ? "show" : "hide"]();
+    keyboard.enabled = playing && !isTouch;
+    look.enabled = playing && !isTouch;
+    touch.enabled = playing && isTouch;
+    touch.showUi(playing && isTouch);
+    if (!playing) keyboard.releaseAll();
+    loop.setPaused(mode === "pause");
+    if (playing) sdk.gameplayStart();
+    else sdk.gameplayStop();
+  };
+
+  sdk.onAdPause = (paused) => {
+    sfx.setMuted(paused);
+    if (paused) loop.setPaused(true);
+    else loop.setPaused(screens.mode === "pause");
+  };
+
+  // Upgrade-Wahl: Tasten 1–3 (Desktop, Pointer bleibt gelockt) + Karten-Klick
+  hud.onChooseUpgrade = (i) => {
+    sim.chooseUpgrade(i);
+    sfx.upgradePicked();
+  };
+  document.addEventListener("keydown", (e) => {
+    if (sim.phase !== "upgrade") return;
+    const idx = e.code === "Digit1" ? 0 : e.code === "Digit2" ? 1 : e.code === "Digit3" ? 2 : -1;
+    if (idx >= 0) {
+      sim.chooseUpgrade(idx);
+      sfx.upgradePicked();
+    }
+  });
+
+  // ---- Tod erkennen (Phasenwechsel) ----
+  let prevPhase = sim.phase;
+  function handlePhaseTransitions(): void {
+    if (sim.phase === prevPhase) return;
+    const from = prevPhase;
+    prevPhase = sim.phase;
+    if (sim.phase === "dead") {
+      wasNewHighscore = sim.score > save.state.highscore && sim.score > 0;
+      if (wasNewHighscore) {
+        sfx.newHighscore();
+        sdk.happytime();
+      }
+      sfx.playerDied();
+      screens.showDeath({
+        score: sim.score,
+        wave: sim.waveNumber,
+        kills: sim.kills,
+        coins: sim.coinsEarned,
+        newHighscore: wasNewHighscore,
+        canRevive: sdk.available && !sim.reviveUsed,
+        canCoinsX2: sdk.available && !coinsDoubled,
+      });
+      screens.releaseLock();
+    }
+    // Midgame-Ad NUR in der Wellenpause (nach der Upgrade-Wahl)
+    if (from === "upgrade" && sim.phase === "break") {
+      sdk.maybeMidgameAd(sim.waveNumber);
+    }
+  }
+
+  // ---- Events -> Präsentation ----
+  const _fwd = new THREE.Vector3();
+  const _right = new THREE.Vector3();
+  const _up = new THREE.Vector3();
+  const _muzzle = new THREE.Vector3();
+
+  function computeMuzzle(): THREE.Vector3 {
+    _fwd.set(0, 0, -1).applyQuaternion(camera.quaternion);
+    _right.set(1, 0, 0).applyQuaternion(camera.quaternion);
+    _up.set(0, 1, 0).applyQuaternion(camera.quaternion);
+    return _muzzle
+      .copy(camera.position)
+      .addScaledVector(_fwd, 0.62)
+      .addScaledVector(_right, 0.26)
+      .addScaledVector(_up, -0.22);
+  }
+
+  function drainEvents(): void {
+    const events = sim.events;
+    for (let i = 0; i < events.count; i++) {
+      const e = events.get(i);
+      switch (e.type) {
+        case Ev.Shot: {
+          sfx.shot(sim.weapon.def);
+          weaponView.notifyShot(0.4 + sim.weapon.def.recoilPitch * 18);
+          const m = computeMuzzle();
+          // Hülse: 1 kleines goldenes Teil nach rechts raus
+          particles.burst(m.x, m.y, m.z, 0xd9b45a, 1, 2.4, 0.5, 0.035, 1, 0.5);
+          break;
+        }
+        case Ev.Tracer: {
+          const m = computeMuzzle();
+          tracers.spawn(m.x, m.y, m.z, e.x, e.y, e.z);
+          if (e.a === 1) {
+            particles.burst(e.x, e.y, e.z, 0xd8604f, 5, 3.5, 0.35, 0.05);
+          } else if (e.b === 1) {
+            particles.burst(e.x, e.y, e.z, 0xcfd6de, 6, 2.8, 0.4, 0.045);
+          }
+          break;
+        }
+        case Ev.DamageDealt:
+          hud.notifyHit(e.b === 1);
+          if (e.b === 1) sfx.killConfirm();
+          else sfx.hitTick();
+          break;
+        case Ev.EnemyDied: {
+          const type = ENEMY_TYPES[e.a] ?? "rusher";
+          particles.burst(e.x, e.y, e.z, ENEMIES[type].color, 22, 6.5, 0.7, 0.09, 1, 0.55);
+          break;
+        }
+        case Ev.EnemyShot: {
+          const d = Math.hypot(e.x - sim.player.pos.x, e.z - sim.player.pos.z);
+          sfx.enemyShot(d);
+          break;
+        }
+        case Ev.PlayerHurt:
+          sfx.playerHurt();
+          hud.notifyHurt(e.b);
+          break;
+        case Ev.MeleeHit:
+          sfx.meleeHit();
+          particles.burst(e.x, e.y, e.z, 0xffffff, 6, 4, 0.3, 0.06);
+          break;
+        case Ev.ReloadStart:
+          sfx.reload(e.a);
+          break;
+        case Ev.DryFire:
+          sfx.dryFire();
+          break;
+        case Ev.Jump:
+          sfx.jump();
+          break;
+        case Ev.Land:
+          sfx.land(e.a);
+          rig.notifyLand(e.a);
+          break;
+        case Ev.WaveStart:
+          sfx.waveStart();
+          break;
+        case Ev.WaveCleared:
+          sfx.waveCleared();
+          break;
+        case Ev.Heal:
+        case Ev.PlayerDied:
+        case Ev.NewHighscore:
+          break;
+      }
+    }
+    events.clear();
+  }
+
+  // ---- Dynamische Auflösungsskalierung (Phase 5) ----
+  let renderScale = 1;
+  let lowFpsTime = 0;
+  let highFpsTime = 0;
+
+  function updateResolutionScale(dt: number, fps: number): void {
+    if (fps < 55 && fps > 1) {
+      lowFpsTime += dt;
+      highFpsTime = 0;
+    } else if (fps > 58) {
+      highFpsTime += dt;
+      lowFpsTime = 0;
+    }
+    if (lowFpsTime > 2 && renderScale > 0.55) {
+      renderScale = Math.max(0.55, renderScale * 0.85);
+      lowFpsTime = 0;
+      applySize();
+    } else if (highFpsTime > 4 && renderScale < 1) {
+      renderScale = Math.min(1, renderScale * 1.1);
+      highFpsTime = 0;
+      applySize();
+    }
+  }
+
+  function applySize(): void {
+    renderer.setPixelRatio(basePixelRatio * renderScale);
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+  }
+
+  // ---- Loop ----
+  const loop = new GameLoop(SIM_HZ, {
+    simulate(dt) {
+      touch.aimOnTarget = sim.aimOnTarget;
+      touch.autoFire = save.state.autoFire;
+      touch.update();
+      sim.update(dt);
+    },
+    render(alpha) {
+      const dt = Math.min(0.1, loop.getStats().frameMs / 1000);
+      handlePhaseTransitions();
+      rig.update(dt, alpha, sim.player, input, sim.weapon);
+      weaponView.update(dt, sim.weapon, input, rig.bobPhase, sim.player.moveIntensity);
+      enemyRenderer.update(sim.enemies, alpha, sim.player.pos.x, sim.player.pos.z, performance.now() / 1000);
+      particles.update(dt);
+      tracers.update(dt);
+      drainEvents();
+      if (screens.mode === "playing") hud.update(dt, sim, isTouch);
+      updateResolutionScale(dt, loop.getStats().fps);
+      renderer.render(scene, camera);
+      debugOverlay.update(loop, sim, renderer);
+    },
+  });
+
+  window.addEventListener("resize", applySize);
+
+  screens.showHome();
+  loop.setPaused(false); // Menü-Hintergrund rendert; Sim idlet in "menu"
+  loop.start();
+  sdk.loadingDone();
+
+  // Debug-Handle für automatisierte Tests (Headless) und die Konsole
+  window.__ns = { loop, sim, renderer, input, save, screens };
+}
+
 declare global {
   interface Window {
-    __ns: { loop: GameLoop; sim: Sim; renderer: THREE.WebGLRenderer };
+    __ns: {
+      loop: GameLoop;
+      sim: Sim;
+      renderer: THREE.WebGLRenderer;
+      input: ReturnType<typeof createInput>;
+      save: SaveData;
+      screens: Screens;
+    };
   }
 }
-window.__ns = { loop, sim, renderer };
+
+void boot();
