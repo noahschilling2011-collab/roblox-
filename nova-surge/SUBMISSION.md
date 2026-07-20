@@ -26,7 +26,8 @@ the brutal close-range Scatter Gun and the precise, hard-hitting Longshot DMR.
 How far can you get before the arena overruns you?
 
 - Fast, responsive movement — sprint, jump, strafe
-- 3 arenas with distinct layouts: balanced, tight lanes, wide-open canyon
+- 5 arenas with distinct looks: industrial yard, icy lanes, open canyon,
+  a luxury yacht at sunset, and a neon shopping mall
 - 3 enemy types with clear roles, endless scaling waves
 - 1-of-3 upgrade choice after every wave
 - 3 weapons with unique handling + 8 unlockable color schemes

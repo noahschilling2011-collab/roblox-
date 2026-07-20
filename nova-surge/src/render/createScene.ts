@@ -60,9 +60,11 @@ function buildArenaGroup(def: ArenaDef): THREE.Group {
   floor.rotation.x = -Math.PI / 2;
   group.add(floor);
 
-  const grid = new THREE.GridHelper(def.size, def.size / 4, p.grid1, p.grid2);
-  grid.position.y = 0.02;
-  group.add(grid);
+  if (def.showGrid !== false) {
+    const grid = new THREE.GridHelper(def.size, def.size / 4, p.grid1, p.grid2);
+    grid.position.y = 0.02;
+    group.add(grid);
+  }
 
   const materials = {
     wall: new THREE.MeshLambertMaterial({ color: p.wall }),
@@ -90,12 +92,34 @@ function buildArenaGroup(def: ArenaDef): THREE.Group {
     }
   }
 
-  // Spawn-Tore: Akzent-Rahmen an den Wandmitten
+  // Deko-Props (keine Kollision): Neonschilder, Deck, Pflanzen, ...
+  if (def.props) {
+    for (const pr of def.props) {
+      const mesh = new THREE.Mesh(
+        unitBox,
+        new THREE.MeshLambertMaterial(
+          pr.glow ? { color: pr.color, emissive: pr.color, emissiveIntensity: 0.7 } : { color: pr.color }
+        )
+      );
+      mesh.scale.set(pr.sx, pr.sy, pr.sz);
+      mesh.position.set(pr.x, pr.y, pr.z);
+      group.add(mesh);
+    }
+  }
+
+  // Spawn-Markierung: Tor-Rahmen an Wandmitten, sonst flaches Leucht-Pad
+  // (z. B. Yacht: Spawns liegen im Deck-Inneren — Pad statt Rahmen).
   for (const sp of def.enemySpawns) {
+    const nearPerimeter = Math.max(Math.abs(sp.x), Math.abs(sp.z)) > def.size / 2 - 4;
     const gate = new THREE.Mesh(unitBox, gateMaterial);
-    const onXWall = Math.abs(sp.x) > Math.abs(sp.z);
-    gate.scale.set(onXWall ? 0.4 : 6, 3.4, onXWall ? 6 : 0.4);
-    gate.position.set(sp.x * 1.06, 1.7, sp.z * 1.06);
+    if (nearPerimeter) {
+      const onXWall = Math.abs(sp.x) > Math.abs(sp.z);
+      gate.scale.set(onXWall ? 0.4 : 6, 3.4, onXWall ? 6 : 0.4);
+      gate.position.set(sp.x * 1.06, 1.7, sp.z * 1.06);
+    } else {
+      gate.scale.set(2.4, 0.06, 2.4);
+      gate.position.set(sp.x, 0.05, sp.z);
+    }
     group.add(gate);
   }
 

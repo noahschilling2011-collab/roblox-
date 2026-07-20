@@ -33,6 +33,19 @@ export interface ArenaBox {
   kind: "wall" | "tall" | "low";
 }
 
+/** Rein dekoratives Element — KEINE Kollision, darf daher nie im Laufweg
+ *  auf Körperhöhe stehen (nur flach am Boden, auf Deckungen oder über Kopf). */
+export interface ArenaProp {
+  x: number;
+  y: number; // Mittelpunkt-Höhe
+  z: number;
+  sx: number;
+  sy: number;
+  sz: number;
+  color: number;
+  glow?: boolean; // leuchtet (Neonschilder, Poolwasser)
+}
+
 export interface ArenaDef {
   id: string;
   name: string; // Anzeigename EN
@@ -40,6 +53,8 @@ export interface ArenaDef {
   size: number; // Kantenlänge, Mitte (0,0)
   palette: ArenaPalette;
   boxes: ArenaBox[];
+  props?: ArenaProp[];
+  showGrid?: boolean; // default true (false z. B. auf Wasser)
   enemySpawns: { x: number; z: number }[];
   playerSpawn: { x: number; z: number };
 }
@@ -180,7 +195,141 @@ const SUNREACH: ArenaDef = {
   playerSpawn: { x: 0, z: 16 },
 };
 
-export const ARENAS: ArenaDef[] = [FOUNDRY, FROSTWORKS, SUNREACH];
+// ---- Map 4: Azure Deck — Sonnendeck einer Luxusyacht auf offener See ----
+// Spielfläche ist das Deck (26 x 40) innerhalb der Bordwände; der Boden
+// außerhalb ist Wasser (nur Optik), Bug/Heck sind dekorative Props.
+const YACHT: ArenaDef = {
+  id: "yacht",
+  name: "Azure Deck",
+  sub: "Luxury yacht · close quarters",
+  size: 60,
+  palette: {
+    sky: 0xffcf9e, // Sonnenuntergang
+    fogNear: 45,
+    fogFar: 130,
+    floor: 0x2e7fa8, // Meer
+    wall: 0xf2f4f6, // weiße Bordwand
+    tall: 0xe9edf1, // Kabine
+    low: 0xdfe4e9,
+    accent: 0xff6a4d, // Koralle
+    grid1: 0xffffff,
+    grid2: 0xffffff,
+  },
+  showGrid: false,
+  boxes: [
+    // Bordwände (2,6 m: Deckung + nicht überspringbar), Deck 26 x 40
+    { x: -13, z: 0, sx: 1, sz: 40, h: 2.6, kind: "wall" },
+    { x: 13, z: 0, sx: 1, sz: 40, h: 2.6, kind: "wall" },
+    { x: 0, z: -20, sx: 27, sz: 1, h: 2.6, kind: "wall" },
+    { x: 0, z: 20, sx: 27, sz: 1, h: 2.6, kind: "wall" },
+    // Kabinen-Aufbau = zentrale Deckung
+    { x: 0, z: 7, sx: 10, sz: 6, h: HEIGHTS.tall, kind: "tall" },
+    // Technik-Container an den Seiten
+    { x: -9, z: -6, sx: 3, sz: 5, h: HEIGHTS.tall, kind: "tall" },
+    { x: 9, z: -6, sx: 3, sz: 5, h: HEIGHTS.tall, kind: "tall" },
+    // Besteigbares: Sonnendeck-Podest am Bug, Bar am Heck, Kisten
+    { x: 0, z: -15, sx: 6, sz: 4, h: HEIGHTS.low, kind: "low" },
+    { x: 0, z: 16, sx: 8, sz: 2.5, h: HEIGHTS.low, kind: "low" },
+    { x: -9, z: 13, sx: 2.5, sz: 2.5, h: HEIGHTS.low, kind: "low" },
+    { x: 9, z: 13, sx: 2.5, sz: 2.5, h: HEIGHTS.low, kind: "low" },
+  ],
+  props: [
+    // Deck-Holzboden (flach, Füße stehen optisch auf Planken)
+    { x: 0, y: -0.03, z: 0, sx: 25.6, sy: 0.1, sz: 39.6, color: 0xc9a06a },
+    // Bug-Spitze (vor der Wand, im Wasser — nur Silhouette)
+    { x: 0, y: 0.25, z: -23, sx: 20, sy: 0.6, sz: 5, color: 0xf2f4f6 },
+    { x: 0, y: 0.25, z: -26.5, sx: 12, sy: 0.6, sz: 4, color: 0xf2f4f6 },
+    { x: 0, y: 0.25, z: -29, sx: 5, sy: 0.6, sz: 2.5, color: 0xf2f4f6 },
+    // Heck-Plattform
+    { x: 0, y: 0.2, z: 22.5, sx: 18, sy: 0.5, sz: 4, color: 0xf2f4f6 },
+    // Pool im Bug-Podest (leuchtendes Wasser)
+    { x: 0, y: 1.16, z: -15, sx: 4.6, sy: 0.06, sz: 2.8, color: 0x35c5e8, glow: true },
+    // Schornstein + Mast + Radar auf der Kabine
+    { x: 0, y: 3.3, z: 8.5, sx: 2.6, sy: 1.8, sz: 1.4, color: 0xf2f4f6 },
+    { x: 0, y: 3.1, z: 5.5, sx: 0.18, sy: 2.2, sz: 0.18, color: 0xd8dde2 },
+    { x: 0, y: 4.3, z: 5.5, sx: 1.4, sy: 0.12, sz: 0.3, color: 0xff6a4d },
+    // Handtücher/Matten auf dem Deck (ganz flach — begehbar ohne Clipping)
+    { x: -6, y: 0.06, z: -11, sx: 0.9, sy: 0.08, sz: 2.2, color: 0xff6a4d },
+    { x: -4, y: 0.06, z: -11, sx: 0.9, sy: 0.08, sz: 2.2, color: 0xffffff },
+    { x: 6, y: 0.06, z: -11, sx: 0.9, sy: 0.08, sz: 2.2, color: 0xff6a4d },
+    { x: 4, y: 0.06, z: -11, sx: 0.9, sy: 0.08, sz: 2.2, color: 0xffffff },
+  ],
+  // Spawns = "Enterpunkte" in den Deck-Ecken
+  enemySpawns: [
+    { x: -10, z: -17 },
+    { x: 10, z: -17 },
+    { x: -10, z: 17.5 },
+    { x: 10, z: 17.5 },
+  ],
+  playerSpawn: { x: 0, z: 0 },
+};
+
+// ---- Map 5: Grand Gallery — helles Einkaufszentrum mit Neon-Läden ----
+const MALL: ArenaDef = {
+  id: "mall",
+  name: "Grand Gallery",
+  sub: "Shopping mall · neon lanes",
+  size: 64,
+  palette: {
+    sky: 0xdff0ff, // Glasdach-Licht
+    fogNear: 55,
+    fogFar: 150,
+    floor: 0xe6ded0, // Fliesen
+    wall: 0xcfc6b8,
+    tall: 0xb8aa96, // Ladenfronten
+    low: 0xd8cfc0,
+    accent: 0xff4f9a, // Pink-Neon
+    grid1: 0xf2ece0, // Fliesenfugen
+    grid2: 0xdcd3c4,
+  },
+  boxes: [
+    ...perimeter(64),
+    // Ladenzeilen an den Wänden (mit Lücken = Gänge, kein toter Winkel)
+    { x: -26, z: -12, sx: 8, sz: 7, h: HEIGHTS.tall, kind: "tall" },
+    { x: -26, z: 12, sx: 8, sz: 7, h: HEIGHTS.tall, kind: "tall" },
+    { x: 26, z: -12, sx: 8, sz: 7, h: HEIGHTS.tall, kind: "tall" },
+    { x: 26, z: 12, sx: 8, sz: 7, h: HEIGHTS.tall, kind: "tall" },
+    { x: -12, z: -26, sx: 7, sz: 8, h: HEIGHTS.tall, kind: "tall" },
+    { x: 12, z: -26, sx: 7, sz: 8, h: HEIGHTS.tall, kind: "tall" },
+    { x: -12, z: 26, sx: 7, sz: 8, h: HEIGHTS.tall, kind: "tall" },
+    { x: 12, z: 26, sx: 7, sz: 8, h: HEIGHTS.tall, kind: "tall" },
+    // Springbrunnen in der Mitte + Kioske
+    { x: 0, z: 0, sx: 7, sz: 7, h: HEIGHTS.low, kind: "low" },
+    { x: -14, z: 0, sx: 3, sz: 5, h: HEIGHTS.low, kind: "low" },
+    { x: 14, z: 0, sx: 3, sz: 5, h: HEIGHTS.low, kind: "low" },
+    // Pflanzkübel
+    { x: 0, z: -16, sx: 3, sz: 3, h: HEIGHTS.low, kind: "low" },
+    { x: 0, z: 16, sx: 3, sz: 3, h: HEIGHTS.low, kind: "low" },
+  ],
+  props: [
+    // Neonschilder über den Ladenfronten (verschiedene Farben)
+    { x: -26, y: 2.9, z: -12, sx: 6.5, sy: 0.7, sz: 0.3, color: 0xff4f9a, glow: true },
+    { x: -26, y: 2.9, z: 12, sx: 6.5, sy: 0.7, sz: 0.3, color: 0x37e0ff, glow: true },
+    { x: 26, y: 2.9, z: -12, sx: 6.5, sy: 0.7, sz: 0.3, color: 0xffd23a, glow: true },
+    { x: 26, y: 2.9, z: 12, sx: 6.5, sy: 0.7, sz: 0.3, color: 0x7dff8b, glow: true },
+    { x: -12, y: 2.9, z: -26, sx: 0.3, sy: 0.7, sz: 6.5, color: 0x37e0ff, glow: true },
+    { x: 12, y: 2.9, z: -26, sx: 0.3, sy: 0.7, sz: 6.5, color: 0xff4f9a, glow: true },
+    { x: -12, y: 2.9, z: 26, sx: 0.3, sy: 0.7, sz: 6.5, color: 0xffd23a, glow: true },
+    { x: 12, y: 2.9, z: 26, sx: 0.3, sy: 0.7, sz: 6.5, color: 0xb07dff, glow: true },
+    // Springbrunnen-Wasser + Fontänen-Säule
+    { x: 0, y: 1.16, z: 0, sx: 5.8, sy: 0.06, sz: 5.8, color: 0x35c5e8, glow: true },
+    { x: 0, y: 1.7, z: 0, sx: 0.5, sy: 1.1, sz: 0.5, color: 0x9fdcf0 },
+    // Büsche auf den Pflanzkübeln
+    { x: 0, y: 1.5, z: -16, sx: 2.2, sy: 0.9, sz: 2.2, color: 0x3f9b4f },
+    { x: 0, y: 1.5, z: 16, sx: 2.2, sy: 0.9, sz: 2.2, color: 0x3f9b4f },
+    // Glasdach-Träger hoch über der Halle
+    { x: 0, y: 7.5, z: -16, sx: 63, sy: 0.4, sz: 0.6, color: 0xffffff },
+    { x: 0, y: 7.5, z: 0, sx: 63, sy: 0.4, sz: 0.6, color: 0xffffff },
+    { x: 0, y: 7.5, z: 16, sx: 63, sy: 0.4, sz: 0.6, color: 0xffffff },
+    // Teppich-Inseln am Brunnen (ganz flach — begehbar ohne Clipping)
+    { x: -6, y: 0.04, z: 0, sx: 1.6, sy: 0.06, sz: 4, color: 0xb44f6e },
+    { x: 6, y: 0.04, z: 0, sx: 1.6, sy: 0.06, sz: 4, color: 0xb44f6e },
+  ],
+  enemySpawns: gates(64),
+  playerSpawn: { x: 0, z: 12 },
+};
+
+export const ARENAS: ArenaDef[] = [FOUNDRY, FROSTWORKS, SUNREACH, YACHT, MALL];
 
 export function getArena(id: string): ArenaDef {
   return ARENAS.find((a) => a.id === id) ?? FOUNDRY;

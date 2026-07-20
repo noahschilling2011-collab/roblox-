@@ -31,9 +31,10 @@ oder Auto-Fire (im Menü umschaltbar) · Sprung-/Reload-Buttons
 
 Wellen überleben → nach jeder Welle 1 aus 3 Upgrades → Tod → Münzen nach
 Score → im Menü Waffen (Scatter Gun, Longshot DMR) und 8 Farbschemata
-freischalten. **3 Arenen** zur Wahl: Foundry (ausgewogen), Frostworks
-(enge Lanes), Sunreach (offener Canyon). Highscore und Fortschritt liegen
-in localStorage.
+freischalten. **5 Arenen** zur Wahl: Foundry (ausgewogen), Frostworks
+(enge Lanes), Sunreach (offener Canyon), Azure Deck (Yacht bei
+Sonnenuntergang) und Grand Gallery (Einkaufszentrum mit Neon-Läden).
+Highscore und Fortschritt liegen in localStorage.
 
 ## Projekt-Doku
 
