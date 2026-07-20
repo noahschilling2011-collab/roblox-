@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
+    />
+    <title>Nova Surge</title>
+    <!-- Favicon als Data-URI: kein extra Request, kein 404 in der Konsole -->
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='28' fill='%237dd3ff'/%3E%3Ccircle cx='32' cy='32' r='14' fill='%230e0f13'/%3E%3Ccircle cx='32' cy='32' r='5' fill='%237dd3ff'/%3E%3C/svg%3E"
+    />
+  </head>
+  <body>
+    <canvas id="game-canvas"></canvas>
+
+    <!-- Start-/Pause-Overlay (DOM statt WebGL: billig, scharf, auf Mobile identisch) -->
+    <div id="menu-overlay">
+      <div id="menu-panel">
+        <h1 id="menu-title">NOVA SURGE</h1>
+        <p id="menu-subtitle">Wave shooter &mdash; work in progress</p>
+        <button id="menu-button" type="button">CLICK TO PLAY</button>
+        <p id="menu-hint">ESC = pause &middot; F3 = debug overlay</p>
+      </div>
+    </div>
+
+    <div id="debug-overlay" hidden></div>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
