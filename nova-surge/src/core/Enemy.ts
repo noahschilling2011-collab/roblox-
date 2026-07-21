@@ -33,6 +33,13 @@ export class Enemy {
   strafeDir = 1;
   strafeTimer = 0;
   radialTimer = 0; // Boss-Ring-Angriff
+  // Anti-Hänger: Anker + Timer erkennen "will laufen, kommt nicht voran"
+  anchorX = 0;
+  anchorZ = 0;
+  stuckTimer = 0;
+  unstickTimer = 0;
+  unstickX = 0;
+  unstickZ = 0;
   hitreactCooldown = 0;
   onGround = true;
   /** 1 direkt nach Treffer, klingt ab — Renderer nutzt das für den Weiß-Flash. */
@@ -94,6 +101,10 @@ export class EnemyManager {
       e.strafeDir = Math.random() < 0.5 ? 1 : -1;
       e.strafeTimer = 1 + Math.random() * 2;
       e.radialTimer = 2; // Boss: erste Ring-Salve kommt mit Vorwarnzeit
+      e.anchorX = x;
+      e.anchorZ = z;
+      e.stuckTimer = 0;
+      e.unstickTimer = 0;
       e.hitreactCooldown = 0;
       e.flash = 0;
       return true;
@@ -277,6 +288,36 @@ export class EnemyManager {
             events.emit(Ev.MeleeHit, e.pos.x, e.centerY, e.pos.z);
           }
         }
+      }
+
+      // Anti-Hänger: wer sich trotz Bewegungswunsch >1,6 s kaum bewegt,
+      // weicht kurz senkrecht aus (Shooter in Wand-Strafe, Tank vor Block).
+      // Nahe am Spieler ist Stillstehen Absicht (Stoppdistanz/Ring-Phase).
+      if (e.unstickTimer > 0) {
+        e.unstickTimer -= dt;
+        moveX = e.unstickX * d.speed;
+        moveZ = e.unstickZ * d.speed;
+      } else if (distXZ > 4 && Math.hypot(moveX, moveZ) > 0.5) {
+        const ax = e.pos.x - e.anchorX;
+        const az = e.pos.z - e.anchorZ;
+        if (ax * ax + az * az > 0.36) {
+          e.anchorX = e.pos.x;
+          e.anchorZ = e.pos.z;
+          e.stuckTimer = 0;
+        } else {
+          e.stuckTimer += dt;
+          if (e.stuckTimer > 1.6) {
+            e.stuckTimer = 0;
+            e.unstickTimer = 1.1;
+            const side = Math.random() < 0.5 ? 1 : -1;
+            e.unstickX = -_toPlayer.z * side;
+            e.unstickZ = _toPlayer.x * side;
+          }
+        }
+      } else {
+        e.stuckTimer = 0;
+        e.anchorX = e.pos.x;
+        e.anchorZ = e.pos.z;
       }
 
       // Hindernis-Umfließen + Separation
