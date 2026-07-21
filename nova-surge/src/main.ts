@@ -322,6 +322,7 @@ async function boot(): Promise<void> {
     simulate(dt) {
       touch.aimOnTarget = sim.aimOnTarget;
       touch.autoFire = save.state.autoFire;
+      touch.weaponIsAuto = sim.weapon.def.auto;
       touch.update();
       sim.update(dt);
     },

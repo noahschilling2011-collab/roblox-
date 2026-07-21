@@ -50,6 +50,8 @@ export class Sim {
   aimOnTarget = false;
   /** Einmal pro Run: Revive über Rewarded Ad (Phase 6). */
   reviveUsed = false;
+  /** Vom Pellet-Raycast getroffener Gegner (hitTest -> onHit, gleicher Tick). */
+  private pelletTarget: Enemy | null = null;
 
   private readonly input: InputState;
 
@@ -120,7 +122,12 @@ export class Sim {
       if (e.active && e.fsm !== "death") this.enemies.damage(e, 99999);
     }
     this.projectiles.clear();
-    this.phase = this.spawner.pendingCount() > 0 || this.enemies.aliveCount() > 0 ? "wave" : "break";
+    // Eine bereits verdiente Upgrade-Wahl darf durch den Tod nicht verfallen
+    if (this.upgradeOffer.length > 0) {
+      this.phase = "upgrade";
+    } else {
+      this.phase = this.spawner.pendingCount() > 0 || this.enemies.aliveCount() > 0 ? "wave" : "break";
+    }
     this.phaseTimer = RUN.waveBreak;
   }
 
@@ -143,6 +150,8 @@ export class Sim {
       this.spawner.update(dt, this.enemies, p.pos, this.waveNumber, this.arena.enemySpawns);
       if (this.spawner.pendingCount() === 0 && this.enemies.aliveCount() === 0) {
         this.events.emit(Ev.WaveCleared, 0, 0, 0, this.waveNumber);
+        // Noch fliegende Gegner-Projektile verfallen — kein Tod im Upgrade-Screen
+        this.projectiles.clearEnemyProjectiles();
         this.upgradeOffer = this.upgrades.rollOffer();
         this.phase = this.upgradeOffer.length > 0 ? "upgrade" : "break";
         this.phaseTimer = RUN.waveBreak;
@@ -240,10 +249,14 @@ export class Sim {
     _hitPoint.z = dirZ;
     if (s.fromPlayer) {
       let best = Infinity;
+      this.pelletTarget = null;
       for (const e of this.enemies.slots) {
         if (!e.active || e.fsm === "death") continue;
         const t = rayVsSphere(_eye, _hitPoint, e.pos.x, e.centerY, e.pos.z, e.def.radius * 1.4);
-        if (t < best && t <= maxDist) best = t;
+        if (t < best && t <= maxDist) {
+          best = t;
+          this.pelletTarget = e;
+        }
       }
       return best;
     }
@@ -255,21 +268,12 @@ export class Sim {
 
   private projectileOnHit = (s: ProjectileSlot): void => {
     if (s.fromPlayer) {
-      // nächstliegenden Gegner an der Einschlagstelle finden
-      let best: Enemy | null = null;
-      let bestD = Infinity;
-      for (const e of this.enemies.slots) {
-        if (!e.active || e.fsm === "death") continue;
-        const dx = e.pos.x - s.x;
-        const dy = e.centerY - s.y;
-        const dz = e.pos.z - s.z;
-        const d = dx * dx + dy * dy + dz * dz;
-        if (d < bestD) {
-          bestD = d;
-          best = e;
-        }
+      // Exakt der Gegner, dessen Hitbox der Raycast in hitTest getroffen hat —
+      // keine Nächster-Nachbar-Suche (die traf im Pulk den Falschen).
+      if (this.pelletTarget) {
+        this.applyPlayerDamage(this.pelletTarget, s.damage);
+        this.pelletTarget = null;
       }
-      if (best) this.applyPlayerDamage(best, s.damage);
     } else {
       this.damagePlayer(s.damage, s.x, s.z);
     }
@@ -278,7 +282,8 @@ export class Sim {
   // ---- Gegner-Callbacks ----
 
   private damagePlayer = (amount: number, sourceX: number, sourceZ: number): void => {
-    if (this.phase === "dead") return;
+    // In Menü-Phasen (Upgrade-Wahl) ist der Spieler unverwundbar
+    if (this.phase === "dead" || this.phase === "upgrade") return;
     this.multiplier = 1;
     const died = this.player.takeDamage(amount, sourceX, sourceZ, this.input.yaw, this.events);
     if (died) {

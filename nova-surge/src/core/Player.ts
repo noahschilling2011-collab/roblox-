@@ -117,9 +117,11 @@ export class Player {
     if (!this.alive) return false;
     this.hp -= amount;
     this.sinceDamage = 0;
-    // Winkel zur Schadensquelle relativ zur Blickrichtung (für HUD-Indikator)
+    // Winkel zur Schadensquelle relativ zur Blickrichtung (für HUD-Indikator).
+    // bearing(Spieler->Quelle) minus bearing(Blickrichtung) — Blick zeigt bei
+    // yaw=0 nach -Z, daher hebt sich das Pi aus beiden Termen auf.
     const angleToSource = Math.atan2(this.pos.x - sourceX, this.pos.z - sourceZ);
-    let rel = angleToSource - yaw + Math.PI;
+    let rel = angleToSource - yaw;
     while (rel > Math.PI) rel -= Math.PI * 2;
     while (rel < -Math.PI) rel += Math.PI * 2;
     events.emit(Ev.PlayerHurt, sourceX, 0, sourceZ, amount, rel);

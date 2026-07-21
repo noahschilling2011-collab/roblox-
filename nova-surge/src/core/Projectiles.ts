@@ -45,6 +45,11 @@ export class Projectiles {
     for (const s of this.slots) s.active = false;
   }
 
+  /** Nur Gegner-Projektile entfernen (Wellenende: keine Nachzügler-Treffer). */
+  clearEnemyProjectiles(): void {
+    for (const s of this.slots) if (s.active && !s.fromPlayer) s.active = false;
+  }
+
   spawn(fromPlayer: boolean, origin: Vec3, dir: Vec3, speed: number, life: number, damage: number): void {
     for (let i = 0; i < CAPACITY; i++) {
       const s = this.slots[i]!;

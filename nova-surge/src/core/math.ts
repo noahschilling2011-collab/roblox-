@@ -142,6 +142,9 @@ export function rayVsSphere(origin: Vec3, dir: Vec3, cx: number, cy: number, cz:
   const oz = origin.z - cz;
   const b = ox * dir.x + oy * dir.y + oz * dir.z;
   const c = ox * ox + oy * oy + oz * oz - radius * radius;
+  // Ursprung liegt bereits IN der Kugel (Gegner bedrängt den Spieler):
+  // sofortiger Treffer — sonst gingen Punktblank-Schüsse durch ihn hindurch.
+  if (c <= 0) return 0;
   const disc = b * b - c;
   if (disc < 0) return Infinity;
   const t = -b - Math.sqrt(disc);

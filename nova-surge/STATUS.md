@@ -30,8 +30,32 @@ stattdessen Content-Ausbau innerhalb der Regeln:
 - Headless: Map-Test 8/8 über alle 5 Arenen · Bot-Run auf der Yacht **13/13**
   (Tod nach 173 s in Welle 8, kein Bot steckengeblieben, Heap-Drift 1,09 MB,
   Konsole fehlerfrei).
-- Multi-Agent-Bug-Jagd über den kompletten Code gestartet (Ergebnis unten,
-  sobald ausgewertet).
+- **Bug-Jagd (Multi-Agent + manuelle Verifikation): 6 echte Bugs gefunden
+  und gefixt.** Transparenz: Die Agenten-Prüfung lief wegen Session-Limits
+  nur über die Bereiche Simulation/Movement (2 von 6 Findern); die
+  adversarialen Prüf-Agenten fielen komplett aus — jeder Fund wurde daher
+  von Hand am Code verifiziert. UI/Render/Platform/Timing sind bisher NUR
+  durch die Integrationstests abgedeckt, nicht durch Agenten-Review.
+  Die Fixes:
+  1. `rayVsSphere`: Ursprung in der Hitbox = Treffer (vorher gingen
+     Punktblank-Schüsse durch bedrängende Tanks hindurch, und Mobile-
+     Auto-Fire stoppte genau dann).
+  2. Shotgun-Pellets: Schaden geht jetzt exakt an den vom Raycast
+     getroffenen Gegner (vorher Nächster-Nachbar-Suche — im Pulk bekam
+     regelmäßig der falsche Gegner den Schaden).
+  3. Nahkampf prüft Sichtlinie: Tanks/Rusher schlagen nicht mehr durch
+     Blöcke (Spieler auf LOW-Deckung) oder um Deckungsecken.
+  4. Wellenende räumt fliegende Gegner-Projektile ab + Spieler ist in der
+     Upgrade-Wahl unverwundbar (vorher: Tod im Upgrade-Screen möglich).
+  5. Revive stellt eine noch offene Upgrade-Wahl wieder her statt sie zu
+     verschlucken.
+  6. In der Luft getötete Gegner fallen zu Boden statt schwebend zu
+     verblassen; Schadensrichtungs-Pfeil im HUD zeigt jetzt ZUM Angreifer
+     (war um 180° gedreht).
+  7. Mobile-Auto-Fire mit Semi-Waffen (Scatter/DMR): feuerte genau EINMAL
+     und dann nie wieder (Dauer-True erzeugt keine Tastenflanken). Auto-Fire
+     pulst jetzt für Semi-Waffen. Gefunden durch den Bot-Test — der Bot
+     hatte exakt dasselbe Problem wie ein Handy-Spieler gehabt hätte.
 
 > Hinweis zur Arbeitsweise: Auf ausdrückliche Anweisung („mach alles jetzt")
 > wurden Phasen 1–6 in EINEM Auftrag gebaut — abweichend von der

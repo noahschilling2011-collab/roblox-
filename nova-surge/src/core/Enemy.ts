@@ -142,6 +142,8 @@ export class EnemyManager {
       if (e.fsm === "death") {
         e.stateTimer -= dt;
         if (e.stateTimer <= 0) e.active = false;
+        // Schwerkraft wirkt weiter — in der Luft Getötete fallen zu Boden
+        this.applyPhysics(e, 0, 0, dt, world);
         continue;
       }
       if (e.fsm === "hitreact") {
@@ -240,9 +242,19 @@ export class EnemyManager {
           e.vel.y = d.jumpVelocity;
         }
         if (distXZ < d.meleeRange && Math.abs(heightDiff) < 1.6 && e.attackCooldown <= 0) {
-          e.attackCooldown = d.meleeCooldown;
-          callbacks.damagePlayer(d.meleeDamage, e.pos.x, e.pos.z);
-          events.emit(Ev.MeleeHit, e.pos.x, e.centerY, e.pos.z);
+          // Nur zuschlagen, wenn nichts dazwischen ist — kein Schlagen durch
+          // Blöcke (Spieler oben auf LOW-Deckung) oder um Deckungsecken.
+          _eye.x = e.pos.x;
+          _eye.y = e.centerY;
+          _eye.z = e.pos.z;
+          _target.x = playerPos.x;
+          _target.y = playerPos.y + 1.0;
+          _target.z = playerPos.z;
+          if (segmentClear(_eye, _target, solids)) {
+            e.attackCooldown = d.meleeCooldown;
+            callbacks.damagePlayer(d.meleeDamage, e.pos.x, e.pos.z);
+            events.emit(Ev.MeleeHit, e.pos.x, e.centerY, e.pos.z);
+          }
         }
       }
 

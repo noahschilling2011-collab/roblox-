@@ -20,6 +20,8 @@ export class TouchControls {
   autoFire = true;
   /** Wird von der Sim gesetzt: Fadenkreuz liegt auf Gegner. */
   aimOnTarget = false;
+  /** Aktuelle Waffe ist Dauerfeuer (sonst braucht Auto-Fire Puls-Flanken). */
+  weaponIsAuto = true;
 
   private moveTouchId: number | null = null;
   private lookTouchId: number | null = null;
@@ -56,10 +58,18 @@ export class TouchControls {
     if (!visible) this.resetTouches();
   }
 
-  /** Pro Frame: Auto-Fire anwenden. */
+  /** Pro Sim-Tick: Auto-Fire anwenden. */
   update(): void {
     if (!this.enabled) return;
-    this.input.fire = this.fireHeld || (this.autoFire && this.aimOnTarget);
+    if (this.fireHeld) {
+      this.input.fire = true;
+    } else if (this.autoFire && this.aimOnTarget) {
+      // Semi-Waffen (Scatter/DMR) feuern nur auf Flanke: Puls statt Dauer-True,
+      // sonst schießt Auto-Fire genau einmal und dann nie wieder.
+      this.input.fire = this.weaponIsAuto ? true : !this.input.fire;
+    } else {
+      this.input.fire = false;
+    }
   }
 
   private bindButton(id: string, handler: (down: boolean) => void): void {
