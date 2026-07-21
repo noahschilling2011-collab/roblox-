@@ -1,5 +1,20 @@
 # Nova Surge — Projektstand
 
+## ⏸ RELEASE-CANDIDATE-PLAN: Phase 0 fertig — WARTE AUF FREIGABE für Phase 1
+Neuer Arbeitsmodus laut `RELEASE-PLAN.md`: Phasen strikt sequenziell mit
+Freigabe-Stopp nach jeder Phase.
+- **Phase 0 ✅ (DoD erfüllt):** `ARCHITEKTUR.md` erstellt (Datei→Zuständigkeit,
+  alle Andock-Punkte für Phase 1–3 markiert). Alle Diagnose-Zahlen gegen den
+  Source verifiziert — zwei Korrekturen: Gesamt-Coin-Sinks sind **1.440**
+  (nicht 1.410); **Coin-Pickups existieren nicht** → „Magnetfeld" wird laut
+  Plan durch „Combo hält 2 s länger" ersetzt (braucht Combo-Verfall, siehe
+  ARCHITEKTUR.md Punkt 2). Build-Baseline grün (612 KB, gzip ~156 KB).
+- **Offene Design-Entscheidungen für Phase-1-Freigabe** (Details in
+  ARCHITEKTUR.md unten): (1) Reroll bucht vom Coin-KONTO ab (Run-Coins werden
+  erst am Run-Ende gutgeschrieben), (2) Combo-Verfall einführen ja/nein,
+  (3) Zeitlupen-Epic als Gegner-dt-Skalierung.
+- **Nächster Schritt:** Freigabe durch Noah → Phase 1 (Upgrades 6 → 24).
+
 Letzte Session: 2026-07-20 · Stand: **Phasen 0–6 komplett + Content-Update** ·
 Code-seitige Gates bestanden, manuelle Checks für Noah unten.
 
