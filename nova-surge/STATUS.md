@@ -1,11 +1,120 @@
 # Nova Surge — Projektstand
 
-## ⏸ AKTUELL (2026-07-21): ML Phase 1 ✅ + RC Phase 3 ✅ — WARTE AUF FREIGABE
-Auf „Mach weiter 2 und 3" wurden (wie angekündigt) **Multi-Level Phase 1**
-und **RC Phase 3** nacheinander gebaut, jeweils mit eigener DoD-Suite und
-eigenem Commit. **Nächster Schritt braucht Freigabe:** Multi-Level Phase 2
-(Waypoint-Graph/A* — der Hauptbrocken) und/oder RC Phase 4
-(Release-Checkliste). Details zu beiden fertigen Phasen unten.
+## ⏸ AKTUELL (2026-07-21): RECOVERY-PROMPT Phasen 0–3 ✅ — WARTE AUF FREIGABE
+Der Recovery-Prompt wurde abgearbeitet. **Wichtig — Ist-Zustand wich von der
+Analyse im Prompt ab** (gemäß Regel „melden statt improvisieren"):
+- **Navigation existierte bereits** (ML Phase 2, Commit b84f5ff) — sie wurde
+  nicht neu gebaut, sondern HART GETESTET und um 5 echte Fixes ergänzt (unten).
+- **Die Debug-Arena war NIE im Map-Menü** (nicht in ARENAS). Trotzdem wie
+  gefordert umgesetzt: wählbar nur noch mit `?debug=1`, Save-Guard fällt auf
+  Foundry zurück (Menü zeigt 5 Maps ohne / 6 mit Debug-Flag — testverifiziert).
+- Upgrades sind 24 (nicht ~29).
+- Session-Hinweis: Ein Container-Reset hat die Recovery-Arbeit einmal
+  verworfen; sie wurde komplett neu aufgebaut und ALLE Suiten erneut gefahren.
+
+### Recovery Phase 0 ✅ — Overlay-Bug (Root Cause + Fix)
+**Root Cause (kein Symptomflicken):** Auf Desktop blieb der Pointer während
+der Upgrade-Wahl GELOCKT — im Pointer Lock schluckt der Browser sämtliche
+DOM-Klicks, die Karten waren mit der Maus nicht anklickbar (nur Tasten 1–3,
+was niemand wusste). Drückte man ESC, legte sich zusätzlich das Pause-Menü
+über den Draft. Aus Spielersicht: „Overlay hängt, Spiel blockiert." Die
+Headless-Tests sahen das nie, weil sie den Lock umgehen (`chooseUpgrade()`
+direkt) — Lehre dokumentiert.
+**Fix:** `Screens.beginDraft()` entsperrt den Pointer kontrolliert beim
+Öffnen des Drafts (Guard verhindert den Pause-Modus), Karten sind klickbar,
+`endDraft()` lockt nach der Wahl automatisch neu (mit Retry gegen
+Browser-Cooldowns). Tasten 1–3 funktionieren weiter.
+**Overlay-Regression-Suite 13/13** (echter UI-Pfad mit Pointer Lock):
+5× Klick-Wahl mit Re-Lock ✓, 3× Reroll→Wahl (Listener überleben Reroll) ✓,
+Reroll bis Coins leer ✓, Tasten-Wahl ✓, ESC im Draft ✓, Draft vor
+Boss-Welle ✓, Supply-Crate-Draft mid-wave mit Rückkehr in die LAUFENDE
+Welle ✓, once-Flag ✓, Touch-Tap ✓, Konsole sauber ✓. Midgame-Ad um den
+Draft: nur auf dem CrazyGames-Portal testbar → manuelle Checkliste.
+
+### Recovery Phase 1 ✅ — Navigation gehärtet (5 echte Bugs via Trace gefixt)
+1. Auf Treppenstufen entstanden KEINE Grid-Knoten (Nachbarstufen verletzen
+   die Clearance) → Treppen erzeugen EIGENE Knoten entlang der Mittellinie
+   (verkettet, an beiden Enden ans Grid angebunden + Querverbindungen zu
+   nahen Grid-Knoten gleicher Ebene gegen Randknoten-Umwege).
+2. Drop-Kanten „durch den Etagen-Boden" → Fall-Korridor-Prüfung (Prüfpunkt
+   bei 75 % der Strecke, damit echte Kanten-Drops erhalten bleiben).
+3. Modus-Flattern an der Ebenen-Schwelle (Oszillation auf der Treppe) →
+   ein begonnener Pfad wird KOMPLETT zu Ende gelaufen; Repath nur bei
+   echter Ebenen-Differenz. (Direkt-Steering am Treppen-Scheitel kennt
+   keine Abgründe und lief sonst ins Leere neben der Treppe.)
+4. Anti-Hänger-Seitwärtsimpuls warf Pfad-Folger von der Mittellinie
+   (Endlos-Schleife am Treppenfuß) → Unstick nur noch im Direkt-Steering.
+5. Wegpunkt-Weiterschaltung blockierte unter höheren Kettenknoten
+   (Richtungs-Null exakt unter dem Wegpunkt) → Advance bei horizontalem
+   Erreichen, solange der Wegpunkt < 1 m höher liegt.
+**Plan-Abweichungen:** Graph AUTO-GENERIERT aus Kollisionsdaten statt
+hand-authored navNodes/navEdges (datengetrieben, nichts pro Map
+hardcodiert). F3 zeigt Nav-Statistik als Text; Linien-Visualisierung nicht
+gebaut („Nach Release"). **Kosten:** 12 Pfad-Gegner auf der Mall
+0,1–0,16 ms/Sim-Tick, Repaths ≤ 14/s (Budget 3/Tick). Flache Arenen:
+0 aktive Pfade — Verhalten unverändert (testverifiziert).
+
+### Recovery Phase 2 ✅ (vereinfachter Zuschnitt) — Yacht „Azure Deck", 3 Decks
+Hauptdeck (y 0) → Oberdeck = Kabinendach (y 3,0) → Sonnendeck = Brückendach
+(y 5,6). Drei 3-m-Treppen (cresten VOR den Wänden — kein Rest-Lift für
+breite Körper), Geländer „low" (überspringbar), offene Drop-Kanten Heck +
+Oberdeck-Vorderkante. NEU im Format: `bounds`-Klammer — wer über die
+Bordwand springt, landet nie im (nur optischen) Wasser (Softlock behoben).
+Pickups: Coin-Stash Sonnendeck (once), Medkit im Bug-Pool (respawnt).
+**ABWEICHUNG vom Prompt-Layout:** KEIN Unterdeck-Innenbereich mit
+Kabinen/Maschinenraum, keine Pool-Vertiefung, keine Boarding-Spawns —
+der volle Innenraum-Umbau ist deutlich größer. **Freigabe nötig:**
+einfachen Zuschnitt behalten oder auf volle Spec ausbauen?
+**DoD:** Tank erreicht Sonnendeck über 2 Treppen (~18 s) ✓, Warden aufs
+Oberdeck (~12 s) ✓, Rusher-Drop zum Boden-Spieler ✓, bounds ✓, Pickups ✓,
+Draws 30 (<150) ✓.
+
+### Recovery Phase 3 ✅ — Mall „Grand Gallery": 2 Etagen + Pickups + Geheimräume
+EG-Atrium + umlaufende Galerie (Lauffläche 3,55; Warden passt drunter),
+Balustrade mit Treppen-/Brücken-Lücken + 2 offenen Drop-Kanten (NO/SW),
+**Atrium-Brücke** über den Brunnen (exponierter Hotspot), 4 Rolltreppen-
+Rampen à 11 m Lauf — BEWUSST flach: der Fußpunkt breiter Körper sitzt auf
+der Stufe unter der VORDERKANTE; an der Slab-Kante muss der Rest-Lift
+≤ Step-Height (0,35) bleiben; 11 m ⇒ selbst Warden-tauglich. Treppen enden
+AN der Slab-Kante (liefen sie darunter, blockt die Plattenkante).
+**Geheimräume:** „Lagerraum" NW im EG hinter unscheinbarer Wandlücke
+(Coin-Stash + Medkit, once) · „Technikraum" SE auf der Galerie (Supply
+Crate → öffnet Upgrade-Draft, once). Zugänge 3 m — Gegner folgen hinein
+(Anti-Bunker testverifiziert). Offenes Medkit NO-Galerie (respawnt 30 s).
+Galerie-Spawns N+S (60/40-Regel bespielt beide Etagen).
+**Renderer:** Treppen als EINE gekippte Rampen-Box statt ~12 Stufen-Meshes
+(Draw-Call-Budget; Kollision bleibt der Stufen-Generator).
+**ABWEICHUNG:** 4 Rampen statt 2 (Rotation + Warden-Tauglichkeit), Läden
+nicht als halboffene Innenräume („Nach Release").
+**DoD-Suite 16/16:** Tank erreicht Galerie + Atrium-Brücke ✓, Rusher folgt
+in BEIDE Geheimräume ✓, Galerie-Gegner kommt runter ✓, once überlebt 35 s
+und respawnt im neuen Run ✓, Supply-Draft kehrt in die laufende Welle
+zurück (kein Wellen-Skip) ✓, Draws 82 (<150) ✓, Konsole sauber ✓.
+
+### Baseline (Phase 0c) / Budgets / Regression
+Yacht: 30 Draw-Calls, 268 Nav-Knoten · Mall: 82 Draw-Calls, 1862 Nav-Knoten
+(Budget <150 ✓). Suiten: Overlay 13/13 · Nav 8/8 · Yacht/Mall 16/16 ·
+Maps 8/8. Bekannte Test-Flakiness: der Debug-Arena-Drop-Test hängt von der
+zufälligen Routenwahl ab (selten 15-s-Timeout; Einzel-Trace belegt ~3–4 s
+bis zum Spieler). Headless-FPS nicht aussagekräftig — echte FPS per F3.
+
+### OFFEN (nächste Phasen — brauchen Freigabe)
+- **Recovery Phase 4: Gegner-Visuals (prozedurale Humanoide)** — nicht
+  begonnen. Größter offener Brocken.
+- **Recovery Phase 5: Gesamt-Regression** — teils vorweggenommen (Suiten);
+  noch offen: je 3 echte Wellen-Runs bis Welle 15 auf Yacht/Mall,
+  Mobile-Durchlauf am echten Gerät.
+- Yacht-Vollausbau (Unterdeck) — Entscheidung s. Phase 2.
+- RC Phase 4 (Release-Checkliste/Submission) aus dem RC-Plan.
+
+### Nach Release (Ideen-Parkplatz, nicht bauen)
+Nav-Graph-Linien-Visualisierung im F3 · Mall-Läden als halboffene Innenräume
+· „Magnetfeld"-Upgrade auf Pickup-Basis · Heavy-Duty-Drops als Pickups.
+
+## Ältere Stände: ML Phase 1 ✅ + RC Phase 3 ✅ (früher am 2026-07-21)
+Auf „Mach weiter 2 und 3" wurden **Multi-Level Phase 1** und **RC Phase 3**
+nacheinander gebaut, jeweils mit eigener DoD-Suite und eigenem Commit;
+danach **ML Phase 2** (Waypoint-Navigation, Commit b84f5ff).
 
 ### Multi-Level Phase 1 ✅ — Verticality-Fundament (Engine)
 - **Datenformat:** `ArenaBox.y` (Basis-Höhe, optional, Default 0) und

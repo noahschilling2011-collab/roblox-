@@ -17,6 +17,7 @@ import { ENEMY_TYPE_INDEX, EnemyManager, type Enemy } from "./Enemy";
 import { EventQueue, Ev } from "./events";
 import { buildCollisionWorld } from "./collision";
 import { NavSystem } from "./Nav";
+import { PickupManager } from "./Pickups";
 import type { InputState } from "./input";
 import { rayVsAabb, rayVsSphere, vec3, type Vec3 } from "./math";
 import { Player } from "./Player";
@@ -42,6 +43,7 @@ export class Sim {
   readonly enemies = new EnemyManager();
   readonly projectiles = new Projectiles();
   readonly spawner = new WaveSpawner();
+  readonly pickups = new PickupManager();
   readonly upgrades = new UpgradeState();
   readonly events = new EventQueue();
   readonly stats = new RunStats();
@@ -54,6 +56,10 @@ export class Sim {
   multiplier = 1;
   kills = 0;
   coinsEarned = 0;
+  /** Coin-Stash-Pickups: zusätzliche Run-Coins (zählen am Run-Ende dazu). */
+  bonusCoins = 0;
+  /** Supply-Crate-Draft: Phase, in die chooseUpgrade() danach zurückkehrt. */
+  private supplyReturnPhase: RunPhase | null = null;
   /** Angebot für die 1-aus-3-Wahl (gefüllt beim Wellenende). */
   upgradeOffer: UpgradeId[] = [];
   /** true, wenn das Fadenkreuz gerade auf einem Gegner liegt (Mobile-Auto-Fire). */
@@ -96,6 +102,7 @@ export class Sim {
     this.arena = arena;
     this.world = buildCollisionWorld(arena);
     this.nav = new NavSystem(arena, this.world);
+    this.pickups.setArena(arena.pickups);
   }
 
   startRun(weaponId: WeaponId, arena: ArenaDef, perks: PerkLevels | null = null): void {
@@ -123,6 +130,9 @@ export class Sim {
     this.multiplier = 1;
     this.kills = 0;
     this.coinsEarned = 0;
+    this.bonusCoins = 0;
+    this.supplyReturnPhase = null;
+    this.pickups.reset();
     this.waveNumber = 0;
     this.upgradeOffer = [];
     this.reviveUsed = false;
@@ -158,6 +168,16 @@ export class Sim {
     if (!id) return;
     this.upgrades.apply(id, this.weapon, this.player, this.stats);
     this.upgradeOffer = [];
+    // Supply-Crate-Draft: zurück in die LAUFENDE Welle (kein Wellen-Skip!)
+    if (this.supplyReturnPhase !== null) {
+      this.phase =
+        this.supplyReturnPhase === "wave" && (this.spawner.pendingCount() > 0 || this.enemies.aliveCount() > 0)
+          ? "wave"
+          : "break";
+      this.supplyReturnPhase = null;
+      if (this.phase === "break") this.phaseTimer = RUN.waveBreak;
+      return;
+    }
     this.phase = "break";
     this.phaseTimer = RUN.waveBreak;
   }
@@ -272,8 +292,27 @@ export class Sim {
     // Projektile
     this.projectiles.update(dt, enemyScale, this.world.solids, this.projectileHitTest, this.projectileOnHit);
 
+    // Pickups (Recovery Phase 3b) — nicht im Menü/Tod, nicht während eines Drafts
+    if (this.phase === "wave" || this.phase === "break" || this.phase === "prewave") {
+      this.pickups.update(dt, p.pos, p.alive, this.events, this.pickupCallbacks);
+    }
+
     this.updateAimOnTarget();
   }
+
+  private pickupCallbacks = {
+    heal: (amount: number): void => this.player.heal(amount),
+    addCoins: (amount: number): void => {
+      this.bonusCoins += amount;
+    },
+    openSupplyDraft: (): void => {
+      if (this.phase !== "wave" && this.phase !== "break" && this.phase !== "prewave") return;
+      this.supplyReturnPhase = this.phase === "wave" ? "wave" : "break";
+      this.upgradeOffer = this.upgrades.rollOffer(Math.max(1, this.waveNumber));
+      this.offerNonce++;
+      this.phase = "upgrade";
+    },
+  };
 
   // ---- Hitscan (AR/DMR) ----
 
@@ -503,7 +542,7 @@ export class Sim {
         return;
       }
       this.phase = "dead";
-      this.coinsEarned = Math.floor(this.score / COIN_DIVISOR);
+      this.coinsEarned = Math.floor(this.score / COIN_DIVISOR) + this.bonusCoins;
     }
   };
 

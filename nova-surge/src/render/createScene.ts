@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { ARENAS, expandStairs, type ArenaDef } from "../config/arena";
+import { ARENAS, DEBUG_ARENA, type ArenaDef } from "../config/arena";
 import { FEEL } from "../config/tuning";
 
 export interface SceneSetup {
@@ -25,7 +25,8 @@ export function createScene(aspect: number): SceneSetup {
   camera.position.set(0, 1.7, 12);
 
   const groups = new Map<string, THREE.Group>();
-  for (const def of ARENAS) {
+  // Debug-Arena wird mitgebaut (winzig), ist aber nur via ?debug=1 wählbar
+  for (const def of [...ARENAS, DEBUG_ARENA]) {
     const g = buildArenaGroup(def);
     g.visible = false;
     scene.add(g);
@@ -78,22 +79,43 @@ function buildArenaGroup(def: ArenaDef): THREE.Group {
     emissiveIntensity: 0.35,
   });
 
-  const allBoxes = [...def.boxes, ...(def.stairs ?? []).flatMap(expandStairs)];
-  const stairsStart = def.boxes.length;
-  allBoxes.forEach((b, idx) => {
+  def.boxes.forEach((b) => {
     const base = b.y ?? 0;
     const mesh = new THREE.Mesh(unitBox, materials[b.kind]);
     mesh.scale.set(b.sx, b.h, b.sz);
     mesh.position.set(b.x, base + b.h / 2, b.z);
     group.add(mesh);
-    // Akzentkante oben auf Deckungen (nicht auf jeder Treppenstufe)
-    if ((b.kind === "tall" || b.kind === "low") && idx < stairsStart) {
+    // Akzentkante oben auf Deckungen
+    if (b.kind === "tall" || b.kind === "low") {
       const trim = new THREE.Mesh(unitBox, trimMaterial);
       trim.scale.set(b.sx + 0.06, 0.09, b.sz + 0.06);
       trim.position.set(b.x, base + b.h + 0.045, b.z);
       group.add(trim);
     }
   });
+
+  // Treppen: EINE gekippte Rampen-Box pro Treppe (statt ~12 Stufen-Meshes —
+  // Draw-Call-Budget). Die KOLLISION bleibt der Stufen-Generator; die Rampe
+  // liegt optisch bündig auf den Stufen-Oberkanten.
+  for (const s of def.stairs ?? []) {
+    const asc = s.from[2] <= s.to[2];
+    const [fx, fz, fy] = asc ? s.from : s.to;
+    const [tx, tz, ty] = asc ? s.to : s.from;
+    const rise = ty - fy;
+    const alongX = Math.abs(tx - fx) >= Math.abs(tz - fz);
+    const run = alongX ? tx - fx : tz - fz;
+    const length = Math.hypot(rise, run);
+    const ramp = new THREE.Mesh(unitBox, materials.low);
+    if (alongX) {
+      ramp.scale.set(length, 0.35, s.width);
+      ramp.rotation.z = Math.atan2(rise, run);
+    } else {
+      ramp.scale.set(s.width, 0.35, length);
+      ramp.rotation.x = -Math.atan2(rise, run);
+    }
+    ramp.position.set((fx + tx) / 2, (fy + ty) / 2 + 0.05, (fz + tz) / 2);
+    group.add(ramp);
+  }
 
   // Deko-Props (keine Kollision): Neonschilder, Deck, Pflanzen, ...
   if (def.props) {

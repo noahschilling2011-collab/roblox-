@@ -4,6 +4,7 @@ import { Sfx } from "./audio/Sfx";
 import { ENEMIES, type EnemyType } from "./config/enemies";
 import { DEBUG_ARENA, getArena, type ArenaDef } from "./config/arena";
 import { COIN_DIVISOR, COLOR_SCHEMES, PERK_VALUES } from "./config/meta";
+import { PICKUP_COLORS, PICKUP_RULES, PICKUP_TYPE_ORDER } from "./config/pickups";
 import { EVENT_RULES, WAVE_EVENTS, type WaveEventId } from "./config/waves";
 import { Keyboard } from "./controls/Keyboard";
 import { LookControls } from "./controls/LookControls";
@@ -69,7 +70,7 @@ async function boot(): Promise<void> {
   function grantRunRewards(): void {
     if (rewardsGranted) return;
     rewardsGranted = true;
-    const base = sim.phase === "dead" ? sim.coinsEarned : Math.floor(sim.score / COIN_DIVISOR);
+    const base = sim.phase === "dead" ? sim.coinsEarned : Math.floor(sim.score / COIN_DIVISOR) + sim.bonusCoins;
     // Schatzsucher-Perk: +6% Coins pro Stufe
     const coins = Math.round(base * (1 + PERK_VALUES.treasurePerLevel * save.state.perks.treasure));
     save.state.coins += coins;
@@ -85,6 +86,29 @@ async function boot(): Promise<void> {
     weaponView.equip(save.state.selectedWeapon);
     // Arena-Optik sofort umschalten (auch im Menü-Hintergrund sichtbar)
     showArena(getArena(save.state.selectedArena));
+    rebuildPickupMeshes(getArena(save.state.selectedArena));
+  }
+
+  // ---- Pickup-Anzeige: kleine rotierende, schwebende Boxen (Recovery 3b) ----
+  const pickupGroup = new THREE.Group();
+  scene.add(pickupGroup);
+  const pickupGeometry = new THREE.BoxGeometry(0.7, 0.7, 0.7);
+  const pickupMaterials = Object.fromEntries(
+    Object.entries(PICKUP_COLORS).map(([type, color]) => [
+      type,
+      new THREE.MeshLambertMaterial({ color, emissive: color, emissiveIntensity: 0.55 }),
+    ])
+  ) as Record<string, THREE.MeshLambertMaterial>;
+  let pickupMeshes: THREE.Mesh[] = [];
+
+  function rebuildPickupMeshes(arena: ArenaDef): void {
+    pickupGroup.clear();
+    pickupMeshes = (arena.pickups ?? []).map((p) => {
+      const mesh = new THREE.Mesh(pickupGeometry, pickupMaterials[p.type]);
+      mesh.position.set(p.x, p.y + 1, p.z);
+      pickupGroup.add(mesh);
+      return mesh;
+    });
   }
 
   // ---- Screens (Menü/Pause/Tod) ----
@@ -162,7 +186,8 @@ async function boot(): Promise<void> {
     else loop.setPaused(screens.mode === "pause");
   };
 
-  // Upgrade-Wahl: Tasten 1–3 (Desktop, Pointer bleibt gelockt) + Karten-Klick
+  // Upgrade-Wahl: Karten-Klick (Pointer wird für den Draft entsperrt,
+  // s. Screens.beginDraft — Recovery-Phase-0-Fix) ODER Tasten 1–3
   hud.onChooseUpgrade = (i) => {
     sim.chooseUpgrade(i);
     sfx.upgradePicked();
@@ -198,6 +223,9 @@ async function boot(): Promise<void> {
     if (sim.phase === prevPhase) return;
     const from = prevPhase;
     prevPhase = sim.phase;
+    // Upgrade-Draft (Recovery-Phase-0-Fix): Pointer frei zum Klicken, danach Re-Lock
+    if (sim.phase === "upgrade") screens.beginDraft();
+    else if (from === "upgrade") screens.endDraft();
     if (sim.phase === "dead") {
       wasNewHighscore = sim.score > save.state.highscore && sim.score > 0;
       if (wasNewHighscore) {
@@ -375,6 +403,18 @@ async function boot(): Promise<void> {
           // Blackout-Nebel zurücksetzen (Fog-Werte kommen aus der Arena-Palette)
           showArena(getArena(save.state.selectedArena));
           break;
+        case Ev.Pickup: {
+          const type = PICKUP_TYPE_ORDER[e.a];
+          sfx.heal();
+          particles.burst(e.x, e.y, e.z, type ? PICKUP_COLORS[type] : 0xffffff, 16, 5, 0.7, 0.09, 0.5, 0.8);
+          const s = projectToScreen(e.x, e.y + 0.5, e.z);
+          if (s) {
+            const label =
+              type === "medkit" ? `+${PICKUP_RULES.medkitHeal} HP` : type === "coin" ? `+${PICKUP_RULES.coinStash} 🪙` : "SUPPLY CRATE";
+            hud.spawnPopup(s.x, s.y, label, "big");
+          }
+          break;
+        }
         case Ev.Heal:
         case Ev.PlayerDied:
         case Ev.NewHighscore:
@@ -433,6 +473,17 @@ async function boot(): Promise<void> {
       particles.update(dt);
       tracers.update(dt);
       projectileRenderer.update(sim.projectiles, alpha);
+      // Pickups: sichtbar wenn aktiv, drehen + schweben leicht
+      const pickupTime = performance.now() / 1000;
+      for (let i = 0; i < pickupMeshes.length; i++) {
+        const mesh = pickupMeshes[i]!;
+        mesh.visible = sim.pickups.active[i] === true;
+        if (mesh.visible) {
+          mesh.rotation.y = pickupTime * 1.6 + i;
+          const def = sim.pickups.defs[i]!;
+          mesh.position.y = def.y + 1 + Math.sin(pickupTime * 2 + i) * 0.12;
+        }
+      }
       drainEvents();
       if (screens.mode === "playing") hud.update(dt, sim, isTouch, save.state.coins);
       updateResolutionScale(dt, loop.getStats().fps);

@@ -12,6 +12,9 @@ export interface CollisionWorld {
   losBlockers: readonly Aabb[];
   /** Halbe Arena-Kantenlänge (Sicherheitsnetz-Klammer). */
   halfSize: number;
+  /** Begehbare Klammer pro Achse (arena.bounds; Yacht = Deck statt Wasser). */
+  halfX: number;
+  halfZ: number;
 }
 
 export function buildCollisionWorld(arena: ArenaDef): CollisionWorld {
@@ -31,7 +34,13 @@ export function buildCollisionWorld(arena: ArenaDef): CollisionWorld {
     solids.push(box);
     if (b.kind !== "low") losBlockers.push(box);
   }
-  return { solids, losBlockers, halfSize: arena.size / 2 };
+  return {
+    solids,
+    losBlockers,
+    halfSize: arena.size / 2,
+    halfX: arena.bounds?.x ?? arena.size / 2,
+    halfZ: arena.bounds?.z ?? arena.size / 2,
+  };
 }
 
 /** Kleine Kanten (Treppenstufen) werden beim Laufen automatisch erklommen. */
@@ -51,7 +60,8 @@ export function moveBody(
   world: CollisionWorld
 ): boolean {
   const solids = world.solids;
-  const half = world.halfSize;
+  const halfX = world.halfX;
+  const halfZ = world.halfZ;
   // --- X ---
   pos.x += vel.x * dt;
   for (let i = 0; i < solids.length; i++) {
@@ -85,11 +95,12 @@ export function moveBody(
       vel.z = 0;
     }
   }
-  // Sicherheitsnetz: nie aus der Arena fallen
-  if (pos.x < -half + 0.5) pos.x = -half + 0.5;
-  if (pos.x > half - 0.5) pos.x = half - 0.5;
-  if (pos.z < -half + 0.5) pos.z = -half + 0.5;
-  if (pos.z > half - 0.5) pos.z = half - 0.5;
+  // Sicherheitsnetz: nie aus dem begehbaren Bereich fallen (bounds klemmt
+  // z. B. die Yacht aufs Deck — auch bei Sprüngen über die Bordwand)
+  if (pos.x < -halfX + 0.5) pos.x = -halfX + 0.5;
+  if (pos.x > halfX - 0.5) pos.x = halfX - 0.5;
+  if (pos.z < -halfZ + 0.5) pos.z = -halfZ + 0.5;
+  if (pos.z > halfZ - 0.5) pos.z = halfZ - 0.5;
 
   // --- Y (Boden = höchste Blockoberkante unter dem Körper, sonst 0) ---
   pos.y += vel.y * dt;

@@ -220,7 +220,12 @@ export class EnemyManager {
       // Hybrid-Steering (Multi-Level Phase 2): Auf anderer Ebene wird gepfadet,
       // sonst bleibt das bewährte Direkt-Steering. Low-Blöcke (1,1 m) liegen
       // unter der Schwelle — dort gelten weiter Sprung-/Belagerungs-Regeln.
-      const levelDiff = Math.abs(playerPos.y - e.pos.y) > NAV.levelThreshold;
+      // Ein begonnener Pfad wird KOMPLETT konsumiert (er endet am Spieler-
+      // Knoten): Direkt-Steering am Treppen-Scheitel kennt keine Abgründe
+      // und würde beim Ausweichen ins Leere neben der Treppe laufen.
+      const dyPlayer = Math.abs(playerPos.y - e.pos.y);
+      const wantNav = dyPlayer > NAV.levelThreshold;
+      const levelDiff = wantNav || (e.pathLen > 0 && e.pathCursor < e.pathLen);
       e.navigating = false;
 
       if (d.type === "shooter") {
@@ -233,7 +238,7 @@ export class EnemyManager {
         _target.z = playerPos.z;
         const hasLos = segmentClear(_eye, _target, losBlockers);
 
-        if (nav && levelDiff && !hasLos && this.followPath(e, nav, playerPos, spd, dt)) {
+        if (nav && levelDiff && !hasLos && this.followPath(e, nav, playerPos, spd, dt, wantNav)) {
           // Pfad Richtung Spieler-Ebene; Bewegung kommt aus followPath (_navMove)
           moveX = _navMove.x;
           moveZ = _navMove.z;
@@ -285,7 +290,7 @@ export class EnemyManager {
       } else {
         // Rusher, Tank & Warden: anlaufen, kurz vor Nahkampfreichweite stoppen
         // (sonst schieben sie sich in die Kamera)
-        if (nav && levelDiff && this.followPath(e, nav, playerPos, spd, dt)) {
+        if (nav && levelDiff && this.followPath(e, nav, playerPos, spd, dt, wantNav)) {
           moveX = _navMove.x;
           moveZ = _navMove.z;
         } else if (distXZ > d.meleeRange * 0.75) {
@@ -337,7 +342,15 @@ export class EnemyManager {
       // Anti-Hänger: wer sich trotz Bewegungswunsch >1,6 s kaum bewegt,
       // weicht kurz senkrecht aus (Shooter in Wand-Strafe, Tank vor Block).
       // Nahe am Spieler ist Stillstehen Absicht (Stoppdistanz/Ring-Phase).
-      if (e.unstickTimer > 0) {
+      // NICHT für Pfad-Folger: deren Selbstheilung ist der Repath — der
+      // Seitwärtsimpuls würde sie von der Treppen-Mittellinie werfen
+      // (beobachtete Endlosschleife am Treppenfuß der Mall).
+      if (e.navigating) {
+        e.unstickTimer = 0;
+        e.stuckTimer = 0;
+        e.anchorX = e.pos.x;
+        e.anchorZ = e.pos.z;
+      } else if (e.unstickTimer > 0) {
         e.unstickTimer -= dt;
         moveX = e.unstickX * spd;
         moveZ = e.unstickZ * spd;
@@ -388,9 +401,11 @@ export class EnemyManager {
   /** Wegpunkt-Verfolgung (Multi-Level Phase 2): Pfad bei Bedarf erneuern
    *  (Tick-Budget in NavSystem), dann Richtung nächsten Wegpunkt laufen.
    *  Ergebnis in _navMove; false = kein Pfad -> Direkt-Steering-Fallback. */
-  private followPath(e: Enemy, nav: NavSystem, target: Vec3, spd: number, dt: number): boolean {
+  private followPath(e: Enemy, nav: NavSystem, target: Vec3, spd: number, dt: number, allowRepath: boolean): boolean {
     e.repathTimer -= dt;
-    if (e.repathTimer <= 0) {
+    // Repath NUR bei echter Ebenen-Differenz — im Hysterese-Auslauf wird der
+    // vorhandene Pfad ohne Neuplanung zu Ende konsumiert
+    if (allowRepath && e.repathTimer <= 0) {
       const len = nav.tryRepath(e.pos.x, e.pos.y, e.pos.z, target.x, target.y, target.z, e.path);
       if (len >= 0) {
         e.pathLen = len;
@@ -405,7 +420,12 @@ export class EnemyManager {
       const dx = g.nodeX[n]! - e.pos.x;
       const dz = g.nodeZ[n]! - e.pos.z;
       const dy = g.nodeY[n]! - e.pos.y;
-      if (Math.hypot(dx, dz) < NAV.waypointReach && Math.abs(dy) < 0.6) {
+      // Weiterschalten, wenn horizontal erreicht — auch wenn der Wegpunkt
+      // noch bis zu 1 m HÖHER liegt (steile Treppen-Ketten: wer exakt unter
+      // dem Wegpunkt steht, bekäme sonst Richtungs-Null und bliebe stehen).
+      // Tiefer liegende Wegpunkte (Drops): horizontal reicht, der Körper
+      // fällt beim Weiterlaufen von selbst über die Kante.
+      if (Math.hypot(dx, dz) < NAV.waypointReach && dy < 1.0) {
         e.pathCursor++;
         continue;
       }

@@ -55,6 +55,12 @@ export function buildNavGraph(arena: ArenaDef, world: CollisionWorld): NavGraph 
     for (let j = 0; j < n; j++) {
       const x = -half + cell * (i + 0.5);
       const z = -half + cell * (j + 0.5);
+      // Außerhalb der begehbaren Klammer (z. B. Wasser um die Yacht):
+      // keine Knoten — spart Speicher und nearestNode-Scans
+      if (Math.abs(x) > world.halfX - 0.4 || Math.abs(z) > world.halfZ - 0.4) {
+        cellNodes[i]!.push([]);
+        continue;
+      }
       // Kandidaten-Höhen: Boden + jede Box-Oberkante unter dem Punkt
       candidates.length = 0;
       candidates.push(0);
@@ -119,10 +125,22 @@ export function buildNavGraph(arena: ArenaDef, world: CollisionWorld): NavGraph 
               addEdge(b, a, dist);
               walkEdges++;
             } else if (!diagonal && Math.abs(dy) <= NAV.dropMax) {
-              // Drop-Kante: nur von oben nach unten, einseitig
+              // Drop-Kante: nur von oben nach unten, einseitig. Der FALL-
+              // KORRIDOR muss frei sein — sonst entstehen Kanten "durch den
+              // Etagen-Boden" (Knoten auf dem Slab -> Knoten darunter), die
+              // A* wählt und an denen Gegner ewig stehen bleiben.
               const from = dy < 0 ? a : b;
               const to = dy < 0 ? b : a;
-              if (!hasClearance((xs[from]! + xs[to]!) / 2, ys[from]!, (zs[from]! + zs[to]!) / 2, solids)) continue;
+              const midX = (xs[from]! + xs[to]!) / 2;
+              const midZ = (zs[from]! + zs[to]!) / 2;
+              if (!hasClearance(midX, ys[from]!, midZ, solids)) continue;
+              // Prüfpunkt bei 75% der Strecke: klar HINTER der Absprungkante
+              // (der Mittelpunkt läge bei kleinen Podesten noch über der
+              // Kante und würde echte Drops fälschlich verwerfen)
+              const px = xs[from]! + (xs[to]! - xs[from]!) * 0.75;
+              const pz = zs[from]! + (zs[to]! - zs[from]!) * 0.75;
+              if (!dropCorridorClear(px, pz, ys[to]!, ys[from]!, solids)) continue;
+              if (!dropCorridorClear(xs[to]!, zs[to]!, ys[to]!, ys[from]!, solids)) continue;
               addEdge(from, to, dist + NAV.dropCost);
               dropEdges++;
             }
@@ -132,19 +150,68 @@ export function buildNavGraph(arena: ArenaDef, world: CollisionWorld): NavGraph 
     }
   }
 
-  // Treppen-Links: unteres Ende <-> oberes Ende (beidseitig begehbar)
+  // Treppen: EIGENE Nav-Knoten entlang der Treppen-Mittellinie (authored-
+  // walkable — die Grid-Clearance würde auf Stufen fehlschlagen, weil die
+  // Nachbarstufen in den Prüfradius ragen). Die Knoten werden verkettet, an
+  // beiden Enden mit dem nächsten Grid-Knoten verbunden UND mit nahen
+  // Grid-Knoten gleicher Ebene verlinkt (das Grid erzeugt an Treppenrändern
+  // vereinzelt Knoten — ohne Querverbindung schickt A* Gegner von dort per
+  // Drop-Kante von der Treppe runter und außen herum: Endlos-Schleife).
   let stairLinks = 0;
+  const gridCount = xs.length; // End-Anschlüsse nur an Grid-Knoten
   for (const s of arena.stairs ?? []) {
     const asc = s.from[2] <= s.to[2];
     const [fx, fz, fy] = asc ? s.from : s.to;
     const [tx, tz, ty] = asc ? s.to : s.from;
-    const a = nearest(xs, ys, zs, fx, fy, fz);
-    const b = nearest(xs, ys, zs, tx, ty, tz);
-    if (a < 0 || b < 0 || a === b) continue;
-    const c = Math.hypot(xs[b]! - xs[a]!, ys[b]! - ys[a]!, zs[b]! - zs[a]!);
-    addEdge(a, b, c);
-    addEdge(b, a, c);
-    stairLinks++;
+    const alongX = Math.abs(tx - fx) >= Math.abs(tz - fz);
+    const dirX = alongX ? Math.sign(tx - fx) : 0;
+    const dirZ = alongX ? 0 : Math.sign(tz - fz);
+    const len = Math.hypot(tx - fx, tz - fz, ty - fy);
+    const samples = Math.max(1, Math.ceil(len / 1.2));
+    let prev = -1;
+    for (let i = 0; i <= samples; i++) {
+      const t = i / samples;
+      const node = xs.length;
+      xs.push(fx + (tx - fx) * t);
+      ys.push(fy + (ty - fy) * t);
+      zs.push(fz + (tz - fz) * t);
+      adj.push([]);
+      cost.push([]);
+      if (prev >= 0) {
+        const c = Math.hypot(xs[node]! - xs[prev]!, ys[node]! - ys[prev]!, zs[node]! - zs[prev]!);
+        addEdge(prev, node, c);
+        addEdge(node, prev, c);
+        stairLinks++;
+      }
+      for (let gIdx = 0; gIdx < gridCount; gIdx++) {
+        const dXZ = Math.hypot(xs[gIdx]! - xs[node]!, zs[gIdx]! - zs[node]!);
+        if (dXZ > 2.0 || Math.abs(ys[gIdx]! - ys[node]!) > 0.6) continue;
+        const c = Math.hypot(dXZ, ys[gIdx]! - ys[node]!);
+        addEdge(gIdx, node, c);
+        addEdge(node, gIdx, c);
+      }
+      prev = node;
+    }
+    // End-Anschlüsse: kurz VOR dem unteren bzw. HINTER dem oberen Ende
+    const firstStairNode = xs.length - samples - 1;
+    const bottomGrid = nearestGrid(xs, ys, zs, gridCount, fx - dirX * 1.2, fy, fz - dirZ * 1.2);
+    const topGrid = nearestGrid(xs, ys, zs, gridCount, tx + dirX * 1.2, ty, tz + dirZ * 1.2);
+    if (bottomGrid >= 0) {
+      const c = Math.hypot(
+        xs[bottomGrid]! - xs[firstStairNode]!,
+        ys[bottomGrid]! - ys[firstStairNode]!,
+        zs[bottomGrid]! - zs[firstStairNode]!
+      );
+      addEdge(bottomGrid, firstStairNode, c);
+      addEdge(firstStairNode, bottomGrid, c);
+      stairLinks++;
+    }
+    if (topGrid >= 0) {
+      const c = Math.hypot(xs[topGrid]! - xs[prev]!, ys[topGrid]! - ys[prev]!, zs[topGrid]! - zs[prev]!);
+      addEdge(topGrid, prev, c);
+      addEdge(prev, topGrid, c);
+      stairLinks++;
+    }
   }
 
   // CSR-Form für die Laufzeit
@@ -186,10 +253,19 @@ function hasLevelNode(nodes: readonly number[], ys: readonly number[], y: number
   return false;
 }
 
-function nearest(xs: number[], ys: number[], zs: number[], x: number, y: number, z: number): number {
+/** Nächster GRID-Knoten (Treppen-Knoten ausgenommen) im Suchradius. */
+function nearestGrid(
+  xs: number[],
+  ys: number[],
+  zs: number[],
+  gridCount: number,
+  x: number,
+  y: number,
+  z: number
+): number {
   let best = -1;
   let bestScore = 2.5 + 2; // Suchradius: max ~2,5 m horizontal
-  for (let i = 0; i < xs.length; i++) {
+  for (let i = 0; i < gridCount; i++) {
     const score = Math.hypot(xs[i]! - x, zs[i]! - z) + Math.abs(ys[i]! - y) * 2;
     if (score < bestScore) {
       bestScore = score;
@@ -197,6 +273,18 @@ function nearest(xs: number[], ys: number[], zs: number[], x: number, y: number,
     }
   }
   return best;
+}
+
+/** Ist die vertikale Fallstrecke (yLow..yHigh) an dieser XZ-Position frei? */
+function dropCorridorClear(x: number, z: number, yLow: number, yHigh: number, solids: readonly Aabb[]): boolean {
+  const r = 0.4;
+  for (let i = 0; i < solids.length; i++) {
+    const b = solids[i]!;
+    if (x + r <= b.minX || x - r >= b.maxX) continue;
+    if (z + r <= b.minZ || z - r >= b.maxZ) continue;
+    if (b.maxY > yLow + 0.1 && b.minY < yHigh - 0.1) return false;
+  }
+  return true;
 }
 
 /** A* auf dem Graphen — alle Arbeits-Arrays vorab angelegt, Stempel statt

@@ -25,6 +25,7 @@ export const enum Ev {
   PhoenixRevive, // Phoenix-Selbst-Revive ausgelöst
   WaveEvent, // Wave-Event aktiv: a = Index in WAVE_EVENT_ORDER
   Explosion, // Volatile-Elite explodiert: x,y,z, a = 1 wenn Spieler getroffen
+  Pickup, // Pickup eingesammelt: x,y,z, a = Index in PICKUP_TYPE_ORDER
 }
 
 export interface EventSlot {

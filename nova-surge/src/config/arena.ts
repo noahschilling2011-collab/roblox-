@@ -1,3 +1,5 @@
+import type { PickupDef } from "./pickups";
+
 // Arenen-Config: DREI Maps, alle nach denselben Layout-Prinzipien —
 // klare Sichtachsen, Deckung, 2 Höhenebenen, kein toter Winkel ohne zweiten
 // Ausgang. Höhen sind bewusst überall gleich (Gameplay bleibt lernbar):
@@ -98,6 +100,11 @@ export interface ArenaDef {
   boxes: ArenaBox[];
   stairs?: StairsDef[];
   props?: ArenaProp[];
+  /** Begehbare Halb-Ausdehnung (Sicherheitsnetz-Klammer). Default size/2.
+   *  Yacht: klemmt aufs Deck — niemand landet im (nur optischen) Wasser. */
+  bounds?: { x: number; z: number };
+  /** Pickup-Spawn-Punkte (Recovery Phase 3b). */
+  pickups?: PickupDef[];
   showGrid?: boolean; // default true (false z. B. auf Wasser)
   /** y = Spawn-Ebene (Default 0). Die 60/40-Regel bevorzugt die Spieler-Ebene. */
   enemySpawns: { x: number; z: number; y?: number }[];
@@ -240,13 +247,14 @@ const SUNREACH: ArenaDef = {
   playerSpawn: { x: 0, z: 16 },
 };
 
-// ---- Map 4: Azure Deck — Sonnendeck einer Luxusyacht auf offener See ----
-// Spielfläche ist das Deck (26 x 40) innerhalb der Bordwände; der Boden
-// außerhalb ist Wasser (nur Optik), Bug/Heck sind dekorative Props.
+// ---- Map 4: Azure Deck — Luxusyacht mit DREI Decks (Recovery Phase 2) ----
+// Hauptdeck (y 0) -> Kabinendach/Oberdeck (y 3,0) -> Brücke/Sonnendeck (y 5,6).
+// Drei Außentreppen (>= 3 m breit, Warden-tauglich), Geländer sind "low"
+// (überspringbar, kein LOS-Block); Heck + Oberdeck-Vorderkante = Drop-Kanten.
 const YACHT: ArenaDef = {
   id: "yacht",
   name: "Azure Deck",
-  sub: "Luxury yacht · close quarters",
+  sub: "3 decks · vertical combat",
   size: 60,
   palette: {
     sky: 0xffcf9e, // Sonnenuntergang
@@ -261,22 +269,51 @@ const YACHT: ArenaDef = {
     grid2: 0xffffff,
   },
   showGrid: false,
+  // Klammer aufs Deck: Selbst wer über die Bordwand springt, landet nie
+  // im (rein optischen) Wasser — verhindert den Softlock außenbords.
+  bounds: { x: 13, z: 20 },
+  pickups: [
+    { x: 0, y: 5.6, z: 11, type: "coin", once: true }, // Belohnung fürs Klettern aufs Sonnendeck
+    { x: 0, y: 1.1, z: -15, type: "medkit" }, // im Bug-Pool (respawnt)
+  ],
   boxes: [
     // Bordwände (2,6 m: Deckung + nicht überspringbar), Deck 26 x 40
     { x: -13, z: 0, sx: 1, sz: 40, h: 2.6, kind: "wall" },
     { x: 13, z: 0, sx: 1, sz: 40, h: 2.6, kind: "wall" },
     { x: 0, z: -20, sx: 27, sz: 1, h: 2.6, kind: "wall" },
     { x: 0, z: 20, sx: 27, sz: 1, h: 2.6, kind: "wall" },
-    // Kabinen-Aufbau = zentrale Deckung
-    { x: 0, z: 7, sx: 10, sz: 6, h: HEIGHTS.tall, kind: "tall" },
-    // Technik-Container an den Seiten
+    // Kabinen-Aufbau — sein DACH ist das Oberdeck (y 3,0)
+    { x: 0, z: 8, sx: 12, sz: 12, h: 3.0, kind: "tall" },
+    // Brücke auf dem Oberdeck — ihr Dach ist das Sonnendeck (y 5,6).
+    // 7 m breit: seitlich bleiben 2,5-m-Korridore (Warden-Durchmesser 2,1)
+    { x: 0, z: 11, sx: 7, sz: 6, h: 2.6, y: 3.0, kind: "tall" },
+    // Technik-Container an den Seiten (Deckung Hauptdeck)
     { x: -9, z: -6, sx: 3, sz: 5, h: HEIGHTS.tall, kind: "tall" },
     { x: 9, z: -6, sx: 3, sz: 5, h: HEIGHTS.tall, kind: "tall" },
     // Besteigbares: Sonnendeck-Podest am Bug, Bar am Heck, Kisten
     { x: 0, z: -15, sx: 6, sz: 4, h: HEIGHTS.low, kind: "low" },
-    { x: 0, z: 16, sx: 8, sz: 2.5, h: HEIGHTS.low, kind: "low" },
-    { x: -9, z: 13, sx: 2.5, sz: 2.5, h: HEIGHTS.low, kind: "low" },
-    { x: 9, z: 13, sx: 2.5, sz: 2.5, h: HEIGHTS.low, kind: "low" },
+    { x: 0, z: 17, sx: 8, sz: 2.5, h: HEIGHTS.low, kind: "low" },
+    { x: -9, z: 15, sx: 2.5, sz: 2.5, h: HEIGHTS.low, kind: "low" },
+    { x: 9, z: 15, sx: 2.5, sz: 2.5, h: HEIGHTS.low, kind: "low" },
+    // Oberdeck-Geländer (0,9 m, überspringbar; Lücken = Treppen-Zugänge,
+    // Hinterkante z=14 beidseits der Brücke offen + Vorderkante z=2 komplett
+    // offen -> Drop-Kanten und freier Knoten-Anschluss der Sonnendeck-Treppe)
+    { x: -5.9, z: 9.75, sx: 0.25, sz: 8.5, h: 0.9, y: 3.0, kind: "low" },
+    { x: 5.9, z: 6.25, sx: 0.25, sz: 8.5, h: 0.9, y: 3.0, kind: "low" },
+    // Sonnendeck-Geländer (Lücke an z=8 mittig = Treppen-Zugang)
+    { x: -3.4, z: 11, sx: 0.25, sz: 6, h: 0.9, y: 5.6, kind: "low" },
+    { x: 3.4, z: 11, sx: 0.25, sz: 6, h: 0.9, y: 5.6, kind: "low" },
+    { x: 0, z: 13.9, sx: 7, sz: 0.25, h: 0.9, y: 5.6, kind: "low" },
+    { x: -2.5, z: 8.1, sx: 2, sz: 0.25, h: 0.9, y: 5.6, kind: "low" },
+    { x: 2.5, z: 8.1, sx: 2, sz: 0.25, h: 0.9, y: 5.6, kind: "low" },
+  ],
+  stairs: [
+    // Hauptdeck -> Oberdeck: backbord vorn + steuerbord hinten (Rotation).
+    // Beide CRESTEN vor der Kabinenwand (Top-Stufe = Dachhöhe, kein Rest-Lift)
+    { from: [-11, 4, 0], to: [-6.2, 4, 3.0], width: 3 },
+    { from: [11, 12, 0], to: [6.2, 12, 3.0], width: 3 },
+    // Oberdeck -> Sonnendeck: mittig vor der Brücke
+    { from: [0, 3.4, 3.0], to: [0, 7.8, 5.6], width: 3 },
   ],
   props: [
     // Deck-Holzboden (flach, Füße stehen optisch auf Planken)
@@ -289,31 +326,43 @@ const YACHT: ArenaDef = {
     { x: 0, y: 0.2, z: 22.5, sx: 18, sy: 0.5, sz: 4, color: 0xf2f4f6 },
     // Pool im Bug-Podest (leuchtendes Wasser)
     { x: 0, y: 1.16, z: -15, sx: 4.6, sy: 0.06, sz: 2.8, color: 0x35c5e8, glow: true },
-    // Schornstein + Mast + Radar auf der Kabine
-    { x: 0, y: 3.3, z: 8.5, sx: 2.6, sy: 1.8, sz: 1.4, color: 0xf2f4f6 },
-    { x: 0, y: 3.1, z: 5.5, sx: 0.18, sy: 2.2, sz: 0.18, color: 0xd8dde2 },
-    { x: 0, y: 4.3, z: 5.5, sx: 1.4, sy: 0.12, sz: 0.3, color: 0xff6a4d },
-    // Handtücher/Matten auf dem Deck (ganz flach — begehbar ohne Clipping)
+    // Schornstein + Mast + Radar auf dem SONNENDECK (Brückendach)
+    { x: 0, y: 6.5, z: 12.5, sx: 2.4, sy: 1.8, sz: 1.4, color: 0xf2f4f6 },
+    { x: 0, y: 6.7, z: 9, sx: 0.18, sy: 2.2, sz: 0.18, color: 0xd8dde2 },
+    { x: 0, y: 7.9, z: 9, sx: 1.4, sy: 0.12, sz: 0.3, color: 0xff6a4d },
+    // Sonnenmatten auf dem Oberdeck (ganz flach — begehbar ohne Clipping)
+    { x: -4, y: 3.06, z: 4.5, sx: 0.9, sy: 0.08, sz: 2.2, color: 0xff6a4d },
+    { x: 4, y: 3.06, z: 4.5, sx: 0.9, sy: 0.08, sz: 2.2, color: 0xffffff },
+    // Handtücher/Matten auf dem Hauptdeck
     { x: -6, y: 0.06, z: -11, sx: 0.9, sy: 0.08, sz: 2.2, color: 0xff6a4d },
     { x: -4, y: 0.06, z: -11, sx: 0.9, sy: 0.08, sz: 2.2, color: 0xffffff },
     { x: 6, y: 0.06, z: -11, sx: 0.9, sy: 0.08, sz: 2.2, color: 0xff6a4d },
     { x: 4, y: 0.06, z: -11, sx: 0.9, sy: 0.08, sz: 2.2, color: 0xffffff },
   ],
-  // Spawns = "Enterpunkte" in den Deck-Ecken
+  // Spawns: 4 Deck-Ecken + 1 Enterpunkt auf dem Oberdeck (60/40-Regel)
   enemySpawns: [
     { x: -10, z: -17 },
     { x: 10, z: -17 },
     { x: -10, z: 17.5 },
     { x: 10, z: 17.5 },
+    { x: 4.5, z: 4.5, y: 3.0 },
   ],
-  playerSpawn: { x: 0, z: 0 },
+  playerSpawn: { x: 0, z: -4 },
 };
 
-// ---- Map 5: Grand Gallery — helles Einkaufszentrum mit Neon-Läden ----
+// ---- Map 5: Grand Gallery — Einkaufszentrum mit ZWEI Etagen (Recovery Ph. 3) ----
+// Erdgeschoss-Atrium + umlaufende Galerie (Lauffläche y 3,55) über den Läden,
+// Atrium-Brücke als exponierter Hotspot, 4 Rolltreppen-Rampen (11 m Lauf —
+// BEWUSST flach: der Fußpunkt breiter Körper sitzt auf der Stufe unter der
+// Vorderkante; an der Slab-Kante muss der Rest-Lift <= Step-Height 0,35
+// bleiben. 11 m ergibt selbst für den Warden (Radius 1,05) nur 0,34).
+// Zwei Geheimräume ohne Türen, Zugänge 3 m (Gegner folgen: kein Verstecken).
+const GALLERY_Y = 3.2; // Slab-Unterkante (Warden 3,0 passt drunter)
+const GALLERY_TOP = 3.55; // Lauffläche der Galerie
 const MALL: ArenaDef = {
   id: "mall",
   name: "Grand Gallery",
-  sub: "Shopping mall · neon lanes",
+  sub: "2 floors · hidden rooms",
   size: 64,
   palette: {
     sky: 0xdff0ff, // Glasdach-Licht
@@ -327,6 +376,18 @@ const MALL: ArenaDef = {
     grid1: 0xf2ece0, // Fliesenfugen
     grid2: 0xdcd3c4,
   },
+  // Klammer an der Wand-Innenkante: von der Galerie kann niemand über die
+  // Außenwand springen oder auf der Mauerkrone landen.
+  bounds: { x: 31.5, z: 31.5 },
+  pickups: [
+    // Geheimraum 1 "Lagerraum" (NW, EG): Coin-Stash + Medkit, je 1x pro Run
+    { x: -28, y: 0, z: -18.5, type: "coin", once: true },
+    { x: -26, y: 0, z: -17, type: "medkit", once: true },
+    // Geheimraum 2 "Technikraum" (SE, Galerie): Supply Crate, 1x pro Run
+    { x: 28, y: GALLERY_TOP, z: 29.5, type: "supply", once: true },
+    // Offen auf der NO-Galerie (respawnt — Anlaufpunkt oben)
+    { x: 28.5, y: GALLERY_TOP, z: -28.5, type: "medkit" },
+  ],
   boxes: [
     ...perimeter(64),
     // Ladenzeilen an den Wänden (mit Lücken = Gänge, kein toter Winkel)
@@ -345,17 +406,52 @@ const MALL: ArenaDef = {
     // Pflanzkübel
     { x: 0, z: -16, sx: 3, sz: 3, h: HEIGHTS.low, kind: "low" },
     { x: 0, z: 16, sx: 3, sz: 3, h: HEIGHTS.low, kind: "low" },
+    // ---- Galerie-Ring (Etage 2): Slabs als Decke/Boden ----
+    { x: 0, z: -28.5, sx: 63, sz: 6, h: 0.35, y: GALLERY_Y, kind: "tall" },
+    { x: 0, z: 28.5, sx: 63, sz: 6, h: 0.35, y: GALLERY_Y, kind: "tall" },
+    { x: -28.5, z: 0, sx: 6, sz: 51, h: 0.35, y: GALLERY_Y, kind: "tall" },
+    { x: 28.5, z: 0, sx: 6, sz: 51, h: 0.35, y: GALLERY_Y, kind: "tall" },
+    // Galerie-Geländer an der Atrium-Kante (überspringbar, kein LOS-Block).
+    // Lücken: 4 Treppen-Zugänge, 2 Brücken-Enden, 2 Drop-Kanten (NO/SW).
+    { x: -10.5, z: -25.6, sx: 30, sz: 0.25, h: 0.9, y: GALLERY_TOP, kind: "low" }, // N: x -25.5..4.5 (Treppe 4.5..7.5)
+    { x: 15.5, z: -25.6, sx: 16, sz: 0.25, h: 0.9, y: GALLERY_TOP, kind: "low" }, // N: x 7.5..23.5 (Drop 23.5..25.5)
+    { x: 10.5, z: 25.6, sx: 30, sz: 0.25, h: 0.9, y: GALLERY_TOP, kind: "low" }, // S: x -4.5..25.5 (Treppe -7.5..-4.5)
+    { x: -15.5, z: 25.6, sx: 16, sz: 0.25, h: 0.9, y: GALLERY_TOP, kind: "low" }, // S: x -23.5..-7.5 (Drop -25.5..-23.5)
+    { x: -25.6, z: -16.5, sx: 0.25, sz: 18, h: 0.9, y: GALLERY_TOP, kind: "low" }, // W: z -25.5..-7.5 (Treppe -7.5..-4.5)
+    { x: -25.6, z: -3, sx: 0.25, sz: 3, h: 0.9, y: GALLERY_TOP, kind: "low" }, // W: z -4.5..-1.5 (Brücke -1.5..1.5)
+    { x: -25.6, z: 13.5, sx: 0.25, sz: 24, h: 0.9, y: GALLERY_TOP, kind: "low" }, // W: z 1.5..25.5
+    { x: 25.6, z: -13.5, sx: 0.25, sz: 24, h: 0.9, y: GALLERY_TOP, kind: "low" }, // O: z -25.5..-1.5 (Brücke)
+    { x: 25.6, z: 3, sx: 0.25, sz: 3, h: 0.9, y: GALLERY_TOP, kind: "low" }, // O: z 1.5..4.5 (Treppe 4.5..7.5)
+    { x: 25.6, z: 16.5, sx: 0.25, sz: 18, h: 0.9, y: GALLERY_TOP, kind: "low" }, // O: z 7.5..25.5
+    // ---- Atrium-Brücke (exponierter Hotspot, verbindet W- und O-Galerie) ----
+    { x: 0, z: 0, sx: 51, sz: 3, h: 0.35, y: GALLERY_Y, kind: "tall" },
+    { x: 0, z: -1.6, sx: 51, sz: 0.25, h: 0.9, y: GALLERY_TOP, kind: "low" },
+    { x: 0, z: 1.6, sx: 51, sz: 0.25, h: 0.9, y: GALLERY_TOP, kind: "low" },
+    // ---- Geheimraum 1 "Lagerraum" (NW, Erdgeschoss, unter der Galerie) ----
+    { x: -27.5, z: -21.5, sx: 8, sz: 1, h: HEIGHTS.tall, kind: "tall" },
+    { x: -24, z: -16.7, sx: 1, sz: 2.6, h: HEIGHTS.tall, kind: "tall" }, // Zugang: Lücke z -21..-18 (3 m)
+    // ---- Geheimraum 2 "Technikraum" (SE, oben AUF der Galerie) ----
+    { x: 27.75, z: 26, sx: 7.5, sz: 0.8, h: 2.2, y: GALLERY_TOP, kind: "tall" },
+    { x: 24, z: 30.4, sx: 1, sz: 2.0, h: 2.2, y: GALLERY_TOP, kind: "tall" }, // Zugang: Lücke z 26.4..29.4 (3 m)
+  ],
+  stairs: [
+    // 4 Rolltreppen-Rampen EG <-> Galerie, diagonal versetzt, je 3 m breit,
+    // enden AN der Slab-Kante (liefen sie darunter, blockt die Plattenkante)
+    { from: [6, -14.6, 0], to: [6, -25.6, GALLERY_TOP], width: 3 },
+    { from: [-6, 14.6, 0], to: [-6, 25.6, GALLERY_TOP], width: 3 },
+    { from: [-14.6, -6, 0], to: [-25.6, -6, GALLERY_TOP], width: 3 },
+    { from: [14.6, 6, 0], to: [25.6, 6, GALLERY_TOP], width: 3 },
   ],
   props: [
-    // Neonschilder über den Ladenfronten (verschiedene Farben)
-    { x: -26, y: 2.9, z: -12, sx: 6.5, sy: 0.7, sz: 0.3, color: 0xff4f9a, glow: true },
-    { x: -26, y: 2.9, z: 12, sx: 6.5, sy: 0.7, sz: 0.3, color: 0x37e0ff, glow: true },
-    { x: 26, y: 2.9, z: -12, sx: 6.5, sy: 0.7, sz: 0.3, color: 0xffd23a, glow: true },
-    { x: 26, y: 2.9, z: 12, sx: 6.5, sy: 0.7, sz: 0.3, color: 0x7dff8b, glow: true },
-    { x: -12, y: 2.9, z: -26, sx: 0.3, sy: 0.7, sz: 6.5, color: 0x37e0ff, glow: true },
-    { x: 12, y: 2.9, z: -26, sx: 0.3, sy: 0.7, sz: 6.5, color: 0xff4f9a, glow: true },
-    { x: -12, y: 2.9, z: 26, sx: 0.3, sy: 0.7, sz: 6.5, color: 0xffd23a, glow: true },
-    { x: 12, y: 2.9, z: 26, sx: 0.3, sy: 0.7, sz: 6.5, color: 0xb07dff, glow: true },
+    // Neonschilder über den Ladenfronten (unter der Galerie-Unterkante 3,2)
+    { x: -26, y: 2.75, z: -12, sx: 6.5, sy: 0.7, sz: 0.3, color: 0xff4f9a, glow: true },
+    { x: -26, y: 2.75, z: 12, sx: 6.5, sy: 0.7, sz: 0.3, color: 0x37e0ff, glow: true },
+    { x: 26, y: 2.75, z: -12, sx: 6.5, sy: 0.7, sz: 0.3, color: 0xffd23a, glow: true },
+    { x: 26, y: 2.75, z: 12, sx: 6.5, sy: 0.7, sz: 0.3, color: 0x7dff8b, glow: true },
+    { x: -12, y: 2.75, z: -26, sx: 0.3, sy: 0.7, sz: 6.5, color: 0x37e0ff, glow: true },
+    { x: 12, y: 2.75, z: -26, sx: 0.3, sy: 0.7, sz: 6.5, color: 0xff4f9a, glow: true },
+    { x: -12, y: 2.75, z: 26, sx: 0.3, sy: 0.7, sz: 6.5, color: 0xffd23a, glow: true },
+    { x: 12, y: 2.75, z: 26, sx: 0.3, sy: 0.7, sz: 6.5, color: 0xb07dff, glow: true },
     // Springbrunnen-Wasser + Fontänen-Säule
     { x: 0, y: 1.16, z: 0, sx: 5.8, sy: 0.06, sz: 5.8, color: 0x35c5e8, glow: true },
     { x: 0, y: 1.7, z: 0, sx: 0.5, sy: 1.1, sz: 0.5, color: 0x9fdcf0 },
@@ -370,7 +466,8 @@ const MALL: ArenaDef = {
     { x: -6, y: 0.04, z: 0, sx: 1.6, sy: 0.06, sz: 4, color: 0xb44f6e },
     { x: 6, y: 0.04, z: 0, sx: 1.6, sy: 0.06, sz: 4, color: 0xb44f6e },
   ],
-  enemySpawns: gates(64),
+  // 4 Tore im EG + 2 Galerie-Enden (60/40-Regel bespielt beide Etagen)
+  enemySpawns: [...gates(64), { x: -10, z: -28.5, y: GALLERY_TOP }, { x: 10, z: 28.5, y: GALLERY_TOP }],
   playerSpawn: { x: 0, z: 12 },
 };
 
@@ -395,6 +492,17 @@ export const DEBUG_ARENA: ArenaDef = {
   playerSpawn: { x: 0, z: 12 },
 };
 
+/** Debug-Modus (Recovery Phase 0): Die Debug-Arena ist NUR über ?debug=1
+ *  wähl-/sichtbar. Save-Guard inklusive: steht in einem Save
+ *  selectedArena:"debug" ohne Debug-Modus, fällt getArena auf Foundry zurück. */
+export const DEBUG_MODE: boolean =
+  typeof location !== "undefined" && new URLSearchParams(location.search).has("debug");
+
+/** Arenen fürs Map-Menü (Debug-Arena nur im Debug-Modus). */
+export function visibleArenas(): ArenaDef[] {
+  return DEBUG_MODE ? [...ARENAS, DEBUG_ARENA] : ARENAS;
+}
+
 export function getArena(id: string): ArenaDef {
-  return ARENAS.find((a) => a.id === id) ?? FOUNDRY;
+  return visibleArenas().find((a) => a.id === id) ?? FOUNDRY;
 }

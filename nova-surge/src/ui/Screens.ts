@@ -3,7 +3,7 @@
 // der Pointer gelockt ist. Auf Touch gibt es keinen Lock — dort steuert der
 // Pause-Button die Modi.
 
-import { ARENAS } from "../config/arena";
+import { visibleArenas } from "../config/arena";
 import { COLOR_SCHEMES, PERKS, PERK_MAX_LEVEL, PERK_PRICES, WEAPON_PRICES, type PerkId } from "../config/meta";
 import { WEAPONS, type WeaponId } from "../config/weapons";
 import type { SaveData } from "../meta/SaveData";
@@ -28,6 +28,9 @@ export class Screens {
   private readonly lockTarget: HTMLElement;
   private readonly save: SaveData;
   private readonly cb: ScreensCallbacks;
+  /** true, während der Pointer FÜR den Upgrade-Draft absichtlich entsperrt
+   *  ist — der Lock-Verlust darf dann NICHT in den Pause-Modus führen. */
+  private draftUnlock = false;
 
   private readonly overlay = el<HTMLDivElement>("menu-overlay");
   private readonly homePanel = el<HTMLDivElement>("menu-home");
@@ -96,7 +99,31 @@ export class Screens {
     document.addEventListener("pointerlockchange", () => this.handleLockChange());
     document.addEventListener("pointerlockerror", () => {
       this.subtitle.textContent = "One moment — click again!";
+      // Re-Lock nach dem Draft kann an Browser-Cooldowns scheitern (z. B.
+      // Chrome nach ESC): im Spielmodus automatisch erneut versuchen.
+      if (this.mode === "playing" && !this.isTouch) {
+        window.setTimeout(() => {
+          if (this.mode === "playing" && !this.isTouch && !this.isLocked() && !this.draftUnlock) this.enterPlaying();
+        }, 1600);
+      }
     });
+  }
+
+  /** Upgrade-Draft geöffnet (Recovery-Phase-0-Fix): Auf Desktop wird der
+   *  Pointer kontrolliert entsperrt, damit die Karten KLICKBAR sind — im
+   *  Pointer Lock schluckt der Browser alle DOM-Klicks (Root Cause des
+   *  "Overlay hängt"-Bugs; Tasten 1–3 funktionieren weiterhin). */
+  beginDraft(): void {
+    if (this.isTouch || !this.isLocked()) return;
+    this.draftUnlock = true;
+    document.exitPointerLock();
+  }
+
+  /** Draft beendet: Lock automatisch wiederholen (Sticky Activation reicht). */
+  endDraft(): void {
+    this.draftUnlock = false;
+    if (this.isTouch || this.mode !== "playing" || this.isLocked()) return;
+    this.enterPlaying();
   }
 
   isLocked(): boolean {
@@ -178,7 +205,11 @@ export class Screens {
   private handleLockChange(): void {
     if (this.isTouch) return;
     if (this.isLocked()) {
+      this.draftUnlock = false;
       this.setMode("playing");
+    } else if (this.draftUnlock) {
+      // Absichtliche Freigabe für den Upgrade-Draft: im Playing-Modus
+      // bleiben — Sim läuft weiter, Karten sind mit der Maus bedienbar.
     } else if (this.mode === "playing") {
       // ESC während des Spiels -> Pause. (Tod/Menü setzen den Modus vorher um.)
       this.setMode("pause");
@@ -202,7 +233,7 @@ export class Screens {
   private buildMapRow(): void {
     const s = this.save.state;
     this.mapRow.replaceChildren();
-    for (const arena of ARENAS) {
+    for (const arena of visibleArenas()) {
       const btn = document.createElement("button");
       btn.type = "button";
       btn.className = "select-item";
