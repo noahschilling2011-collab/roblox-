@@ -345,7 +345,7 @@ async function boot(): Promise<void> {
             sfx.bossWaveSting();
             // Warn-Marker: Partikel-Fontänen an den Spawn-Toren (1s Vorlauf)
             for (const sp of sim.arena.enemySpawns) {
-              particles.burst(sp.x, 1.2, sp.z, 0xffd23a, 18, 5, 0.9, 0.09, 0.4, 0.9);
+              particles.burst(sp.x, (sp.y ?? 0) + 1.2, sp.z, 0xffd23a, 18, 5, 0.9, 0.09, 0.4, 0.9);
             }
           } else {
             sfx.waveStart();

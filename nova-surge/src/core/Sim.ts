@@ -16,6 +16,7 @@ import { RunStats } from "./Stats";
 import { ENEMY_TYPE_INDEX, EnemyManager, type Enemy } from "./Enemy";
 import { EventQueue, Ev } from "./events";
 import { buildCollisionWorld } from "./collision";
+import { NavSystem } from "./Nav";
 import type { InputState } from "./input";
 import { rayVsAabb, rayVsSphere, vec3, type Vec3 } from "./math";
 import { Player } from "./Player";
@@ -34,6 +35,8 @@ const _hitPoint = vec3();
 export class Sim {
   arena: ArenaDef = ARENAS[0]!;
   world = buildCollisionWorld(this.arena);
+  /** Wegpunkt-Navigation (Multi-Level Phase 2), pro Arena neu gebaut. */
+  nav = new NavSystem(this.arena, this.world);
   readonly player = new Player();
   readonly weapon = new Weapon();
   readonly enemies = new EnemyManager();
@@ -92,6 +95,7 @@ export class Sim {
   setArena(arena: ArenaDef): void {
     this.arena = arena;
     this.world = buildCollisionWorld(arena);
+    this.nav = new NavSystem(arena, this.world);
   }
 
   startRun(weaponId: WeaponId, arena: ArenaDef, perks: PerkLevels | null = null): void {
@@ -261,8 +265,9 @@ export class Sim {
     // Bullet Time (Epic): Gegner + deren Projektile laufen langsamer beim Nachladen
     const enemyScale = this.stats.bullettimeEnabled && this.weapon.isReloading() ? VALUES.bullettimeScale : 1;
 
-    // Gegner
-    this.enemies.update(dt * enemyScale, p.pos, p.eyeY, p.alive, this.world, this.events, this.enemyCallbacks);
+    // Gegner (inkl. Wegpunkt-Navigation — Repath-Budget gilt pro Tick)
+    this.nav.beginTick(dt);
+    this.enemies.update(dt * enemyScale, p.pos, p.eyeY, p.alive, this.world, this.events, this.enemyCallbacks, this.nav);
 
     // Projektile
     this.projectiles.update(dt, enemyScale, this.world.solids, this.projectileHitTest, this.projectileOnHit);

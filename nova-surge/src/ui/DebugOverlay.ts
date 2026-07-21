@@ -48,6 +48,7 @@ export class DebugOverlay {
       `phase     ${sim.phase} (wave ${sim.waveNumber})`,
       `stats     dmg×${sim.stats.damageMult.toFixed(2)} mag×${sim.stats.magSizeMult.toFixed(2)} spd×${sim.stats.moveSpeedMult.toFixed(2)}`,
       `hp        ${sim.player.hp.toFixed(0)}/${sim.player.maxHp}`,
+      sim.nav.debugLine(),
       heapLine,
     ].join("\n");
   }

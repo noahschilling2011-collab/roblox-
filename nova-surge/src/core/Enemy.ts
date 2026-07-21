@@ -3,10 +3,12 @@
 // Ziel anlaufen, Hindernisse per Raycast umfließen, Separation untereinander.
 
 import { ELITES, ELITE_RULES, ENEMIES, ENEMY_AI, type EliteType, type EnemyDef, type EnemyType } from "../config/enemies";
+import { NAV } from "../config/nav";
 import { waveHpScale } from "../config/waves";
 import { moveBody, type CollisionWorld } from "./collision";
 import { rayVsAabb, segmentClear, vec3, type Aabb, type Vec3 } from "./math";
 import { EventQueue, Ev } from "./events";
+import type { NavSystem } from "./Nav";
 
 export type EnemyFsm = "alert" | "attack" | "hitreact" | "death";
 
@@ -49,6 +51,13 @@ export class Enemy {
   elite: EliteType | null = null;
   speedScale = 1;
   scoreScale = 1;
+  // Wegpunkt-Navigation (Multi-Level Phase 2)
+  readonly path = new Int32Array(NAV.maxPathNodes);
+  pathLen = 0;
+  pathCursor = 0;
+  repathTimer = 0;
+  /** true, solange dieser Gegner gerade einem Pfad folgt (F3/Tests). */
+  navigating = false;
 
   get eyeY(): number {
     return this.pos.y + this.def.height * 0.85;
@@ -61,6 +70,7 @@ export class Enemy {
 const MAX_SLOTS = 28;
 const _toPlayer = vec3();
 const _desired = vec3();
+const _navMove = vec3();
 const _rayOrigin = vec3();
 const _rayDir = vec3();
 const _eye = vec3();
@@ -84,7 +94,7 @@ export class EnemyManager {
     return n;
   }
 
-  spawn(type: EnemyType, x: number, z: number, waveNumber: number, elite: EliteType | null = null): boolean {
+  spawn(type: EnemyType, x: number, z: number, waveNumber: number, elite: EliteType | null = null, y = 0): boolean {
     for (const e of this.slots) {
       if (e.active) continue;
       e.active = true;
@@ -94,10 +104,10 @@ export class EnemyManager {
       e.speedScale = eliteDef ? eliteDef.speedMult : 1;
       e.scoreScale = eliteDef ? eliteDef.scoreMult : 1;
       e.pos.x = x;
-      e.pos.y = 0;
+      e.pos.y = y;
       e.pos.z = z;
       e.prevPos.x = x;
-      e.prevPos.y = 0;
+      e.prevPos.y = y;
       e.prevPos.z = z;
       e.vel.x = e.vel.y = e.vel.z = 0;
       e.maxHp = Math.round(e.def.hp * waveHpScale(waveNumber) * (eliteDef ? eliteDef.hpMult : 1));
@@ -116,6 +126,10 @@ export class EnemyManager {
       e.unstickTimer = 0;
       e.hitreactCooldown = 0;
       e.flash = 0;
+      e.pathLen = 0;
+      e.pathCursor = 0;
+      e.repathTimer = 0;
+      e.navigating = false;
       return true;
     }
     return false;
@@ -147,7 +161,8 @@ export class EnemyManager {
     playerAlive: boolean,
     world: CollisionWorld,
     events: EventQueue,
-    callbacks: EnemyCallbacks
+    callbacks: EnemyCallbacks,
+    nav: NavSystem | null = null
   ): void {
     const solids = world.solids;
     const losBlockers = world.losBlockers;
@@ -202,29 +217,14 @@ export class EnemyManager {
       // Elite "Flink"/"Gepanzert": Tempo skaliert
       const spd = d.speed * e.speedScale;
       const strafeSpd = d.strafeSpeed * e.speedScale;
+      // Hybrid-Steering (Multi-Level Phase 2): Auf anderer Ebene wird gepfadet,
+      // sonst bleibt das bewährte Direkt-Steering. Low-Blöcke (1,1 m) liegen
+      // unter der Schwelle — dort gelten weiter Sprung-/Belagerungs-Regeln.
+      const levelDiff = Math.abs(playerPos.y - e.pos.y) > NAV.levelThreshold;
+      e.navigating = false;
 
       if (d.type === "shooter") {
-        // Distanz halten + seitlich strafen
-        e.strafeTimer -= dt;
-        if (e.strafeTimer <= 0) {
-          e.strafeDir = -e.strafeDir;
-          e.strafeTimer = 1.2 + Math.random() * 1.8;
-        }
-        const side = e.strafeDir;
-        const strafeX = -_toPlayer.z * side;
-        const strafeZ = _toPlayer.x * side;
-        if (distXZ > d.preferredRange + 3) {
-          moveX = _toPlayer.x * spd + strafeX * strafeSpd * 0.4;
-          moveZ = _toPlayer.z * spd + strafeZ * strafeSpd * 0.4;
-        } else if (distXZ < d.preferredRange - 4) {
-          moveX = -_toPlayer.x * spd * 0.8 + strafeX * strafeSpd * 0.6;
-          moveZ = -_toPlayer.z * spd * 0.8 + strafeZ * strafeSpd * 0.6;
-        } else {
-          moveX = strafeX * strafeSpd;
-          moveZ = strafeZ * strafeSpd;
-        }
-
-        // Burst-Feuer bei Sichtlinie
+        // Sichtlinie zuerst — sie entscheidet zwischen Strafe-Modus und Pfad
         _eye.x = e.pos.x;
         _eye.y = e.eyeY;
         _eye.z = e.pos.z;
@@ -232,6 +232,33 @@ export class EnemyManager {
         _target.y = playerEyeY - 0.3;
         _target.z = playerPos.z;
         const hasLos = segmentClear(_eye, _target, losBlockers);
+
+        if (nav && levelDiff && !hasLos && this.followPath(e, nav, playerPos, spd, dt)) {
+          // Pfad Richtung Spieler-Ebene; Bewegung kommt aus followPath (_navMove)
+          moveX = _navMove.x;
+          moveZ = _navMove.z;
+        } else {
+          // Distanz halten + seitlich strafen
+          e.strafeTimer -= dt;
+          if (e.strafeTimer <= 0) {
+            e.strafeDir = -e.strafeDir;
+            e.strafeTimer = 1.2 + Math.random() * 1.8;
+          }
+          const side = e.strafeDir;
+          const strafeX = -_toPlayer.z * side;
+          const strafeZ = _toPlayer.x * side;
+          if (distXZ > d.preferredRange + 3) {
+            moveX = _toPlayer.x * spd + strafeX * strafeSpd * 0.4;
+            moveZ = _toPlayer.z * spd + strafeZ * strafeSpd * 0.4;
+          } else if (distXZ < d.preferredRange - 4) {
+            moveX = -_toPlayer.x * spd * 0.8 + strafeX * strafeSpd * 0.6;
+            moveZ = -_toPlayer.z * spd * 0.8 + strafeZ * strafeSpd * 0.6;
+          } else {
+            moveX = strafeX * strafeSpd;
+            moveZ = strafeZ * strafeSpd;
+          }
+        }
+
         if (e.burstShotsLeft > 0) {
           e.burstTimer -= dt;
           if (e.burstTimer <= 0) {
@@ -258,7 +285,10 @@ export class EnemyManager {
       } else {
         // Rusher, Tank & Warden: anlaufen, kurz vor Nahkampfreichweite stoppen
         // (sonst schieben sie sich in die Kamera)
-        if (distXZ > d.meleeRange * 0.75) {
+        if (nav && levelDiff && this.followPath(e, nav, playerPos, spd, dt)) {
+          moveX = _navMove.x;
+          moveZ = _navMove.z;
+        } else if (distXZ > d.meleeRange * 0.75) {
           moveX = _toPlayer.x * spd;
           moveZ = _toPlayer.z * spd;
         }
@@ -282,7 +312,9 @@ export class EnemyManager {
           }
         }
         const heightDiff = playerPos.y - e.pos.y;
-        if (d.canJump && e.onGround && heightDiff > 0.6 && distXZ < 3.5) {
+        // Anspring-Logik nur ohne aktiven Pfad — unter Balkonen/Etagen führt
+        // der Pfad zur Treppe, sinnloses Wand-Hüpfen entfällt
+        if (d.canJump && e.onGround && heightDiff > 0.6 && distXZ < 3.5 && !e.navigating) {
           e.vel.y = d.jumpVelocity;
         }
         if (distXZ < d.meleeRange && Math.abs(heightDiff) < 1.6 && e.attackCooldown <= 0) {
@@ -353,12 +385,50 @@ export class EnemyManager {
     }
   }
 
+  /** Wegpunkt-Verfolgung (Multi-Level Phase 2): Pfad bei Bedarf erneuern
+   *  (Tick-Budget in NavSystem), dann Richtung nächsten Wegpunkt laufen.
+   *  Ergebnis in _navMove; false = kein Pfad -> Direkt-Steering-Fallback. */
+  private followPath(e: Enemy, nav: NavSystem, target: Vec3, spd: number, dt: number): boolean {
+    e.repathTimer -= dt;
+    if (e.repathTimer <= 0) {
+      const len = nav.tryRepath(e.pos.x, e.pos.y, e.pos.z, target.x, target.y, target.z, e.path);
+      if (len >= 0) {
+        e.pathLen = len;
+        e.pathCursor = 0;
+        e.repathTimer = NAV.repathInterval + Math.random() * 0.3;
+      }
+      // len < 0: Budget diesen Tick erschöpft — alter Pfad läuft weiter
+    }
+    const g = nav.graph;
+    while (e.pathCursor < e.pathLen) {
+      const n = e.path[e.pathCursor]!;
+      const dx = g.nodeX[n]! - e.pos.x;
+      const dz = g.nodeZ[n]! - e.pos.z;
+      const dy = g.nodeY[n]! - e.pos.y;
+      if (Math.hypot(dx, dz) < NAV.waypointReach && Math.abs(dy) < 0.6) {
+        e.pathCursor++;
+        continue;
+      }
+      const l = Math.hypot(dx, dz) || 1;
+      _navMove.x = (dx / l) * spd;
+      _navMove.z = (dz / l) * spd;
+      e.navigating = true;
+      nav.activeFollowers++;
+      return true;
+    }
+    return false;
+  }
+
   /** Prüft die Wunschrichtung per Raycast, weicht ggf. seitlich aus. Ergebnis in _desired. */
   private steer(e: Enemy, moveX: number, moveZ: number, solids: readonly Aabb[], dt: number): void {
     _desired.x = moveX;
     _desired.z = moveZ;
     const speed = Math.hypot(moveX, moveZ);
     if (speed < 0.1) return;
+    // Wegpunkt-Folger: Kanten sind bereits clearance-geprüft — das lokale
+    // Ausweich-Raycast würde Treppenstufen als Wand sehen und die Treppe
+    // umkurven statt sie zu erklimmen (Step-Height erledigt das Steigen).
+    if (e.navigating) return;
 
     _rayOrigin.x = e.pos.x;
     _rayOrigin.y = e.pos.y + 0.6; // Kniehöhe: niedrige Blöcke zählen als Hindernis

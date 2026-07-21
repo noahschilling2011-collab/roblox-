@@ -99,7 +99,8 @@ export interface ArenaDef {
   stairs?: StairsDef[];
   props?: ArenaProp[];
   showGrid?: boolean; // default true (false z. B. auf Wasser)
-  enemySpawns: { x: number; z: number }[];
+  /** y = Spawn-Ebene (Default 0). Die 60/40-Regel bevorzugt die Spieler-Ebene. */
+  enemySpawns: { x: number; z: number; y?: number }[];
   playerSpawn: { x: number; z: number };
 }
 
@@ -389,7 +390,8 @@ export const DEBUG_ARENA: ArenaDef = {
     { x: 0, z: -8, sx: 8, sz: 8, y: 3, h: 0.4, kind: "tall" }, // Plattform (Decke von unten)
   ],
   stairs: [{ from: [8, -8, 0], to: [4.2, -8, 3.4], width: 2.5 }],
-  enemySpawns: gates(40),
+  // Letzter Spawn liegt AUF der Plattform (Test: Spawn-Ebenen + 60/40-Regel)
+  enemySpawns: [...gates(40), { x: -2, z: -8, y: 3.4 }],
   playerSpawn: { x: 0, z: 12 },
 };
 

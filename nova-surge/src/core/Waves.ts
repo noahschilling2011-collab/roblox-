@@ -2,6 +2,7 @@
 // Gegner an den vier Toren ein — nie direkt neben dem Spieler.
 
 import { ELITE_RULES, ENEMY_AI, type EliteType, type EnemyType } from "../config/enemies";
+import { NAV } from "../config/nav";
 import { applyWaveEvent, getWave, isBossWave, SPAWN_TRICKLE, type WaveEventId } from "../config/waves";
 import type { EnemyManager } from "./Enemy";
 import type { Vec3 } from "./math";
@@ -65,7 +66,7 @@ export class WaveSpawner {
     enemies: EnemyManager,
     playerPos: Vec3,
     waveNumber: number,
-    spawns: readonly { x: number; z: number }[]
+    spawns: readonly { x: number; z: number; y?: number }[]
   ): void {
     if (this.pendingCount() === 0) return;
     if (enemies.aliveCount() >= ENEMY_AI.maxAlive) return;
@@ -76,18 +77,38 @@ export class WaveSpawner {
     const type = this.pickType();
     if (!type) return;
 
-    // Spawnpunkt: rotierend, aber nicht direkt beim Spieler
-    for (let attempt = 0; attempt < spawns.length; attempt++) {
-      const sp = spawns[(this.nextTypeIdx + attempt) % spawns.length]!;
-      const dx = sp.x - playerPos.x;
-      const dz = sp.z - playerPos.z;
-      if (dx * dx + dz * dz < MIN_SPAWN_DIST * MIN_SPAWN_DIST) continue;
-      if (enemies.spawn(type, sp.x + (Math.random() - 0.5) * 2, sp.z + (Math.random() - 0.5) * 2, waveNumber, this.rollElite(type))) {
-        this.decrement(type);
-        if (type === "warden") this.wardensSpawned++;
-        this.nextTypeIdx++;
+    // 60/40-Regel (Multi-Level Phase 2): 60% der Spawns bevorzugen die
+    // Spieler-Ebene (Druck bleibt oben), 40% andere Ebenen (Flanken).
+    // Auf flachen Maps sind alle Spawns "gleiche Ebene" -> Verhalten wie bisher.
+    const preferSame = Math.random() < NAV.spawnSameLevelWeight;
+    // Spawnpunkt: rotierend, aber nicht direkt beim Spieler; Pass 0 filtert
+    // nach Ebenen-Präferenz, Pass 1 nimmt jeden ausreichend fernen Punkt.
+    for (let pass = 0; pass < 2; pass++) {
+      for (let attempt = 0; attempt < spawns.length; attempt++) {
+        const sp = spawns[(this.nextTypeIdx + attempt) % spawns.length]!;
+        if (pass === 0) {
+          const sameLevel = Math.abs((sp.y ?? 0) - playerPos.y) < NAV.spawnLevelTolerance;
+          if (sameLevel !== preferSame) continue;
+        }
+        const dx = sp.x - playerPos.x;
+        const dz = sp.z - playerPos.z;
+        if (dx * dx + dz * dz < MIN_SPAWN_DIST * MIN_SPAWN_DIST) continue;
+        if (
+          enemies.spawn(
+            type,
+            sp.x + (Math.random() - 0.5) * 2,
+            sp.z + (Math.random() - 0.5) * 2,
+            waveNumber,
+            this.rollElite(type),
+            sp.y ?? 0
+          )
+        ) {
+          this.decrement(type);
+          if (type === "warden") this.wardensSpawned++;
+          this.nextTypeIdx++;
+        }
+        return;
       }
-      return;
     }
     // Alle Tore zu nah (Spieler campt ein Tor): nimm das gegenüberliegende
     const far = spawns.reduce((best, sp) => {
@@ -95,7 +116,7 @@ export class WaveSpawner {
       const bd = (best.x - playerPos.x) ** 2 + (best.z - playerPos.z) ** 2;
       return d > bd ? sp : best;
     });
-    if (enemies.spawn(type, far.x, far.z, waveNumber, this.rollElite(type))) {
+    if (enemies.spawn(type, far.x, far.z, waveNumber, this.rollElite(type), far.y ?? 0)) {
       this.decrement(type);
       if (type === "warden") this.wardensSpawned++;
     }

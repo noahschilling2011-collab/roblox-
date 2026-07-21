@@ -113,15 +113,17 @@ function buildArenaGroup(def: ArenaDef): THREE.Group {
   // Spawn-Markierung: Tor-Rahmen an Wandmitten, sonst flaches Leucht-Pad
   // (z. B. Yacht: Spawns liegen im Deck-Inneren — Pad statt Rahmen).
   for (const sp of def.enemySpawns) {
-    const nearPerimeter = Math.max(Math.abs(sp.x), Math.abs(sp.z)) > def.size / 2 - 4;
+    const spawnY = sp.y ?? 0;
+    const nearPerimeter = spawnY === 0 && Math.max(Math.abs(sp.x), Math.abs(sp.z)) > def.size / 2 - 4;
     const gate = new THREE.Mesh(unitBox, gateMaterial);
     if (nearPerimeter) {
       const onXWall = Math.abs(sp.x) > Math.abs(sp.z);
       gate.scale.set(onXWall ? 0.4 : 6, 3.4, onXWall ? 6 : 0.4);
       gate.position.set(sp.x * 1.06, 1.7, sp.z * 1.06);
     } else {
+      // Erhöhte Spawns (Etagen/Decks) bekommen ein flaches Leucht-Pad
       gate.scale.set(2.4, 0.06, 2.4);
-      gate.position.set(sp.x, 0.05, sp.z);
+      gate.position.set(sp.x, spawnY + 0.05, sp.z);
     }
     group.add(gate);
   }
