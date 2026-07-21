@@ -24,6 +24,10 @@ export class Player {
   doubleJumpReady = false;
   speedMult = 1;
   lifesteal = 0;
+  /** Adrenalin-Upgrade: Restzeit des Kill-Tempo-Schubs. */
+  adrenalineTimer = 0;
+  /** Phoenix: kurze Unverwundbarkeit nach Selbst-Revive. */
+  invulnTimer = 0;
 
   reset(spawn: { x: number; z: number }): void {
     this.pos.x = spawn.x;
@@ -41,6 +45,8 @@ export class Player {
     this.doubleJumpReady = false;
     this.speedMult = 1;
     this.lifesteal = 0;
+    this.adrenalineTimer = 0;
+    this.invulnTimer = 0;
   }
 
   get eyeY(): number {
@@ -67,7 +73,10 @@ export class Player {
     this.moveIntensity = Math.min(1, wishLen);
     this.sprinting = input.sprint && input.moveZ > 0.1;
 
-    const targetSpeed = (this.sprinting ? MOVE.sprintSpeed : MOVE.walkSpeed) * this.speedMult;
+    this.adrenalineTimer = Math.max(0, this.adrenalineTimer - dt);
+    this.invulnTimer = Math.max(0, this.invulnTimer - dt);
+    const adrenaline = this.adrenalineTimer > 0 ? 1.25 : 1;
+    const targetSpeed = (this.sprinting ? MOVE.sprintSpeed : MOVE.walkSpeed) * this.speedMult * adrenaline;
     const accel = this.onGround ? MOVE.accel : MOVE.airAccel;
 
     if (wishLen > 0.01) {

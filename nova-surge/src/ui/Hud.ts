@@ -25,19 +25,22 @@ export class Hud {
   private readonly upgradeOverlay = el<HTMLDivElement>("upgrade-overlay");
   private readonly upgradeCards = el<HTMLDivElement>("upgrade-cards");
   private readonly upgradeHint = el<HTMLParagraphElement>("upgrade-hint");
+  private readonly rerollBtn = el<HTMLButtonElement>("btn-reroll");
 
   private hitmarkerTimer = 0;
   private vignetteLevel = 0;
   private dmgTimer = 0;
-  private lastOfferKey = "";
+  private lastOfferNonce = -1;
   private flashText: string | null = null;
   private flashTimer = 0;
   private readonly popupPool: HTMLDivElement[] = [];
   private popupCursor = 0;
 
   onChooseUpgrade: (index: number) => void = () => {};
+  onReroll: () => void = () => {};
 
   constructor() {
+    this.rerollBtn.addEventListener("click", () => this.onReroll());
     // Score-Popup-Pool (kein DOM-Anlegen während des Gefechts)
     for (let i = 0; i < 10; i++) {
       const div = document.createElement("div");
@@ -54,12 +57,13 @@ export class Hud {
     this.flashTimer = seconds;
   }
 
-  /** Fliegender Score-Text an einer Bildschirmposition. */
-  spawnPopup(x: number, y: number, text: string, big: boolean): void {
+  /** Fliegender Score-/Schadens-Text an einer Bildschirmposition. */
+  spawnPopup(x: number, y: number, text: string, variant: "normal" | "big" | "crit" = "normal"): void {
     const div = this.popupPool[this.popupCursor]!;
     this.popupCursor = (this.popupCursor + 1) % this.popupPool.length;
     div.textContent = text;
-    div.classList.toggle("big", big);
+    div.classList.toggle("big", variant === "big");
+    div.classList.toggle("crit", variant === "crit");
     div.style.left = `${x.toFixed(0)}px`;
     div.style.top = `${y.toFixed(0)}px`;
     div.style.display = "block";
@@ -76,7 +80,7 @@ export class Hud {
   hide(): void {
     this.root.hidden = true;
     this.upgradeOverlay.hidden = true;
-    this.lastOfferKey = "";
+    this.lastOfferNonce = -1;
   }
 
   notifyHit(killed: boolean): void {
@@ -94,7 +98,7 @@ export class Hud {
     this.dmgIndicator.style.transform = `rotate(${(-relAngle * 180) / Math.PI}deg)`;
   }
 
-  update(dt: number, sim: Sim, isTouch: boolean): void {
+  update(dt: number, sim: Sim, isTouch: boolean, accountCoins: number): void {
     const w = sim.weapon;
 
     // Fadenkreuz-Spread in Pixel (grobe Projektion reicht fürs Gefühl)
@@ -140,17 +144,18 @@ export class Hud {
       this.flashText = null;
     }
 
-    // Upgrade-Wahl
+    // Upgrade-Wahl (offerNonce ändert sich bei jedem neuen Angebot/Reroll)
     if (sim.phase === "upgrade") {
-      const key = sim.upgradeOffer.join(",");
-      if (key !== this.lastOfferKey) {
-        this.lastOfferKey = key;
+      if (sim.offerNonce !== this.lastOfferNonce) {
+        this.lastOfferNonce = sim.offerNonce;
         this.buildUpgradeCards(sim.upgradeOffer, isTouch);
       }
+      this.rerollBtn.textContent = `🪙 Reroll (${sim.rerollCost})`;
+      this.rerollBtn.disabled = accountCoins < sim.rerollCost;
       this.upgradeOverlay.hidden = false;
     } else {
       this.upgradeOverlay.hidden = true;
-      this.lastOfferKey = "";
+      this.lastOfferNonce = -1;
     }
   }
 
@@ -169,11 +174,12 @@ export class Hud {
       const def = UPGRADES[id];
       const card = document.createElement("button");
       card.type = "button";
-      card.className = "upgrade-card";
+      card.className = `upgrade-card ${def.rarity}`;
       card.innerHTML =
         `<div class="uc-icon">${def.icon}</div>` +
         `<div class="uc-name">${def.name}</div>` +
         `<div class="uc-desc">${def.desc}</div>` +
+        `<span class="uc-rarity">${def.rarity.toUpperCase()}</span>` +
         (isTouch ? "" : `<div class="uc-key">${i + 1}</div>`);
       card.addEventListener("click", () => this.onChooseUpgrade(i));
       this.upgradeCards.append(card);

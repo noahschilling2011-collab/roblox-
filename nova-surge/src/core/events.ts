@@ -20,6 +20,9 @@ export const enum Ev {
   Heal, // a = Menge (Lifesteal-Feedback)
   NewHighscore,
   PerfectWave, // Welle ohne eigenen Schaden geschafft: a = Bonuspunkte
+  Crit, // kritischer Treffer: x,y,z = Gegnerposition, a = Schaden
+  ChainArc, // Kettenblitz-Sprung: x,y,z = Ziel, a/b = Quelle x/z
+  PhoenixRevive, // Phoenix-Selbst-Revive ausgelöst
 }
 
 export interface EventSlot {

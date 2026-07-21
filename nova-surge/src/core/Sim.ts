@@ -2,12 +2,13 @@
 // Projektile, Wellen, Score. Läuft mit festem 60-Hz-Takt, kennt kein
 // Rendering — die Präsentation liest Zustand + Events.
 
-import { RUN } from "../config/tuning";
+import { COMBO, PLAYER, REROLL, RUN } from "../config/tuning";
 import { isBossWave } from "../config/waves";
 import { ARENAS, type ArenaDef } from "../config/arena";
 import { COIN_DIVISOR } from "../config/meta";
 import type { WeaponId } from "../config/weapons";
-import type { UpgradeId } from "../config/upgrades";
+import { VALUES, type UpgradeId } from "../config/upgrades";
+import { RunStats } from "./Stats";
 import { ENEMY_TYPE_INDEX, EnemyManager, type Enemy } from "./Enemy";
 import { EventQueue, Ev } from "./events";
 import { buildCollisionWorld } from "./collision";
@@ -36,6 +37,7 @@ export class Sim {
   readonly spawner = new WaveSpawner();
   readonly upgrades = new UpgradeState();
   readonly events = new EventQueue();
+  readonly stats = new RunStats();
 
   tick = 0;
   phase: RunPhase = "menu";
@@ -55,11 +57,20 @@ export class Sim {
   private pelletTarget: Enemy | null = null;
   /** Schaden, den der Spieler in der laufenden Welle kassiert hat (Perfect Wave). */
   private damageTakenThisWave = 0;
+  /** Combo-Verfall: Sekunden seit dem letzten eigenen Treffer. */
+  private sinceLastHit = 999;
+  /** Kettenblitz: zählt eigene Treffer. */
+  private hitCounter = 0;
+  /** Reroll-Kosten (verdoppeln sich pro Nutzung im Run). */
+  rerollCost: number = REROLL.baseCost;
+  /** Ändert sich bei jedem neuen Angebot (HUD baut Karten neu). */
+  offerNonce = 0;
 
   private readonly input: InputState;
 
   constructor(input: InputState) {
     this.input = input;
+    this.weapon.stats = this.stats; // eine gemeinsame Stats-Instanz
   }
 
   entityCount(): number {
@@ -77,14 +88,15 @@ export class Sim {
   startRun(weaponId: WeaponId, arena: ArenaDef): void {
     this.setArena(arena);
     this.player.reset(arena.playerSpawn);
-    this.weapon.mods.damageMult = 1;
-    this.weapon.mods.fireRateMult = 1;
-    this.weapon.mods.magSizeMult = 1;
+    this.upgrades.reset();
+    this.upgrades.recompute(this.stats, this.player);
     this.weapon.equip(weaponId);
     this.enemies.clear();
     this.projectiles.clear();
     this.spawner.clear();
-    this.upgrades.reset();
+    this.sinceLastHit = 999;
+    this.hitCounter = 0;
+    this.rerollCost = REROLL.baseCost;
     this.score = 0;
     this.multiplier = 1;
     this.kills = 0;
@@ -107,10 +119,18 @@ export class Sim {
     if (this.phase !== "upgrade") return;
     const id = this.upgradeOffer[index];
     if (!id) return;
-    this.upgrades.apply(id, this.weapon, this.player);
+    this.upgrades.apply(id, this.weapon, this.player, this.stats);
     this.upgradeOffer = [];
     this.phase = "break";
     this.phaseTimer = RUN.waveBreak;
+  }
+
+  /** Neues 3er-Angebot würfeln — Coin-Abbuchung macht der Aufrufer (main). */
+  reroll(): void {
+    if (this.phase !== "upgrade") return;
+    this.upgradeOffer = this.upgrades.rollOffer(this.waveNumber);
+    this.offerNonce++;
+    this.rerollCost *= REROLL.costMultiplier;
   }
 
   /** Rewarded-Ad-Belohnung (Phase 6): Weiterspielen nach Tod. */
@@ -161,10 +181,20 @@ export class Sim {
         }
         // Noch fliegende Gegner-Projektile verfallen — kein Tod im Upgrade-Screen
         this.projectiles.clearEnemyProjectiles();
-        this.upgradeOffer = this.upgrades.rollOffer();
+        this.upgradeOffer = this.upgrades.rollOffer(this.waveNumber);
+        this.offerNonce++;
         this.phase = this.upgradeOffer.length > 0 ? "upgrade" : "break";
         this.phaseTimer = RUN.waveBreak;
       }
+    }
+
+    // Dynamische Stats: Last Stand (unter 30% HP)
+    this.stats.laststandActive = p.alive && p.hp < PLAYER.maxHp * VALUES.laststandHpThreshold;
+
+    // Combo-Verfall: nach Haltezeit sinkt der Multiplikator Richtung ×1
+    this.sinceLastHit += dt;
+    if (this.multiplier > 1 && this.sinceLastHit > COMBO.holdSeconds + this.stats.comboHoldBonus) {
+      this.multiplier = Math.max(1, this.multiplier - COMBO.decayPerSecond * dt);
     }
 
     // Spieler + Waffe (auch in Pausenphasen — Bewegung bleibt flüssig)
@@ -176,11 +206,14 @@ export class Sim {
       this.weapon.update(dt, this.input, _eye, this.events, this.resolveHitscan, this.spawnPellet);
     }
 
+    // Bullet Time (Epic): Gegner + deren Projektile laufen langsamer beim Nachladen
+    const enemyScale = this.stats.bullettimeEnabled && this.weapon.isReloading() ? VALUES.bullettimeScale : 1;
+
     // Gegner
-    this.enemies.update(dt, p.pos, p.eyeY, p.alive, this.world, this.events, this.enemyCallbacks);
+    this.enemies.update(dt * enemyScale, p.pos, p.eyeY, p.alive, this.world, this.events, this.enemyCallbacks);
 
     // Projektile
-    this.projectiles.update(dt, this.world.solids, this.projectileHitTest, this.projectileOnHit);
+    this.projectiles.update(dt, enemyScale, this.world.solids, this.projectileHitTest, this.projectileOnHit);
 
     this.updateAimOnTarget();
   }
@@ -193,22 +226,34 @@ export class Sim {
       const t = rayVsAabb(origin, dir, b, wallT);
       if (t < wallT) wallT = t;
     }
-    let bestT = Infinity;
-    let bestEnemy: Enemy | null = null;
-    for (const e of this.enemies.slots) {
-      if (!e.active || e.fsm === "death") continue;
-      const t = rayVsSphere(origin, dir, e.pos.x, e.centerY, e.pos.z, e.def.radius * 1.4);
-      if (t < bestT) {
-        bestT = t;
-        bestEnemy = e;
+    // Durchschlag (Rare): bis zu 1 + pierceTargets Gegner entlang des Strahls,
+    // nach Distanz sortiert — ohne Allokationen (wiederholte Nächster-Suche).
+    const maxTargets = 1 + this.stats.pierceTargets;
+    let lastT = -1;
+    let lastHitT = -1;
+    let hits = 0;
+    for (let k = 0; k < maxTargets; k++) {
+      let bestT = Infinity;
+      let bestEnemy: Enemy | null = null;
+      for (const e of this.enemies.slots) {
+        if (!e.active || e.fsm === "death") continue;
+        const t = rayVsSphere(origin, dir, e.pos.x, e.centerY, e.pos.z, e.def.radius * 1.4);
+        if (t > lastT && t < bestT && t < wallT) {
+          bestT = t;
+          bestEnemy = e;
+        }
       }
-    }
-    if (bestEnemy && bestT < wallT) {
-      _hitPoint.x = origin.x + dir.x * bestT;
-      _hitPoint.y = origin.y + dir.y * bestT;
-      _hitPoint.z = origin.z + dir.z * bestT;
-      this.events.emit(Ev.Tracer, _hitPoint.x, _hitPoint.y, _hitPoint.z, 1);
+      if (!bestEnemy) break;
       this.applyPlayerDamage(bestEnemy, damage);
+      lastT = bestT;
+      lastHitT = bestT;
+      hits++;
+    }
+    if (hits > 0) {
+      _hitPoint.x = origin.x + dir.x * lastHitT;
+      _hitPoint.y = origin.y + dir.y * lastHitT;
+      _hitPoint.z = origin.z + dir.z * lastHitT;
+      this.events.emit(Ev.Tracer, _hitPoint.x, _hitPoint.y, _hitPoint.z, 1);
     } else {
       _hitPoint.x = origin.x + dir.x * wallT;
       _hitPoint.y = origin.y + dir.y * wallT;
@@ -219,25 +264,90 @@ export class Sim {
   };
 
   private spawnPellet = (origin: Vec3, dir: Vec3, speed: number, life: number, damage: number): void => {
-    this.projectiles.spawn(true, origin, dir, speed, life, damage);
+    this.projectiles.spawn(true, origin, dir, speed, life, damage, this.stats.ricochetBounces);
   };
 
-  /** Schaden des Spielers an einem Gegner inkl. Score/Multiplikator/Lifesteal. */
-  private applyPlayerDamage(e: Enemy, damage: number): void {
+  /** Schaden des Spielers an einem Gegner: Crit/Kaltblütig/Multiplikator/
+   *  Lifesteal/Kettenblitz — alle Upgrade-Procs laufen hier zusammen. */
+  private applyPlayerDamage(e: Enemy, baseDamage: number): void {
+    let damage = baseDamage;
+    if (this.stats.critChance > 0 && Math.random() < this.stats.critChance) {
+      damage *= 2;
+      this.events.emit(Ev.Crit, e.pos.x, e.centerY, e.pos.z, Math.round(damage));
+    }
+    if (this.stats.coldbloodBonus > 0 && this.player.hp >= PLAYER.maxHp - 0.01) {
+      damage *= 1 + this.stats.coldbloodBonus;
+    }
+    const hpBefore = e.hp;
     const killed = this.enemies.damage(e, damage);
     this.multiplier = Math.min(MULTIPLIER_MAX, this.multiplier + MULTIPLIER_PER_HIT);
+    this.sinceLastHit = 0;
     if (this.player.lifesteal > 0) {
       this.player.heal(damage * this.player.lifesteal);
       this.events.emit(Ev.Heal, 0, 0, 0, damage * this.player.lifesteal);
     }
+    // Kettenblitz (Epic): jeder 5. Treffer springt auf bis zu 3 weitere Gegner
+    this.hitCounter++;
+    if (this.stats.chainEnabled && this.hitCounter % VALUES.chainEveryNthHit === 0) {
+      this.chainFrom(e, damage);
+    }
     if (killed) {
-      const gained = Math.round(e.def.score * this.multiplier);
-      this.score += gained;
-      this.kills++;
-      this.events.emit(Ev.EnemyDied, e.pos.x, e.centerY, e.pos.z, ENEMY_TYPE_INDEX[e.def.type], gained);
+      this.onEnemyKilled(e, damage, hpBefore);
       this.events.emit(Ev.DamageDealt, 0, 0, 0, damage, 1);
     } else {
       this.events.emit(Ev.DamageDealt, 0, 0, 0, damage, 0);
+    }
+  }
+
+  /** Kill-Abwicklung: Score (inkl. Kopfgeld), Overkill-Heilung, Adrenalin,
+   *  Scavenger-Munition, Splitterschuss. */
+  private onEnemyKilled(e: Enemy, damage: number, hpBefore: number): void {
+    const gained = Math.round(e.def.score * this.multiplier * this.stats.scoreMult);
+    this.score += gained;
+    this.kills++;
+    this.events.emit(Ev.EnemyDied, e.pos.x, e.centerY, e.pos.z, ENEMY_TYPE_INDEX[e.def.type], gained);
+    if (this.stats.overkillHealPct > 0) {
+      const excess = damage - hpBefore;
+      if (excess > 0) {
+        this.player.heal(excess * this.stats.overkillHealPct);
+        this.events.emit(Ev.Heal, 0, 0, 0, excess * this.stats.overkillHealPct);
+      }
+    }
+    if (this.stats.adrenalineDuration > 0) this.player.adrenalineTimer = this.stats.adrenalineDuration;
+    if (this.stats.scavengerChance > 0 && Math.random() < this.stats.scavengerChance) {
+      this.weapon.ammo = Math.min(this.weapon.magSize(), this.weapon.ammo + VALUES.scavengerAmmo);
+    }
+    // Splitterschuss: kleine Projektile fächern horizontal aus der Leiche
+    if (this.stats.shatterCount > 0) {
+      _eye.x = e.pos.x;
+      _eye.y = e.centerY;
+      _eye.z = e.pos.z;
+      const offset = Math.random() * Math.PI * 2;
+      for (let i = 0; i < this.stats.shatterCount; i++) {
+        const a = offset + (i / this.stats.shatterCount) * Math.PI * 2;
+        _hitPoint.x = Math.sin(a);
+        _hitPoint.y = 0;
+        _hitPoint.z = Math.cos(a);
+        this.projectiles.spawn(true, _eye, _hitPoint, VALUES.shatterSpeed, VALUES.shatterLife, VALUES.shatterDamage);
+      }
+    }
+  }
+
+  /** Kettenblitz: 40% Schaden auf bis zu 3 Gegner im Umkreis der Quelle. */
+  private chainFrom(source: Enemy, damage: number): void {
+    const chainDamage = damage * VALUES.chainDamageFactor;
+    const rangeSq = VALUES.chainRange * VALUES.chainRange;
+    let jumps = 0;
+    for (const t of this.enemies.slots) {
+      if (t === source || !t.active || t.fsm === "death") continue;
+      const dx = t.pos.x - source.pos.x;
+      const dz = t.pos.z - source.pos.z;
+      if (dx * dx + dz * dz > rangeSq) continue;
+      const hpBefore = t.hp;
+      const killed = this.enemies.damage(t, chainDamage);
+      this.events.emit(Ev.ChainArc, t.pos.x, t.centerY, t.pos.z, source.pos.x, source.pos.z);
+      if (killed) this.onEnemyKilled(t, chainDamage, hpBefore);
+      if (++jumps >= VALUES.chainTargets) break;
     }
   }
 
@@ -290,13 +400,35 @@ export class Sim {
 
   // ---- Gegner-Callbacks ----
 
-  private damagePlayer = (amount: number, sourceX: number, sourceZ: number): void => {
-    // In Menü-Phasen (Upgrade-Wahl) ist der Spieler unverwundbar
+  private damagePlayer = (amount: number, sourceX: number, sourceZ: number, attacker?: Enemy): void => {
+    // In Menü-Phasen (Upgrade-Wahl) ist der Spieler unverwundbar,
+    // ebenso kurz nach einem Phoenix-Revive
     if (this.phase === "dead" || this.phase === "upgrade") return;
+    if (this.player.invulnTimer > 0) return;
+    // Dornen (Rare): Nahkampf-Angreifer erleiden einen Teil zurück
+    if (attacker && this.stats.thornsPct > 0) {
+      const thornsDamage = amount * this.stats.thornsPct;
+      const hpBefore = attacker.hp;
+      if (this.enemies.damage(attacker, thornsDamage)) {
+        this.onEnemyKilled(attacker, thornsDamage, hpBefore);
+      }
+    }
+    const taken = amount * this.stats.damageTakenMult; // Panzerung
     this.multiplier = 1;
-    this.damageTakenThisWave += amount;
-    const died = this.player.takeDamage(amount, sourceX, sourceZ, this.input.yaw, this.events);
+    this.damageTakenThisWave += taken;
+    const died = this.player.takeDamage(taken, sourceX, sourceZ, this.input.yaw, this.events);
     if (died) {
+      // Phoenix (Epic): 1x Selbst-Revive, VOR dem Ad-Revive
+      if (this.stats.phoenixCharges > 0) {
+        this.stats.phoenixCharges = 0;
+        this.upgrades.phoenixConsumed = true;
+        this.player.alive = true;
+        this.player.hp = VALUES.phoenixReviveHp;
+        this.player.sinceDamage = 0;
+        this.player.invulnTimer = VALUES.phoenixInvulnSeconds;
+        this.events.emit(Ev.PhoenixRevive);
+        return;
+      }
       this.phase = "dead";
       this.coinsEarned = Math.floor(this.score / COIN_DIVISOR);
     }

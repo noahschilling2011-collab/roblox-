@@ -161,6 +161,21 @@ export class Sfx {
     this.tone(784, 0.25, 0.22, "triangle", 0, 0.62);
   }
 
+  /** Kettenblitz-Sprung. */
+  zap(): void {
+    this.tone(2200, 0.06, 0.14, "square", 400);
+    this.noise(0.05, 7000, 0.1, 3);
+  }
+
+  /** Phoenix-Selbst-Revive. */
+  phoenix(): void {
+    this.tone(392, 0.12, 0.22, "triangle", 0, 0);
+    this.tone(523, 0.12, 0.22, "triangle", 0, 0.1);
+    this.tone(659, 0.12, 0.22, "triangle", 0, 0.2);
+    this.tone(1046, 0.35, 0.26, "triangle", 0, 0.3);
+    this.noise(0.5, 1200, 0.15, 0.9, 300);
+  }
+
   perfectWave(): void {
     this.tone(880, 0.09, 0.2, "triangle", 0, 0);
     this.tone(1108, 0.09, 0.2, "triangle", 0, 0.08);

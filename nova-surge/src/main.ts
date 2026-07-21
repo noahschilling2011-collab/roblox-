@@ -163,8 +163,24 @@ async function boot(): Promise<void> {
     sim.chooseUpgrade(i);
     sfx.upgradePicked();
   };
+  // Reroll: Coin-Sink IM Run — bucht vom Konto ab (Run-Coins kommen erst am Ende)
+  hud.onReroll = () => {
+    if (sim.phase !== "upgrade") return;
+    if (save.state.coins < sim.rerollCost) {
+      sfx.dryFire();
+      return;
+    }
+    save.state.coins -= sim.rerollCost;
+    save.save();
+    sim.reroll();
+    sfx.uiClick();
+  };
   document.addEventListener("keydown", (e) => {
     if (sim.phase !== "upgrade") return;
+    if (e.code === "KeyR") {
+      hud.onReroll();
+      return;
+    }
     const idx = e.code === "Digit1" ? 0 : e.code === "Digit2" ? 1 : e.code === "Digit3" ? 2 : -1;
     if (idx >= 0) {
       sim.chooseUpgrade(idx);
@@ -270,12 +286,27 @@ async function boot(): Promise<void> {
           }
           // Score-Popup an der Kill-Stelle
           const screen = projectToScreen(e.x, e.y + 1, e.z);
-          if (screen) hud.spawnPopup(screen.x, screen.y, `+${e.b}`, isBoss);
+          if (screen) hud.spawnPopup(screen.x, screen.y, `+${e.b}`, isBoss ? "big" : "normal");
           break;
         }
         case Ev.PerfectWave:
           hud.flashBanner(`PERFECT WAVE +${e.a}`, 2.2);
           sfx.perfectWave();
+          break;
+        case Ev.Crit: {
+          const s = projectToScreen(e.x, e.y + 0.6, e.z);
+          if (s) hud.spawnPopup(s.x, s.y, `${e.a}!`, "crit");
+          break;
+        }
+        case Ev.ChainArc:
+          tracers.spawn(e.a, e.y, e.b, e.x, e.y, e.z);
+          particles.burst(e.x, e.y, e.z, 0x9be8ff, 6, 4, 0.3, 0.05);
+          sfx.zap();
+          break;
+        case Ev.PhoenixRevive:
+          hud.flashBanner("🐦‍🔥 PHOENIX!", 2.2);
+          sfx.phoenix();
+          rig.notifyShake(0.5);
           break;
         case Ev.EnemyShot: {
           const d = Math.hypot(e.x - sim.player.pos.x, e.z - sim.player.pos.z);
@@ -375,7 +406,7 @@ async function boot(): Promise<void> {
       tracers.update(dt);
       projectileRenderer.update(sim.projectiles, alpha);
       drainEvents();
-      if (screens.mode === "playing") hud.update(dt, sim, isTouch);
+      if (screens.mode === "playing") hud.update(dt, sim, isTouch, save.state.coins);
       updateResolutionScale(dt, loop.getStats().fps);
       renderer.render(scene, camera);
       debugOverlay.update(loop, sim, renderer);

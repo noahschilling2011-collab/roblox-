@@ -13,7 +13,8 @@ export type EnemyFsm = "alert" | "attack" | "hitreact" | "death";
 export const ENEMY_TYPE_INDEX: Record<EnemyType, number> = { rusher: 0, shooter: 1, tank: 2, warden: 3 };
 
 export interface EnemyCallbacks {
-  damagePlayer(amount: number, sourceX: number, sourceZ: number): void;
+  /** attacker nur bei Nahkampf gesetzt (für Dornen-Upgrade). */
+  damagePlayer(amount: number, sourceX: number, sourceZ: number, attacker?: Enemy): void;
   spawnEnemyProjectile(origin: Vec3, dir: Vec3, speed: number, damage: number): void;
 }
 
@@ -284,7 +285,7 @@ export class EnemyManager {
           _target.z = playerPos.z;
           if (segmentClear(_eye, _target, solids)) {
             e.attackCooldown = d.meleeCooldown;
-            callbacks.damagePlayer(d.meleeDamage, e.pos.x, e.pos.z);
+            callbacks.damagePlayer(d.meleeDamage, e.pos.x, e.pos.z, e);
             events.emit(Ev.MeleeHit, e.pos.x, e.centerY, e.pos.z);
           }
         }

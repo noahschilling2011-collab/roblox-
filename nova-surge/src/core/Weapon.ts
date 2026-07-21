@@ -3,15 +3,11 @@
 // Projektil-Pool. Alle Zahlen kommen aus config/weapons.ts + Upgrade-Mods.
 
 import { WEAPONS, type WeaponDef, type WeaponId } from "../config/weapons";
+import { VALUES } from "../config/upgrades";
 import { damp, type Vec3, vec3 } from "./math";
 import type { InputState } from "./input";
 import { EventQueue, Ev } from "./events";
-
-export interface WeaponMods {
-  damageMult: number;
-  fireRateMult: number;
-  magSizeMult: number;
-}
+import { RunStats } from "./Stats";
 
 /** Callback der Sim: löst einen Hitscan-Strahl auf (Treffer + Events). */
 export type HitscanFn = (origin: Vec3, dir: Vec3, damage: number, range: number) => void;
@@ -30,7 +26,8 @@ export class Weapon {
   recoilPitch = 0;
   recoilYaw = 0;
   private prevFire = false;
-  mods: WeaponMods = { damageMult: 1, fireRateMult: 1, magSizeMult: 1 };
+  /** Zentrale Run-Stats (RC Phase 1) — von der Sim gesetzt. */
+  stats: RunStats = new RunStats();
 
   equip(id: WeaponId): void {
     this.def = WEAPONS[id];
@@ -44,7 +41,16 @@ export class Weapon {
   }
 
   magSize(): number {
-    return Math.round(this.def.magSize * this.mods.magSizeMult);
+    return Math.round(this.def.magSize * this.stats.magSizeMult);
+  }
+
+  /** Effektive Feuerrate/Reload inkl. Last Stand (unter 30% HP). */
+  private fireRateFactor(): number {
+    return this.stats.fireRateMult * (this.stats.laststandActive ? 1 + this.stats.laststandBonus : 1);
+  }
+
+  private reloadFactor(): number {
+    return this.stats.reloadMult / (this.stats.laststandActive ? 1 + this.stats.laststandBonus : 1);
   }
 
   isReloading(): boolean {
@@ -76,8 +82,8 @@ export class Weapon {
     if (input.reloadQueued) {
       input.reloadQueued = false;
       if (this.reloadTimer === 0 && this.ammo < this.magSize()) {
-        this.reloadTimer = this.def.reloadTime;
-        events.emit(Ev.ReloadStart, 0, 0, 0, this.def.reloadTime);
+        this.reloadTimer = this.def.reloadTime * this.reloadFactor();
+        events.emit(Ev.ReloadStart, 0, 0, 0, this.reloadTimer);
       }
     }
 
@@ -88,22 +94,25 @@ export class Weapon {
     if (this.ammo <= 0) {
       events.emit(Ev.DryFire);
       // Auto-Reload bei leerem Magazin (Komfort, besonders Mobile)
-      this.reloadTimer = this.def.reloadTime;
-      events.emit(Ev.ReloadStart, 0, 0, 0, this.def.reloadTime);
+      this.reloadTimer = this.def.reloadTime * this.reloadFactor();
+      events.emit(Ev.ReloadStart, 0, 0, 0, this.reloadTimer);
       return;
     }
 
     // --- Schuss ---
     this.ammo--;
-    this.fireCooldown = this.def.fireInterval / this.mods.fireRateMult;
-    const damage = this.def.damage * this.mods.damageMult;
+    this.fireCooldown = this.def.fireInterval / this.fireRateFactor();
+    const damage = this.def.damage * this.stats.damageMult;
     const aimPitch = input.pitch + this.recoilPitch;
     const aimYaw = input.yaw + this.recoilYaw;
+    // Twin Link (Epic): +1 Projektil/Strahl, dafür mehr Streuung
+    const pellets = this.def.pellets + this.stats.extraProjectiles;
+    const effSpread = this.spread * (1 + VALUES.twinlinkSpreadPenalty * this.stats.extraProjectiles);
 
-    for (let p = 0; p < this.def.pellets; p++) {
+    for (let p = 0; p < pellets; p++) {
       // Streuung: gleichverteilt im Kegel
       const angle = Math.random() * Math.PI * 2;
-      const radius = Math.sqrt(Math.random()) * this.spread;
+      const radius = Math.sqrt(Math.random()) * effSpread;
       const offPitch = aimPitch + Math.sin(angle) * radius;
       const offYaw = aimYaw + Math.cos(angle) * radius;
       const cp = Math.cos(offPitch);

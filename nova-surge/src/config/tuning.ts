@@ -38,3 +38,17 @@ export const RUN = {
   waveBreak: 5.0, // Pause zwischen Wellen
   perfectWaveBonus: 500, // Welle ohne eigenen Schaden
 } as const;
+
+// Combo-Verfall (RC Phase 1): Multiplikator hält N Sekunden nach dem letzten
+// Treffer, dann sanfter Abbau Richtung ×1. Macht "Flow State" sinnvoll und
+// belohnt Dauerdruck (Ziel-Metrik: Session-Länge).
+export const COMBO = {
+  holdSeconds: 4.0,
+  decayPerSecond: 0.5,
+} as const;
+
+// Reroll der Upgrade-Wahl: Coin-Sink IM Run (füttert Rewarded "Coins ×2").
+export const REROLL = {
+  baseCost: 10,
+  costMultiplier: 2, // verdoppelt sich pro Nutzung im selben Run
+} as const;

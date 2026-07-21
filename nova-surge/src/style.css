@@ -215,6 +215,37 @@ body {
   font: inherit;
 }
 .upgrade-card:hover { border-color: #7dd3ff; background: rgba(30, 38, 54, 0.98); }
+
+/* Rarity-Stufen (RC Phase 1): Rahmen + dezenter Glow */
+.upgrade-card.rare {
+  border-color: rgba(80, 150, 255, 0.75);
+  box-shadow: 0 0 12px rgba(80, 150, 255, 0.35);
+}
+.upgrade-card.epic {
+  border-color: rgba(255, 200, 60, 0.85);
+  box-shadow: 0 0 16px rgba(255, 200, 60, 0.45);
+}
+.upgrade-card .uc-rarity {
+  display: block;
+  margin-top: 6px;
+  font-size: 0.68rem;
+  letter-spacing: 0.16em;
+  color: #9fb0c8;
+}
+.upgrade-card.rare .uc-rarity { color: #6ea8ff; }
+.upgrade-card.epic .uc-rarity { color: #ffc83c; }
+
+#btn-reroll {
+  padding: 9px 22px;
+  border-radius: 9px;
+  border: 1px solid rgba(255, 210, 125, 0.5);
+  background: rgba(40, 34, 18, 0.9);
+  color: #ffd27d;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+#btn-reroll:disabled { opacity: 0.45; cursor: default; }
 .upgrade-card .uc-icon { font-size: 1.8rem; }
 .upgrade-card .uc-name { font-weight: 800; margin-top: 8px; }
 .upgrade-card .uc-desc { font-size: 0.85rem; color: #9fb0c8; margin-top: 4px; }
@@ -398,6 +429,10 @@ body {
 .score-popup.big {
   color: #ff8b3d;
   font-size: 1.5rem;
+}
+.score-popup.crit {
+  color: #ffe14d;
+  font-size: 1.15rem;
 }
 .score-popup.fly {
   animation: popup-fly 0.8s ease-out forwards;
