@@ -3,7 +3,7 @@ import "./style.css";
 import { Sfx } from "./audio/Sfx";
 import { ENEMIES, type EnemyType } from "./config/enemies";
 import { DEBUG_ARENA, getArena, type ArenaDef } from "./config/arena";
-import { COIN_DIVISOR, COLOR_SCHEMES } from "./config/meta";
+import { COIN_DIVISOR, COLOR_SCHEMES, PERK_VALUES } from "./config/meta";
 import { EVENT_RULES, WAVE_EVENTS, type WaveEventId } from "./config/waves";
 import { Keyboard } from "./controls/Keyboard";
 import { LookControls } from "./controls/LookControls";
@@ -45,6 +45,7 @@ async function boot(): Promise<void> {
   const input = createInput();
   const sim = new Sim(input);
   const save = new SaveData();
+  save.cloud = sdk.dataStore; // CrazyGames-Data-Modul als Primär-Save (RC Phase 3)
   save.load();
 
   const sfx = new Sfx();
@@ -68,7 +69,9 @@ async function boot(): Promise<void> {
   function grantRunRewards(): void {
     if (rewardsGranted) return;
     rewardsGranted = true;
-    const coins = sim.phase === "dead" ? sim.coinsEarned : Math.floor(sim.score / COIN_DIVISOR);
+    const base = sim.phase === "dead" ? sim.coinsEarned : Math.floor(sim.score / COIN_DIVISOR);
+    // Schatzsucher-Perk: +6% Coins pro Stufe
+    const coins = Math.round(base * (1 + PERK_VALUES.treasurePerLevel * save.state.perks.treasure));
     save.state.coins += coins;
     save.state.runsPlayed++;
     if (sim.score > save.state.highscore) save.state.highscore = sim.score;
@@ -92,7 +95,7 @@ async function boot(): Promise<void> {
       coinsDoubled = false;
       wasNewHighscore = false;
       rewardsGranted = false;
-      sim.startRun(save.state.selectedWeapon, getArena(save.state.selectedArena));
+      sim.startRun(save.state.selectedWeapon, getArena(save.state.selectedArena), save.state.perks);
       applyCosmetics();
       screens.enterPlaying();
     },

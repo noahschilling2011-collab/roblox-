@@ -437,6 +437,7 @@ body {
 .select-item.selected { border-color: #7dd3ff; background: rgba(125, 211, 255, 0.14); }
 .select-item.locked { opacity: 0.75; }
 .select-item.locked .sub { color: #ffd27d; }
+.select-item .perk-stars { color: #ffd27d; font-size: 0.72rem; letter-spacing: 1px; }
 
 #autofire-row,
 #music-row {

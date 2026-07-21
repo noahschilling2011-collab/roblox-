@@ -2,6 +2,8 @@
 // Wellen-Skalierung, komplette Stats-Neuberechnung bei jeder Wahl.
 
 import { DRAFT, UPGRADES, UPGRADE_CHOICES, VALUES, type Rarity, type UpgradeId } from "../config/upgrades";
+import { PERK_VALUES } from "../config/meta";
+import type { PerkLevels } from "../meta/SaveData";
 import type { Player } from "./Player";
 import type { RunStats } from "./Stats";
 import type { Weapon } from "./Weapon";
@@ -12,6 +14,8 @@ export class UpgradeState {
   readonly counts = new Map<UpgradeId, number>();
   /** Phoenix ist 1x pro Run — nach Verbrauch darf recompute() ihn nicht zurückgeben. */
   phoenixConsumed = false;
+  /** Account-Perk-Stufen (RC Phase 3), von der Sim beim Run-Start gesetzt. */
+  perks: PerkLevels | null = null;
 
   reset(): void {
     this.counts.clear();
@@ -98,6 +102,12 @@ export class UpgradeState {
     stats.bullettimeEnabled = c("bullettime") > 0;
     stats.phoenixCharges = this.count("phoenix") > 0 && !this.phoenixConsumed ? 1 : 0;
     stats.hasDoubleJump = c("doublejump") > 0;
+
+    // Account-Perks: multiplikativ auf die In-Run-Werte (bewusst schwächer)
+    if (this.perks) {
+      stats.magSizeMult *= 1 + PERK_VALUES.ammodepotPerLevel * this.perks.ammodepot;
+      stats.moveSpeedMult *= 1 + PERK_VALUES.sprinterPerLevel * this.perks.sprinter;
+    }
 
     // Spieler-Felder synchronisieren (Player liest nicht direkt aus Stats)
     player.speedMult = stats.moveSpeedMult;

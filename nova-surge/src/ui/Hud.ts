@@ -3,7 +3,6 @@
 // Upgrade-Wahl. Alles DOM/CSS — billig, scharf, identisch auf Mobile.
 
 import { UPGRADES, type UpgradeId } from "../config/upgrades";
-import { PLAYER } from "../config/tuning";
 import type { Sim } from "../core/Sim";
 
 const el = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T;
@@ -112,14 +111,14 @@ export class Hud {
 
     // Vignette: aufblitzen, dann abklingen; bei wenig HP dauerhaft sichtbar
     this.vignetteLevel = Math.max(0, this.vignetteLevel - dt * 2.2);
-    const lowHp = sim.player.hp < PLAYER.maxHp * 0.3 ? 0.45 : 0;
+    const lowHp = sim.player.hp < sim.player.maxHp * 0.3 ? 0.45 : 0;
     this.vignette.style.opacity = String(Math.min(1, Math.max(this.vignetteLevel, lowHp)));
 
     this.dmgTimer -= dt;
     this.dmgIndicator.style.opacity = this.dmgTimer > 0 ? "1" : "0";
 
     // HP
-    const hpFrac = sim.player.hp / PLAYER.maxHp;
+    const hpFrac = sim.player.hp / sim.player.maxHp;
     this.hpFill.style.width = `${(hpFrac * 100).toFixed(1)}%`;
     this.hpFill.classList.toggle("low", hpFrac < 0.3);
 

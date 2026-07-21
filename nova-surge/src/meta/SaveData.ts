@@ -1,8 +1,11 @@
-// Persistenz in localStorage (Phase 4): Münzen, Unlocks, Highscore,
-// Einstellungen. Ein Schema mit Version für spätere Migrationen.
+// Persistenz (RC Phase 3): Schema v2 mit Perks. Primär-Save ist das
+// CrazyGames-Data-Modul (Cloud, überlebt iFrame-/Cookie-Clear), localStorage
+// als Fallback und Spiegel. Migration v1 -> v2 verlustfrei.
 
-import { SAVE_KEY, SAVE_SCHEMA_VERSION } from "../config/meta";
+import { PERK_MAX_LEVEL, SAVE_KEY, SAVE_SCHEMA_VERSION, type PerkId } from "../config/meta";
 import { STARTING_WEAPON, type WeaponId } from "../config/weapons";
+
+export type PerkLevels = Record<PerkId, number>;
 
 export interface SaveState {
   schemaVersion: number;
@@ -18,6 +21,11 @@ export interface SaveState {
   /** Mobile-Feuermodus: true = Auto-Fire, false = Feuer-Button (Phase 5). */
   autoFire: boolean;
   musicOn: boolean;
+  perks: PerkLevels;
+}
+
+function defaultPerks(): PerkLevels {
+  return { vitality: 0, kickstart: 0, treasure: 0, ammodepot: 0, sprinter: 0 };
 }
 
 function defaults(): SaveState {
@@ -34,28 +42,77 @@ function defaults(): SaveState {
     selectedArena: "foundry",
     autoFire: true,
     musicOn: true,
+    perks: defaultPerks(),
   };
+}
+
+/** v1 (und fehlende Felder generell) -> v2: Defaults mischen, Perks ergänzen. */
+function migrate(parsed: Partial<SaveState>): SaveState {
+  const merged: SaveState = { ...defaults(), ...parsed };
+  merged.perks = { ...defaultPerks(), ...(parsed.perks ?? {}) };
+  // Perk-Stufen absichern (defekte Saves können nichts kaputt machen)
+  for (const key of Object.keys(merged.perks) as PerkId[]) {
+    merged.perks[key] = Math.max(0, Math.min(PERK_MAX_LEVEL, Math.floor(merged.perks[key] ?? 0)));
+  }
+  merged.schemaVersion = SAVE_SCHEMA_VERSION;
+  return merged;
+}
+
+/** Externe Save-Quelle (CrazyGames-Data-Modul) — synchron, localStorage-artig. */
+export interface CloudStore {
+  getItem(key: string): string | null;
+  setItem(key: string, value: string): void;
 }
 
 export class SaveData {
   state: SaveState = defaults();
+  /** Wird von main gesetzt, wenn das SDK verfügbar ist. */
+  cloud: CloudStore | null = null;
 
   load(): void {
+    // Priorität: Cloud (SDK) > localStorage > Defaults
+    const raw = this.readRaw();
+    if (!raw) return;
     try {
-      const raw = localStorage.getItem(SAVE_KEY);
-      if (!raw) return;
-      const parsed = JSON.parse(raw) as Partial<SaveState>;
-      // Defaults + gespeicherte Werte mischen (robust gegen fehlende Felder)
-      this.state = { ...defaults(), ...parsed };
+      this.state = migrate(JSON.parse(raw) as Partial<SaveState>);
     } catch {
-      // Defekter/blockierter Storage: mit Defaults weiterspielen
       this.state = defaults();
     }
   }
 
-  save(): void {
+  private readRaw(): string | null {
+    if (this.cloud) {
+      try {
+        const cloudRaw = this.cloud.getItem(SAVE_KEY);
+        if (cloudRaw) return cloudRaw;
+      } catch {
+        // SDK-Störung: auf localStorage zurückfallen
+      }
+    }
     try {
-      localStorage.setItem(SAVE_KEY, JSON.stringify(this.state));
+      return localStorage.getItem(SAVE_KEY);
+    } catch {
+      return null;
+    }
+  }
+
+  save(): void {
+    let raw: string;
+    try {
+      raw = JSON.stringify(this.state);
+    } catch {
+      return;
+    }
+    // In BEIDE Ziele schreiben (Cloud primär, localStorage als Spiegel)
+    if (this.cloud) {
+      try {
+        this.cloud.setItem(SAVE_KEY, raw);
+      } catch {
+        // Cloud-Störung: localStorage reicht als Fallback
+      }
+    }
+    try {
+      localStorage.setItem(SAVE_KEY, raw);
     } catch {
       // Storage voll/blockiert (Inkognito): Spiel läuft ohne Persistenz weiter
     }

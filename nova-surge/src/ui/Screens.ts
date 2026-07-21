@@ -4,7 +4,7 @@
 // Pause-Button die Modi.
 
 import { ARENAS } from "../config/arena";
-import { COLOR_SCHEMES, WEAPON_PRICES } from "../config/meta";
+import { COLOR_SCHEMES, PERKS, PERK_MAX_LEVEL, PERK_PRICES, WEAPON_PRICES, type PerkId } from "../config/meta";
 import { WEAPONS, type WeaponId } from "../config/weapons";
 import type { SaveData } from "../meta/SaveData";
 
@@ -39,6 +39,7 @@ export class Screens {
   private readonly mapRow = el<HTMLDivElement>("map-select");
   private readonly weaponRow = el<HTMLDivElement>("weapon-select");
   private readonly schemeRow = el<HTMLDivElement>("scheme-select");
+  private readonly perkRow = el<HTMLDivElement>("perk-select");
   private readonly autofireRow = el<HTMLLabelElement>("autofire-row");
   private readonly autofireToggle = el<HTMLInputElement>("autofire-toggle");
   private readonly musicToggle = el<HTMLInputElement>("music-toggle");
@@ -195,6 +196,7 @@ export class Screens {
     this.buildMapRow();
     this.buildWeaponRow();
     this.buildSchemeRow();
+    this.buildPerkRow();
   }
 
   private buildMapRow(): void {
@@ -278,6 +280,37 @@ export class Screens {
       });
       this.schemeRow.append(btn);
     }
+  }
+
+  /** Account-Perks (RC Phase 3): Klick kauft die nächste Stufe, wirkt ab dem
+   *  nächsten Run. Preise pro Stufe aus PERK_PRICES, Stufe 5 = MAX. */
+  private buildPerkRow(): void {
+    const s = this.save.state;
+    this.perkRow.replaceChildren();
+    (Object.keys(PERKS) as PerkId[]).forEach((id) => {
+      const def = PERKS[id];
+      const level = s.perks[id];
+      const maxed = level >= PERK_MAX_LEVEL;
+      const price = maxed ? 0 : PERK_PRICES[level]!;
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "select-item";
+      if (level > 0) btn.classList.add("selected");
+      if (!maxed && s.coins < price) btn.classList.add("locked");
+      const stars = "★".repeat(level) + "☆".repeat(PERK_MAX_LEVEL - level);
+      btn.innerHTML =
+        `${def.icon} ${def.name} <span class="perk-stars">${stars}</span>` +
+        `<span class="sub">${def.desc}${maxed ? " · MAX" : ` · 🪙 ${price} — tap to buy`}</span>`;
+      btn.addEventListener("click", () => {
+        if (maxed || s.coins < price) return;
+        s.coins -= price;
+        s.perks[id] = level + 1;
+        this.save.save();
+        this.cb.onUiClick();
+        this.refreshHome();
+      });
+      this.perkRow.append(btn);
+    });
   }
 }
 

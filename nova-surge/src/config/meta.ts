@@ -33,5 +33,34 @@ export const COLOR_SCHEMES: ColorScheme[] = [
   { id: "goldrush", name: "Gold Rush", price: 250, body: 0x201d16, accent: 0xffc93a, hands: 0x3c342a },
 ];
 
+// ---- Account-Perks (RC Phase 3): permanenter Coin-Sink, bewusst schwächer
+// als In-Run-Upgrades. Vollausbau ≈ 19.250 Coins ≈ 15–20 gute Late-Runs.
+export type PerkId = "vitality" | "kickstart" | "treasure" | "ammodepot" | "sprinter";
+
+export interface PerkDef {
+  id: PerkId;
+  name: string;
+  desc: string; // EN, {n} = Stufenzahl
+  icon: string;
+}
+
+export const PERKS: Record<PerkId, PerkDef> = {
+  vitality: { id: "vitality", name: "Vitality", desc: "+10 max HP per level", icon: "❤️" },
+  kickstart: { id: "kickstart", name: "Kickstart", desc: "Start runs with free upgrades", icon: "🎁" },
+  treasure: { id: "treasure", name: "Treasure Hunter", desc: "+6% coins per level", icon: "🪙" },
+  ammodepot: { id: "ammodepot", name: "Ammo Depot", desc: "+8% mag size per level", icon: "📦" },
+  sprinter: { id: "sprinter", name: "Sprinter", desc: "+3% move speed per level", icon: "💨" },
+};
+
+export const PERK_MAX_LEVEL = 5;
+export const PERK_PRICES = [100, 250, 500, 1000, 2000]; // Stufe 1..5
+
+export const PERK_VALUES = {
+  vitalityHpPerLevel: 10,
+  treasurePerLevel: 0.06,
+  ammodepotPerLevel: 0.08,
+  sprinterPerLevel: 0.03,
+} as const;
+
 export const SAVE_KEY = "nova-surge-save-v1";
-export const SAVE_SCHEMA_VERSION = 1;
+export const SAVE_SCHEMA_VERSION = 2;

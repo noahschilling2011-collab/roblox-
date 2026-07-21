@@ -23,6 +23,10 @@ interface CrazySdkV3 {
   ad: {
     requestAd(type: "midgame" | "rewarded", callbacks: SdkAdCallbacks): void;
   };
+  data: {
+    getItem(key: string): string | null;
+    setItem(key: string, value: string): void;
+  };
 }
 
 declare global {
@@ -47,6 +51,11 @@ export class CrazySdk {
   /** true, wenn Ads angeboten werden können (SDK vorhanden). */
   get available(): boolean {
     return this.sdk !== null;
+  }
+
+  /** CrazyGames-Data-Modul (Cloud-Save) — null ohne SDK. */
+  get dataStore(): { getItem(key: string): string | null; setItem(key: string, value: string): void } | null {
+    return this.sdk?.data ?? null;
   }
 
   /** Vor dem Laden des Spiels aufrufen. Lädt das SDK nur in CG-Umgebung. */

@@ -3,6 +3,9 @@
 // Rendering — die Präsentation liest Zustand + Events.
 
 import { COMBO, PLAYER, REROLL, RUN } from "../config/tuning";
+import { PERK_VALUES } from "../config/meta";
+import { UPGRADES } from "../config/upgrades";
+import type { PerkLevels } from "../meta/SaveData";
 import { EVENT_RULES, isBossWave, type WaveEventId } from "../config/waves";
 import { ELITE_RULES } from "../config/enemies";
 import { ARENAS, type ArenaDef } from "../config/arena";
@@ -91,12 +94,17 @@ export class Sim {
     this.world = buildCollisionWorld(arena);
   }
 
-  startRun(weaponId: WeaponId, arena: ArenaDef): void {
+  startRun(weaponId: WeaponId, arena: ArenaDef, perks: PerkLevels | null = null): void {
     this.setArena(arena);
+    // Vitality-Perk: Max-HP vor dem Reset setzen
+    this.player.maxHp = PLAYER.maxHp + (perks ? PERK_VALUES.vitalityHpPerLevel * perks.vitality : 0);
     this.player.reset(arena.playerSpawn);
     this.upgrades.reset();
+    this.upgrades.perks = perks;
     this.upgrades.recompute(this.stats, this.player);
     this.weapon.equip(weaponId);
+    // Kickstart-Perk: Gratis-Upgrades zum Run-Start (Stufe 1-5)
+    if (perks && perks.kickstart > 0) this.grantKickstart(perks.kickstart);
     this.enemies.clear();
     this.projectiles.clear();
     this.spawner.clear();
@@ -116,6 +124,21 @@ export class Sim {
     this.reviveUsed = false;
     this.phase = "prewave";
     this.phaseTimer = RUN.firstWaveDelay;
+  }
+
+  /** Kickstart: Stufen 1/2/4 = zufälliges Common, Stufen 3/5 = zufälliges Rare. */
+  private grantKickstart(level: number): void {
+    const ids = Object.keys(UPGRADES) as UpgradeId[];
+    const pick = (rarity: "common" | "rare"): void => {
+      const pool = ids.filter((id) => {
+        const def = UPGRADES[id];
+        return def.rarity === rarity && !(def.unique && this.upgrades.count(id) > 0);
+      });
+      const id = pool[Math.floor(Math.random() * pool.length)];
+      if (id) this.upgrades.apply(id, this.weapon, this.player, this.stats);
+    };
+    const plan: ("common" | "rare")[] = ["common", "common", "rare", "common", "rare"];
+    for (let i = 0; i < Math.min(level, plan.length); i++) pick(plan[i]!);
   }
 
   quitToMenu(): void {
@@ -218,7 +241,7 @@ export class Sim {
     }
 
     // Dynamische Stats: Last Stand (unter 30% HP)
-    this.stats.laststandActive = p.alive && p.hp < PLAYER.maxHp * VALUES.laststandHpThreshold;
+    this.stats.laststandActive = p.alive && p.hp < p.maxHp * VALUES.laststandHpThreshold;
 
     // Combo-Verfall: nach Haltezeit sinkt der Multiplikator Richtung ×1
     this.sinceLastHit += dt;
@@ -304,7 +327,7 @@ export class Sim {
       damage *= 2;
       this.events.emit(Ev.Crit, e.pos.x, e.centerY, e.pos.z, Math.round(damage));
     }
-    if (this.stats.coldbloodBonus > 0 && this.player.hp >= PLAYER.maxHp - 0.01) {
+    if (this.stats.coldbloodBonus > 0 && this.player.hp >= this.player.maxHp - 0.01) {
       damage *= 1 + this.stats.coldbloodBonus;
     }
     const hpBefore = e.hp;

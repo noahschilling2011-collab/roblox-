@@ -12,6 +12,8 @@ export class Player {
   readonly prevPos: Vec3 = vec3(0, 0, 12);
   readonly vel: Vec3 = vec3();
   hp: number = PLAYER.maxHp;
+  /** Effektives Max-HP (Basis + Vitality-Perk), von der Sim gesetzt. */
+  maxHp: number = PLAYER.maxHp;
   alive = true;
   onGround = true;
   sprinting = false;
@@ -37,7 +39,7 @@ export class Player {
     this.prevPos.y = this.pos.y;
     this.prevPos.z = this.pos.z;
     this.vel.x = this.vel.y = this.vel.z = 0;
-    this.hp = PLAYER.maxHp;
+    this.hp = this.maxHp;
     this.alive = true;
     this.onGround = true;
     this.sinceDamage = 999;
@@ -116,8 +118,8 @@ export class Player {
 
     // Regeneration
     this.sinceDamage += dt;
-    if (this.sinceDamage > PLAYER.regenDelay && this.hp < PLAYER.maxHp) {
-      this.hp = Math.min(PLAYER.maxHp, this.hp + PLAYER.regenPerSecond * dt);
+    if (this.sinceDamage > PLAYER.regenDelay && this.hp < this.maxHp) {
+      this.hp = Math.min(this.maxHp, this.hp + PLAYER.regenPerSecond * dt);
     }
   }
 
@@ -144,6 +146,6 @@ export class Player {
   }
 
   heal(amount: number): void {
-    this.hp = clamp(this.hp + amount, 0, PLAYER.maxHp);
+    this.hp = clamp(this.hp + amount, 0, this.maxHp);
   }
 }

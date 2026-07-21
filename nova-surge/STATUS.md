@@ -1,23 +1,71 @@
 # Nova Surge — Projektstand
 
-## ⏸ MULTI-LEVEL-MAPS-PLAN: Phase 0 (Audit) fertig — WARTE AUF FREIGABE
-Neuer Plan von Noah (Yacht 3 Ebenen, Mall 2 Etagen + Geheimräume).
-- **Audit-Ergebnis (Details in ARCHITEKTUR.md):** Zwei Plan-Annahmen sind
-  falsch — die Engine kann bereits: auf Box-Oberseiten stehen, Decken-
-  Kollision, Fallen, komplett 3D-korrekte LOS/Hitscan/Projektile.
-  Wirklich fehlend: `y`-Basis im Box-Format, Step-Height, Treppen-Generator
-  (= geschrumpfte Phase 1) und der komplette Waypoint-Graph (= Phase 2,
-  unverändert der Hauptbrocken). Gemäß Plan-Regel („bei abweichendem Audit:
-  stoppen, melden, Plan anpassen lassen") → **Freigabe für den angepassten
-  Phasen-Zuschnitt nötig.**
+## ⏸ AKTUELL (2026-07-21): ML Phase 1 ✅ + RC Phase 3 ✅ — WARTE AUF FREIGABE
+Auf „Mach weiter 2 und 3" wurden (wie angekündigt) **Multi-Level Phase 1**
+und **RC Phase 3** nacheinander gebaut, jeweils mit eigener DoD-Suite und
+eigenem Commit. **Nächster Schritt braucht Freigabe:** Multi-Level Phase 2
+(Waypoint-Graph/A* — der Hauptbrocken) und/oder RC Phase 4
+(Release-Checkliste). Details zu beiden fertigen Phasen unten.
+
+### Multi-Level Phase 1 ✅ — Verticality-Fundament (Engine)
+- **Datenformat:** `ArenaBox.y` (Basis-Höhe, optional, Default 0) und
+  `stairs`-Einträge `{from:[x,z,y], to:[x,z,y], width}` — der Generator
+  `expandStairs()` macht daraus solide Stufen-Boxen (Steigung ≤0,3 m).
+  Nichts pro Map hardcodiert, alles Config.
+- **Kollision:** Boxen tragen `minY/maxY`; **Step-Height 0,35 m** — kleine
+  Absätze/Stufen gleitet man hoch ohne zu springen; Decken-Kollision und
+  Stehen auf Oberseiten gab es schon (Audit).
+- **DEBUG_ARENA** (nicht im Menü) mit Plattform y=3 + Treppe als Engine-
+  Prüfstand; `window.__ns.debugArena` fürs Testen.
+- **DoD 5/5** (verify-ml1.mjs): Treppe hochlaufen ohne Sprung ✓, auf
+  Plattform y=3 stehen ✓, unter Plattform durchlaufen (Decke stoppt
+  Sprung) ✓, Gegner-LOS durch Plattform blockiert ✓, Regression alle
+  5 Arenen 8/8 ✓. Zwei anfängliche Test-Fails waren Testdesign-Fehler
+  (Bot lief über die Plattform hinaus; Gegner bekam am Plattformrand
+  legitime Sichtlinie), nicht Engine-Fehler.
+
+### RC Phase 3 ✅ — Permanente Ökonomie (Perks + Cloud-Save)
+- **5 Account-Perks** (`config/meta.ts`), je 5 Stufen, Preise pro Stufe
+  100/250/500/1000/2000 (Vollausbau 19.250 Coins):
+  ❤️ Vitality +10 max HP/Stufe · 🎁 Kickstart Gratis-Upgrades zum Run-Start
+  (Stufe n = n Stück; 3./5. sind Rare) · 🪙 Treasure Hunter +6 % Coins/Stufe ·
+  📦 Ammo Depot +8 % Magazin/Stufe · 💨 Sprinter +3 % Tempo/Stufe.
+  Kauf im Hauptmenü (neue PERKS-Reihe, Sterne-Anzeige, MAX-Label).
+  Metrik-Begründung: permanenter Coin-Sink → Grind-Ziel über Runs hinweg →
+  D1-Retention; Coins wertvoller → Rewarded „Coins ×2" attraktiver.
+- **Save-Schema v2 + Migration:** `schemaVersion` 2, v1-Saves werden
+  verlustfrei migriert (alle Felder erhalten, Perks ergänzt), defekte
+  Werte werden geklemmt (Stufe 99 → 5, −3 → 0), kaputtes JSON → Defaults.
+- **CrazyGames-Data-Modul als Primär-Save:** Priorität Cloud > localStorage
+  beim Lesen, Schreiben immer in BEIDE (localStorage als Spiegel/Fallback).
+  SDK-Störungen werfen nie — überall try/catch. Außerhalb von CrazyGames
+  (lokal/itch) läuft alles unverändert über localStorage.
+- **F3 zeigt Wirkstats** (dmg×/mag×/spd× + hp/maxHp) — Perk-Wirkung ist
+  am Gerät nachprüfbar.
+- **DoD 18/18** (verify-rc3.mjs): Migration verlustfrei ✓, Klemmung ✓,
+  UI-Kauf inkl. „zu teuer"-Fall + Sofort-Persistenz ✓, alle 5 Perks
+  nachweisbar wirksam (150 HP, Magazin 30→42, Speed ×1,15, 5 Kickstart-
+  Upgrades, 600 Score → 13 statt 10 Coins) ✓, recompute idempotent ✓,
+  Reload-Persistenz ✓, Cloud-Vorrang + Doppel-Schreiben + SDK-Ausfall-
+  Fallback (simuliertes Data-Modul) ✓, Konsole sauber ✓.
+- **Plan-Abweichung (dokumentiert):** Kickstart vergibt ZUFÄLLIGE
+  Commons/Rares statt einer festen Wahl — bewusst simpel gehalten, damit
+  kein zweiter Draft-UI-Fluss vor Run-Start nötig ist.
+- **Regression:** Bot-Vollrun 12/13 — einziger Fail ist die Bot-Run-Länge
+  (88 s < Zielfenster 120 s): der zufalls-strafende Bot stirbt am
+  Welle-5-Warden. Kein RC3-Effekt (alle Perks 0 im Testlauf); bekanntes
+  Bot-vs-Boss-Thema seit dem Elite-Update → gehört in den Balance-Pass
+  (ML Phase 5 / RC Phase 4) + Noahs echten Playtest.
+
+### Multi-Level-Plan: Audit-Ergebnis (Phase 0, unverändert gültig)
+- Zwei Plan-Annahmen waren falsch — die Engine konnte bereits: auf
+  Box-Oberseiten stehen, Decken-Kollision, Fallen, 3D-korrekte
+  LOS/Hitscan/Projektile. Wirklich gefehlt: y-Basis, Step-Height,
+  Treppen (= Phase 1, jetzt ✅) und der Waypoint-Graph (= Phase 2, offen).
 - **Baseline:** Yacht 46 Draws / Mall 50 Draws (Budget <150), Sim 60/s.
-- **Reihenfolge-Hinweis:** RC-Plan Phasen 3–4 (Account-Perks, Save-Migration
-  aufs CrazyGames-Data-Modul, Release-Checkliste) sind noch OFFEN. Annahme:
-  Multi-Level-Plan zuerst (neueste Anweisung), RC 3–4 danach vor der
-  Submission. Bitte widersprechen, falls andersherum gewollt.
-- **Synergie-Notiz:** Das Pickup-System aus Map-Phase 4b liefert nachträglich
-  die Basis für „Magnetfeld"-Upgrade und echte Heavy-Duty-Drops (RC-Plan) —
-  vermerkt unter „Nach Release"-Kandidaten bzw. RC-Rückkehr.
+- **Synergie-Notiz:** Das Pickup-System aus Map-Phase 4b liefert später
+  die Basis für „Magnetfeld"-Upgrade und echte Heavy-Duty-Drops —
+  vermerkt als „Nach Release"-Kandidat.
 
 ## RC Phase 2 ✅ (DoD erfüllt) — Wave-Director
 **DoD-Suite 15/16:** Elite-Tint + Stats (Armored 2,5×HP/0,75×Speed) ✓,
@@ -38,9 +86,9 @@ Elite-Score-Boni + Gold Rush → Score-Jagd → Retention.
 Seiten-Zustand) — behoben durch Reload-Isolation; in zwei Fällen bestätigte
 ein sauberer Einzel-Repro die korrekte Spiellogik.
 
-## ⏸ RELEASE-CANDIDATE-PLAN: Phase 1 fertig — WARTE AUF FREIGABE für Phase 2
+## RELEASE-CANDIDATE-PLAN: Phasen 0–3 ✅ — offen ist nur noch Phase 4
 Arbeitsmodus laut `RELEASE-PLAN.md`: Phasen strikt sequenziell mit
-Freigabe-Stopp nach jeder Phase.
+Freigabe-Stopp nach jeder Phase. (Phase 3 siehe oben im Aktuell-Block.)
 
 ### Phase 0 ✅ (DoD erfüllt)
 `ARCHITEKTUR.md` erstellt, alle Diagnose-Zahlen verifiziert (Korrekturen:
@@ -70,7 +118,7 @@ Freigegeben von Noah mit den 3 Design-Entscheidungen aus ARCHITEKTUR.md.
 - **Nächster Schritt:** Freigabe durch Noah → Phase 2 (Wave-Director:
   Elites, Wave-Events, Boss-Inszenierung).
 
-Letzte Session: 2026-07-20 · Stand: **Phasen 0–6 komplett + Content-Update** ·
+Letzte Session: 2026-07-21 · Stand: **Phasen 0–6 komplett + Content-Update** ·
 Code-seitige Gates bestanden, manuelle Checks für Noah unten.
 
 ## Content-Update (nach Phase 6, auf Noahs Wunsch)
