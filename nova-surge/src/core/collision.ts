@@ -2,7 +2,7 @@
 // Ein gemeinsamer Body-Mover für Spieler UND Bots (Kapsel als Box angenähert,
 // Achsen nacheinander aufgelöst — stabil und billig).
 
-import type { ArenaDef } from "../config/arena";
+import { expandStairs, type ArenaDef } from "../config/arena";
 import type { Aabb, Vec3 } from "./math";
 
 export interface CollisionWorld {
@@ -17,13 +17,15 @@ export interface CollisionWorld {
 export function buildCollisionWorld(arena: ArenaDef): CollisionWorld {
   const solids: Aabb[] = [];
   const losBlockers: Aabb[] = [];
-  for (const b of arena.boxes) {
+  const allBoxes = [...arena.boxes, ...(arena.stairs ?? []).flatMap(expandStairs)];
+  for (const b of allBoxes) {
+    const base = b.y ?? 0;
     const box: Aabb = {
       minX: b.x - b.sx / 2,
-      minY: 0,
+      minY: base,
       minZ: b.z - b.sz / 2,
       maxX: b.x + b.sx / 2,
-      maxY: b.h,
+      maxY: base + b.h,
       maxZ: b.z + b.sz / 2,
     };
     solids.push(box);
@@ -31,6 +33,9 @@ export function buildCollisionWorld(arena: ArenaDef): CollisionWorld {
   }
   return { solids, losBlockers, halfSize: arena.size / 2 };
 }
+
+/** Kleine Kanten (Treppenstufen) werden beim Laufen automatisch erklommen. */
+const STEP_HEIGHT = 0.35;
 
 /**
  * Bewegt einen stehenden Körper (Fußpunkt `pos`, Radius, Höhe) um vel*dt und
@@ -53,6 +58,12 @@ export function moveBody(
     const b = solids[i]!;
     if (!overlapsYZ(pos, radius, height, b)) continue;
     if (pos.x + radius > b.minX && pos.x - radius < b.maxX) {
+      // Step-Height: niedrige Kante? Hochsteigen statt blocken.
+      const lift = b.maxY - pos.y;
+      if (lift > 0 && lift <= STEP_HEIGHT && vel.y <= 0.01) {
+        pos.y = b.maxY;
+        continue;
+      }
       if (vel.x > 0) pos.x = b.minX - radius;
       else if (vel.x < 0) pos.x = b.maxX + radius;
       vel.x = 0;
@@ -64,6 +75,11 @@ export function moveBody(
     const b = solids[i]!;
     if (!overlapsYX(pos, radius, height, b)) continue;
     if (pos.z + radius > b.minZ && pos.z - radius < b.maxZ) {
+      const lift = b.maxY - pos.y;
+      if (lift > 0 && lift <= STEP_HEIGHT && vel.y <= 0.01) {
+        pos.y = b.maxY;
+        continue;
+      }
       if (vel.z > 0) pos.z = b.minZ - radius;
       else if (vel.z < 0) pos.z = b.maxZ + radius;
       vel.z = 0;

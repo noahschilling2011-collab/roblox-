@@ -2,7 +2,7 @@ import * as THREE from "three";
 import "./style.css";
 import { Sfx } from "./audio/Sfx";
 import { ENEMIES, type EnemyType } from "./config/enemies";
-import { getArena } from "./config/arena";
+import { DEBUG_ARENA, getArena, type ArenaDef } from "./config/arena";
 import { COIN_DIVISOR, COLOR_SCHEMES } from "./config/meta";
 import { EVENT_RULES, WAVE_EVENTS, type WaveEventId } from "./config/waves";
 import { Keyboard } from "./controls/Keyboard";
@@ -447,7 +447,7 @@ async function boot(): Promise<void> {
   sdk.loadingDone();
 
   // Debug-Handle für automatisierte Tests (Headless) und die Konsole
-  window.__ns = { loop, sim, renderer, input, save, screens, enemyRenderer };
+  window.__ns = { loop, sim, renderer, input, save, screens, enemyRenderer, debugArena: DEBUG_ARENA };
 }
 
 declare global {
@@ -460,6 +460,7 @@ declare global {
       save: SaveData;
       screens: Screens;
       enemyRenderer: EnemyRenderer;
+      debugArena: ArenaDef;
     };
   }
 }

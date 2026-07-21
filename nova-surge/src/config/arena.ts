@@ -30,7 +30,50 @@ export interface ArenaBox {
   sx: number;
   sz: number;
   h: number;
+  /** Basis-Höhe (Unterkante), Default 0 — Etagenböden/Decken/Plattformen. */
+  y?: number;
   kind: "wall" | "tall" | "low";
+}
+
+/** Treppen-Helfer (Multi-Level Phase 1): generiert Stufen-Boxen und merkt
+ *  sich die Verbindung als Nav-Kante (Phase 2). Achsen-parallel (die
+ *  dominante Achse von from->to wird benutzt). */
+export interface StairsDef {
+  from: [number, number, number]; // x, z, y
+  to: [number, number, number];
+  width: number;
+}
+
+const STEP_MAX = 0.3;
+
+/** Expandiert eine Treppe in solide Stufen-Boxen (kind "low": kein LOS-Block). */
+export function expandStairs(s: StairsDef): ArenaBox[] {
+  // Normalisieren: "from" ist immer das untere Ende
+  const asc = s.from[2] <= s.to[2];
+  const [fx, fz, fy] = asc ? s.from : s.to;
+  const [tx, tz, ty] = asc ? s.to : s.from;
+  const rise = ty - fy;
+  const steps = Math.max(1, Math.ceil(rise / STEP_MAX));
+  const stepRise = rise / steps;
+  const alongX = Math.abs(tx - fx) >= Math.abs(tz - fz);
+  const run = alongX ? tx - fx : tz - fz;
+  const stepRun = run / steps;
+  const boxes: ArenaBox[] = [];
+  for (let i = 0; i < steps; i++) {
+    const top = fy + stepRise * (i + 1);
+    const cx = alongX ? fx + stepRun * (i + 0.5) : fx;
+    const cz = alongX ? fz : fz + stepRun * (i + 0.5);
+    boxes.push({
+      x: cx,
+      z: cz,
+      sx: alongX ? Math.abs(stepRun) + 0.02 : s.width,
+      sz: alongX ? s.width : Math.abs(stepRun) + 0.02,
+      y: fy, // solide bis zur Treppen-Basis (keine Lücken darunter)
+      h: top - fy,
+      kind: "low",
+    });
+  }
+  return boxes;
 }
 
 /** Rein dekoratives Element — KEINE Kollision, darf daher nie im Laufweg
@@ -53,6 +96,7 @@ export interface ArenaDef {
   size: number; // Kantenlänge, Mitte (0,0)
   palette: ArenaPalette;
   boxes: ArenaBox[];
+  stairs?: StairsDef[];
   props?: ArenaProp[];
   showGrid?: boolean; // default true (false z. B. auf Wasser)
   enemySpawns: { x: number; z: number }[];
@@ -330,6 +374,24 @@ const MALL: ArenaDef = {
 };
 
 export const ARENAS: ArenaDef[] = [FOUNDRY, FROSTWORKS, SUNREACH, YACHT, MALL];
+
+// ---- Debug-Arena (Multi-Level Phase 1) — NICHT im Menü, nur für Tests ----
+// Plattform auf 3 m mit Treppe: Stehen, Fallen, Kopf-Anstoßen,
+// Hitscan-durch-Boden-Block. Zugriff über window.__ns.debugArena.
+export const DEBUG_ARENA: ArenaDef = {
+  id: "debug",
+  name: "Debug",
+  sub: "engine test",
+  size: 40,
+  palette: FOUNDRY.palette,
+  boxes: [
+    ...perimeter(40),
+    { x: 0, z: -8, sx: 8, sz: 8, y: 3, h: 0.4, kind: "tall" }, // Plattform (Decke von unten)
+  ],
+  stairs: [{ from: [8, -8, 0], to: [4.2, -8, 3.4], width: 2.5 }],
+  enemySpawns: gates(40),
+  playerSpawn: { x: 0, z: 12 },
+};
 
 export function getArena(id: string): ArenaDef {
   return ARENAS.find((a) => a.id === id) ?? FOUNDRY;

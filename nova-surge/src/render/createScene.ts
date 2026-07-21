@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { ARENAS, type ArenaDef } from "../config/arena";
+import { ARENAS, expandStairs, type ArenaDef } from "../config/arena";
 import { FEEL } from "../config/tuning";
 
 export interface SceneSetup {
@@ -78,19 +78,22 @@ function buildArenaGroup(def: ArenaDef): THREE.Group {
     emissiveIntensity: 0.35,
   });
 
-  for (const b of def.boxes) {
+  const allBoxes = [...def.boxes, ...(def.stairs ?? []).flatMap(expandStairs)];
+  const stairsStart = def.boxes.length;
+  allBoxes.forEach((b, idx) => {
+    const base = b.y ?? 0;
     const mesh = new THREE.Mesh(unitBox, materials[b.kind]);
     mesh.scale.set(b.sx, b.h, b.sz);
-    mesh.position.set(b.x, b.h / 2, b.z);
+    mesh.position.set(b.x, base + b.h / 2, b.z);
     group.add(mesh);
-    // Akzentkante oben auf Deckungen (Low-Poly-"Trim")
-    if (b.kind === "tall" || b.kind === "low") {
+    // Akzentkante oben auf Deckungen (nicht auf jeder Treppenstufe)
+    if ((b.kind === "tall" || b.kind === "low") && idx < stairsStart) {
       const trim = new THREE.Mesh(unitBox, trimMaterial);
       trim.scale.set(b.sx + 0.06, 0.09, b.sz + 0.06);
-      trim.position.set(b.x, b.h + 0.045, b.z);
+      trim.position.set(b.x, base + b.h + 0.045, b.z);
       group.add(trim);
     }
-  }
+  });
 
   // Deko-Props (keine Kollision): Neonschilder, Deck, Pflanzen, ...
   if (def.props) {
