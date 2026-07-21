@@ -85,8 +85,10 @@ function buildArenaGroup(def: ArenaDef): THREE.Group {
     mesh.scale.set(b.sx, b.h, b.sz);
     mesh.position.set(b.x, base + b.h / 2, b.z);
     group.add(mesh);
-    // Akzentkante oben auf Deckungen
-    if (b.kind === "tall" || b.kind === "low") {
+    // Akzentkante oben auf Deckungen — nur für kompakte Boden-Deckungen.
+    // Dünne Wände/Geländer und Etagen-Elemente (y > 0) bekommen KEINE Kante
+    // (Draw-Call-Budget: Innenräume bestehen aus vielen schlanken Wänden).
+    if ((b.kind === "tall" || b.kind === "low") && Math.min(b.sx, b.sz) >= 0.6 && base === 0) {
       const trim = new THREE.Mesh(unitBox, trimMaterial);
       trim.scale.set(b.sx + 0.06, 0.09, b.sz + 0.06);
       trim.position.set(b.x, base + b.h + 0.045, b.z);

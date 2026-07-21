@@ -157,9 +157,16 @@ export class Hud {
       this.flashText = null;
     }
 
-    // Upgrade-Wahl (offerNonce ändert sich bei jedem neuen Angebot/Reroll)
-    if (sim.phase === "upgrade") {
-      if (sim.offerNonce !== this.lastOfferNonce) {
+    this.updateDraft(sim, isTouch, accountCoins, true);
+  }
+
+  /** Upgrade-Draft-Overlay — wird JEDEN Frame aufgerufen (auch außerhalb des
+   *  Playing-Modus), damit nie ein veralteter Overlay-Zustand hängen bleibt.
+   *  Baut die Karten zusätzlich neu, wenn der Container leer ist (gemeldeter
+   *  "CHOOSE AN UPGRADE ohne Karten"-Hänger — doppelt abgesichert). */
+  updateDraft(sim: Sim, isTouch: boolean, accountCoins: number, playing: boolean): void {
+    if (playing && sim.phase === "upgrade" && sim.upgradeOffer.length > 0) {
+      if (sim.offerNonce !== this.lastOfferNonce || this.upgradeCards.childElementCount === 0) {
         this.lastOfferNonce = sim.offerNonce;
         this.buildUpgradeCards(sim.upgradeOffer, isTouch);
       }

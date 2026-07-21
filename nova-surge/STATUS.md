@@ -1,6 +1,59 @@
 # Nova Surge — Projektstand
 
-## ⏸ AKTUELL (2026-07-21): RECOVERY-PROMPT Phasen 0–3 ✅ — WARTE AUF FREIGABE
+## ⏸ AKTUELL (2026-07-21, Update 2): Draft-Härtung + INNENRAUM-YACHT ✅
+Reaktion auf Noahs Bug-Report (Screenshot: „CHOOSE AN UPGRADE" ohne Karten,
+geht nie weg) + Wunsch „Yacht wie eine echte Yacht mit Zimmern".
+
+### Draft-Härtung (der gemeldete Hänger ist jetzt UNMÖGLICH)
+Der exakte Auslöser des Karten-losen Overlays war aus dem Screenshot nicht
+eindeutig rekonstruierbar — deshalb wurde der Zustand auf DREI Ebenen
+unmöglich gemacht (Defense in Depth, alle drei einzeln testverifiziert):
+1. **Sim heilt sich selbst:** Phase „upgrade" mit leerem Angebot → sofort
+   neues 3er-Angebot würfeln.
+2. **HUD baut leere Karten neu:** Der Karten-Container wird nicht nur bei
+   neuem Angebot, sondern immer auch dann neu gebaut, wenn er LEER ist.
+3. **Overlay-Sichtbarkeit jeden Frame nachgeführt** — unabhängig vom
+   Menü-Modus (vorher konnte ein Modus-Wechsel einen veralteten
+   Overlay-Zustand stehen lassen). Zusätzlich: Der Auto-Re-Lock-Retry darf
+   den Pointer nicht mehr MITTEN im Draft einsperren (draftActive-Guard).
+
+### Innenraum-Yacht „Azure Deck" (volle Recovery-Spec)
+- **Unterdeck (y 0):** Flur längs, 4 Kabinen mit breiten Türen +
+  Panoramafenstern zum Flur, Maschinenraum-Flügel mit 2 Zugängen +
+  glühenden Aggregaten, offene Bug-Suite und Heck-Gang.
+- **Hauptdeck (3,2):** durchgehendes Deck mit 2 TREPPENHÄUSERN (Geländer,
+  offene Enden = Drop-Kanten), Lounge/Bar-Innenraum mit Fensteröffnungen
+  beidseitig + Bar-Tresen, begehbarer Pool (0,5-Rand), Helipad, Reling 1,1.
+- **Oberdeck (6,4)** = Lounge-Dach: Brückenhaus mit offener Rückseite,
+  10-m-Außentreppe (Warden-tauglich), Seiten/Heck = Drop-Kanten.
+- Pickups: Coin (Oberdeck, once) · Medkit im Pool (respawnt) · Supply Crate
+  in Kabine S1 (once) · Medkit Maschinenraum (respawnt).
+- Warden (3,0 m) passt nicht unter die 2,85-Decken → kämpft draußen
+  (laut Spec akzeptiert, dokumentiert).
+
+### DREI Engine-Bugs beim Testen gefunden (Trace-diagnostiziert, an der Wurzel gefixt)
+1. **30-m-Kollisions-Teleport:** Die Achsen-Auflösung klemmte an die
+   BEWEGUNGSRICHTUNGS-Fläche — wer tief in einer 30-m-Deckenplatte
+   überlappt (Kopf wächst beim Treppensteigen seitlich hinein), wurde an
+   die FERNE Fläche geschnappt und quer durchs Schiff teleportiert.
+2. Die Nächste-Fläche-Regel allein warf Kletterer quer von der Treppe
+   (Stufen-Box: winzige X-, riesige Z-Überlappung) → Auflösung jetzt
+   GEDECKELT auf 0,5 m; tiefe Quer-Überlappungen lösen sich beim
+   Weiterlaufen selbst. Physik-Regression: Bot-Vollrun 13/13 (306 s,
+   Welle 11 — erstmals wieder im 120–480-s-Zielfenster!).
+3. **Treppenhaus-Regel gelernt:** Beim ABSTIEG steht ein Körper auf der
+   Stufe unter seiner BERGSEITE — Decken-Öffnungen müssen die KOMPLETTE
+   Treppe überspannen, sonst nagelt die Plattenkante den Kopf fest.
+   (+ Map-Bug: der Pool hing übers Heck-Treppenhaus und stoppte Köpfe.)
+
+### Suiten (alle grün)
+Yacht/Mall/Draft-Härtung **21/21** · Overlay **13/13** · Nav **8/8** ·
+Maps **8/8** · Bot-Vollrun **13/13**. Draws: Yacht 35 / Mall 68 (<150).
+NICHT gebaut (Wunsch-Prompt vs. harte Regeln): Aufzüge, automatische
+Türen, Kino/Casino — Regeln „keine Türen/Aufzüge/bewegten Objekte" gelten
+weiter; Räume sind offene Durchgänge. Notiert unter „Nach Release".
+
+## RECOVERY-PROMPT Phasen 0–3 ✅ (gleicher Tag, davor)
 Der Recovery-Prompt wurde abgearbeitet. **Wichtig — Ist-Zustand wich von der
 Analyse im Prompt ab** (gemäß Regel „melden statt improvisieren"):
 - **Navigation existierte bereits** (ML Phase 2, Commit b84f5ff) — sie wurde

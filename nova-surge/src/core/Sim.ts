@@ -215,6 +215,13 @@ export class Sim {
     this.tick++;
     if (this.phase === "menu") return;
 
+    // Selbstheilung: Ein Draft ohne Angebot darf NIE vorkommen (gemeldeter
+    // "CHOOSE AN UPGRADE ohne Karten"-Hänger) — zur Sicherheit neu würfeln.
+    if (this.phase === "upgrade" && this.upgradeOffer.length === 0) {
+      this.upgradeOffer = this.upgrades.rollOffer(Math.max(1, this.waveNumber));
+      this.offerNonce++;
+    }
+
     const p = this.player;
 
     // Phasen-Steuerung

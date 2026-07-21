@@ -108,7 +108,7 @@ export interface ArenaDef {
   showGrid?: boolean; // default true (false z. B. auf Wasser)
   /** y = Spawn-Ebene (Default 0). Die 60/40-Regel bevorzugt die Spieler-Ebene. */
   enemySpawns: { x: number; z: number; y?: number }[];
-  playerSpawn: { x: number; z: number };
+  playerSpawn: { x: number; z: number; y?: number };
 }
 
 /** Außenwände + Spawn-Tore an den Wandmitten für eine gegebene Größe. */
@@ -247,14 +247,24 @@ const SUNREACH: ArenaDef = {
   playerSpawn: { x: 0, z: 16 },
 };
 
-// ---- Map 4: Azure Deck — Luxusyacht mit DREI Decks (Recovery Phase 2) ----
-// Hauptdeck (y 0) -> Kabinendach/Oberdeck (y 3,0) -> Brücke/Sonnendeck (y 5,6).
-// Drei Außentreppen (>= 3 m breit, Warden-tauglich), Geländer sind "low"
-// (überspringbar, kein LOS-Block); Heck + Oberdeck-Vorderkante = Drop-Kanten.
+// ---- Map 4: Azure Deck — begehbare Superyacht mit INNENRÄUMEN ----
+// Unterdeck (y 0): Flur längs, 4 Kabinen (breite Türöffnungen + Fenster),
+// Maschinenraum-Flügel am Heck (2 Zugänge), offene Bug-Suite + Heck-Gang.
+// Hauptdeck (Lauffläche 3,2): offenes Deck, Lounge/Bar als Innenraum mit
+// großen Fensteröffnungen, Pool (begehbar, 0,5-m-Rand), Helipad, Reling 1,1.
+// Oberdeck (6,4) = Lounge-Dach: Brückenhaus mit offener Rückseite, exponiert.
+// Treppen: Innen Bug + Heck (durch Deck-Öffnungen), Außentreppe steuerbord
+// (10 m Lauf — Warden-tauglich). Drops: Oberdeck-Seiten/-Heck offen.
+// Hinweis: Innenhöhe 2,85 — der Warden (3,0) kämpft draußen (dokumentiert).
+const MAIN_BASE = 2.85; // Hauptdeck-Slab-Unterkante (Innenhöhe darunter)
+const MAIN = 3.2; // Hauptdeck-Lauffläche
+const TOP_BASE = 6.05;
+const TOP = 6.4; // Oberdeck-Lauffläche (Lounge-Dach)
+const IWALL = 2.85; // Innenwand-Höhe
 const YACHT: ArenaDef = {
   id: "yacht",
   name: "Azure Deck",
-  sub: "3 decks · vertical combat",
+  sub: "3 decks · cabins & pool",
   size: 60,
   palette: {
     sky: 0xffcf9e, // Sonnenuntergang
@@ -262,92 +272,142 @@ const YACHT: ArenaDef = {
     fogFar: 130,
     floor: 0x2e7fa8, // Meer
     wall: 0xf2f4f6, // weiße Bordwand
-    tall: 0xe9edf1, // Kabine
+    tall: 0xe9edf1, // Aufbauten/Wände
     low: 0xdfe4e9,
     accent: 0xff6a4d, // Koralle
     grid1: 0xffffff,
     grid2: 0xffffff,
   },
   showGrid: false,
-  // Klammer aufs Deck: Selbst wer über die Bordwand springt, landet nie
-  // im (rein optischen) Wasser — verhindert den Softlock außenbords.
+  // Klammer auf den Rumpf: niemand landet im (rein optischen) Wasser
   bounds: { x: 13, z: 20 },
   pickups: [
-    { x: 0, y: 5.6, z: 11, type: "coin", once: true }, // Belohnung fürs Klettern aufs Sonnendeck
-    { x: 0, y: 1.1, z: -15, type: "medkit" }, // im Bug-Pool (respawnt)
+    { x: 2.5, y: TOP, z: 7, type: "coin", once: true }, // Oberdeck hinter der Brücke
+    { x: -6.5, y: MAIN, z: 13.6, type: "medkit" }, // im Pool (respawnt)
+    { x: 7, y: 0, z: -10, type: "supply", once: true }, // versteckt in Kabine S1
+    { x: -10, y: 0, z: 13, type: "medkit" }, // Maschinenraum (respawnt)
   ],
   boxes: [
-    // Bordwände (2,6 m: Deckung + nicht überspringbar), Deck 26 x 40
-    { x: -13, z: 0, sx: 1, sz: 40, h: 2.6, kind: "wall" },
-    { x: 13, z: 0, sx: 1, sz: 40, h: 2.6, kind: "wall" },
-    { x: 0, z: -20, sx: 27, sz: 1, h: 2.6, kind: "wall" },
-    { x: 0, z: 20, sx: 27, sz: 1, h: 2.6, kind: "wall" },
-    // Kabinen-Aufbau — sein DACH ist das Oberdeck (y 3,0)
-    { x: 0, z: 8, sx: 12, sz: 12, h: 3.0, kind: "tall" },
-    // Brücke auf dem Oberdeck — ihr Dach ist das Sonnendeck (y 5,6).
-    // 7 m breit: seitlich bleiben 2,5-m-Korridore (Warden-Durchmesser 2,1)
-    { x: 0, z: 11, sx: 7, sz: 6, h: 2.6, y: 3.0, kind: "tall" },
-    // Technik-Container an den Seiten (Deckung Hauptdeck)
-    { x: -9, z: -6, sx: 3, sz: 5, h: HEIGHTS.tall, kind: "tall" },
-    { x: 9, z: -6, sx: 3, sz: 5, h: HEIGHTS.tall, kind: "tall" },
-    // Besteigbares: Sonnendeck-Podest am Bug, Bar am Heck, Kisten
-    { x: 0, z: -15, sx: 6, sz: 4, h: HEIGHTS.low, kind: "low" },
-    { x: 0, z: 17, sx: 8, sz: 2.5, h: HEIGHTS.low, kind: "low" },
-    { x: -9, z: 15, sx: 2.5, sz: 2.5, h: HEIGHTS.low, kind: "low" },
-    { x: 9, z: 15, sx: 2.5, sz: 2.5, h: HEIGHTS.low, kind: "low" },
-    // Oberdeck-Geländer (0,9 m, überspringbar; Lücken = Treppen-Zugänge,
-    // Hinterkante z=14 beidseits der Brücke offen + Vorderkante z=2 komplett
-    // offen -> Drop-Kanten und freier Knoten-Anschluss der Sonnendeck-Treppe)
-    { x: -5.9, z: 9.75, sx: 0.25, sz: 8.5, h: 0.9, y: 3.0, kind: "low" },
-    { x: 5.9, z: 6.25, sx: 0.25, sz: 8.5, h: 0.9, y: 3.0, kind: "low" },
-    // Sonnendeck-Geländer (Lücke an z=8 mittig = Treppen-Zugang)
-    { x: -3.4, z: 11, sx: 0.25, sz: 6, h: 0.9, y: 5.6, kind: "low" },
-    { x: 3.4, z: 11, sx: 0.25, sz: 6, h: 0.9, y: 5.6, kind: "low" },
-    { x: 0, z: 13.9, sx: 7, sz: 0.25, h: 0.9, y: 5.6, kind: "low" },
-    { x: -2.5, z: 8.1, sx: 2, sz: 0.25, h: 0.9, y: 5.6, kind: "low" },
-    { x: 2.5, z: 8.1, sx: 2, sz: 0.25, h: 0.9, y: 5.6, kind: "low" },
+    // Rumpf (bis Hauptdeck-Höhe massiv — enthält das Unterdeck)
+    { x: -13, z: 0, sx: 1, sz: 40, h: MAIN, kind: "wall" },
+    { x: 13, z: 0, sx: 1, sz: 40, h: MAIN, kind: "wall" },
+    { x: 0, z: -20, sx: 27, sz: 1, h: MAIN, kind: "wall" },
+    { x: 0, z: 20, sx: 27, sz: 1, h: MAIN, kind: "wall" },
+    // ---- Hauptdeck-Slab (Decke des Unterdecks) — 5 Stücke um 2 TREPPEN-
+    // HÄUSER. WICHTIG: Die Öffnungen überspannen die KOMPLETTE Treppe
+    // (x -8.8..1.8) — beim Abstieg steht ein Körper auf der Stufe unter
+    // seiner BERGSEITE; jede Deckenkante über der Treppe würde seinen Kopf
+    // blocken und ihn festnageln (Trace-diagnostiziert).
+    { x: -10.65, z: 0, sx: 3.7, sz: 39, h: 0.35, y: MAIN_BASE, kind: "tall" },
+    { x: 7.15, z: 0, sx: 10.7, sz: 39, h: 0.35, y: MAIN_BASE, kind: "tall" },
+    { x: -3.5, z: 0.15, sx: 10.6, sz: 32.1, h: 0.35, y: MAIN_BASE, kind: "tall" },
+    { x: -3.5, z: -19.1, sx: 10.6, sz: 0.8, h: 0.35, y: MAIN_BASE, kind: "tall" },
+    { x: -3.5, z: 19.25, sx: 10.6, sz: 0.5, h: 0.35, y: MAIN_BASE, kind: "tall" },
+    // Treppenhaus-Geländer (Längsseiten; Enden offen: Zugang + Drop-Kante)
+    { x: -3.5, z: -15.75, sx: 10.9, sz: 0.25, h: 0.9, y: MAIN, kind: "low" },
+    { x: -3.5, z: -18.85, sx: 10.9, sz: 0.25, h: 0.9, y: MAIN, kind: "low" },
+    { x: -3.5, z: 16.05, sx: 10.9, sz: 0.25, h: 0.9, y: MAIN, kind: "low" },
+    { x: -3.5, z: 19.15, sx: 10.9, sz: 0.25, h: 0.9, y: MAIN, kind: "low" },
+    // ---- Unterdeck: Flur x -2..2 (z -14..16), 4 Kabinen, Maschinen-Flügel ----
+    // Flurwand BACKBORD (Tür Kabine P1 z -11.5..-8.5, Panoramafenster
+    // z -8.5..-2.5, Tür P2 z -2.5..0.5, Tür Maschine z 9..12)
+    { x: -2.15, z: -12.75, sx: 0.3, sz: 2.5, h: IWALL, kind: "tall" },
+    { x: -2.15, z: -5.5, sx: 0.3, sz: 6, h: 1.1, kind: "tall" },
+    { x: -2.15, z: -5.5, sx: 0.3, sz: 6, h: 0.65, y: 2.2, kind: "tall" },
+    { x: -2.15, z: 4.75, sx: 0.3, sz: 8.5, h: IWALL, kind: "tall" },
+    { x: -2.15, z: 13.25, sx: 0.3, sz: 2.5, h: IWALL, kind: "tall" },
+    // Flurwand STEUERBORD (gespiegelt)
+    { x: 2.15, z: -12.75, sx: 0.3, sz: 2.5, h: IWALL, kind: "tall" },
+    { x: 2.15, z: -5.5, sx: 0.3, sz: 6, h: 1.1, kind: "tall" },
+    { x: 2.15, z: -5.5, sx: 0.3, sz: 6, h: 0.65, y: 2.2, kind: "tall" },
+    { x: 2.15, z: 4.75, sx: 0.3, sz: 8.5, h: IWALL, kind: "tall" },
+    { x: 2.15, z: 13.25, sx: 0.3, sz: 2.5, h: IWALL, kind: "tall" },
+    // Querwände: Kabine 1|2 und Kabine 2|Maschinenraum (je Seite)
+    { x: -7.25, z: -6, sx: 10.5, sz: 0.3, h: IWALL, kind: "tall" },
+    { x: 7.25, z: -6, sx: 10.5, sz: 0.3, h: IWALL, kind: "tall" },
+    { x: -7.25, z: 4, sx: 10.5, sz: 0.3, h: IWALL, kind: "tall" },
+    { x: 7.25, z: 4, sx: 10.5, sz: 0.3, h: IWALL, kind: "tall" },
+    // Maschinenblöcke (Deckung im Maschinenraum)
+    { x: -7, z: 10, sx: 3, sz: 4, h: 1.4, kind: "low" },
+    { x: 7, z: 10, sx: 3, sz: 4, h: 1.4, kind: "low" },
+    // ---- Lounge/Bar auf dem Hauptdeck (Innenraum, Dach = Oberdeck) ----
+    // Front/Heck mit 3-m-Türen, Seiten mit großen Fensteröffnungen
+    { x: -4.05, z: -2, sx: 4.5, sz: 0.3, h: IWALL, y: MAIN, kind: "tall" },
+    { x: 4.05, z: -2, sx: 4.5, sz: 0.3, h: IWALL, y: MAIN, kind: "tall" },
+    { x: -4.05, z: 10, sx: 4.5, sz: 0.3, h: IWALL, y: MAIN, kind: "tall" },
+    { x: 4.05, z: 10, sx: 4.5, sz: 0.3, h: IWALL, y: MAIN, kind: "tall" },
+    { x: -6.3, z: -1, sx: 0.3, sz: 2, h: IWALL, y: MAIN, kind: "tall" },
+    { x: -6.3, z: 9, sx: 0.3, sz: 2, h: IWALL, y: MAIN, kind: "tall" },
+    { x: -6.3, z: 4, sx: 0.3, sz: 8, h: 1.1, y: MAIN, kind: "tall" },
+    { x: -6.3, z: 4, sx: 0.3, sz: 8, h: 0.65, y: 5.4, kind: "tall" },
+    { x: 6.3, z: -1, sx: 0.3, sz: 2, h: IWALL, y: MAIN, kind: "tall" },
+    { x: 6.3, z: 9, sx: 0.3, sz: 2, h: IWALL, y: MAIN, kind: "tall" },
+    { x: 6.3, z: 4, sx: 0.3, sz: 8, h: 1.1, y: MAIN, kind: "tall" },
+    { x: 6.3, z: 4, sx: 0.3, sz: 8, h: 0.65, y: 5.4, kind: "tall" },
+    // Bar-Tresen in der Lounge
+    { x: 0, z: 8.5, sx: 5, sz: 1, h: 1.1, y: MAIN, kind: "low" },
+    // Lounge-Dach = Oberdeck-Boden
+    { x: 0, z: 4, sx: 12.9, sz: 12.3, h: 0.35, y: TOP_BASE, kind: "tall" },
+    // ---- Brückenhaus auf dem Oberdeck (offene Rückseite) ----
+    { x: 0, z: -0.5, sx: 7, sz: 0.3, h: 2.2, y: TOP, kind: "tall" },
+    { x: -3.5, z: 1.75, sx: 0.3, sz: 4.5, h: 2.2, y: TOP, kind: "tall" },
+    { x: 3.5, z: 1.75, sx: 0.3, sz: 4.5, h: 2.2, y: TOP, kind: "tall" },
+    // ---- Reling rundum (1,1 m — drüberschießen und -springen möglich) ----
+    { x: -13, z: 0, sx: 0.3, sz: 40, h: 1.1, y: MAIN, kind: "low" },
+    { x: 13, z: 0, sx: 0.3, sz: 40, h: 1.1, y: MAIN, kind: "low" },
+    { x: 0, z: -20, sx: 26.6, sz: 0.3, h: 1.1, y: MAIN, kind: "low" },
+    { x: 0, z: 20, sx: 26.6, sz: 0.3, h: 1.1, y: MAIN, kind: "low" },
+    // Oberdeck-Geländer nur an der Bugkante (Seiten/Heck = Drop-Kanten)
+    { x: 0, z: -1.9, sx: 12.6, sz: 0.25, h: 0.9, y: TOP, kind: "low" },
+    // ---- Pool im Achterdeck backbord (0,5-m-Rand, begehbar) ----
+    { x: -6.5, z: 11.8, sx: 4.4, sz: 0.4, h: 0.5, y: MAIN, kind: "low" },
+    { x: -6.5, z: 15.4, sx: 4.4, sz: 0.4, h: 0.5, y: MAIN, kind: "low" },
+    { x: -8.3, z: 13.6, sx: 0.4, sz: 3.2, h: 0.5, y: MAIN, kind: "low" },
+    { x: -4.7, z: 13.6, sx: 0.4, sz: 3.2, h: 0.5, y: MAIN, kind: "low" },
   ],
   stairs: [
-    // Hauptdeck -> Oberdeck: backbord vorn + steuerbord hinten (Rotation).
-    // Beide CRESTEN vor der Kabinenwand (Top-Stufe = Dachhöhe, kein Rest-Lift)
-    { from: [-11, 4, 0], to: [-6.2, 4, 3.0], width: 3 },
-    { from: [11, 12, 0], to: [6.2, 12, 3.0], width: 3 },
-    // Oberdeck -> Sonnendeck: mittig vor der Brücke
-    { from: [0, 3.4, 3.0], to: [0, 7.8, 5.6], width: 3 },
+    // Innentreppe BUG (in der offenen Bug-Suite, durch Deck-Öffnung A)
+    { from: [-8, -17.3, 0], to: [1.2, -17.3, MAIN], width: 2.6 },
+    // Innentreppe HECK (im offenen Heck-Gang, durch Deck-Öffnung B)
+    { from: [-8, 17.6, 0], to: [1.2, 17.6, MAIN], width: 2.6 },
+    // Außentreppe steuerbord: Hauptdeck -> Oberdeck (10 m — Warden-tauglich)
+    { from: [7.4, 12.5, MAIN], to: [7.4, 2.5, TOP], width: 2.2 },
   ],
   props: [
-    // Deck-Holzboden (flach, Füße stehen optisch auf Planken)
-    { x: 0, y: -0.03, z: 0, sx: 25.6, sy: 0.1, sz: 39.6, color: 0xc9a06a },
-    // Bug-Spitze (vor der Wand, im Wasser — nur Silhouette)
+    // Bug-Spitze + Heck-Plattform (im Wasser — nur Silhouette)
     { x: 0, y: 0.25, z: -23, sx: 20, sy: 0.6, sz: 5, color: 0xf2f4f6 },
     { x: 0, y: 0.25, z: -26.5, sx: 12, sy: 0.6, sz: 4, color: 0xf2f4f6 },
-    { x: 0, y: 0.25, z: -29, sx: 5, sy: 0.6, sz: 2.5, color: 0xf2f4f6 },
-    // Heck-Plattform
     { x: 0, y: 0.2, z: 22.5, sx: 18, sy: 0.5, sz: 4, color: 0xf2f4f6 },
-    // Pool im Bug-Podest (leuchtendes Wasser)
-    { x: 0, y: 1.16, z: -15, sx: 4.6, sy: 0.06, sz: 2.8, color: 0x35c5e8, glow: true },
-    // Schornstein + Mast + Radar auf dem SONNENDECK (Brückendach)
-    { x: 0, y: 6.5, z: 12.5, sx: 2.4, sy: 1.8, sz: 1.4, color: 0xf2f4f6 },
-    { x: 0, y: 6.7, z: 9, sx: 0.18, sy: 2.2, sz: 0.18, color: 0xd8dde2 },
-    { x: 0, y: 7.9, z: 9, sx: 1.4, sy: 0.12, sz: 0.3, color: 0xff6a4d },
-    // Sonnenmatten auf dem Oberdeck (ganz flach — begehbar ohne Clipping)
-    { x: -4, y: 3.06, z: 4.5, sx: 0.9, sy: 0.08, sz: 2.2, color: 0xff6a4d },
-    { x: 4, y: 3.06, z: 4.5, sx: 0.9, sy: 0.08, sz: 2.2, color: 0xffffff },
-    // Handtücher/Matten auf dem Hauptdeck
-    { x: -6, y: 0.06, z: -11, sx: 0.9, sy: 0.08, sz: 2.2, color: 0xff6a4d },
-    { x: -4, y: 0.06, z: -11, sx: 0.9, sy: 0.08, sz: 2.2, color: 0xffffff },
-    { x: 6, y: 0.06, z: -11, sx: 0.9, sy: 0.08, sz: 2.2, color: 0xff6a4d },
-    { x: 4, y: 0.06, z: -11, sx: 0.9, sy: 0.08, sz: 2.2, color: 0xffffff },
+    // Helipad steuerbord am Bug (flach, mit Kreuz-Akzent)
+    { x: 7, y: 3.23, z: -15, sx: 5.4, sy: 0.06, sz: 5.4, color: 0x39414c },
+    { x: 7, y: 3.27, z: -15, sx: 3.6, sy: 0.05, sz: 0.7, color: 0xffd23a },
+    { x: 7, y: 3.27, z: -15, sx: 0.7, sy: 0.05, sz: 3.6, color: 0xffd23a },
+    // Pool-Wasser (leuchtend)
+    { x: -6.5, y: 3.56, z: 13.6, sx: 3.2, sy: 0.06, sz: 3.2, color: 0x35c5e8, glow: true },
+    // Schornstein hinter der Brücke + Radar
+    { x: 0, y: 7.3, z: 7.5, sx: 2.2, sy: 1.6, sz: 1.2, color: 0xf2f4f6 },
+    { x: 0, y: 8.6, z: 7.5, sx: 1.3, sy: 0.12, sz: 0.3, color: 0xff6a4d },
+    // Maschinenraum: glühende Aggregate
+    { x: -7, y: 1.6, z: 10, sx: 2.6, sy: 0.25, sz: 3.6, color: 0xffa23a, glow: true },
+    { x: 7, y: 1.6, z: 10, sx: 2.6, sy: 0.25, sz: 3.6, color: 0xffa23a, glow: true },
+    // Bar-Glow + Kabinen-Deko (flache Teppiche)
+    { x: 0, y: 4.36, z: 8.5, sx: 4.6, sy: 0.05, sz: 0.7, color: 0x37e0ff, glow: true },
+    { x: -7, y: 0.04, z: -10, sx: 3, sy: 0.06, sz: 4, color: 0xb44f6e },
+    { x: 7, y: 0.04, z: -1, sx: 3, sy: 0.06, sz: 4, color: 0x4f6eb4 },
+    // Sonnenmatten auf dem Achterdeck
+    { x: 4, y: 3.26, z: 16, sx: 0.9, sy: 0.06, sz: 2.2, color: 0xff6a4d },
+    { x: 6, y: 3.26, z: 16, sx: 0.9, sy: 0.06, sz: 2.2, color: 0xffffff },
   ],
-  // Spawns: 4 Deck-Ecken + 1 Enterpunkt auf dem Oberdeck (60/40-Regel)
+  // Spawns auf allen 3 Ebenen (60/40-Regel bespielt die Spieler-Ebene)
   enemySpawns: [
-    { x: -10, z: -17 },
-    { x: 10, z: -17 },
-    { x: -10, z: 17.5 },
-    { x: 10, z: 17.5 },
-    { x: 4.5, z: 4.5, y: 3.0 },
+    { x: -7, z: 13 }, // Maschinenraum (Unterdeck)
+    { x: 7, z: -10 }, // Kabine S1 (Unterdeck)
+    { x: 8, z: -17, y: MAIN }, // Bug steuerbord
+    { x: -8, z: 5, y: MAIN }, // "Boarding" an der Reling backbord
+    { x: 8, z: 16, y: MAIN }, // Achterdeck steuerbord
+    { x: 0, z: 7, y: TOP }, // Oberdeck
   ],
-  playerSpawn: { x: 0, z: -4 },
+  playerSpawn: { x: 0, z: -10, y: MAIN },
 };
 
 // ---- Map 5: Grand Gallery — Einkaufszentrum mit ZWEI Etagen (Recovery Ph. 3) ----

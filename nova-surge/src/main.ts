@@ -485,6 +485,9 @@ async function boot(): Promise<void> {
         }
       }
       drainEvents();
+      // Draft-Overlay JEDEN Frame nachführen (unabhängig vom Menü-Modus) —
+      // ein hängengebliebener Draft-Zustand ist damit unmöglich
+      hud.updateDraft(sim, isTouch, save.state.coins, screens.mode === "playing");
       if (screens.mode === "playing") hud.update(dt, sim, isTouch, save.state.coins);
       updateResolutionScale(dt, loop.getStats().fps);
       renderer.render(scene, camera);

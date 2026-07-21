@@ -31,9 +31,9 @@ export class Player {
   /** Phoenix: kurze Unverwundbarkeit nach Selbst-Revive. */
   invulnTimer = 0;
 
-  reset(spawn: { x: number; z: number }): void {
+  reset(spawn: { x: number; z: number; y?: number }): void {
     this.pos.x = spawn.x;
-    this.pos.y = 0;
+    this.pos.y = spawn.y ?? 0;
     this.pos.z = spawn.z;
     this.prevPos.x = this.pos.x;
     this.prevPos.y = this.pos.y;

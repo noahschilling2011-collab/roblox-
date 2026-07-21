@@ -74,8 +74,19 @@ export function moveBody(
         pos.y = b.maxY;
         continue;
       }
-      if (vel.x > 0) pos.x = b.minX - radius;
-      else if (vel.x < 0) pos.x = b.maxX + radius;
+      // Auflösung zur NÄCHSTGELEGENEN Fläche, GEDECKELT auf 0,5 m:
+      // 1. Bewegungsrichtungs-Auflösung schnappte tief Überlappende an die
+      //    FERNE Fläche (30-m-Teleport durch die Deckenplatte — Trace).
+      // 2. Ungedeckelt wirft die Nächste-Fläche-Regel Kletterer quer von
+      //    der Treppe (Stufen-Box: winzige X-, riesige Z-Überlappung).
+      // Tiefe Überlappungen entstehen NUR durch Quer-Achsen-Artefakte —
+      // sie werden auf dieser Achse ignoriert und lösen sich beim Weiter-
+      // laufen von selbst. Echte Wandtreffer sind <= Schrittweite (~0,12).
+      const pushLowX = pos.x - (b.minX - radius);
+      const pushHighX = b.maxX + radius - pos.x;
+      if (Math.min(pushLowX, pushHighX) > 0.5) continue;
+      if (pushLowX <= pushHighX) pos.x = b.minX - radius;
+      else pos.x = b.maxX + radius;
       vel.x = 0;
     }
   }
@@ -90,8 +101,11 @@ export function moveBody(
         pos.y = b.maxY;
         continue;
       }
-      if (vel.z > 0) pos.z = b.minZ - radius;
-      else if (vel.z < 0) pos.z = b.maxZ + radius;
+      const pushLowZ = pos.z - (b.minZ - radius);
+      const pushHighZ = b.maxZ + radius - pos.z;
+      if (Math.min(pushLowZ, pushHighZ) > 0.5) continue;
+      if (pushLowZ <= pushHighZ) pos.z = b.minZ - radius;
+      else pos.z = b.maxZ + radius;
       vel.z = 0;
     }
   }

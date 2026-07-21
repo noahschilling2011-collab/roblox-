@@ -31,6 +31,9 @@ export class Screens {
   /** true, während der Pointer FÜR den Upgrade-Draft absichtlich entsperrt
    *  ist — der Lock-Verlust darf dann NICHT in den Pause-Modus führen. */
   private draftUnlock = false;
+  /** true zwischen beginDraft() und endDraft() — der Auto-Re-Lock-Retry darf
+   *  den Pointer NICHT mitten im Draft wieder einsperren. */
+  private draftActive = false;
 
   private readonly overlay = el<HTMLDivElement>("menu-overlay");
   private readonly homePanel = el<HTMLDivElement>("menu-home");
@@ -103,7 +106,8 @@ export class Screens {
       // Chrome nach ESC): im Spielmodus automatisch erneut versuchen.
       if (this.mode === "playing" && !this.isTouch) {
         window.setTimeout(() => {
-          if (this.mode === "playing" && !this.isTouch && !this.isLocked() && !this.draftUnlock) this.enterPlaying();
+          if (this.mode === "playing" && !this.isTouch && !this.isLocked() && !this.draftUnlock && !this.draftActive)
+            this.enterPlaying();
         }, 1600);
       }
     });
@@ -114,6 +118,7 @@ export class Screens {
    *  Pointer Lock schluckt der Browser alle DOM-Klicks (Root Cause des
    *  "Overlay hängt"-Bugs; Tasten 1–3 funktionieren weiterhin). */
   beginDraft(): void {
+    this.draftActive = true;
     if (this.isTouch || !this.isLocked()) return;
     this.draftUnlock = true;
     document.exitPointerLock();
@@ -121,6 +126,7 @@ export class Screens {
 
   /** Draft beendet: Lock automatisch wiederholen (Sticky Activation reicht). */
   endDraft(): void {
+    this.draftActive = false;
     this.draftUnlock = false;
     if (this.isTouch || this.mode !== "playing" || this.isLocked()) return;
     this.enterPlaying();
