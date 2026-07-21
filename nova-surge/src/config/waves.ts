@@ -31,15 +31,64 @@ export const WAVE_TABLE: WaveDef[] = [
   { rusher: 13, shooter: 9, tank: 4 }, // 12
 ];
 
+// ---- Wave-Events (RC Phase 2): reine Spawner-/Score-Parametrisierung ----
+export type WaveEventId = "goldrush" | "blackout" | "stampede" | "heavyduty";
+
+export const WAVE_EVENTS: Record<WaveEventId, { name: string; banner: string }> = {
+  goldrush: { name: "Gold Rush", banner: "💰 GOLD RUSH — double score!" },
+  blackout: { name: "Blackout", banner: "🌫️ BLACKOUT" },
+  stampede: { name: "Stampede", banner: "🐂 STAMPEDE!" },
+  heavyduty: { name: "Heavy Duty", banner: "🛡️ HEAVY DUTY — kills heal!" },
+};
+
+export const EVENT_RULES = {
+  firstEventWave: 4, // frühestens; nie auf Boss-Wellen
+  minGap: 4,
+  maxGap: 6,
+  goldrushSpawnMult: 1.4,
+  goldrushScoreMult: 2,
+  blackoutSpawnMult: 0.7,
+  blackoutFogMult: 0.5,
+  stampedeCountMult: 2,
+  heavydutyHealPerKill: 10,
+} as const;
+
+/** Event auf eine Wellen-Zusammensetzung anwenden. */
+export function applyWaveEvent(w: WaveDef, event: WaveEventId | null): WaveDef {
+  if (!event) return w;
+  const total = w.rusher + w.shooter + w.tank;
+  if (event === "goldrush") {
+    return {
+      rusher: Math.round(w.rusher * EVENT_RULES.goldrushSpawnMult),
+      shooter: Math.round(w.shooter * EVENT_RULES.goldrushSpawnMult),
+      tank: Math.round(w.tank * EVENT_RULES.goldrushSpawnMult),
+    };
+  }
+  if (event === "blackout") {
+    return {
+      rusher: Math.max(1, Math.round(w.rusher * EVENT_RULES.blackoutSpawnMult)),
+      shooter: Math.round(w.shooter * EVENT_RULES.blackoutSpawnMult),
+      tank: Math.round(w.tank * EVENT_RULES.blackoutSpawnMult),
+    };
+  }
+  if (event === "stampede") {
+    return { rusher: total * EVENT_RULES.stampedeCountMult, shooter: 0, tank: 0 };
+  }
+  // heavyduty: nur Tanks — Masse durch Klasse ersetzen
+  return { rusher: 0, shooter: 0, tank: Math.max(2, Math.round(total / 3)) };
+}
+
 /** Welle n (1-basiert) — jenseits der Tabelle wird linear weiterskaliert. */
 export function getWave(n: number): WaveDef {
-  // Boss-Wellen ersetzen die normale Zusammensetzung: Warden + kleine Eskorte
+  // Boss-Wellen ersetzen die normale Zusammensetzung: Warden + kleine Eskorte.
+  // Maximal 2 Wardens — spätere Bosse werden per Elite-Mod stärker (Qualität
+  // statt Masse, RC Phase 2c).
   if (isBossWave(n)) {
     return {
       rusher: 2 + Math.floor(n / 5),
       shooter: n >= 10 ? 2 : 0,
       tank: 0,
-      warden: 1 + Math.floor(n / 15),
+      warden: Math.min(2, 1 + Math.floor(n / 15)),
     };
   }
   const idx = n - 1;

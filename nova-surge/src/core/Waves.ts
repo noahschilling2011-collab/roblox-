@@ -1,8 +1,8 @@
 // Wellen-Spawner: arbeitet die Tabelle aus config/waves.ts ab und tröpfelt
 // Gegner an den vier Toren ein — nie direkt neben dem Spieler.
 
-import { ENEMY_AI, type EnemyType } from "../config/enemies";
-import { getWave, SPAWN_TRICKLE } from "../config/waves";
+import { ELITE_RULES, ENEMY_AI, type EliteType, type EnemyType } from "../config/enemies";
+import { applyWaveEvent, getWave, isBossWave, SPAWN_TRICKLE, type WaveEventId } from "../config/waves";
 import type { EnemyManager } from "./Enemy";
 import type { Vec3 } from "./math";
 
@@ -16,14 +16,40 @@ export class WaveSpawner {
   private spawnTimer = 0;
   private nextTypeIdx = 0;
 
-  start(waveNumber: number): void {
-    const w = getWave(waveNumber);
+  private waveNumber = 1;
+  private wardensSpawned = 0;
+
+  start(waveNumber: number, event: WaveEventId | null = null): void {
+    this.waveNumber = waveNumber;
+    const w = applyWaveEvent(getWave(waveNumber), event);
     this.pendingRusher = w.rusher;
     this.pendingShooter = w.shooter;
     this.pendingTank = w.tank;
     this.pendingWarden = w.warden ?? 0;
-    this.spawnTimer = 0.5;
+    this.wardensSpawned = 0;
+    // Boss-Inszenierung: 1 s Vorlauf für "WARDEN INBOUND" + Warn-Marker
+    this.spawnTimer = isBossWave(waveNumber) ? 1.0 : 0.5;
     this.nextTypeIdx = 0;
+  }
+
+  /** Elite-Chance dieser Welle (ab Welle 6, 5% -> 25%). */
+  private rollElite(type: EnemyType): EliteType | null {
+    if (type === "warden") {
+      // Bosse: der ZWEITE Warden einer Welle kommt als Elite (Qualität statt Masse)
+      if (this.wardensSpawned >= 1) {
+        const pool: EliteType[] = ["swift", "armored", "volatile", "vampiric"];
+        return pool[Math.floor(Math.random() * pool.length)]!;
+      }
+      return null;
+    }
+    if (this.waveNumber < ELITE_RULES.startWave) return null;
+    const chance = Math.min(
+      ELITE_RULES.chanceCap,
+      ELITE_RULES.chanceBase + ELITE_RULES.chancePerWave * (this.waveNumber - ELITE_RULES.startWave)
+    );
+    if (Math.random() >= chance) return null;
+    const pool: EliteType[] = ["swift", "armored", "volatile", "vampiric"];
+    return pool[Math.floor(Math.random() * pool.length)]!;
   }
 
   clear(): void {
@@ -56,8 +82,9 @@ export class WaveSpawner {
       const dx = sp.x - playerPos.x;
       const dz = sp.z - playerPos.z;
       if (dx * dx + dz * dz < MIN_SPAWN_DIST * MIN_SPAWN_DIST) continue;
-      if (enemies.spawn(type, sp.x + (Math.random() - 0.5) * 2, sp.z + (Math.random() - 0.5) * 2, waveNumber)) {
+      if (enemies.spawn(type, sp.x + (Math.random() - 0.5) * 2, sp.z + (Math.random() - 0.5) * 2, waveNumber, this.rollElite(type))) {
         this.decrement(type);
+        if (type === "warden") this.wardensSpawned++;
         this.nextTypeIdx++;
       }
       return;
@@ -68,7 +95,10 @@ export class WaveSpawner {
       const bd = (best.x - playerPos.x) ** 2 + (best.z - playerPos.z) ** 2;
       return d > bd ? sp : best;
     });
-    if (enemies.spawn(type, far.x, far.z, waveNumber)) this.decrement(type);
+    if (enemies.spawn(type, far.x, far.z, waveNumber, this.rollElite(type))) {
+      this.decrement(type);
+      if (type === "warden") this.wardensSpawned++;
+    }
   }
 
   /** Mischt die Typen: Boss zuerst (großer Auftritt), dann Rusher-lastig. */

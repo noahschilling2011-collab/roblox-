@@ -4,7 +4,7 @@
 // Glow-Augen/-Kerne, Hitreact-Weißblitz, Tod = Umkippen + Ausblenden.
 
 import * as THREE from "three";
-import { ENEMY_AI, type EnemyType } from "../config/enemies";
+import { ELITES, ENEMY_AI, type EliteType, type EnemyType } from "../config/enemies";
 import type { Enemy, EnemyManager } from "../core/Enemy";
 import { lerp } from "../core/math";
 
@@ -12,6 +12,10 @@ interface EnemyVisual {
   group: THREE.Group;
   /** Flashbare Materialien (Weißblitz bei Treffern). */
   materials: THREE.MeshLambertMaterial[];
+  /** Original-Farben — für den Elite-Tint-Reset beim Pool-Release. */
+  baseColors: number[];
+  appliedElite: EliteType | null;
+  eliteScale: number;
   /** Dauerhaft leuchtende Materialien (Augen/Kerne) — nur Fade beim Tod. */
   glowMats: THREE.MeshLambertMaterial[];
   parts: {
@@ -52,6 +56,7 @@ export class EnemyRenderer {
   update(enemies: EnemyManager, alpha: number, dt: number, playerX: number, playerZ: number, time: number): void {
     for (const [enemy, visual] of this.byEnemy) {
       if (!enemy.active) {
+        this.resetEliteLook(visual); // Tint darf NIE am Pool kleben bleiben
         visual.assigned = null;
         visual.group.visible = false;
         this.byEnemy.delete(enemy);
@@ -68,6 +73,7 @@ export class EnemyRenderer {
         visual.walkPhase = Math.random() * Math.PI * 2;
         this.byEnemy.set(e, visual);
         visual.group.visible = true;
+        this.applyEliteLook(visual, e.elite);
       }
 
       const g = visual.group;
@@ -127,15 +133,17 @@ export class EnemyRenderer {
       // Hitreact: kurz zusammenzucken
       const flinch =
         e.fsm === "hitreact" ? 1 - 0.12 * Math.sin((e.stateTimer / ENEMY_AI.hitreactDuration) * Math.PI) : 1;
-      g.scale.set(2 - flinch, flinch, 2 - flinch);
+      const es = visual.eliteScale;
+      g.scale.set((2 - flinch) * es, flinch * es, (2 - flinch) * es);
 
-      // Weißblitz beim Treffer
+      // Weißblitz beim Treffer; Volatile-Elites pulsieren zusätzlich orange
+      const volatilePulse = e.elite === "volatile" ? 0.3 + 0.3 * Math.sin(time * 8) : 0;
       for (const m of visual.materials) {
         if (m.opacity !== 1) {
           m.opacity = 1;
           m.transparent = false;
         }
-        m.emissiveIntensity = e.flash * 0.9;
+        m.emissiveIntensity = Math.max(e.flash * 0.9, volatilePulse);
       }
       for (const m of visual.glowMats) {
         if (m.opacity !== 1) {
@@ -148,12 +156,42 @@ export class EnemyRenderer {
 
   clear(): void {
     for (const [, visual] of this.byEnemy) {
+      this.resetEliteLook(visual);
       visual.assigned = null;
       visual.group.visible = false;
     }
     this.byEnemy.clear();
   }
+
+  /** Elite-Look: Farben Richtung Tint mischen, Volatile bekommt Orange-Emissive. */
+  private applyEliteLook(visual: EnemyVisual, elite: EliteType | null): void {
+    this.resetEliteLook(visual);
+    if (!elite) return;
+    const def = ELITES[elite];
+    _tint.setHex(def.tint);
+    visual.materials.forEach((m, i) => {
+      m.color.setHex(visual.baseColors[i]!).lerp(_tint, 0.55);
+      if (elite === "volatile") m.emissive.setHex(0xff7a2f);
+    });
+    visual.eliteScale = def.scale;
+    visual.appliedElite = elite;
+  }
+
+  /** Original-Zustand wiederherstellen (Farben, Emissive, Skalierung). */
+  private resetEliteLook(visual: EnemyVisual): void {
+    if (visual.appliedElite === null) return;
+    visual.materials.forEach((m, i) => {
+      m.color.setHex(visual.baseColors[i]!);
+      m.emissive.setHex(0xffffff);
+      m.emissiveIntensity = 0;
+    });
+    visual.eliteScale = 1;
+    visual.group.scale.set(1, 1, 1);
+    visual.appliedElite = null;
+  }
 }
+
+const _tint = new THREE.Color();
 
 const box = new THREE.BoxGeometry(1, 1, 1);
 
@@ -262,5 +300,15 @@ function buildVisual(type: EnemyType): EnemyVisual {
     parts.legL = add(dark, 0.42, 0.72, 0.42, -0.36, 0.36, 0);
     parts.legR = add(dark, 0.42, 0.72, 0.42, 0.36, 0.36, 0);
   }
-  return { group, materials, glowMats, parts, walkPhase: 0, assigned: null };
+  return {
+    group,
+    materials,
+    baseColors: materials.map((m) => m.color.getHex()),
+    appliedElite: null,
+    eliteScale: 1,
+    glowMats,
+    parts,
+    walkPhase: 0,
+    assigned: null,
+  };
 }

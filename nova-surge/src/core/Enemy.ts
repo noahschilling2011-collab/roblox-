@@ -2,7 +2,7 @@
 // (Spawn -> Alert -> Attack -> Hitreact -> Death), Steering ohne Navmesh:
 // Ziel anlaufen, Hindernisse per Raycast umfließen, Separation untereinander.
 
-import { ENEMIES, ENEMY_AI, type EnemyDef, type EnemyType } from "../config/enemies";
+import { ELITES, ELITE_RULES, ENEMIES, ENEMY_AI, type EliteType, type EnemyDef, type EnemyType } from "../config/enemies";
 import { waveHpScale } from "../config/waves";
 import { moveBody, type CollisionWorld } from "./collision";
 import { rayVsAabb, segmentClear, vec3, type Aabb, type Vec3 } from "./math";
@@ -45,6 +45,10 @@ export class Enemy {
   onGround = true;
   /** 1 direkt nach Treffer, klingt ab — Renderer nutzt das für den Weiß-Flash. */
   flash = 0;
+  /** Elite-Modifikator (RC Phase 2) oder null. */
+  elite: EliteType | null = null;
+  speedScale = 1;
+  scoreScale = 1;
 
   get eyeY(): number {
     return this.pos.y + this.def.height * 0.85;
@@ -80,11 +84,15 @@ export class EnemyManager {
     return n;
   }
 
-  spawn(type: EnemyType, x: number, z: number, waveNumber: number): boolean {
+  spawn(type: EnemyType, x: number, z: number, waveNumber: number, elite: EliteType | null = null): boolean {
     for (const e of this.slots) {
       if (e.active) continue;
       e.active = true;
       e.def = ENEMIES[type];
+      e.elite = elite;
+      const eliteDef = elite ? ELITES[elite] : null;
+      e.speedScale = eliteDef ? eliteDef.speedMult : 1;
+      e.scoreScale = eliteDef ? eliteDef.scoreMult : 1;
       e.pos.x = x;
       e.pos.y = 0;
       e.pos.z = z;
@@ -92,7 +100,7 @@ export class EnemyManager {
       e.prevPos.y = 0;
       e.prevPos.z = z;
       e.vel.x = e.vel.y = e.vel.z = 0;
-      e.maxHp = Math.round(e.def.hp * waveHpScale(waveNumber));
+      e.maxHp = Math.round(e.def.hp * waveHpScale(waveNumber) * (eliteDef ? eliteDef.hpMult : 1));
       e.hp = e.maxHp;
       e.fsm = "alert";
       e.stateTimer = ENEMY_AI.alertDelay;
@@ -191,6 +199,9 @@ export class EnemyManager {
       let moveX = 0;
       let moveZ = 0;
       const d = e.def;
+      // Elite "Flink"/"Gepanzert": Tempo skaliert
+      const spd = d.speed * e.speedScale;
+      const strafeSpd = d.strafeSpeed * e.speedScale;
 
       if (d.type === "shooter") {
         // Distanz halten + seitlich strafen
@@ -203,14 +214,14 @@ export class EnemyManager {
         const strafeX = -_toPlayer.z * side;
         const strafeZ = _toPlayer.x * side;
         if (distXZ > d.preferredRange + 3) {
-          moveX = _toPlayer.x * d.speed + strafeX * d.strafeSpeed * 0.4;
-          moveZ = _toPlayer.z * d.speed + strafeZ * d.strafeSpeed * 0.4;
+          moveX = _toPlayer.x * spd + strafeX * strafeSpd * 0.4;
+          moveZ = _toPlayer.z * spd + strafeZ * strafeSpd * 0.4;
         } else if (distXZ < d.preferredRange - 4) {
-          moveX = -_toPlayer.x * d.speed * 0.8 + strafeX * d.strafeSpeed * 0.6;
-          moveZ = -_toPlayer.z * d.speed * 0.8 + strafeZ * d.strafeSpeed * 0.6;
+          moveX = -_toPlayer.x * spd * 0.8 + strafeX * strafeSpd * 0.6;
+          moveZ = -_toPlayer.z * spd * 0.8 + strafeZ * strafeSpd * 0.6;
         } else {
-          moveX = strafeX * d.strafeSpeed;
-          moveZ = strafeZ * d.strafeSpeed;
+          moveX = strafeX * strafeSpd;
+          moveZ = strafeZ * strafeSpd;
         }
 
         // Burst-Feuer bei Sichtlinie
@@ -248,8 +259,8 @@ export class EnemyManager {
         // Rusher, Tank & Warden: anlaufen, kurz vor Nahkampfreichweite stoppen
         // (sonst schieben sie sich in die Kamera)
         if (distXZ > d.meleeRange * 0.75) {
-          moveX = _toPlayer.x * d.speed;
-          moveZ = _toPlayer.z * d.speed;
+          moveX = _toPlayer.x * spd;
+          moveZ = _toPlayer.z * spd;
         }
         // Boss: flacher Projektil-Ring auf Brusthöhe — drüberspringen!
         if (d.radialCount > 0) {
@@ -296,8 +307,8 @@ export class EnemyManager {
       // Nahe am Spieler ist Stillstehen Absicht (Stoppdistanz/Ring-Phase).
       if (e.unstickTimer > 0) {
         e.unstickTimer -= dt;
-        moveX = e.unstickX * d.speed;
-        moveZ = e.unstickZ * d.speed;
+        moveX = e.unstickX * spd;
+        moveZ = e.unstickZ * spd;
       } else if (distXZ > 4 && Math.hypot(moveX, moveZ) > 0.5) {
         const ax = e.pos.x - e.anchorX;
         const az = e.pos.z - e.anchorZ;
@@ -325,6 +336,20 @@ export class EnemyManager {
       this.steer(e, moveX, moveZ, solids, dt);
       this.separate(e);
       this.applyPhysics(e, _desired.x, _desired.z, dt, world);
+    }
+
+    // Elite "Vampirisch": heilt nahe Gegner (nicht sich selbst)
+    for (const v of this.slots) {
+      if (!v.active || v.fsm === "death" || v.elite !== "vampiric") continue;
+      const r2 = ELITE_RULES.vampiricRadius * ELITE_RULES.vampiricRadius;
+      for (const o of this.slots) {
+        if (o === v || !o.active || o.fsm === "death" || o.hp >= o.maxHp) continue;
+        const dx = o.pos.x - v.pos.x;
+        const dz = o.pos.z - v.pos.z;
+        if (dx * dx + dz * dz <= r2) {
+          o.hp = Math.min(o.maxHp, o.hp + ELITE_RULES.vampiricHealPerSecond * dt);
+        }
+      }
     }
   }
 

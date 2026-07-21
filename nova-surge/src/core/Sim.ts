@@ -3,7 +3,8 @@
 // Rendering — die Präsentation liest Zustand + Events.
 
 import { COMBO, PLAYER, REROLL, RUN } from "../config/tuning";
-import { isBossWave } from "../config/waves";
+import { EVENT_RULES, isBossWave, type WaveEventId } from "../config/waves";
+import { ELITE_RULES } from "../config/enemies";
 import { ARENAS, type ArenaDef } from "../config/arena";
 import { COIN_DIVISOR } from "../config/meta";
 import type { WeaponId } from "../config/weapons";
@@ -65,6 +66,11 @@ export class Sim {
   rerollCost: number = REROLL.baseCost;
   /** Ändert sich bei jedem neuen Angebot (HUD baut Karten neu). */
   offerNonce = 0;
+  /** Aktives Wave-Event dieser Welle (RC Phase 2) oder null. */
+  currentEvent: WaveEventId | null = null;
+  /** Test-Hook: erzwingt das Event der nächsten Welle. */
+  forcedEvent: WaveEventId | null = null;
+  private nextEventWave = 0;
 
   private readonly input: InputState;
 
@@ -97,6 +103,10 @@ export class Sim {
     this.sinceLastHit = 999;
     this.hitCounter = 0;
     this.rerollCost = REROLL.baseCost;
+    this.currentEvent = null;
+    this.forcedEvent = null;
+    this.nextEventWave =
+      EVENT_RULES.firstEventWave + Math.floor(Math.random() * (EVENT_RULES.maxGap - EVENT_RULES.minGap + 1));
     this.score = 0;
     this.multiplier = 1;
     this.kills = 0;
@@ -165,10 +175,29 @@ export class Sim {
       this.phaseTimer -= dt;
       if (this.phaseTimer <= 0) {
         this.waveNumber++;
-        this.spawner.start(this.waveNumber);
+        // Wave-Event? (nie auf Boss-Wellen; Test-Hook forcedEvent hat Vorrang)
+        this.currentEvent = null;
+        if (!isBossWave(this.waveNumber)) {
+          if (this.forcedEvent) {
+            this.currentEvent = this.forcedEvent;
+            this.forcedEvent = null;
+          } else if (this.waveNumber >= this.nextEventWave) {
+            const pool: WaveEventId[] = ["goldrush", "blackout", "stampede", "heavyduty"];
+            this.currentEvent = pool[Math.floor(Math.random() * pool.length)]!;
+          }
+          if (this.currentEvent) {
+            this.nextEventWave =
+              this.waveNumber + EVENT_RULES.minGap + Math.floor(Math.random() * (EVENT_RULES.maxGap - EVENT_RULES.minGap + 1));
+          }
+        }
+        this.spawner.start(this.waveNumber, this.currentEvent);
         this.phase = "wave";
         this.damageTakenThisWave = 0;
         this.events.emit(Ev.WaveStart, 0, 0, 0, this.waveNumber, isBossWave(this.waveNumber) ? 1 : 0);
+        if (this.currentEvent) {
+          const pool: WaveEventId[] = ["goldrush", "blackout", "stampede", "heavyduty"];
+          this.events.emit(Ev.WaveEvent, 0, 0, 0, pool.indexOf(this.currentEvent));
+        }
       }
     } else if (this.phase === "wave") {
       this.spawner.update(dt, this.enemies, p.pos, this.waveNumber, this.arena.enemySpawns);
@@ -302,10 +331,26 @@ export class Sim {
   /** Kill-Abwicklung: Score (inkl. Kopfgeld), Overkill-Heilung, Adrenalin,
    *  Scavenger-Munition, Splitterschuss. */
   private onEnemyKilled(e: Enemy, damage: number, hpBefore: number): void {
-    const gained = Math.round(e.def.score * this.multiplier * this.stats.scoreMult);
+    // Score: Elite-Bonus + Kopfgeld + Gold-Rush-Event (×2)
+    const eventMult = this.currentEvent === "goldrush" && this.phase === "wave" ? EVENT_RULES.goldrushScoreMult : 1;
+    const gained = Math.round(e.def.score * e.scoreScale * this.multiplier * this.stats.scoreMult * eventMult);
     this.score += gained;
     this.kills++;
     this.events.emit(Ev.EnemyDied, e.pos.x, e.centerY, e.pos.z, ENEMY_TYPE_INDEX[e.def.type], gained);
+    // Elite "Explosiv": Detonation — Schaden nur auf den Spieler, mit Radius
+    if (e.elite === "volatile") {
+      const dx = this.player.pos.x - e.pos.x;
+      const dz = this.player.pos.z - e.pos.z;
+      const inRange = dx * dx + dz * dz < ELITE_RULES.volatileRadius * ELITE_RULES.volatileRadius;
+      this.events.emit(Ev.Explosion, e.pos.x, e.centerY, e.pos.z, inRange ? 1 : 0);
+      if (inRange) this.damagePlayer(ELITE_RULES.volatileDamage, e.pos.x, e.pos.z);
+    }
+    // Wave-Event "Heavy Duty": Kills heilen (Ersatz für Pickup-Drops —
+    // es existiert kein Pickup-System; in STATUS.md dokumentiert)
+    if (this.currentEvent === "heavyduty" && this.phase === "wave") {
+      this.player.heal(EVENT_RULES.heavydutyHealPerKill);
+      this.events.emit(Ev.Heal, 0, 0, 0, EVENT_RULES.heavydutyHealPerKill);
+    }
     if (this.stats.overkillHealPct > 0) {
       const excess = damage - hpBefore;
       if (excess > 0) {

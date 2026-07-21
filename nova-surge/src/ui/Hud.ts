@@ -26,6 +26,8 @@ export class Hud {
   private readonly upgradeCards = el<HTMLDivElement>("upgrade-cards");
   private readonly upgradeHint = el<HTMLParagraphElement>("upgrade-hint");
   private readonly rerollBtn = el<HTMLButtonElement>("btn-reroll");
+  private readonly bossBar = el<HTMLDivElement>("boss-bar");
+  private readonly bossFill = el<HTMLDivElement>("boss-fill");
 
   private hitmarkerTimer = 0;
   private vignetteLevel = 0;
@@ -125,6 +127,18 @@ export class Hud {
     this.ammoCur.textContent = String(w.ammo);
     this.ammoMax.textContent = String(w.magSize());
     this.ammoBox.classList.toggle("reloading", w.isReloading());
+
+    // Boss-HP-Balken: sichtbar solange Wardens leben
+    let bossHp = 0;
+    let bossMax = 0;
+    for (const e of sim.enemies.slots) {
+      if (e.active && e.def.type === "warden" && e.fsm !== "death") {
+        bossHp += e.hp;
+        bossMax += e.maxHp;
+      }
+    }
+    this.bossBar.hidden = bossMax === 0;
+    if (bossMax > 0) this.bossFill.style.width = `${((bossHp / bossMax) * 100).toFixed(1)}%`;
 
     // Welle / Score
     this.waveLabel.textContent = sim.waveNumber > 0 ? `WAVE ${sim.waveNumber}` : "GET READY";

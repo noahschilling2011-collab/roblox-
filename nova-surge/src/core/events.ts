@@ -23,6 +23,8 @@ export const enum Ev {
   Crit, // kritischer Treffer: x,y,z = Gegnerposition, a = Schaden
   ChainArc, // Kettenblitz-Sprung: x,y,z = Ziel, a/b = Quelle x/z
   PhoenixRevive, // Phoenix-Selbst-Revive ausgelöst
+  WaveEvent, // Wave-Event aktiv: a = Index in WAVE_EVENT_ORDER
+  Explosion, // Volatile-Elite explodiert: x,y,z, a = 1 wenn Spieler getroffen
 }
 
 export interface EventSlot {

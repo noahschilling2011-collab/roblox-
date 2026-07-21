@@ -4,6 +4,7 @@ import { Sfx } from "./audio/Sfx";
 import { ENEMIES, type EnemyType } from "./config/enemies";
 import { getArena } from "./config/arena";
 import { COIN_DIVISOR, COLOR_SCHEMES } from "./config/meta";
+import { EVENT_RULES, WAVE_EVENTS, type WaveEventId } from "./config/waves";
 import { Keyboard } from "./controls/Keyboard";
 import { LookControls } from "./controls/LookControls";
 import { isTouchDevice, TouchControls } from "./controls/TouchControls";
@@ -337,15 +338,39 @@ async function boot(): Promise<void> {
           break;
         case Ev.WaveStart:
           if (e.b === 1) {
-            hud.flashBanner("⚠ BOSS WAVE ⚠", 2.5);
+            hud.flashBanner("⚠ WARDEN INBOUND ⚠", 2.5);
             sfx.bossWaveSting();
+            // Warn-Marker: Partikel-Fontänen an den Spawn-Toren (1s Vorlauf)
+            for (const sp of sim.arena.enemySpawns) {
+              particles.burst(sp.x, 1.2, sp.z, 0xffd23a, 18, 5, 0.9, 0.09, 0.4, 0.9);
+            }
           } else {
             sfx.waveStart();
           }
           sfx.setMusicIntensity(e.a / 10);
           break;
+        case Ev.WaveEvent: {
+          const order: WaveEventId[] = ["goldrush", "blackout", "stampede", "heavyduty"];
+          const id = order[e.a];
+          if (id) {
+            hud.flashBanner(WAVE_EVENTS[id].banner, 2.8);
+            sfx.waveCleared(); // heller Aufmerksamkeits-Sting
+            if (id === "blackout" && scene.fog instanceof THREE.Fog) {
+              scene.fog.near *= EVENT_RULES.blackoutFogMult;
+              scene.fog.far *= EVENT_RULES.blackoutFogMult;
+            }
+          }
+          break;
+        }
+        case Ev.Explosion:
+          particles.burst(e.x, e.y, e.z, 0xff7a2f, 40, 9, 0.9, 0.12, 1, 0.5);
+          sfx.meleeHit();
+          rig.notifyShake(e.a === 1 ? 0.6 : 0.3);
+          break;
         case Ev.WaveCleared:
           sfx.waveCleared();
+          // Blackout-Nebel zurücksetzen (Fog-Werte kommen aus der Arena-Palette)
+          showArena(getArena(save.state.selectedArena));
           break;
         case Ev.Heal:
         case Ev.PlayerDied:
@@ -422,7 +447,7 @@ async function boot(): Promise<void> {
   sdk.loadingDone();
 
   // Debug-Handle für automatisierte Tests (Headless) und die Konsole
-  window.__ns = { loop, sim, renderer, input, save, screens };
+  window.__ns = { loop, sim, renderer, input, save, screens, enemyRenderer };
 }
 
 declare global {
@@ -434,6 +459,7 @@ declare global {
       input: ReturnType<typeof createInput>;
       save: SaveData;
       screens: Screens;
+      enemyRenderer: EnemyRenderer;
     };
   }
 }

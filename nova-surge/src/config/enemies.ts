@@ -129,6 +129,37 @@ export const ENEMIES: Record<EnemyType, EnemyDef> = {
   },
 };
 
+// ---- Elite-Modifikatoren (RC Phase 2): Tint + Stats + max. 1 Verhalten ----
+export type EliteType = "swift" | "armored" | "volatile" | "vampiric";
+
+export interface EliteDef {
+  type: EliteType;
+  name: string; // EN, fürs HUD/Debug
+  tint: number; // Material-Färbung (beim Pool-Release zurücksetzen!)
+  hpMult: number;
+  speedMult: number;
+  scoreMult: number;
+  scale: number; // visuelle Größe
+}
+
+export const ELITES: Record<EliteType, EliteDef> = {
+  swift: { type: "swift", name: "Swift", tint: 0x35e0ff, hpMult: 0.8, speedMult: 1.6, scoreMult: 1.25, scale: 1 },
+  armored: { type: "armored", name: "Armored", tint: 0x9aa4ad, hpMult: 2.5, speedMult: 0.75, scoreMult: 1.5, scale: 1.15 },
+  volatile: { type: "volatile", name: "Volatile", tint: 0xff7a2f, hpMult: 1, speedMult: 1, scoreMult: 1.4, scale: 1 },
+  vampiric: { type: "vampiric", name: "Vampiric", tint: 0xe03a3a, hpMult: 1.2, speedMult: 1, scoreMult: 1.4, scale: 1 },
+};
+
+export const ELITE_RULES = {
+  startWave: 6,
+  chanceBase: 0.05,
+  chancePerWave: 0.01, // ab startWave, bis Cap
+  chanceCap: 0.25,
+  volatileRadius: 3,
+  volatileDamage: 30,
+  vampiricRadius: 5,
+  vampiricHealPerSecond: 2,
+} as const;
+
 export const ENEMY_AI = {
   alertDelay: 0.35, // Reaktionszeit nach Sichtkontakt (Fairness)
   hitreactDuration: 0.14, // Flinch-Dauer, unterbricht Angriff kurz

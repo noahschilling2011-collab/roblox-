@@ -134,6 +134,36 @@ body {
   color: #ffd27d;
 }
 
+/* Boss-HP-Balken (RC Phase 2c) */
+#boss-bar {
+  position: absolute;
+  top: 44px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(420px, 60vw);
+  height: 16px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.55);
+  border: 1px solid rgba(255, 200, 60, 0.6);
+  overflow: hidden;
+}
+#boss-fill {
+  height: 100%;
+  width: 100%;
+  background: linear-gradient(90deg, #c9a227, #ffd23a);
+  transition: width 0.15s;
+}
+#boss-label {
+  position: absolute;
+  inset: 0;
+  text-align: center;
+  font-size: 0.7rem;
+  font-weight: 900;
+  letter-spacing: 0.25em;
+  color: #1c1406;
+  line-height: 16px;
+}
+
 #banner {
   position: absolute;
   top: 22%;
