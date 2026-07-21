@@ -1,19 +1,36 @@
 # Nova Surge — Projektstand
 
-## ⏸ RELEASE-CANDIDATE-PLAN: Phase 0 fertig — WARTE AUF FREIGABE für Phase 1
-Neuer Arbeitsmodus laut `RELEASE-PLAN.md`: Phasen strikt sequenziell mit
+## ⏸ RELEASE-CANDIDATE-PLAN: Phase 1 fertig — WARTE AUF FREIGABE für Phase 2
+Arbeitsmodus laut `RELEASE-PLAN.md`: Phasen strikt sequenziell mit
 Freigabe-Stopp nach jeder Phase.
-- **Phase 0 ✅ (DoD erfüllt):** `ARCHITEKTUR.md` erstellt (Datei→Zuständigkeit,
-  alle Andock-Punkte für Phase 1–3 markiert). Alle Diagnose-Zahlen gegen den
-  Source verifiziert — zwei Korrekturen: Gesamt-Coin-Sinks sind **1.440**
-  (nicht 1.410); **Coin-Pickups existieren nicht** → „Magnetfeld" wird laut
-  Plan durch „Combo hält 2 s länger" ersetzt (braucht Combo-Verfall, siehe
-  ARCHITEKTUR.md Punkt 2). Build-Baseline grün (612 KB, gzip ~156 KB).
-- **Offene Design-Entscheidungen für Phase-1-Freigabe** (Details in
-  ARCHITEKTUR.md unten): (1) Reroll bucht vom Coin-KONTO ab (Run-Coins werden
-  erst am Run-Ende gutgeschrieben), (2) Combo-Verfall einführen ja/nein,
-  (3) Zeitlupen-Epic als Gegner-dt-Skalierung.
-- **Nächster Schritt:** Freigabe durch Noah → Phase 1 (Upgrades 6 → 24).
+
+### Phase 0 ✅ (DoD erfüllt)
+`ARCHITEKTUR.md` erstellt, alle Diagnose-Zahlen verifiziert (Korrekturen:
+Sinks 1.440 statt 1.410; keine Coin-Pickups → Magnetfeld-Ersatz),
+Build-Baseline grün.
+
+### Phase 1 ✅ (DoD erfüllt) — Upgrades 6 → 24
+Freigegeben von Noah mit den 3 Design-Entscheidungen aus ARCHITEKTUR.md.
+- **24 Upgrades:** 11 Common / 9 Rare / 4 Epic (unique). RunStats als
+  zentrales Effekt-Objekt (`src/core/Stats.ts`), alle Zahlen in
+  `config/upgrades.ts` VALUES. Metrik-Begründung: Build-Vielfalt pro Run →
+  „nächstes Mal probier ich X" → Session-Länge + D1.
+- **Rarity-Draft:** gemessen 66/27/7 auf Welle 1; Epic-Chance steigt auf
+  17 % @ Welle 20 (Cap 18 %). Karten mit Rarity-Rahmen/Glow + Label.
+- **Reroll:** 10 Coins vom Konto, verdoppelt pro Nutzung im Run (Taste R
+  oder Button). Metrik: Coins bekommen In-Run-Wert → Rewarded „Coins ×2".
+- **Combo-Verfall:** nach 4 s ohne Treffer −0,5/s Richtung ×1 („Flow State"
+  +2 s/Stack). Belohnt Dauerdruck.
+- **DoD-Nachweis (headless, 14/15 + Einzeltest):** Draft-Verteilung ✓,
+  Combo-Verfall ✓, Reroll ✓, Durchschlag ✓, Dornen ✓, Twin Link (9 Pellets) ✓,
+  Bullet Time (Tank 0,56 m vs. 1,26 m Bewegung beim Reload) ✓, Phoenix
+  (Revive auf 40 HP, Ladung verbraucht, Ad-Revive bleibt) ✓, Chain Lightning
+  (3 Nachbarn verletzt) ✓, Ricochet separat an naher Wand verifiziert
+  (Suite-Testdesign-Fehler: Wand lag außerhalb der 23-m-Pellet-Reichweite;
+  Ergebnis: ohne Upgrade 0, mit Upgrade 8 überlebende Pellets) ✓,
+  **3 Crash-Läufe bis Welle 12 ohne Fehler** ✓, Konsole sauber ✓.
+- **Nächster Schritt:** Freigabe durch Noah → Phase 2 (Wave-Director:
+  Elites, Wave-Events, Boss-Inszenierung).
 
 Letzte Session: 2026-07-20 · Stand: **Phasen 0–6 komplett + Content-Update** ·
 Code-seitige Gates bestanden, manuelle Checks für Noah unten.
