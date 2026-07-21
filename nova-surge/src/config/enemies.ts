@@ -125,7 +125,7 @@ export const ENEMIES: Record<EnemyType, EnemyDef> = {
     canJump: false,
     jumpVelocity: 0,
     radialCount: 12,
-    radialCooldown: 3.4,
+    radialCooldown: 4.0, // nach Bot-Läufen entschärft: 1. Boss soll fordern, nicht mauern
   },
 };
 

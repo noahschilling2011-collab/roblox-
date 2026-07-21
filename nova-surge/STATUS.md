@@ -83,6 +83,15 @@ Auf Noahs Freibrief („mach was du denkst") — alles zahlt auf Retention ein:
 - Death-Screen zeigt jetzt auch „Best wave".
 - Boss-Mechanik-Test headless 4/4 (Spawn auf Welle 5, Ring ≥8 Projektile
   sichtbar, stirbt unter Beschuss, Konsole sauber).
+- **Anti-Hänger-Logik** nachgerüstet: Der verschärfte Stuck-Detektor fand im
+  Langlauf 4 weiche Hänger (Shooter strafen in Wände, Tanks pressen gegen
+  Blöcke bei campendem Spieler). Fix: Wer trotz Bewegungswunsch >1,6 s kaum
+  vorankommt, weicht 1,1 s senkrecht aus. Verifiziert: Folgelauf **stuck=0**.
+- **Balance-Hinweis (ehrlich):** Bot-Run-Längen streuen mit Boss-Wellen
+  stark (92–307 s, je nachdem ob der zufalls-strafende Bot den ersten Boss
+  überlebt — er springt nicht bewusst über Ringe, Menschen schon).
+  Ring-Cooldown nach den Läufen 3,4 → 4,0 s entschärft. Die finale
+  Boss-Balance-Einschätzung braucht Noahs echten Playtest (Welle 5!).
 
 > Hinweis zur Arbeitsweise: Auf ausdrückliche Anweisung („mach alles jetzt")
 > wurden Phasen 1–6 in EINEM Auftrag gebaut — abweichend von der
