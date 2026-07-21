@@ -56,6 +56,9 @@ stattdessen Content-Ausbau innerhalb der Regeln:
      und dann nie wieder (Dauer-True erzeugt keine Tastenflanken). Auto-Fire
      pulst jetzt für Semi-Waffen. Gefunden durch den Bot-Test — der Bot
      hatte exakt dasselbe Problem wie ein Handy-Spieler gehabt hätte.
+- Abschlusstest nach allen Fixes: Bot-Run mit **Scatter Gun auf Grand
+  Gallery 13/13** (Tod nach 148 s in Welle 6, 36 Kills, kein Bot
+  steckengeblieben, Heap-Drift 0,84 MB, Konsole fehlerfrei).
 
 > Hinweis zur Arbeitsweise: Auf ausdrückliche Anweisung („mach alles jetzt")
 > wurden Phasen 1–6 in EINEM Auftrag gebaut — abweichend von der
