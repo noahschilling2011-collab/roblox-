@@ -12,6 +12,7 @@ export class WaveSpawner {
   private pendingRusher = 0;
   private pendingShooter = 0;
   private pendingTank = 0;
+  private pendingWarden = 0;
   private spawnTimer = 0;
   private nextTypeIdx = 0;
 
@@ -20,16 +21,17 @@ export class WaveSpawner {
     this.pendingRusher = w.rusher;
     this.pendingShooter = w.shooter;
     this.pendingTank = w.tank;
+    this.pendingWarden = w.warden ?? 0;
     this.spawnTimer = 0.5;
     this.nextTypeIdx = 0;
   }
 
   clear(): void {
-    this.pendingRusher = this.pendingShooter = this.pendingTank = 0;
+    this.pendingRusher = this.pendingShooter = this.pendingTank = this.pendingWarden = 0;
   }
 
   pendingCount(): number {
-    return this.pendingRusher + this.pendingShooter + this.pendingTank;
+    return this.pendingRusher + this.pendingShooter + this.pendingTank + this.pendingWarden;
   }
 
   update(
@@ -69,8 +71,9 @@ export class WaveSpawner {
     if (enemies.spawn(type, far.x, far.z, waveNumber)) this.decrement(type);
   }
 
-  /** Mischt die Typen: Rusher zuerst-lastig, Tanks verteilt. */
+  /** Mischt die Typen: Boss zuerst (großer Auftritt), dann Rusher-lastig. */
   private pickType(): EnemyType | null {
+    if (this.pendingWarden > 0) return "warden";
     const order: EnemyType[] = ["rusher", "shooter", "rusher", "tank"];
     for (let i = 0; i < order.length; i++) {
       const t = order[(this.nextTypeIdx + i) % order.length]!;
@@ -87,6 +90,7 @@ export class WaveSpawner {
   private decrement(type: EnemyType): void {
     if (type === "rusher") this.pendingRusher--;
     else if (type === "shooter") this.pendingShooter--;
+    else if (type === "warden") this.pendingWarden--;
     else this.pendingTank--;
   }
 }

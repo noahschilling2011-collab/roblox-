@@ -10,7 +10,7 @@ import { EventQueue, Ev } from "./events";
 
 export type EnemyFsm = "alert" | "attack" | "hitreact" | "death";
 
-export const ENEMY_TYPE_INDEX: Record<EnemyType, number> = { rusher: 0, shooter: 1, tank: 2 };
+export const ENEMY_TYPE_INDEX: Record<EnemyType, number> = { rusher: 0, shooter: 1, tank: 2, warden: 3 };
 
 export interface EnemyCallbacks {
   damagePlayer(amount: number, sourceX: number, sourceZ: number): void;
@@ -32,6 +32,7 @@ export class Enemy {
   burstTimer = 0;
   strafeDir = 1;
   strafeTimer = 0;
+  radialTimer = 0; // Boss-Ring-Angriff
   hitreactCooldown = 0;
   onGround = true;
   /** 1 direkt nach Treffer, klingt ab — Renderer nutzt das für den Weiß-Flash. */
@@ -92,6 +93,7 @@ export class EnemyManager {
       e.burstTimer = 0;
       e.strafeDir = Math.random() < 0.5 ? 1 : -1;
       e.strafeTimer = 1 + Math.random() * 2;
+      e.radialTimer = 2; // Boss: erste Ring-Salve kommt mit Vorwarnzeit
       e.hitreactCooldown = 0;
       e.flash = 0;
       return true;
@@ -231,11 +233,30 @@ export class EnemyManager {
           e.attackCooldown = d.burstCooldown;
         }
       } else {
-        // Rusher & Tank: anlaufen, kurz vor Nahkampfreichweite stoppen
+        // Rusher, Tank & Warden: anlaufen, kurz vor Nahkampfreichweite stoppen
         // (sonst schieben sie sich in die Kamera)
         if (distXZ > d.meleeRange * 0.75) {
           moveX = _toPlayer.x * d.speed;
           moveZ = _toPlayer.z * d.speed;
+        }
+        // Boss: flacher Projektil-Ring auf Brusthöhe — drüberspringen!
+        if (d.radialCount > 0) {
+          e.radialTimer -= dt;
+          if (e.radialTimer <= 0 && distXZ < 24) {
+            e.radialTimer = d.radialCooldown;
+            _eye.x = e.pos.x;
+            _eye.y = e.pos.y + 1.4;
+            _eye.z = e.pos.z;
+            const offset = Math.random() * Math.PI * 2;
+            for (let r = 0; r < d.radialCount; r++) {
+              const a = offset + (r / d.radialCount) * Math.PI * 2;
+              _shotDir.x = Math.sin(a);
+              _shotDir.y = 0;
+              _shotDir.z = Math.cos(a);
+              callbacks.spawnEnemyProjectile(_eye, _shotDir, d.projectileSpeed, d.projectileDamage);
+            }
+            events.emit(Ev.EnemyShot, _eye.x, _eye.y, _eye.z);
+          }
         }
         const heightDiff = playerPos.y - e.pos.y;
         if (d.canJump && e.onGround && heightDiff > 0.6 && distXZ < 3.5) {

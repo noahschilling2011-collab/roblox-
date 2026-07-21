@@ -17,6 +17,7 @@ import { CameraRig } from "./render/CameraRig";
 import { createScene } from "./render/createScene";
 import { EnemyRenderer } from "./render/EnemyRenderer";
 import { Particles } from "./render/Particles";
+import { ProjectileRenderer } from "./render/ProjectileRenderer";
 import { Tracers } from "./render/Tracers";
 import { WeaponView } from "./render/WeaponView";
 import { DebugOverlay } from "./ui/DebugOverlay";
@@ -24,7 +25,7 @@ import { Hud } from "./ui/Hud";
 import { Screens } from "./ui/Screens";
 
 const SIM_HZ = 60;
-const ENEMY_TYPES: EnemyType[] = ["rusher", "shooter", "tank"];
+const ENEMY_TYPES: EnemyType[] = ["rusher", "shooter", "tank", "warden"];
 
 async function boot(): Promise<void> {
   const sdk = new CrazySdk();
@@ -54,6 +55,7 @@ async function boot(): Promise<void> {
   const enemyRenderer = new EnemyRenderer(scene);
   const particles = new Particles(scene);
   const tracers = new Tracers(scene);
+  const projectileRenderer = new ProjectileRenderer(scene);
   const hud = new Hud();
   const debugOverlay = new DebugOverlay();
 
@@ -136,8 +138,13 @@ async function boot(): Promise<void> {
     touch.showUi(playing && isTouch);
     if (!playing) keyboard.releaseAll();
     loop.setPaused(mode === "pause");
-    if (playing) sdk.gameplayStart();
-    else sdk.gameplayStop();
+    if (playing) {
+      sdk.gameplayStart();
+      if (save.state.musicOn) sfx.startMusic();
+    } else {
+      sdk.gameplayStop();
+      sfx.stopMusic();
+    }
   };
 
   // Mobile hat kein ESC: der Pause-Button oben rechts übernimmt das
@@ -181,6 +188,7 @@ async function boot(): Promise<void> {
       screens.showDeath({
         score: sim.score,
         wave: sim.waveNumber,
+        bestWave: save.state.bestWave,
         kills: sim.kills,
         coins: sim.coinsEarned,
         newHighscore: wasNewHighscore,
@@ -200,6 +208,17 @@ async function boot(): Promise<void> {
   const _right = new THREE.Vector3();
   const _up = new THREE.Vector3();
   const _muzzle = new THREE.Vector3();
+  const _proj = new THREE.Vector3();
+
+  /** Weltpunkt -> Bildschirm-Pixel; false, wenn hinter der Kamera. */
+  function projectToScreen(x: number, y: number, z: number): { x: number; y: number } | null {
+    _proj.set(x, y, z).project(camera);
+    if (_proj.z > 1) return null;
+    return {
+      x: ((_proj.x + 1) / 2) * window.innerWidth,
+      y: ((1 - _proj.y) / 2) * window.innerHeight,
+    };
+  }
 
   function computeMuzzle(): THREE.Vector3 {
     _fwd.set(0, 0, -1).applyQuaternion(camera.quaternion);
@@ -242,9 +261,22 @@ async function boot(): Promise<void> {
           break;
         case Ev.EnemyDied: {
           const type = ENEMY_TYPES[e.a] ?? "rusher";
-          particles.burst(e.x, e.y, e.z, ENEMIES[type].color, 22, 6.5, 0.7, 0.09, 1, 0.55);
+          const isBoss = type === "warden";
+          particles.burst(e.x, e.y, e.z, ENEMIES[type].color, isBoss ? 60 : 22, isBoss ? 10 : 6.5, isBoss ? 1.1 : 0.7, isBoss ? 0.14 : 0.09, 1, 0.55);
+          if (isBoss) {
+            sfx.bossDown();
+            rig.notifyShake(0.8);
+            sdk.happytime(); // Boss-Kill = Jubel-Moment
+          }
+          // Score-Popup an der Kill-Stelle
+          const screen = projectToScreen(e.x, e.y + 1, e.z);
+          if (screen) hud.spawnPopup(screen.x, screen.y, `+${e.b}`, isBoss);
           break;
         }
+        case Ev.PerfectWave:
+          hud.flashBanner(`PERFECT WAVE +${e.a}`, 2.2);
+          sfx.perfectWave();
+          break;
         case Ev.EnemyShot: {
           const d = Math.hypot(e.x - sim.player.pos.x, e.z - sim.player.pos.z);
           sfx.enemyShot(d);
@@ -253,6 +285,7 @@ async function boot(): Promise<void> {
         case Ev.PlayerHurt:
           sfx.playerHurt();
           hud.notifyHurt(e.b);
+          rig.notifyShake(0.25 + Math.min(0.35, e.a / 80));
           break;
         case Ev.MeleeHit:
           sfx.meleeHit();
@@ -272,7 +305,13 @@ async function boot(): Promise<void> {
           rig.notifyLand(e.a);
           break;
         case Ev.WaveStart:
-          sfx.waveStart();
+          if (e.b === 1) {
+            hud.flashBanner("⚠ BOSS WAVE ⚠", 2.5);
+            sfx.bossWaveSting();
+          } else {
+            sfx.waveStart();
+          }
+          sfx.setMusicIntensity(e.a / 10);
           break;
         case Ev.WaveCleared:
           sfx.waveCleared();
@@ -334,6 +373,7 @@ async function boot(): Promise<void> {
       enemyRenderer.update(sim.enemies, alpha, dt, sim.player.pos.x, sim.player.pos.z, performance.now() / 1000);
       particles.update(dt);
       tracers.update(dt);
+      projectileRenderer.update(sim.projectiles, alpha);
       drainEvents();
       if (screens.mode === "playing") hud.update(dt, sim, isTouch);
       updateResolutionScale(dt, loop.getStats().fps);

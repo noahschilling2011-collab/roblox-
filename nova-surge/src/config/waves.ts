@@ -8,6 +8,12 @@ export interface WaveDef {
   rusher: number;
   shooter: number;
   tank: number;
+  warden?: number; // Boss — nur auf Boss-Wellen gesetzt
+}
+
+/** Jede 5. Welle ist eine Boss-Welle. */
+export function isBossWave(n: number): boolean {
+  return n > 0 && n % 5 === 0;
 }
 
 export const WAVE_TABLE: WaveDef[] = [
@@ -27,6 +33,15 @@ export const WAVE_TABLE: WaveDef[] = [
 
 /** Welle n (1-basiert) — jenseits der Tabelle wird linear weiterskaliert. */
 export function getWave(n: number): WaveDef {
+  // Boss-Wellen ersetzen die normale Zusammensetzung: Warden + kleine Eskorte
+  if (isBossWave(n)) {
+    return {
+      rusher: 2 + Math.floor(n / 5),
+      shooter: n >= 10 ? 2 : 0,
+      tank: 0,
+      warden: 1 + Math.floor(n / 15),
+    };
+  }
   const idx = n - 1;
   const last = WAVE_TABLE[WAVE_TABLE.length - 1]!;
   if (idx < WAVE_TABLE.length) return WAVE_TABLE[idx]!;

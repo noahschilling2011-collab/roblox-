@@ -41,6 +41,7 @@ export class Screens {
   private readonly schemeRow = el<HTMLDivElement>("scheme-select");
   private readonly autofireRow = el<HTMLLabelElement>("autofire-row");
   private readonly autofireToggle = el<HTMLInputElement>("autofire-toggle");
+  private readonly musicToggle = el<HTMLInputElement>("music-toggle");
   private readonly menuHint = el<HTMLParagraphElement>("menu-hint");
   private readonly btnRevive = el<HTMLButtonElement>("btn-revive");
   private readonly btnCoins2 = el<HTMLButtonElement>("btn-coins2");
@@ -79,6 +80,10 @@ export class Screens {
     this.btnCoins2.addEventListener("click", () => cb.onCoinsX2());
     this.autofireToggle.addEventListener("change", () => {
       this.save.state.autoFire = this.autofireToggle.checked;
+      this.save.save();
+    });
+    this.musicToggle.addEventListener("change", () => {
+      this.save.state.musicOn = this.musicToggle.checked;
       this.save.save();
     });
 
@@ -131,6 +136,7 @@ export class Screens {
   showDeath(opts: {
     score: number;
     wave: number;
+    bestWave: number;
     kills: number;
     coins: number;
     newHighscore: boolean;
@@ -139,6 +145,7 @@ export class Screens {
   }): void {
     el<HTMLSpanElement>("death-score").textContent = String(opts.score);
     el<HTMLSpanElement>("death-wave").textContent = String(opts.wave);
+    el<HTMLSpanElement>("death-bestwave").textContent = String(Math.max(opts.bestWave, opts.wave));
     el<HTMLSpanElement>("death-kills").textContent = String(opts.kills);
     el<HTMLSpanElement>("death-coins").textContent = `🪙 ${opts.coins}`;
     this.deathHighscore.hidden = !opts.newHighscore;
@@ -184,6 +191,7 @@ export class Screens {
     this.statCoins.textContent = `🪙 ${s.coins}`;
     this.statHighscore.textContent = `🏆 ${s.highscore}`;
     this.autofireToggle.checked = s.autoFire;
+    this.musicToggle.checked = s.musicOn;
     this.buildMapRow();
     this.buildWeaponRow();
     this.buildSchemeRow();

@@ -60,6 +60,30 @@ stattdessen Content-Ausbau innerhalb der Regeln:
   Gallery 13/13** (Tod nach 148 s in Welle 6, 36 Kills, kein Bot
   steckengeblieben, Heap-Drift 0,84 MB, Konsole fehlerfrei).
 
+## Update 3 (gleiche Session): Juice & Boss Update
+Auf Noahs Freibrief („mach was du denkst") — alles zahlt auf Retention ein:
+- **Boss-Wellen:** Jede 5. Welle bringt den **Warden** (golden, 850 HP ×
+  Skalierung, Krone + Glutkern). Feuert alle 3,4 s einen flachen 12-Projektil-
+  Ring auf Brusthöhe — überspringbar (Doppelsprung-Synergie), plus harter
+  Nahkampf. Kommt mit Eskorte, ab Welle 15 mehrere. Boss-Kill: großer
+  Partikel-Burst, Screen-Shake, eigener Sound, SDK-`happytime()`.
+- **KRITISCHER FIX: Projektile waren unsichtbar!** Es gab keinen
+  Projektil-Renderer — Shooter-Geschosse haben unsichtbar getroffen (Gate
+  „sichtbar & ausweichbar" verletzt, von keinem Headless-Test erkennbar).
+  Jetzt: InstancedMesh-Renderer, Gegner-Schüsse violett leuchtend,
+  Shotgun-Pellets orange, interpoliert.
+- **Perfect Wave:** Welle ohne eigenen Schaden = +500 Punkte + Banner + Sound.
+- **Score-Popups** an der Kill-Stelle (3D→2D projiziert, DOM-Pool),
+  Boss-Kills groß in Orange.
+- **Screen-Shake** bei eigenem Schaden (skaliert mit Schadenshöhe) und
+  Boss-Tod.
+- **Prozedurale Musik:** 116-BPM-Beat (Kick/Hat/Bass) über WebAudio-
+  Lookahead-Scheduler, Intensität steigt mit der Wellennummer, läuft nur
+  während des Runs. Im Menü abschaltbar (persistiert). Kein Audio-File.
+- Death-Screen zeigt jetzt auch „Best wave".
+- Boss-Mechanik-Test headless 4/4 (Spawn auf Welle 5, Ring ≥8 Projektile
+  sichtbar, stirbt unter Beschuss, Konsole sauber).
+
 > Hinweis zur Arbeitsweise: Auf ausdrückliche Anweisung („mach alles jetzt")
 > wurden Phasen 1–6 in EINEM Auftrag gebaut — abweichend von der
 > Eine-Phase-Regel in CLAUDE.md. Alle automatisiert prüfbaren Gates wurden

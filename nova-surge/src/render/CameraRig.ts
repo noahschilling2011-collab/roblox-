@@ -16,6 +16,7 @@ export class CameraRig {
   private bobIntensity = 0;
   private fov: number = FEEL.baseFov;
   private landDip = 0;
+  private shake = 0;
 
   constructor(camera: THREE.PerspectiveCamera) {
     this.camera = camera;
@@ -23,6 +24,11 @@ export class CameraRig {
 
   notifyLand(fallSpeed: number): void {
     this.landDip = Math.min(0.14, FEEL.landingDipAmount * (fallSpeed / MOVE.jumpVelocity));
+  }
+
+  /** Kurzer Screen-Shake (eigener Schaden, Boss-Tod). */
+  notifyShake(amount: number): void {
+    this.shake = Math.min(1, this.shake + amount);
   }
 
   update(dt: number, alpha: number, player: Player, input: InputState, weapon: Weapon): void {
@@ -54,6 +60,15 @@ export class CameraRig {
       y + MOVE.playerHeight + bobY - this.landDip,
       z + rightZ * bobX
     );
+
+    // Screen-Shake: kleiner Positions-Jitter + Roll, klingt schnell ab
+    this.shake = damp(this.shake, 0, 9, dt);
+    if (this.shake > 0.01) {
+      this.camera.position.x += (Math.random() - 0.5) * this.shake * 0.09;
+      this.camera.position.y += (Math.random() - 0.5) * this.shake * 0.07;
+      this.euler.z += (Math.random() - 0.5) * this.shake * 0.02;
+      this.camera.quaternion.setFromEuler(this.euler);
+    }
 
     // FOV: Sprint-Kick
     const targetFov = FEEL.baseFov + (player.sprinting && player.moveIntensity > 0.3 ? FEEL.sprintFovKick : 0);

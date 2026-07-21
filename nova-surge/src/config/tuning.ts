@@ -36,4 +36,5 @@ export const PLAYER = {
 export const RUN = {
   firstWaveDelay: 6.0, // Sekunden
   waveBreak: 5.0, // Pause zwischen Wellen
+  perfectWaveBonus: 500, // Welle ohne eigenen Schaden
 } as const;

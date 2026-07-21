@@ -8,6 +8,12 @@ export class Sfx {
   private ctx: AudioContext | null = null;
   private master: GainNode | null = null;
   private noiseBuffer: AudioBuffer | null = null;
+  // ---- Musik: leichter prozeduraler Beat, Intensität folgt der Welle ----
+  private musicGain: GainNode | null = null;
+  private musicTimer: number | null = null;
+  private nextBeatTime = 0;
+  private beatIndex = 0;
+  private musicIntensity = 0;
 
   /** Muss aus einer User-Geste heraus aufgerufen werden (Browser-Autoplay-Regel). */
   init(): void {
@@ -138,6 +144,121 @@ export class Sfx {
 
   land(intensity: number): void {
     this.noise(0.07, 500, Math.min(0.25, intensity * 0.02), 0.8);
+  }
+
+  // ---- Boss & Bonus ----
+
+  bossWaveSting(): void {
+    this.tone(110, 0.5, 0.35, "sawtooth", 55);
+    this.tone(82, 0.7, 0.3, "square", 0, 0.35);
+    this.noise(0.6, 400, 0.25, 0.6);
+  }
+
+  bossDown(): void {
+    this.noise(0.8, 900, 0.5, 0.5, 80);
+    this.tone(70, 0.9, 0.5, "sine", 30);
+    this.tone(523, 0.12, 0.2, "triangle", 0, 0.5);
+    this.tone(784, 0.25, 0.22, "triangle", 0, 0.62);
+  }
+
+  perfectWave(): void {
+    this.tone(880, 0.09, 0.2, "triangle", 0, 0);
+    this.tone(1108, 0.09, 0.2, "triangle", 0, 0.08);
+    this.tone(1318, 0.22, 0.22, "triangle", 0, 0.16);
+  }
+
+  // ---- Musik ----
+
+  /** Beat läuft nur während des Runs; Intensität 0..1 skaliert mit der Welle. */
+  startMusic(): void {
+    if (!this.ctx || !this.master || this.musicTimer !== null) return;
+    if (!this.musicGain) {
+      this.musicGain = this.ctx.createGain();
+      this.musicGain.gain.value = 0.16;
+      this.musicGain.connect(this.master);
+    }
+    this.nextBeatTime = this.ctx.currentTime + 0.1;
+    this.beatIndex = 0;
+    // Lookahead-Scheduler: plant Beats ~0,5 s im Voraus
+    this.musicTimer = window.setInterval(() => this.scheduleBeats(), 200);
+  }
+
+  stopMusic(): void {
+    if (this.musicTimer !== null) {
+      clearInterval(this.musicTimer);
+      this.musicTimer = null;
+    }
+  }
+
+  setMusicIntensity(v: number): void {
+    this.musicIntensity = Math.min(1, Math.max(0, v));
+  }
+
+  private scheduleBeats(): void {
+    if (!this.ctx || !this.musicGain) return;
+    const eighth = 60 / 116 / 2; // 116 BPM, Achtel
+    while (this.nextBeatTime < this.ctx.currentTime + 0.5) {
+      const t = this.nextBeatTime;
+      const step = this.beatIndex % 8;
+      // Kick auf 1 und 5 (+ bei hoher Intensität auf 7)
+      if (step === 0 || step === 4 || (step === 6 && this.musicIntensity > 0.6)) {
+        this.musicKick(t);
+      }
+      // Hi-Hat auf den Off-Beats, Dichte steigt mit Intensität
+      if (step % 2 === 1 && (step === 3 || step === 7 || this.musicIntensity > 0.3)) {
+        this.musicHat(t);
+      }
+      // Bass: Grundton/Quinte im Wechsel, mit Intensität heller gefiltert
+      if (step === 0 || step === 3 || step === 4) {
+        this.musicBass(t, step === 3 ? 55 * 1.5 : 55, eighth * 0.9);
+      }
+      this.nextBeatTime += eighth;
+      this.beatIndex++;
+    }
+  }
+
+  private musicKick(t: number): void {
+    if (!this.ctx || !this.musicGain) return;
+    const osc = this.ctx.createOscillator();
+    osc.frequency.setValueAtTime(120, t);
+    osc.frequency.exponentialRampToValueAtTime(42, t + 0.1);
+    const g = this.ctx.createGain();
+    g.gain.setValueAtTime(0.8, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.13);
+    osc.connect(g).connect(this.musicGain);
+    osc.start(t);
+    osc.stop(t + 0.15);
+  }
+
+  private musicHat(t: number): void {
+    if (!this.ctx || !this.musicGain || !this.noiseBuffer) return;
+    const src = this.ctx.createBufferSource();
+    src.buffer = this.noiseBuffer;
+    src.playbackRate.value = 2.5;
+    const filter = this.ctx.createBiquadFilter();
+    filter.type = "highpass";
+    filter.frequency.value = 6000;
+    const g = this.ctx.createGain();
+    g.gain.setValueAtTime(0.12 + this.musicIntensity * 0.1, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.035);
+    src.connect(filter).connect(g).connect(this.musicGain);
+    src.start(t, Math.random() * 0.5, 0.06);
+  }
+
+  private musicBass(t: number, freq: number, dur: number): void {
+    if (!this.ctx || !this.musicGain) return;
+    const osc = this.ctx.createOscillator();
+    osc.type = "sawtooth";
+    osc.frequency.value = freq;
+    const filter = this.ctx.createBiquadFilter();
+    filter.type = "lowpass";
+    filter.frequency.value = 220 + this.musicIntensity * 500;
+    const g = this.ctx.createGain();
+    g.gain.setValueAtTime(0.22, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    osc.connect(filter).connect(g).connect(this.musicGain);
+    osc.start(t);
+    osc.stop(t + dur + 0.02);
   }
 
   // ---- Spielfluss ----

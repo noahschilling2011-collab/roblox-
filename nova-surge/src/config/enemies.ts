@@ -2,7 +2,7 @@
 // sein: Rusher = schmaler roter Kegel, Shooter = eckiger violetter Turm mit
 // Lauf, Tank = breiter dunkelgrüner Block.
 
-export type EnemyType = "rusher" | "shooter" | "tank";
+export type EnemyType = "rusher" | "shooter" | "tank" | "warden";
 
 export interface EnemyDef {
   type: EnemyType;
@@ -27,6 +27,9 @@ export interface EnemyDef {
   // Kann auf 1,1-m-Deckung springen (Anti-Camping)
   canJump: boolean;
   jumpVelocity: number;
+  // Boss: Projektil-Ring (0 = kein Ring)
+  radialCount: number;
+  radialCooldown: number;
 }
 
 export const ENEMIES: Record<EnemyType, EnemyDef> = {
@@ -50,6 +53,8 @@ export const ENEMIES: Record<EnemyType, EnemyDef> = {
     strafeSpeed: 0,
     canJump: true,
     jumpVelocity: 8.4,
+    radialCount: 0,
+    radialCooldown: 0,
   },
   shooter: {
     type: "shooter",
@@ -71,6 +76,8 @@ export const ENEMIES: Record<EnemyType, EnemyDef> = {
     strafeSpeed: 3.2,
     canJump: false,
     jumpVelocity: 0,
+    radialCount: 0,
+    radialCooldown: 0,
   },
   tank: {
     type: "tank",
@@ -92,6 +99,33 @@ export const ENEMIES: Record<EnemyType, EnemyDef> = {
     strafeSpeed: 0,
     canJump: false,
     jumpVelocity: 0,
+    radialCount: 0,
+    radialCooldown: 0,
+  },
+  // Boss (alle 5 Wellen): langsamer Koloss, feuert einen flachen
+  // Projektil-Ring auf Brusthöhe — überspringbar (Doppelsprung-Synergie!)
+  warden: {
+    type: "warden",
+    hp: 850,
+    speed: 2.9,
+    radius: 1.05,
+    height: 3.0,
+    score: 2000,
+    color: 0xc9a227, // Gold — unverwechselbar
+    meleeDamage: 32,
+    meleeRange: 2.6,
+    meleeCooldown: 1.8,
+    burstCount: 0,
+    burstInterval: 0,
+    burstCooldown: 0,
+    projectileDamage: 10,
+    projectileSpeed: 13,
+    preferredRange: 0,
+    strafeSpeed: 0,
+    canJump: false,
+    jumpVelocity: 0,
+    radialCount: 12,
+    radialCooldown: 3.4,
   },
 };
 

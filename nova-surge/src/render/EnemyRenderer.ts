@@ -26,16 +26,21 @@ interface EnemyVisual {
   assigned: Enemy | null;
 }
 
-const POOL_PER_TYPE = ENEMY_AI.maxAlive + 6;
+const POOL_SIZE: Record<EnemyType, number> = {
+  rusher: ENEMY_AI.maxAlive + 6,
+  shooter: ENEMY_AI.maxAlive + 6,
+  tank: ENEMY_AI.maxAlive + 6,
+  warden: 4, // Bosse: nie mehr als eine Handvoll gleichzeitig
+};
 
 export class EnemyRenderer {
-  private readonly pools: Record<EnemyType, EnemyVisual[]> = { rusher: [], shooter: [], tank: [] };
+  private readonly pools: Record<EnemyType, EnemyVisual[]> = { rusher: [], shooter: [], tank: [], warden: [] };
   private readonly byEnemy = new Map<Enemy, EnemyVisual>();
 
   constructor(scene: THREE.Scene) {
-    const types: EnemyType[] = ["rusher", "shooter", "tank"];
+    const types: EnemyType[] = ["rusher", "shooter", "tank", "warden"];
     for (const type of types) {
-      for (let i = 0; i < POOL_PER_TYPE; i++) {
+      for (let i = 0; i < POOL_SIZE[type]; i++) {
         const visual = buildVisual(type);
         visual.group.visible = false;
         scene.add(visual.group);
@@ -216,6 +221,29 @@ function buildVisual(type: EnemyType): EnemyVisual {
     add(glow(0x62e6ff), 0.16, 0.16, 0.05, 0, 0.95, 0.27); // Kern
     parts.legL = add(dark, 0.17, 0.55, 0.17, -0.2, 0.28, 0);
     parts.legR = add(dark, 0.17, 0.55, 0.17, 0.2, 0.28, 0);
+  } else if (type === "warden") {
+    // BOSS: goldener Koloss mit Krone, rot glühendem Kern und Bannerkap
+    const gold = mat(0xc9a227);
+    const dark = mat(0x2b2416);
+    add(gold, 1.7, 1.9, 1.2, 0, 1.35, 0); // Torso
+    add(dark, 1.8, 0.4, 1.3, 0, 2.2, 0); // Brustpanzer
+    add(gold, 0.6, 0.45, 0.6, 0, 2.7, 0.05); // Kopf
+    add(glow(0xff3b2f), 0.44, 0.12, 0.06, 0, 2.72, 0.36); // Glutvisier
+    add(glow(0xff3b2f), 0.5, 0.4, 0.08, 0, 1.6, 0.63); // Kern
+    // Krone: drei Zacken
+    const spike = new THREE.ConeGeometry(0.12, 0.42, 4);
+    for (const sx of [-0.2, 0, 0.2]) {
+      const z = new THREE.Mesh(spike, dark);
+      z.position.set(sx, 3.1, 0);
+      group.add(z);
+    }
+    add(dark, 0.6, 0.6, 1.0, -1.15, 2.15, 0); // Schulter L
+    add(dark, 0.6, 0.6, 1.0, 1.15, 2.15, 0); // Schulter R
+    parts.armL = add(gold, 0.42, 1.1, 0.42, -1.18, 1.15, 0);
+    parts.armR = add(gold, 0.42, 1.1, 0.42, 1.18, 1.15, 0);
+    parts.legL = add(dark, 0.5, 0.85, 0.5, -0.42, 0.42, 0);
+    parts.legR = add(dark, 0.5, 0.85, 0.5, 0.42, 0.42, 0);
+    add(dark, 1.2, 1.6, 0.08, 0, 1.5, -0.68); // Banner-Rückenplatte
   } else {
     // Grüner Brocken: massiver Torso, Schulterpanzer, Stampf-Beine, Warnkern
     const body = mat(0x4f7a4a);

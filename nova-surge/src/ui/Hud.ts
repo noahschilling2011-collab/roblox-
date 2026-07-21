@@ -30,8 +30,44 @@ export class Hud {
   private vignetteLevel = 0;
   private dmgTimer = 0;
   private lastOfferKey = "";
+  private flashText: string | null = null;
+  private flashTimer = 0;
+  private readonly popupPool: HTMLDivElement[] = [];
+  private popupCursor = 0;
 
   onChooseUpgrade: (index: number) => void = () => {};
+
+  constructor() {
+    // Score-Popup-Pool (kein DOM-Anlegen während des Gefechts)
+    for (let i = 0; i < 10; i++) {
+      const div = document.createElement("div");
+      div.className = "score-popup";
+      div.style.display = "none";
+      this.root.append(div);
+      this.popupPool.push(div);
+    }
+  }
+
+  /** Kurzzeit-Banner ("BOSS WAVE", "PERFECT WAVE +500"). */
+  flashBanner(text: string, seconds: number): void {
+    this.flashText = text;
+    this.flashTimer = seconds;
+  }
+
+  /** Fliegender Score-Text an einer Bildschirmposition. */
+  spawnPopup(x: number, y: number, text: string, big: boolean): void {
+    const div = this.popupPool[this.popupCursor]!;
+    this.popupCursor = (this.popupCursor + 1) % this.popupPool.length;
+    div.textContent = text;
+    div.classList.toggle("big", big);
+    div.style.left = `${x.toFixed(0)}px`;
+    div.style.top = `${y.toFixed(0)}px`;
+    div.style.display = "block";
+    // Animation neu starten
+    div.classList.remove("fly");
+    void div.offsetWidth;
+    div.classList.add("fly");
+  }
 
   show(): void {
     this.root.hidden = false;
@@ -91,13 +127,17 @@ export class Hud {
     this.scoreEl.textContent = String(sim.score);
     this.multEl.textContent = `×${sim.multiplier.toFixed(1)}`;
 
-    // Banner nach Phase
-    if (sim.phase === "prewave") {
+    // Banner: Kurzzeit-Flash (Boss/Perfect) hat Vorrang vor Phasen-Banner
+    this.flashTimer -= dt;
+    if (this.flashText !== null && this.flashTimer > 0) {
+      this.setBanner(this.flashText);
+    } else if (sim.phase === "prewave") {
       this.setBanner(`WAVE 1 IN ${Math.ceil(sim.phaseTimer)}`);
     } else if (sim.phase === "break") {
       this.setBanner(`WAVE ${sim.waveNumber + 1} IN ${Math.ceil(sim.phaseTimer)}`);
     } else {
       this.setBanner(null);
+      this.flashText = null;
     }
 
     // Upgrade-Wahl

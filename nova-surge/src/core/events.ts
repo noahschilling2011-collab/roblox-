@@ -19,6 +19,7 @@ export const enum Ev {
   MeleeHit, // Gegner-Nahkampf trifft: x,y,z
   Heal, // a = Menge (Lifesteal-Feedback)
   NewHighscore,
+  PerfectWave, // Welle ohne eigenen Schaden geschafft: a = Bonuspunkte
 }
 
 export interface EventSlot {

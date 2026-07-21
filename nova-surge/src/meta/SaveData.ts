@@ -17,6 +17,7 @@ export interface SaveState {
   selectedArena: string;
   /** Mobile-Feuermodus: true = Auto-Fire, false = Feuer-Button (Phase 5). */
   autoFire: boolean;
+  musicOn: boolean;
 }
 
 function defaults(): SaveState {
@@ -32,6 +33,7 @@ function defaults(): SaveState {
     selectedScheme: "default",
     selectedArena: "foundry",
     autoFire: true,
+    musicOn: true,
   };
 }
 

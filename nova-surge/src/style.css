@@ -377,11 +377,34 @@ body {
 .select-item.locked { opacity: 0.75; }
 .select-item.locked .sub { color: #ffd27d; }
 
-#autofire-row {
+#autofire-row,
+#music-row {
   display: block;
   margin-top: 14px;
   font-size: 0.85rem;
   color: #9fb0c8;
+}
+
+/* Fliegende Score-Popups an der Kill-Stelle */
+.score-popup {
+  position: absolute;
+  color: #ffd27d;
+  font-weight: 900;
+  font-size: 1rem;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+}
+.score-popup.big {
+  color: #ff8b3d;
+  font-size: 1.5rem;
+}
+.score-popup.fly {
+  animation: popup-fly 0.8s ease-out forwards;
+}
+@keyframes popup-fly {
+  0% { opacity: 1; margin-top: 0; }
+  100% { opacity: 0; margin-top: -46px; }
 }
 
 #menu-hint { margin-top: 16px; font-size: 0.78rem; color: #6c7a90; }

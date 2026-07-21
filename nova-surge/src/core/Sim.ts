@@ -3,6 +3,7 @@
 // Rendering — die Präsentation liest Zustand + Events.
 
 import { RUN } from "../config/tuning";
+import { isBossWave } from "../config/waves";
 import { ARENAS, type ArenaDef } from "../config/arena";
 import { COIN_DIVISOR } from "../config/meta";
 import type { WeaponId } from "../config/weapons";
@@ -52,6 +53,8 @@ export class Sim {
   reviveUsed = false;
   /** Vom Pellet-Raycast getroffener Gegner (hitTest -> onHit, gleicher Tick). */
   private pelletTarget: Enemy | null = null;
+  /** Schaden, den der Spieler in der laufenden Welle kassiert hat (Perfect Wave). */
+  private damageTakenThisWave = 0;
 
   private readonly input: InputState;
 
@@ -144,12 +147,18 @@ export class Sim {
         this.waveNumber++;
         this.spawner.start(this.waveNumber);
         this.phase = "wave";
-        this.events.emit(Ev.WaveStart, 0, 0, 0, this.waveNumber);
+        this.damageTakenThisWave = 0;
+        this.events.emit(Ev.WaveStart, 0, 0, 0, this.waveNumber, isBossWave(this.waveNumber) ? 1 : 0);
       }
     } else if (this.phase === "wave") {
       this.spawner.update(dt, this.enemies, p.pos, this.waveNumber, this.arena.enemySpawns);
       if (this.spawner.pendingCount() === 0 && this.enemies.aliveCount() === 0) {
         this.events.emit(Ev.WaveCleared, 0, 0, 0, this.waveNumber);
+        // Perfect Wave: komplette Welle ohne eigenen Schaden -> Bonuspunkte
+        if (this.damageTakenThisWave === 0) {
+          this.score += RUN.perfectWaveBonus;
+          this.events.emit(Ev.PerfectWave, 0, 0, 0, RUN.perfectWaveBonus);
+        }
         // Noch fliegende Gegner-Projektile verfallen — kein Tod im Upgrade-Screen
         this.projectiles.clearEnemyProjectiles();
         this.upgradeOffer = this.upgrades.rollOffer();
@@ -285,6 +294,7 @@ export class Sim {
     // In Menü-Phasen (Upgrade-Wahl) ist der Spieler unverwundbar
     if (this.phase === "dead" || this.phase === "upgrade") return;
     this.multiplier = 1;
+    this.damageTakenThisWave += amount;
     const died = this.player.takeDamage(amount, sourceX, sourceZ, this.input.yaw, this.events);
     if (died) {
       this.phase = "dead";
