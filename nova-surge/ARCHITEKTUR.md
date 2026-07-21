@@ -90,6 +90,55 @@ minifizierten Build). Der RC-Plan selbst liegt in `RELEASE-PLAN.md`.
    Gegner-`dt`-Skalierung innerhalb von `EnemyManager.update` (Faktor am
    Sim), nicht am GameLoop. Projektile der Gegner müssten mitskalieren.
 
+## Multi-Level-Audit (Phase 0 des Multi-Level-Maps-Plans)
+
+Der Plan wurde aus dem minifizierten Build abgeleitet — das Audit korrigiert
+drei Annahmen. **Gute Nachricht: Die Engine ist weiter als angenommen.**
+
+### Frage 1: Kann ein Entity auf einer Box-Oberseite stehen?
+**JA — schon immer.** `moveBody` (`src/core/collision.ts`) ermittelt den Boden
+als höchste Box-Oberkante unter dem Körper (Floor-Scan über alle Solids) —
+Spieler stehen auf 1,1-m-Blöcken, Rusher springen hinauf (`canJump`).
+Gravity, Fallen von Kanten und sogar **Decken-Kollision** (Kopf-Stoß-Check
+gegen `b.minY`) existieren bereits — Letztere greift nur nie, weil alle
+Boxen bei `minY: 0` starten. Die Plan-Annahme „alle Entities leben auf
+y=0" ist **falsch**.
+**Was wirklich fehlt:** Box-Defs haben kein `y`-Basis-Feld
+(`buildCollisionWorld` setzt `minY: 0` fest), es gibt keine Step-Height
+(jede Kante blockt horizontal — Treppen bräuchten Sprünge), und der
+Treppen-Generator fehlt. Seitliche Kollision berücksichtigt den Y-Span
+übrigens schon korrekt (`overlapsYZ/YX` prüfen `b.minY/maxY`).
+
+### Frage 2: Prüfen Projektile/LOS die Y-Achse korrekt?
+**JA, vollständig 3D:** `rayVsAabb` (Slab-Methode, alle 3 Achsen) wird von
+Hitscan (`Sim.resolveHitscan`), Projektil-Strecken (`Projectiles.update`),
+LOS (`segmentClear`, Augenhöhen) und `aimOnTarget` benutzt. Boxen mit
+`y`-Basis (Decken/Etagenböden) blocken ohne jede Änderung korrekt Sicht
+und Schuss. Phase 1c ist damit reine Regression, kein Neubau.
+
+### Frage 3: Enemy-Steering heute
+Direktes Zulaufen + Raycast-Ausweichen (`Enemy.steer`/`dirBlocked`,
+Prüfstrahl auf Kniehöhe 0,6 m), Separation, Anti-Hänger-Seitwärtsausweichen,
+FSM greift in `EnemyManager.update` (alert→attack→hitreact→death).
+**Kein Pathfinding** — die Plan-Diagnose stimmt hier: Etagen brauchen den
+Waypoint-Graphen (Phase 2 unverändert nötig). `enemySpawns` haben kein `y`.
+
+### Konsequenz: angepasster Phasen-Zuschnitt (braucht Freigabe)
+- **Phase 1 schrumpft** auf: `y`-Feld im Box-Format (+Renderer-Position),
+  Treppen-Helfer, **Step-Height 0,35** im Body-Mover, Debug-Arena-Test.
+  Stehen/Decken/Fallen/LOS: vorhanden, nur Regression.
+- **Phase 2 bleibt wie geplant** (Waypoint-Graph, A*, Hybrid-Steering,
+  Drop-Kanten, Spawn-Ebenen, F3-Nav-Debug) — das ist der Hauptbrocken.
+- Phasen 3–5 unverändert.
+
+### Baseline der Ziel-Arenen (vor Umbau, Production-Build, headless)
+| Arena | Draw-Calls | Dreiecke | Sim-Rate |
+|---|---|---|---|
+| Azure Deck | 46 | 14.598 | 60+/s stabil |
+| Grand Gallery | 50 | 14.634 | 60+/s stabil |
+(Budget: <150 Draw-Calls. Headless-FPS ohne GPU nicht aussagekräftig —
+echte FPS misst Noah per F3.)
+
 ## Baseline
 
 `npm run build` (tsc strict + vite): **grün**, Bundle 612 KB

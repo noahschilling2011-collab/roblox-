@@ -1,5 +1,29 @@
 # Nova Surge — Projektstand
 
+## ⏸ MULTI-LEVEL-MAPS-PLAN: Phase 0 (Audit) fertig — WARTE AUF FREIGABE
+Neuer Plan von Noah (Yacht 3 Ebenen, Mall 2 Etagen + Geheimräume).
+- **Audit-Ergebnis (Details in ARCHITEKTUR.md):** Zwei Plan-Annahmen sind
+  falsch — die Engine kann bereits: auf Box-Oberseiten stehen, Decken-
+  Kollision, Fallen, komplett 3D-korrekte LOS/Hitscan/Projektile.
+  Wirklich fehlend: `y`-Basis im Box-Format, Step-Height, Treppen-Generator
+  (= geschrumpfte Phase 1) und der komplette Waypoint-Graph (= Phase 2,
+  unverändert der Hauptbrocken). Gemäß Plan-Regel („bei abweichendem Audit:
+  stoppen, melden, Plan anpassen lassen") → **Freigabe für den angepassten
+  Phasen-Zuschnitt nötig.**
+- **Baseline:** Yacht 46 Draws / Mall 50 Draws (Budget <150), Sim 60/s.
+- **Reihenfolge-Hinweis:** RC-Plan Phasen 3–4 (Account-Perks, Save-Migration
+  aufs CrazyGames-Data-Modul, Release-Checkliste) sind noch OFFEN. Annahme:
+  Multi-Level-Plan zuerst (neueste Anweisung), RC 3–4 danach vor der
+  Submission. Bitte widersprechen, falls andersherum gewollt.
+- **Synergie-Notiz:** Das Pickup-System aus Map-Phase 4b liefert nachträglich
+  die Basis für „Magnetfeld"-Upgrade und echte Heavy-Duty-Drops (RC-Plan) —
+  vermerkt unter „Nach Release"-Kandidaten bzw. RC-Rückkehr.
+
+## RC Phase 2 — Wave-Director: Code fertig & gepusht, DoD-Suite läuft
+Elites/Events/Boss-Inszenierung implementiert (Commit c63340c); die
+Headless-DoD-Suite (Elites, Pool-Reset, 4 Events forciert, Boss-Staging,
+Lauf bis Welle 20) läuft — Ergebnis wird hier nachgetragen.
+
 ## ⏸ RELEASE-CANDIDATE-PLAN: Phase 1 fertig — WARTE AUF FREIGABE für Phase 2
 Arbeitsmodus laut `RELEASE-PLAN.md`: Phasen strikt sequenziell mit
 Freigabe-Stopp nach jeder Phase.
