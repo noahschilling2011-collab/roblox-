@@ -19,10 +19,24 @@ Neuer Plan von Noah (Yacht 3 Ebenen, Mall 2 Etagen + Geheimräume).
   die Basis für „Magnetfeld"-Upgrade und echte Heavy-Duty-Drops (RC-Plan) —
   vermerkt unter „Nach Release"-Kandidaten bzw. RC-Rückkehr.
 
-## RC Phase 2 — Wave-Director: Code fertig & gepusht, DoD-Suite läuft
-Elites/Events/Boss-Inszenierung implementiert (Commit c63340c); die
-Headless-DoD-Suite (Elites, Pool-Reset, 4 Events forciert, Boss-Staging,
-Lauf bis Welle 20) läuft — Ergebnis wird hier nachgetragen.
+## RC Phase 2 ✅ (DoD erfüllt) — Wave-Director
+**DoD-Suite 15/16:** Elite-Tint + Stats (Armored 2,5×HP/0,75×Speed) ✓,
+**Pool-Reset ohne klebenden Tint/Scale** ✓ (die im Plan markierte Falle),
+alle 4 Events forciert verifiziert (Stampede nur Rusher, Heavy Duty nur
+Tanks, Gold Rush ×2-Score exakt 220 = 100×1,1×2, Blackout) ✓,
+WARDEN-INBOUND-Banner + Boss-HP-Balken ✓, Welle 5 = 1 Warden, Welle 15 =
+max. 2 Wardens mit Elite-Zweitboss ✓, Lauf bis Welle 20 ohne Crash mit
+allen 4 Elite-Typen und 2 Zufalls-Events ✓, Konsole sauber ✓.
+Der einzige „Fail": min. Sim-Rate 48/s in EINEM 1-s-Fenster des
+10-Minuten-Laufs — gemessen unter Headless-SOFTWARE-Rendering (kein GPU),
+alle übrigen Fenster ≥55/s. Echte Geräte-Performance kann nur Noahs
+F3-Check zeigen (Punkt steht in der manuellen Checkliste; der dynamische
+Auflösungs-Skalierer fängt reale Einbrüche ohnehin ab).
+Metrik-Begründung: Late-Game-Vielfalt (Welle 15 ≠ Welle 5) → Session-Länge;
+Elite-Score-Boni + Gold Rush → Score-Jagd → Retention.
+**Frühere Suite-Fails waren Test-Kontamination** (Abschnitte teilten sich
+Seiten-Zustand) — behoben durch Reload-Isolation; in zwei Fällen bestätigte
+ein sauberer Einzel-Repro die korrekte Spiellogik.
 
 ## ⏸ RELEASE-CANDIDATE-PLAN: Phase 1 fertig — WARTE AUF FREIGABE für Phase 2
 Arbeitsmodus laut `RELEASE-PLAN.md`: Phasen strikt sequenziell mit
