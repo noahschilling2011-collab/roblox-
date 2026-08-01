@@ -51,7 +51,7 @@ local readyCallbacks: { (Player, Profile) -> () } = {}
 --==========================================================================
 
 local function defaultStats(): Types.Stats
-	return { Hacks = 0, Fails = 0, Busts = 0, Sales = 0, Earned = 0, Upgrades = 0 }
+	return { Hacks = 0, Fails = 0, Busts = 0, Sales = 0, Earned = 0, Upgrades = 0, GoodsBought = 0, GoodsSold = 0 }
 end
 
 local function defaultStory(): Types.Story
@@ -76,6 +76,7 @@ function SaveService.DefaultProfile(): Profile
 		Cooldowns = {},
 		Stats = defaultStats(),
 		Story = defaultStory(),
+		Stash = {},
 		LastSeen = os.time(),
 		SessionId = "",
 	}
@@ -168,6 +169,15 @@ local function sanitize(raw: any): (Profile, number)
 		p.Story.Unlocks = cleanIdList(story.Unlocks, 128)
 	end
 
+	if typeof(raw.Stash) == "table" then
+		for goodId, amount in raw.Stash do
+			local count = toCount(amount)
+			if typeof(goodId) == "string" and #goodId <= 32 and count and count > 0 then
+				p.Stash[goodId] = count
+			end
+		end
+	end
+
 	p.LastSeen = toCount(raw.LastSeen) or p.LastSeen
 	if typeof(raw.SessionId) == "string" then
 		p.SessionId = raw.SessionId
@@ -194,6 +204,12 @@ local MIGRATIONS: { [number]: (Profile) -> () } = {
 		profile.Story.Step = 1
 		profile.Story.StepProgress = 0
 		profile.Story.StepStartedAt = 0
+	end,
+
+	-- 2 -> 3: Darknet-Lager kam dazu. Alte Profile starten mit leerem Lager;
+	-- Bank, Rig, Trace, Cooldowns und Story bleiben unangetastet.
+	[3] = function(profile: Profile)
+		profile.Stash = {}
 	end,
 }
 

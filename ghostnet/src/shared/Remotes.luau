@@ -29,10 +29,14 @@ local EVENT_NAMES = {
 	"MissionSkip", -- C->S  { }            Tutorial ueberspringen
 	"WaypointSync", -- S->C  { position, label }  Marker fuer GOTO/HACK/TALK
 	"AlarmSync", -- S->C  { active, label, remaining, total, coop, triggered? }
+	"MarketSync", -- S->C  { goods, event, tickSeconds }   serverweite Kurse
+	"MarketEvent", -- S->C  { text, group }                Kursereignis
+	"InventorySync", -- S->C  { stash, used, slots, tier }
 }
 
 local FUNCTION_NAMES: { string } = {
 	"ShopPurchase", -- C->S->C  { component } -> { ok, reason, level, cost, ... }
+	"Trade", -- C->S->C  { action, goodId, amount } -> { ok, reason, unit, total, ... }
 }
 
 local Remotes = {}

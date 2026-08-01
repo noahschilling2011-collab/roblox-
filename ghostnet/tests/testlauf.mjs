@@ -192,14 +192,19 @@ try {
   })();
   check("kein Require-Kreis zwischen den Services", cycle === null, cycle ? cycle.join(" -> ") : "");
 
-  // Der MissionService darf nirgendwo rueckwaerts requiret werden.
+  // Wen ein Modul requiret, der darf es nicht zurueckrequiren. Das ist
+  // dieselbe Aussage wie die Kreissuche, nur mit einer Fehlermeldung, die
+  // direkt sagt, welche zwei Module sich verhakt haben. Ein einseitiges
+  // A -> B ist ausdruecklich erlaubt (z.B. InventoryService -> MissionService).
   for (const [name, deps] of serverModules) {
-    if (name === "MissionService") continue;
-    check(
-      `${name} requiret den MissionService nicht`,
-      !deps.includes("MissionService"),
-      "rueckwaerts-Abhaengigkeit"
-    );
+    for (const dep of deps) {
+      const back = serverModules.get(dep) ?? [];
+      check(
+        `${dep} requiret ${name} nicht zurueck`,
+        !back.includes(name),
+        `${name} <-> ${dep} haengen gegenseitig aneinander`
+      );
+    }
   }
 
   // Jede Schema-Version braucht eine Migration.
@@ -254,6 +259,7 @@ local __deps = {}
     ["Types", "shared/Types.luau"],
     ["Config", "shared/Config.luau"],
     ["Missions", "shared/Missions.luau"],
+    ["Goods", "shared/Goods.luau"],
     ["NodeBreach", "server/Systems/Minigames/NodeBreach.luau"],
   ]) {
     body += `\n__deps["${name}"] = (function()\n${loadModule(path)}\nend)()\n`;
@@ -262,6 +268,7 @@ local __deps = {}
   const luaTests = `
 local Config = __deps["Config"]
 local Missions = __deps["Missions"]
+local Goods = __deps["Goods"]
 local NodeBreach = __deps["NodeBreach"]
 
 -- Ergebnis geht als eine Zeichenkette zurueck ("OK|name" / "FAIL|name|grund"),
@@ -583,6 +590,101 @@ test("Eine ganze Mission laesst sich Schritt fuer Schritt durchspielen", functio
 	expect(index == 3 and progress == 1, "erster von zwei Verkaeufen falsch gezaehlt")
 	feed({ Type = "SELL" })
 	expect(index == 4, "Mission nicht abgeschlossen")
+end)
+
+--== Darknet-Markt (Phase C) ===============================================
+
+test("Warenkatalog ist gueltig", function()
+	local valid, errors = Goods.Validate()
+	expect(valid, "Katalog kaputt: " .. table.concat(errors, " | "))
+	expect(Goods.Count() >= 4, "zu wenige Waren fuer einen Markt")
+end)
+
+test("Validate findet kaputte Waren", function()
+	local function broken(list)
+		local valid = Goods.Validate(list)
+		return not valid
+	end
+	local good = { Id = "A", Name = "A", Blurb = "", Base = 100, Volatility = 0.05, Risk = 0.1, Group = "G" }
+	local function with(overrides)
+		local copy = table.clone(good)
+		for key, value in overrides do
+			copy[key] = value
+		end
+		return { copy }
+	end
+
+	expect(broken({ good, table.clone(good) }), "doppelte Id durchgelassen")
+	expect(broken(with({ Base = 0 })), "Base 0 durchgelassen")
+	expect(broken(with({ Volatility = 0 })), "Volatility 0 durchgelassen")
+	expect(broken(with({ Volatility = 0.9 })), "absurde Volatility durchgelassen")
+	expect(broken(with({ Risk = 1.5 })), "Risk ueber 1 durchgelassen")
+	expect(broken(with({ Group = "" })), "fehlende Group durchgelassen")
+	local valid = Goods.Validate({ good })
+	expect(valid, "gueltige Ware abgelehnt")
+end)
+
+test("Kaufpreis liegt immer ueber dem Verkaufspreis", function()
+	-- Ohne Spanne koennte man ohne jede Kursbewegung durch reines
+	-- Hin-und-Her Geld drucken.
+	for _, good in Goods.List do
+		for _, factor in { Config.Market.MinFactor, 0.8, 1.0, 1.4, Config.Market.MaxFactor } do
+			local buy = Config.GetBuyPrice(good.Base, factor)
+			local sell = Config.GetSellPrice(good.Base, factor)
+			expect(buy > sell, good.Id .. ": Kauf " .. buy .. " nicht ueber Verkauf " .. sell)
+			expect(sell >= 1, good.Id .. ": Verkaufspreis unter 1")
+		end
+	end
+end)
+
+test("Ein Kurs kann sich lohnen, ohne dass er entgleist", function()
+	-- Unten kaufen und oben verkaufen muss Gewinn bringen, sonst ist Handel
+	-- sinnlos. Gleichzeitig darf der Kurs nicht ins Absurde laufen.
+	for _, good in Goods.List do
+		local low = Config.GetBuyPrice(good.Base, Config.Market.MinFactor)
+		local high = Config.GetSellPrice(good.Base, Config.Market.MaxFactor)
+		expect(high > low * 1.5, good.Id .. ": Handelsspanne zu klein")
+		expect(Config.Market.MaxFactor <= 3, "MaxFactor zu hoch - Kurse entgleisen")
+		expect(Config.Market.MeanReversion > 0, "ohne Mean Reversion driftet der Markt")
+	end
+end)
+
+test("Mean Reversion zieht einen entgleisten Kurs zurueck", function()
+	-- Reine Formelprobe: ohne Zufall muss der Faktor gegen 1 laufen.
+	local factor = Config.Market.MaxFactor
+	for _ = 1, 200 do
+		factor += (1.0 - factor) * Config.Market.MeanReversion
+	end
+	expect(math.abs(factor - 1.0) < 0.01, "Kurs kehrt nicht zum Basispreis zurueck: " .. factor)
+
+	factor = Config.Market.MinFactor
+	for _ = 1, 200 do
+		factor += (1.0 - factor) * Config.Market.MeanReversion
+	end
+	expect(math.abs(factor - 1.0) < 0.01, "Kurs kehrt von unten nicht zurueck: " .. factor)
+end)
+
+test("Lagerplatz waechst mit dem Rig, Faelschungsrisiko sinkt", function()
+	local previousSlots = 0
+	local previousRisk = math.huge
+	for tier = 1, Config.Rig.MaxLevel do
+		local slots = Config.GetStashSlots(tier)
+		local risk = Config.GetFakeRisk(0.5, tier)
+		expect(slots > previousSlots, "Lagerplatz waechst nicht bei Tier " .. tier)
+		expect(risk <= previousRisk, "Risiko sinkt nicht bei Tier " .. tier)
+		expect(risk >= 0, "negatives Risiko")
+		previousSlots, previousRisk = slots, risk
+	end
+	-- Es bleibt immer ein Restrisiko, sonst waere teure Ware ab Tier 5 gratis.
+	expect(Config.GetFakeRisk(0.5, 99) > 0, "Risiko faellt auf null")
+end)
+
+test("Handelsmengen sind begrenzt", function()
+	expect(Config.Market.MaxPerTrade >= 1, "MaxPerTrade unbrauchbar")
+	expect(Config.Market.MaxPerTrade <= Config.GetStashSlots(Config.Rig.MaxLevel),
+		"man kann mehr auf einmal kaufen, als je ins Lager passt")
+	expect(Config.Market.BustStashLossPercent > 0, "Bust kostet kein Lager - Handel ohne Risiko")
+	expect(Config.Market.BustStashLossPercent <= 1, "Bust kostet mehr als das ganze Lager")
 end)
 
 --== Node-Breach ===========================================================

@@ -17,6 +17,8 @@ export type Stats = {
 	Sales: number, -- Verkaeufe beim Hehler
 	Earned: number, -- gesamte netto Einnahmen
 	Upgrades: number, -- gekaufte Rig-Stufen
+	GoodsBought: number, -- im Darknet gekaufte Einheiten
+	GoodsSold: number, -- im Darknet verkaufte Einheiten
 }
 
 -- Story-Fortschritt im Profil. Der Client bekommt davon nur eine Abschrift
@@ -41,6 +43,7 @@ export type Profile = {
 	Cooldowns: { [string]: number }, -- [targetId] = Unix-Zeit, ab der wieder erlaubt
 	Stats: Stats,
 	Story: Story, -- seit SchemaVersion 2
+	Stash: { [string]: number }, -- Darknet-Lager, seit SchemaVersion 3
 	LastSeen: number, -- Unix-Zeit des letzten Speicherns
 	SessionId: string, -- Session-Lock gegen Doppel-Sitzungen
 }

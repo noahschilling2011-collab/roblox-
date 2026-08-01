@@ -565,13 +565,20 @@ Remotes.SellResult.OnClientEvent:Connect(function(data: any)
 		return
 	end
 
+	if data.Reason == "RANGE" then
+		toast(("Zu weit vom Hehler weg - du bist %d Studs entfernt, erlaubt sind %d"):format(
+			math.floor(tonumber(data.Distance) or 0),
+			math.floor(tonumber(data.Range) or Config.Sell.Range)
+		), C.Amber)
+		return
+	end
+
 	local reasons: { [string]: string } = {
-		EMPTY = "NICHTS ZU VERKAUFEN",
-		RANGE = "ZU WEIT VOM HEHLER WEG",
-		NO_FENCE = "KEIN HEHLER IN DER NAEHE",
-		LOADING = "PROFIL LAEDT NOCH - GLEICH NOCHMAL",
+		EMPTY = "Du hast nichts Unverkauftes dabei",
+		NO_FENCE = "Kein Hehler in der Naehe",
+		LOADING = "Profil laedt noch - gleich nochmal",
 	}
-	toast(reasons[data.Reason] or "VERKAUF ABGELEHNT", C.Amber)
+	toast(reasons[data.Reason] or "Verkauf abgelehnt", C.Amber)
 end)
 
 Remotes.HackSessionStarted.OnClientEvent:Connect(function()
@@ -611,23 +618,39 @@ Remotes.HackDenied.OnClientEvent:Connect(function(data: any)
 	end
 	local seconds = tonumber(data.Seconds) or 0
 
+	-- Jede Ablehnung nennt Grund UND Zahl. Ein Spieler, der nicht versteht,
+	-- warum sein Klick nichts tut, haelt das Spiel fuer kaputt und geht.
 	if data.Reason == "COOLDOWN" then
 		if typeof(data.TargetId) == "string" then
 			cooldownUntil[data.TargetId] = os.clock() + seconds
 		end
-		toast(("ZIEL NOCH GESPERRT // %ds"):format(math.ceil(seconds)), C.Amber)
+		toast(("Ziel noch heiss - %d s"):format(math.ceil(seconds)), C.Amber)
 	elseif data.Reason == "LEVEL" then
-		toast(("RIG ZU SCHWACH // TIER %d NOETIG"):format(seconds), C.Amber)
+		if typeof(data.Weakest) == "string" then
+			toast(("Braucht Rig-Tier %d - dein schwaechstes Bauteil ist %s %d"):format(
+				seconds,
+				data.Weakest,
+				math.floor(tonumber(data.WeakestLevel) or 1)
+			), C.Amber)
+		else
+			toast(("Braucht Rig-Tier %d"):format(seconds), C.Amber)
+		end
 	elseif data.Reason == "RANGE" then
-		toast("AUSSER REICHWEITE - NAEHER RAN", C.Amber)
+		if seconds > 0 then
+			toast(("Zu weit weg - %d Studs zu viel. NetCard aufruesten?"):format(math.ceil(seconds)), C.Amber)
+		else
+			toast("Zu weit weg - naeher ran oder NetCard aufruesten", C.Amber)
+		end
 	elseif data.Reason == "OFFLINE" then
-		toast("ZIEL IST BEREITS OFFLINE", C.TextDim)
+		toast("Laeuft bereits offline - warte, bis es wieder hochfaehrt", C.TextDim)
 	elseif data.Reason == "BUSTED" then
-		toast(("AUFGEFLOGEN - NOCH %ds RUHE"):format(math.ceil(seconds)), C.Magenta)
+		toast(("Aufgeflogen - noch %d s Ruhe, bevor du wieder ran kannst"):format(math.ceil(seconds)), C.Magenta)
 	elseif data.Reason == "LOADING" then
-		toast("PROFIL LAEDT NOCH - GLEICH NOCHMAL", C.TextDim)
+		toast("Profil laedt noch - gleich nochmal", C.TextDim)
+	elseif data.Reason == "UNKNOWN_TARGET" then
+		toast("Dieses Ziel gibt es nicht mehr", C.TextDim)
 	else
-		toast("ZUGRIFF VERWEIGERT", C.Magenta)
+		toast("Zugriff verweigert - der Server hat abgelehnt", C.Magenta)
 	end
 end)
 

@@ -703,16 +703,18 @@ Remotes.HackSessionStarted.OnClientEvent:Connect(function(data: any)
 	end
 end)
 
+-- Jede Rueckmeldung sagt, WARUM der Klick nichts getan hat - und wo es eine
+-- Zahl gibt, steht sie drin (siehe unten bei RELAYS_MISSING).
 local REASON_TEXT: { [string]: { Text: string, Color: Color3 } } = {
 	OK = { Text = "> knoten uebernommen", Color = C.Cyan },
-	SOLVED = { Text = "> exit erreicht", Color = C.Cyan },
-	BACKTRACK = { Text = "> route zurueckgenommen", Color = C.TextDim },
-	NOT_ADJACENT = { Text = "> kein direkter link", Color = C.TextDim },
-	REVISIT = { Text = "> knoten bereits im pfad", Color = C.TextDim },
-	ALREADY_HERE = { Text = "> du bist hier", Color = C.TextDim },
-	ICE = { Text = "> ice blockiert", Color = C.Ice },
-	RELAYS_MISSING = { Text = "> exit gesperrt - relays fehlen", Color = C.Amber },
-	MASKED_ICE = { Text = "> GETARNTES ICE - rig ueberlastet", Color = C.Magenta },
+	SOLVED = { Text = "> exit erreicht - zugriff gewaehrt", Color = C.Cyan },
+	BACKTRACK = { Text = "> letzten knoten zurueckgenommen", Color = C.TextDim },
+	NOT_ADJACENT = { Text = "> zu weit: nur direkte nachbarn gehen", Color = C.TextDim },
+	REVISIT = { Text = "> dieser knoten liegt schon im pfad", Color = C.TextDim },
+	ALREADY_HERE = { Text = "> da stehst du gerade", Color = C.TextDim },
+	ICE = { Text = "> ICE (#) blockiert - drumherum", Color = C.Ice },
+	RELAYS_MISSING = { Text = "> exit gesperrt: erst alle R mitnehmen", Color = C.Amber },
+	MASKED_ICE = { Text = "> GETARNTES ICE - kostet einen versuch", Color = C.Magenta },
 	BAD_PAYLOAD = { Text = "> eingabe verworfen", Color = C.Magenta },
 }
 
@@ -752,7 +754,14 @@ Remotes.HackFeedback.OnClientEvent:Connect(function(data: any)
 
 	local info = REASON_TEXT[data.Reason]
 	if info then
-		pushLog(info.Text, info.Color, true)
+		local text = info.Text
+		-- Mit konkreter Zahl, wo der Server eine liefert.
+		if data.Reason == "RELAYS_MISSING" and s.RelaysLeft > 0 then
+			text = ("> exit gesperrt: noch %d relay(s) offen"):format(s.RelaysLeft)
+		elseif data.Reason == "MASKED_ICE" then
+			text = ("> GETARNTES ICE - noch %d versuch(e)"):format(math.max(0, s.AttemptsLeft))
+		end
+		pushLog(text, info.Color, true)
 	end
 
 	redrawGrid()

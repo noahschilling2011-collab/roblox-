@@ -6,7 +6,7 @@
 
 local Config = {}
 
-Config.Version = "0.3.0" -- Phase A: Missions-Rueckgrat
+Config.Version = "0.4.0" -- Phase A-D: Story, Ueberfaelle, Darknet
 
 -- CollectionService-Tags. Ein Part mit dem Tag ist ein Hack-Ziel, ein Hehler,
 -- ein Missions-Wegpunkt oder ein ansprechbarer Kontakt. Kein Code pro Objekt.
@@ -219,7 +219,8 @@ Config.Save = {
 	-- gehoert ein Eintrag in SaveService.MIGRATIONS.
 	--   1 = Phase 1 (Bank, Unsold, Rig, Trace, Cooldowns, Stats)
 	--   2 = Phase A (Story-Block)
-	SchemaVersion = 2,
+	--   3 = Phase C (Darknet-Lager)
+	SchemaVersion = 3,
 	StoreName = "GhostNetPlayers_v1",
 	KeyFormat = "ghostnet_player_%d",
 
@@ -313,7 +314,82 @@ Config.Raid = {
 }
 
 --==========================================================================
--- 13. RATE-LIMITS (Token-Bucket pro Spieler und Remote)
+-- 13. DARKNET-MARKT
+-- Ohne Preisbewegung ist Handel ein Knopf, der 100 in 120 verwandelt. Der
+-- Markt bewegt sich serverweit - alle Spieler sehen denselben Kurs, damit
+-- man sich darueber unterhalten kann.
+--==========================================================================
+Config.Market = {
+	-- Das Darknet ist erst offen, wenn M03 diesen Unlock vergeben hat.
+	-- Wird serverseitig geprueft, nicht nur in der UI ausgeblendet.
+	RequiredUnlock = "DARKNET",
+
+	TickSeconds = 12, -- wie oft sich die Preise bewegen
+	HistoryPoints = 24, -- Laenge des Mini-Charts (24 x 12 s = rund 5 Minuten)
+
+	-- Rueckkehr zum Basispreis. Ohne das driften Kurse nach ein paar Stunden
+	-- ins Absurde. 0.08 = pro Tick werden 8% der Abweichung abgebaut.
+	MeanReversion = 0.08,
+	-- Harte Grenzen, damit kein Kurs voellig entgleist.
+	MinFactor = 0.45,
+	MaxFactor = 2.2,
+
+	-- Spanne zwischen An- und Verkauf. Der Markt verdient immer mit; ohne
+	-- Spanne koennte man ohne Kursbewegung durch reines Hin-und-Her Geld
+	-- drucken.
+	Spread = 0.08,
+
+	-- Events. Bewegen eine ganze Warengruppe und werden serverweit
+	-- angekuendigt - das erzeugt Gespraeche und kostet nichts.
+	EventChancePerTick = 0.03, -- rund alle 7 Minuten eins
+	EventDurationTicks = 10,
+	EventStrengthMin = 0.25,
+	EventStrengthMax = 0.6,
+
+	-- Lager. Begrenzt erzwingt Entscheidungen statt Alles-Kaufen.
+	SlotsBase = 12, -- Einheiten insgesamt
+	SlotsPerRig = 4, -- zusaetzlich je Tier-Stufe
+	MaxPerTrade = 25, -- Obergrenze pro Klick, gegen Zahlen-Unfug
+
+	-- Ware im Lager ist heiss wie Unsold-Crypto: ein Bust kostet auch davon
+	-- einen Teil. Damit haengt der Handel am Trace-System statt danebenher
+	-- zu laufen. 0 = Lager ist beim Bust sicher (dann fehlt dem Handel aber
+	-- jedes Risiko).
+	BustStashLossPercent = 0.5,
+
+	-- Faelschungsrisiko. Das Analyse-Modul ist der zweite Zweck des
+	-- Rig-Upgrades: je hoeher das Tier, desto seltener Ausschuss.
+	RiskReductionPerTier = 0.18, -- -18% relatives Risiko je Tier ueber 1
+	MinRiskFactor = 0.15, -- darunter geht es nie
+}
+
+-- Aktueller Preis aus Basispreis und Kursfaktor.
+function Config.GetMarketPrice(base: number, factor: number): number
+	return math.max(1, math.floor(base * factor + 0.5))
+end
+
+-- Was der Spieler zahlt bzw. bekommt. Der Server rechnet das selbst - ein
+-- vom Client geschickter Preis wird nirgends gelesen.
+function Config.GetBuyPrice(base: number, factor: number): number
+	return math.max(1, math.floor(Config.GetMarketPrice(base, factor) * (1 + Config.Market.Spread) + 0.5))
+end
+
+function Config.GetSellPrice(base: number, factor: number): number
+	return math.max(1, math.floor(Config.GetMarketPrice(base, factor) * (1 - Config.Market.Spread)))
+end
+
+function Config.GetStashSlots(tier: number): number
+	return Config.Market.SlotsBase + Config.Market.SlotsPerRig * (tier - 1)
+end
+
+-- Tatsaechliches Faelschungsrisiko einer Ware bei diesem Rig-Tier.
+function Config.GetFakeRisk(baseRisk: number, tier: number): number
+	local factor = math.max(Config.Market.MinRiskFactor, 1 - Config.Market.RiskReductionPerTier * (tier - 1))
+	return baseRisk * factor
+end
+
+--==========================================================================
+-- 14. RATE-LIMITS (Token-Bucket pro Spieler und Remote)
 -- Jede neue Remote braucht hier einen Eintrag, sonst wird sie verworfen.
 --==========================================================================
 Config.RateLimits = {
@@ -326,10 +402,11 @@ Config.RateLimits = {
 	MissionAbandon = { Rate = 1, Burst = 2 },
 	MissionInteract = { Rate = 2, Burst = 4 },
 	MissionSkip = { Rate = 0.5, Burst = 2 },
+	Trade = { Rate = 2, Burst = 5 },
 }
 
 --==========================================================================
--- 14. NODE-BREACH
+-- 15. NODE-BREACH
 --==========================================================================
 Config.NodeBreach = {
 	-- Pro Schwierigkeitsband: Gittergroesse, Anzahl Relays, Anteil sichtbares
@@ -346,7 +423,7 @@ Config.NodeBreach = {
 }
 
 --==========================================================================
--- 15. DEFAULTS FUER HACK-ZIELE
+-- 16. DEFAULTS FUER HACK-ZIELE
 -- Ein Part braucht KEIN einziges Attribut. Alles, was fehlt, kommt von hier.
 --==========================================================================
 Config.TargetDefaults = {

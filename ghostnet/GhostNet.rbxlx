@@ -1,10 +1,10 @@
 <roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4">
-<Item class="Workspace" referent="GN37">
+<Item class="Workspace" referent="GN41">
 <Properties>
 <string name="Name">Workspace</string>
 <float name="Gravity">196.2</float>
 </Properties>
-<Item class="Part" referent="GN32">
+<Item class="Part" referent="GN36">
 <Properties>
 <string name="Name">Baseplate</string>
 <bool name="Anchored">true</bool>
@@ -16,7 +16,7 @@
 <token name="BottomSurface">0</token>
 </Properties>
 </Item>
-<Item class="SpawnLocation" referent="GN33">
+<Item class="SpawnLocation" referent="GN37">
 <Properties>
 <string name="Name">SpawnLocation</string>
 <bool name="Anchored">true</bool>
@@ -29,7 +29,7 @@
 </Properties>
 </Item>
 </Item>
-<Item class="Lighting" referent="GN34">
+<Item class="Lighting" referent="GN38">
 <Properties>
 <string name="Name">Lighting</string>
 <token name="Technology">4</token>
@@ -44,7 +44,7 @@
 <Color3 name="FogColor"><R>0.03</R><G>0.04</G><B>0.07</B></Color3>
 <float name="FogEnd">420</float>
 </Properties>
-<Item class="BloomEffect" referent="GN35">
+<Item class="BloomEffect" referent="GN39">
 <Properties>
 <string name="Name">Bloom</string>
 <bool name="Enabled">true</bool>
@@ -53,7 +53,7 @@
 <float name="Threshold">0.9</float>
 </Properties>
 </Item>
-<Item class="ColorCorrectionEffect" referent="GN36">
+<Item class="ColorCorrectionEffect" referent="GN40">
 <Properties>
 <string name="Name">ColorCorrection</string>
 <bool name="Enabled">true</bool>
@@ -64,11 +64,11 @@
 </Properties>
 </Item>
 </Item>
-<Item class="ReplicatedStorage" referent="GN38">
+<Item class="ReplicatedStorage" referent="GN42">
 <Properties>
 <string name="Name">ReplicatedStorage</string>
 </Properties>
-<Item class="Folder" referent="GN7">
+<Item class="Folder" referent="GN8">
 <Properties>
 <string name="Name">Shared</string>
 </Properties>
@@ -83,7 +83,7 @@
 
 local Config = {}
 
-Config.Version = "0.3.0" -- Phase A: Missions-Rueckgrat
+Config.Version = "0.4.0" -- Phase A-D: Story, Ueberfaelle, Darknet
 
 -- CollectionService-Tags. Ein Part mit dem Tag ist ein Hack-Ziel, ein Hehler,
 -- ein Missions-Wegpunkt oder ein ansprechbarer Kontakt. Kein Code pro Objekt.
@@ -296,7 +296,8 @@ Config.Save = {
 	-- gehoert ein Eintrag in SaveService.MIGRATIONS.
 	--   1 = Phase 1 (Bank, Unsold, Rig, Trace, Cooldowns, Stats)
 	--   2 = Phase A (Story-Block)
-	SchemaVersion = 2,
+	--   3 = Phase C (Darknet-Lager)
+	SchemaVersion = 3,
 	StoreName = "GhostNetPlayers_v1",
 	KeyFormat = "ghostnet_player_%d",
 
@@ -390,7 +391,82 @@ Config.Raid = {
 }
 
 --==========================================================================
--- 13. RATE-LIMITS (Token-Bucket pro Spieler und Remote)
+-- 13. DARKNET-MARKT
+-- Ohne Preisbewegung ist Handel ein Knopf, der 100 in 120 verwandelt. Der
+-- Markt bewegt sich serverweit - alle Spieler sehen denselben Kurs, damit
+-- man sich darueber unterhalten kann.
+--==========================================================================
+Config.Market = {
+	-- Das Darknet ist erst offen, wenn M03 diesen Unlock vergeben hat.
+	-- Wird serverseitig geprueft, nicht nur in der UI ausgeblendet.
+	RequiredUnlock = "DARKNET",
+
+	TickSeconds = 12, -- wie oft sich die Preise bewegen
+	HistoryPoints = 24, -- Laenge des Mini-Charts (24 x 12 s = rund 5 Minuten)
+
+	-- Rueckkehr zum Basispreis. Ohne das driften Kurse nach ein paar Stunden
+	-- ins Absurde. 0.08 = pro Tick werden 8% der Abweichung abgebaut.
+	MeanReversion = 0.08,
+	-- Harte Grenzen, damit kein Kurs voellig entgleist.
+	MinFactor = 0.45,
+	MaxFactor = 2.2,
+
+	-- Spanne zwischen An- und Verkauf. Der Markt verdient immer mit; ohne
+	-- Spanne koennte man ohne Kursbewegung durch reines Hin-und-Her Geld
+	-- drucken.
+	Spread = 0.08,
+
+	-- Events. Bewegen eine ganze Warengruppe und werden serverweit
+	-- angekuendigt - das erzeugt Gespraeche und kostet nichts.
+	EventChancePerTick = 0.03, -- rund alle 7 Minuten eins
+	EventDurationTicks = 10,
+	EventStrengthMin = 0.25,
+	EventStrengthMax = 0.6,
+
+	-- Lager. Begrenzt erzwingt Entscheidungen statt Alles-Kaufen.
+	SlotsBase = 12, -- Einheiten insgesamt
+	SlotsPerRig = 4, -- zusaetzlich je Tier-Stufe
+	MaxPerTrade = 25, -- Obergrenze pro Klick, gegen Zahlen-Unfug
+
+	-- Ware im Lager ist heiss wie Unsold-Crypto: ein Bust kostet auch davon
+	-- einen Teil. Damit haengt der Handel am Trace-System statt danebenher
+	-- zu laufen. 0 = Lager ist beim Bust sicher (dann fehlt dem Handel aber
+	-- jedes Risiko).
+	BustStashLossPercent = 0.5,
+
+	-- Faelschungsrisiko. Das Analyse-Modul ist der zweite Zweck des
+	-- Rig-Upgrades: je hoeher das Tier, desto seltener Ausschuss.
+	RiskReductionPerTier = 0.18, -- -18% relatives Risiko je Tier ueber 1
+	MinRiskFactor = 0.15, -- darunter geht es nie
+}
+
+-- Aktueller Preis aus Basispreis und Kursfaktor.
+function Config.GetMarketPrice(base: number, factor: number): number
+	return math.max(1, math.floor(base * factor + 0.5))
+end
+
+-- Was der Spieler zahlt bzw. bekommt. Der Server rechnet das selbst - ein
+-- vom Client geschickter Preis wird nirgends gelesen.
+function Config.GetBuyPrice(base: number, factor: number): number
+	return math.max(1, math.floor(Config.GetMarketPrice(base, factor) * (1 + Config.Market.Spread) + 0.5))
+end
+
+function Config.GetSellPrice(base: number, factor: number): number
+	return math.max(1, math.floor(Config.GetMarketPrice(base, factor) * (1 - Config.Market.Spread)))
+end
+
+function Config.GetStashSlots(tier: number): number
+	return Config.Market.SlotsBase + Config.Market.SlotsPerRig * (tier - 1)
+end
+
+-- Tatsaechliches Faelschungsrisiko einer Ware bei diesem Rig-Tier.
+function Config.GetFakeRisk(baseRisk: number, tier: number): number
+	local factor = math.max(Config.Market.MinRiskFactor, 1 - Config.Market.RiskReductionPerTier * (tier - 1))
+	return baseRisk * factor
+end
+
+--==========================================================================
+-- 14. RATE-LIMITS (Token-Bucket pro Spieler und Remote)
 -- Jede neue Remote braucht hier einen Eintrag, sonst wird sie verworfen.
 --==========================================================================
 Config.RateLimits = {
@@ -403,10 +479,11 @@ Config.RateLimits = {
 	MissionAbandon = { Rate = 1, Burst = 2 },
 	MissionInteract = { Rate = 2, Burst = 4 },
 	MissionSkip = { Rate = 0.5, Burst = 2 },
+	Trade = { Rate = 2, Burst = 5 },
 }
 
 --==========================================================================
--- 14. NODE-BREACH
+-- 15. NODE-BREACH
 --==========================================================================
 Config.NodeBreach = {
 	-- Pro Schwierigkeitsband: Gittergroesse, Anzahl Relays, Anteil sichtbares
@@ -423,7 +500,7 @@ Config.NodeBreach = {
 }
 
 --==========================================================================
--- 15. DEFAULTS FUER HACK-ZIELE
+-- 16. DEFAULTS FUER HACK-ZIELE
 -- Ein Part braucht KEIN einziges Attribut. Alles, was fehlt, kommt von hier.
 --==========================================================================
 Config.TargetDefaults = {
@@ -550,6 +627,144 @@ return Geometry
 </Properties>
 </Item>
 <Item class="ModuleScript" referent="GN3">
+<Properties>
+<string name="Name">Goods</string>
+<ProtectedString name="Source">-- ReplicatedStorage/Shared/Goods.luau
+--!strict
+-- GHOSTNET :: Warenkatalog fuers Darknet.
+--
+-- Je Ware drei Zahlen, die zusammen ihren Charakter ergeben:
+--   Base        Ankerpreis. Der Kurs kehrt langfristig dorthin zurueck.
+--   Volatility  wie stark er pro Tick springt (0.04 = bis zu +-4%).
+--   Risk        Wahrscheinlichkeit, dass eine Einheit sich als Faelschung
+--               entpuppt und beim Verkauf nichts bringt. Sinkt mit dem
+--               Analyse-Modul im Rig.
+--
+-- Die Mischung ist Absicht: billige, ruhige Ware zum Lernen; teure, wilde
+-- Ware, bei der man richtig danebenliegen kann. Ohne dieses Gefaelle waere
+-- Handel nur Warten.
+
+local Goods = {}
+
+export type Good = {
+	Id: string,
+	Name: string,
+	Blurb: string,
+	Base: number,
+	Volatility: number,
+	Risk: number,
+	Group: string, -- fuer Markt-Events ("Razzia: Ausweise +60%")
+}
+
+Goods.List = {
+	{
+		Id = "CREDS",
+		Name = "Zugangsdaten",
+		Blurb = "Frische Logins. Schnell verderblich, aber immer gefragt.",
+		Base = 90,
+		Volatility = 0.05,
+		Risk = 0.04,
+		Group = "DATEN",
+	},
+	{
+		Id = "DATAPACK",
+		Name = "Datenpakete",
+		Blurb = "Rohdaten aus geknackten Systemen. Ruhiger Kurs.",
+		Base = 140,
+		Volatility = 0.035,
+		Risk = 0.02,
+		Group = "DATEN",
+	},
+	{
+		Id = "HARDWARE",
+		Name = "Hardware-Teile",
+		Blurb = "Ausgebaute Module. Schwer zu faelschen, dafuer traege.",
+		Base = 260,
+		Volatility = 0.03,
+		Risk = 0.01,
+		Group = "TECHNIK",
+	},
+	{
+		Id = "EXPLOIT",
+		Name = "Exploit-Kits",
+		Blurb = "Fertige Einbruchswerkzeuge. Kurs haengt an Razzien.",
+		Base = 420,
+		Volatility = 0.08,
+		Risk = 0.07,
+		Group = "TECHNIK",
+	},
+	{
+		Id = "IDCARD",
+		Name = "Gefaelschte Ausweise",
+		Blurb = "Teuer, wild, und jede zehnte taugt nichts.",
+		Base = 610,
+		Volatility = 0.11,
+		Risk = 0.12,
+		Group = "PAPIERE",
+	},
+} :: { Good }
+
+--==========================================================================
+
+function Goods.Get(id: string): Good?
+	for _, good in Goods.List do
+		if good.Id == id then
+			return good
+		end
+	end
+	return nil
+end
+
+function Goods.Count(): number
+	return #Goods.List
+end
+
+function Goods.Exists(id: any): boolean
+	return typeof(id) == "string" and Goods.Get(id) ~= nil
+end
+
+-- Pruefung der Katalogdaten. Laeuft beim Serverstart und im Testlauf.
+function Goods.Validate(list: { Good }?): (boolean, { string })
+	local goods = list or Goods.List
+	local errors: { string } = {}
+	local seen: { [string]: boolean } = {}
+
+	for index, good in goods do
+		local label = if typeof(good.Id) == "string" and good.Id ~= "" then good.Id else ("#" .. index)
+
+		if typeof(good.Id) ~= "string" or good.Id == "" then
+			table.insert(errors, ("%s: Id fehlt"):format(label))
+		elseif seen[good.Id] then
+			table.insert(errors, ("%s: Id doppelt vergeben"):format(label))
+		else
+			seen[good.Id] = true
+		end
+
+		if typeof(good.Name) ~= "string" or good.Name == "" then
+			table.insert(errors, ("%s: Name fehlt"):format(label))
+		end
+		if typeof(good.Group) ~= "string" or good.Group == "" then
+			table.insert(errors, ("%s: Group fehlt"):format(label))
+		end
+		if typeof(good.Base) ~= "number" or good.Base &lt;= 0 then
+			table.insert(errors, ("%s: Base muss groesser 0 sein"):format(label))
+		end
+		if typeof(good.Volatility) ~= "number" or good.Volatility &lt;= 0 or good.Volatility &gt;= 0.5 then
+			table.insert(errors, ("%s: Volatility muss zwischen 0 und 0.5 liegen"):format(label))
+		end
+		if typeof(good.Risk) ~= "number" or good.Risk &lt; 0 or good.Risk &gt;= 1 then
+			table.insert(errors, ("%s: Risk muss zwischen 0 und 1 liegen"):format(label))
+		end
+	end
+
+	return #errors == 0, errors
+end
+
+return Goods
+</ProtectedString>
+</Properties>
+</Item>
+<Item class="ModuleScript" referent="GN4">
 <Properties>
 <string name="Name">Missions</string>
 <ProtectedString name="Source">-- ReplicatedStorage/Shared/Missions.luau
@@ -976,7 +1191,7 @@ return Missions
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN4">
+<Item class="ModuleScript" referent="GN5">
 <Properties>
 <string name="Name">Remotes</string>
 <ProtectedString name="Source">-- ReplicatedStorage/Shared/Remotes.luau
@@ -1010,10 +1225,14 @@ local EVENT_NAMES = {
 	"MissionSkip", -- C-&gt;S  { }            Tutorial ueberspringen
 	"WaypointSync", -- S-&gt;C  { position, label }  Marker fuer GOTO/HACK/TALK
 	"AlarmSync", -- S-&gt;C  { active, label, remaining, total, coop, triggered? }
+	"MarketSync", -- S-&gt;C  { goods, event, tickSeconds }   serverweite Kurse
+	"MarketEvent", -- S-&gt;C  { text, group }                Kursereignis
+	"InventorySync", -- S-&gt;C  { stash, used, slots, tier }
 }
 
 local FUNCTION_NAMES: { string } = {
 	"ShopPurchase", -- C-&gt;S-&gt;C  { component } -&gt; { ok, reason, level, cost, ... }
+	"Trade", -- C-&gt;S-&gt;C  { action, goodId, amount } -&gt; { ok, reason, unit, total, ... }
 }
 
 local Remotes = {}
@@ -1070,7 +1289,7 @@ return Remotes
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN5">
+<Item class="ModuleScript" referent="GN6">
 <Properties>
 <string name="Name">Types</string>
 <ProtectedString name="Source">-- ReplicatedStorage/Shared/Types.luau
@@ -1092,6 +1311,8 @@ export type Stats = {
 	Sales: number, -- Verkaeufe beim Hehler
 	Earned: number, -- gesamte netto Einnahmen
 	Upgrades: number, -- gekaufte Rig-Stufen
+	GoodsBought: number, -- im Darknet gekaufte Einheiten
+	GoodsSold: number, -- im Darknet verkaufte Einheiten
 }
 
 -- Story-Fortschritt im Profil. Der Client bekommt davon nur eine Abschrift
@@ -1116,6 +1337,7 @@ export type Profile = {
 	Cooldowns: { [string]: number }, -- [targetId] = Unix-Zeit, ab der wieder erlaubt
 	Stats: Stats,
 	Story: Story, -- seit SchemaVersion 2
+	Stash: { [string]: number }, -- Darknet-Lager, seit SchemaVersion 3
 	LastSeen: number, -- Unix-Zeit des letzten Speicherns
 	SessionId: string, -- Session-Lock gegen Doppel-Sitzungen
 }
@@ -1191,7 +1413,7 @@ return {}
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN6">
+<Item class="ModuleScript" referent="GN7">
 <Properties>
 <string name="Name">UITheme</string>
 <ProtectedString name="Source">-- ReplicatedStorage/Shared/UITheme.luau
@@ -1395,11 +1617,11 @@ return UITheme
 </Item>
 </Item>
 </Item>
-<Item class="ServerScriptService" referent="GN39">
+<Item class="ServerScriptService" referent="GN43">
 <Properties>
 <string name="Name">ServerScriptService</string>
 </Properties>
-<Item class="Script" referent="GN8">
+<Item class="Script" referent="GN9">
 <Properties>
 <string name="Name">GhostNetServer</string>
 <ProtectedString name="Source">-- ServerScriptService/GhostNetServer.server.luau
@@ -1426,6 +1648,8 @@ local SellService = require(Systems.SellService)
 local ShopService = require(Systems.ShopService)
 local RaidService = require(Systems.RaidService)
 local MissionService = require(Systems.MissionService)
+local MarketService = require(Systems.MarketService)
+local InventoryService = require(Systems.InventoryService)
 
 SaveService.Init() -- zuerst: haelt das Profil
 EconomyService.Init() -- liest aus dem Profil
@@ -1438,16 +1662,18 @@ ShopService.Init()
 -- fertigen Services, muessen also nach ihnen kommen.
 RaidService.Init()
 MissionService.Init()
+MarketService.Init() -- Kurse laufen unabhaengig von Spielern
+InventoryService.Init() -- braucht Markt und Missionen (Unlock-Pruefung)
 
 print(("[GHOSTNET] Server hochgefahren - Version %s"):format(Config.Version))
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="Folder" referent="GN22">
+<Item class="Folder" referent="GN25">
 <Properties>
 <string name="Name">Systems</string>
 </Properties>
-<Item class="ModuleScript" referent="GN9">
+<Item class="ModuleScript" referent="GN10">
 <Properties>
 <string name="Name">EconomyService</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/EconomyService.luau
@@ -1709,7 +1935,7 @@ return EconomyService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN10">
+<Item class="ModuleScript" referent="GN11">
 <Properties>
 <string name="Name">HackEffects</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/HackEffects.luau
@@ -1898,7 +2124,7 @@ return HackEffects
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN11">
+<Item class="ModuleScript" referent="GN12">
 <Properties>
 <string name="Name">HackService</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/HackService.luau
@@ -2148,7 +2374,25 @@ local function onRequestStart(player: Player, payload: any)
 	end
 
 	if EconomyService.GetTier(player) &lt; target.RequiredLevel then
-		deny(player, target.Id, "LEVEL", target.RequiredLevel)
+		-- Nicht nur "Tier zu niedrig", sondern WELCHES Bauteil bremst.
+		-- Ohne das weiss der Spieler nicht, was er kaufen soll.
+		local rig = EconomyService.GetRig(player)
+		local weakest, weakestLevel = Config.Rig.Components[1], math.huge
+		for _, component in Config.Rig.Components do
+			local level = (rig :: any)[component] :: number
+			if level &lt; weakestLevel then
+				weakest, weakestLevel = component, level
+			end
+		end
+		if player.Parent then
+			Remotes.HackDenied:FireClient(player, {
+				TargetId = target.Id,
+				Reason = "LEVEL",
+				Seconds = target.RequiredLevel,
+				Weakest = (Config.Rig.Labels :: any)[weakest],
+				WeakestLevel = weakestLevel,
+			})
+		end
 		return
 	end
 
@@ -2166,7 +2410,9 @@ local function onRequestStart(player: Player, payload: any)
 	local range = EconomyService.GetRange(player) + Config.Range.Tolerance
 	local distance = HackTargets.DistanceFromPlayer(target, player)
 	if not distance or distance &gt; range then
-		deny(player, target.Id, "RANGE")
+		-- Die konkrete Zahl mitschicken: "zu weit weg" allein sagt dem
+		-- Spieler nicht, ob zwei Schritte reichen oder ein Upgrade noetig ist.
+		deny(player, target.Id, "RANGE", if distance then math.ceil(distance - range) else 0)
 		return
 	end
 
@@ -2395,7 +2641,7 @@ return HackService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN12">
+<Item class="ModuleScript" referent="GN13">
 <Properties>
 <string name="Name">HackTargets</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/HackTargets.luau
@@ -2645,11 +2891,574 @@ return HackTargets
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="Folder" referent="GN14">
+<Item class="ModuleScript" referent="GN14">
+<Properties>
+<string name="Name">InventoryService</string>
+<ProtectedString name="Source">-- ServerScriptService/Systems/InventoryService.luau
+--!strict
+-- GHOSTNET :: Das Lager und der Handel.
+--
+-- SICHERHEIT - der Kern dieses Moduls
+--   Der Client schickt ausschliesslich { GoodId, Amount, Action }. Den Preis
+--   holt sich der Server selbst beim MarketService. Ein vom Client
+--   geschickter Preis wird NIRGENDS gelesen - genau darueber werden
+--   Handelssysteme in Roblox-Spielen sonst leergeraeumt.
+--   Zusaetzlich: Menge muss eine positive Ganzzahl unter der Obergrenze
+--   sein, Lagerplatz und Guthaben werden geprueft, bevor irgendetwas gebucht
+--   wird.
+--
+-- RISIKO - sonst ist Handel nur Warten
+--   * Lagerplatz ist begrenzt: man muss sich entscheiden.
+--   * Ware im Lager ist heiss. Ein Bust kostet auch davon einen Teil, damit
+--     der Handel am Trace-System haengt statt danebenher zu laufen.
+--   * Ware mit hohem Risikowert ist manchmal Ausschuss. Das Rig-Tier senkt
+--     die Quote - damit bekommt das Upgrade-System einen zweiten Zweck.
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Config = require(ReplicatedStorage.Shared.Config)
+local Goods = require(ReplicatedStorage.Shared.Goods)
+local Remotes = require(ReplicatedStorage.Shared.Remotes)
+
+local EconomyService = require(script.Parent.EconomyService)
+local MarketService = require(script.Parent.MarketService)
+local MissionService = require(script.Parent.MissionService)
+local RateLimiter = require(script.Parent.RateLimiter)
+local SaveService = require(script.Parent.SaveService)
+local TraceService = require(script.Parent.TraceService)
+
+local InventoryService = {}
+
+local rng = Random.new()
+
+--==========================================================================
+-- Lager lesen
+--==========================================================================
+
+function InventoryService.Used(player: Player): number
+	local profile = SaveService.Get(player)
+	if not profile then
+		return 0
+	end
+	local used = 0
+	for _, amount in profile.Stash do
+		used += amount
+	end
+	return used
+end
+
+function InventoryService.Slots(player: Player): number
+	return Config.GetStashSlots(EconomyService.GetTier(player))
+end
+
+function InventoryService.Snapshot(player: Player): { [string]: any }
+	local profile = SaveService.Get(player)
+	local stash: { { [string]: any } } = {}
+
+	if profile then
+		for _, good in Goods.List do
+			local amount = profile.Stash[good.Id]
+			if amount and amount &gt; 0 then
+				table.insert(stash, {
+					Id = good.Id,
+					Name = good.Name,
+					Amount = amount,
+					Sell = MarketService.GetSellPrice(good.Id) or 0,
+				})
+			end
+		end
+	end
+
+	return {
+		Stash = stash,
+		Used = InventoryService.Used(player),
+		Slots = InventoryService.Slots(player),
+		-- Fuer die Anzeige "wie oft ist die Ware Ausschuss" - abhaengig vom
+		-- eigenen Rig, deshalb pro Spieler und nicht im Marktpaket.
+		Tier = EconomyService.GetTier(player),
+	}
+end
+
+function InventoryService.Sync(player: Player)
+	if player.Parent then
+		Remotes.InventorySync:FireClient(player, InventoryService.Snapshot(player))
+	end
+end
+
+--==========================================================================
+-- Bust: das Lager ist genauso heiss wie das Bargeld
+--==========================================================================
+
+local function onBust(player: Player)
+	if Config.Market.BustStashLossPercent &lt;= 0 then
+		return
+	end
+	local profile = SaveService.Get(player)
+	if not profile then
+		return
+	end
+
+	local lost = 0
+	for goodId, amount in profile.Stash do
+		local remove = math.floor(amount * Config.Market.BustStashLossPercent + 0.5)
+		if remove &gt; 0 then
+			profile.Stash[goodId] = math.max(0, amount - remove)
+			if profile.Stash[goodId] == 0 then
+				profile.Stash[goodId] = nil
+			end
+			lost += remove
+		end
+	end
+
+	if lost &gt; 0 then
+		warn(("[GHOSTNET] Bust kostet %s zusaetzlich %d Einheiten Ware."):format(player.Name, lost))
+		InventoryService.Sync(player)
+		SaveService.RequestSave(player)
+	end
+end
+
+--==========================================================================
+-- Handel
+--==========================================================================
+
+local function result(ok: boolean, reason: string, extra: { [string]: any }?): { [string]: any }
+	local payload: { [string]: any } = { Ok = ok, Reason = reason }
+	if extra then
+		for key, value in extra do
+			payload[key] = value
+		end
+	end
+	return payload
+end
+
+local function validAmount(value: any): number?
+	if typeof(value) ~= "number" or value ~= value then
+		return nil
+	end
+	if value % 1 ~= 0 or value &lt; 1 or value &gt; Config.Market.MaxPerTrade then
+		return nil
+	end
+	return value
+end
+
+local function buy(player: Player, goodId: string, amount: number): { [string]: any }
+	local profile = SaveService.Get(player)
+	if not profile then
+		return result(false, "LOADING")
+	end
+
+	local free = InventoryService.Slots(player) - InventoryService.Used(player)
+	if amount &gt; free then
+		return result(false, "NO_SPACE", { Free = math.max(0, free), Slots = InventoryService.Slots(player) })
+	end
+
+	-- Preis kommt vom Server, nicht vom Client.
+	local unit = MarketService.GetBuyPrice(goodId)
+	if not unit then
+		return result(false, "UNKNOWN_GOOD")
+	end
+	local total = unit * amount
+
+	if profile.Banked &lt; total then
+		return result(false, "FUNDS", { Cost = total, Missing = total - profile.Banked, Unit = unit })
+	end
+	if not EconomyService.SpendBanked(player, total) then
+		return result(false, "FUNDS", { Cost = total, Unit = unit })
+	end
+
+	profile.Stash[goodId] = (profile.Stash[goodId] or 0) + amount
+	profile.Stats.GoodsBought += amount
+
+	EconomyService.Sync(player)
+	InventoryService.Sync(player)
+	SaveService.RequestSave(player)
+
+	-- BUY-Schritte in Missionen. Die Richtung ist bewusst
+	-- InventoryService -&gt; MissionService, nie umgekehrt.
+	MissionService.NotifyBuy(player, goodId, amount)
+
+	return result(true, "OK", { Unit = unit, Total = total, Amount = amount, GoodId = goodId })
+end
+
+local function sell(player: Player, goodId: string, amount: number): { [string]: any }
+	local profile = SaveService.Get(player)
+	if not profile then
+		return result(false, "LOADING")
+	end
+
+	local owned = profile.Stash[goodId] or 0
+	if owned &lt; amount then
+		return result(false, "NOT_OWNED", { Owned = owned })
+	end
+
+	local good = Goods.Get(goodId)
+	local unit = MarketService.GetSellPrice(goodId)
+	if not good or not unit then
+		return result(false, "UNKNOWN_GOOD")
+	end
+
+	-- Faelschungen: pro Einheit gewuerfelt. Das Rig-Tier senkt die Quote.
+	local risk = Config.GetFakeRisk(good.Risk, EconomyService.GetTier(player))
+	local fakes = 0
+	for _ = 1, amount do
+		if rng:NextNumber() &lt; risk then
+			fakes += 1
+		end
+	end
+
+	local sold = amount - fakes
+	local total = unit * sold
+
+	profile.Stash[goodId] = owned - amount
+	if profile.Stash[goodId] &lt;= 0 then
+		profile.Stash[goodId] = nil
+	end
+	profile.Stats.GoodsSold += amount
+
+	-- Erloes aus dem Darknet ist SAUBER: gehandelt wird vom Rechner aus, das
+	-- muss nicht mehr durch den Hehler. Sonst waere Handel doppelt bestraft.
+	if total &gt; 0 then
+		EconomyService.AwardBanked(player, total)
+	else
+		EconomyService.Sync(player)
+	end
+
+	InventoryService.Sync(player)
+	SaveService.RequestSave(player)
+
+	return result(true, "OK", {
+		Unit = unit,
+		Total = total,
+		Amount = amount,
+		Sold = sold,
+		Fakes = fakes,
+		GoodId = goodId,
+	})
+end
+
+--==========================================================================
+-- Remote
+--==========================================================================
+
+local function onTrade(player: Player, payload: any): { [string]: any }
+	if not RateLimiter.Check(player, "Trade") then
+		return result(false, "RATE")
+	end
+	if typeof(payload) ~= "table" then
+		return result(false, "BAD_PAYLOAD")
+	end
+
+	-- Das Darknet ist erst ab M03 offen. Ohne diese Pruefung koennte ein
+	-- Client die Remote einfach direkt feuern und den Hub ueberspringen.
+	if not MissionService.HasUnlock(player, Config.Market.RequiredUnlock) then
+		return result(false, "LOCKED")
+	end
+
+	local action = (payload :: any).Action
+	local goodId = (payload :: any).GoodId
+	if action ~= "BUY" and action ~= "SELL" then
+		return result(false, "BAD_PAYLOAD")
+	end
+	if not Goods.Exists(goodId) then
+		return result(false, "UNKNOWN_GOOD")
+	end
+
+	local amount = validAmount((payload :: any).Amount)
+	if not amount then
+		return result(false, "BAD_AMOUNT", { Max = Config.Market.MaxPerTrade })
+	end
+
+	if action == "BUY" then
+		return buy(player, goodId, amount)
+	end
+	return sell(player, goodId, amount)
+end
+
+--==========================================================================
+
+function InventoryService.Init()
+	Remotes.Trade.OnServerInvoke = function(player: Player, payload: any): { [string]: any }
+		local ok, response = pcall(onTrade, player, payload)
+		if not ok then
+			warn(("[GHOSTNET] Trade ist abgestuerzt: %s"):format(tostring(response)))
+			return result(false, "INTERNAL")
+		end
+		return response
+	end
+
+	TraceService.OnBust(onBust)
+
+	SaveService.OnReady(function(player)
+		InventoryService.Sync(player)
+	end)
+
+	print(("[GHOSTNET] InventoryService bereit. Lager %d Plaetze, max %d pro Kauf."):format(
+		Config.Market.SlotsBase,
+		Config.Market.MaxPerTrade
+	))
+end
+
+return InventoryService
+</ProtectedString>
+</Properties>
+</Item>
+<Item class="ModuleScript" referent="GN15">
+<Properties>
+<string name="Name">MarketService</string>
+<ProtectedString name="Source">-- ServerScriptService/Systems/MarketService.luau
+--!strict
+-- GHOSTNET :: Die Preise im Darknet.
+--
+-- WARUM SICH DIE PREISE BEWEGEN MUESSEN
+--   Ein fester Kurs macht aus Handel einen Knopf, der 100 in 120 verwandelt.
+--   Das ist kein Spiel. Erst wenn ein Preis steigen UND fallen kann, wird
+--   aus "kaufen" eine Entscheidung.
+--
+-- MEAN REVERSION
+--   Ein reiner Zufallslauf driftet nach ein paar Stunden ins Absurde -
+--   irgendwann kostet ein Datenpaket 40.000. Deshalb zieht jeder Tick den
+--   Kurs ein Stueck zum Basispreis zurueck. Der Kurs schwankt, aber er
+--   entgleist nicht.
+--
+-- SERVERWEIT, NICHT PRO SPIELER
+--   Alle sehen denselben Kurs. Nur so kann jemand "Ausweise sind gerade
+--   oben" in den Chat schreiben, und nur so wirkt ein Event wie ein
+--   Ereignis statt wie ein Zufall.
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Config = require(ReplicatedStorage.Shared.Config)
+local Goods = require(ReplicatedStorage.Shared.Goods)
+local Remotes = require(ReplicatedStorage.Shared.Remotes)
+
+local MarketService = {}
+
+type Quote = {
+	Factor: number, -- Kursfaktor, 1.0 = Basispreis
+	History: { number }, -- die letzten Faktoren, fuer den Mini-Chart
+}
+
+type MarketEvent = {
+	Group: string,
+	Strength: number, -- positiv = Preise hoch
+	TicksLeft: number,
+	Text: string,
+}
+
+local quotes: { [string]: Quote } = {}
+local activeEvent: MarketEvent? = nil
+local rng = Random.new()
+
+--==========================================================================
+-- Preise
+--==========================================================================
+
+function MarketService.GetFactor(goodId: string): number
+	local quote = quotes[goodId]
+	return if quote then quote.Factor else 1.0
+end
+
+-- Was der Spieler beim Kauf zahlt bzw. beim Verkauf bekommt. Diese beiden
+-- Funktionen sind die EINZIGE Preisquelle; der InventoryService fragt hier
+-- und liest niemals einen Preis aus einem Client-Paket.
+function MarketService.GetBuyPrice(goodId: string): number?
+	local good = Goods.Get(goodId)
+	if not good then
+		return nil
+	end
+	return Config.GetBuyPrice(good.Base, MarketService.GetFactor(goodId))
+end
+
+function MarketService.GetSellPrice(goodId: string): number?
+	local good = Goods.Get(goodId)
+	if not good then
+		return nil
+	end
+	return Config.GetSellPrice(good.Base, MarketService.GetFactor(goodId))
+end
+
+-- Vollstaendige Marktlage fuer die UI.
+function MarketService.Snapshot(): { [string]: any }
+	local entries: { { [string]: any } } = {}
+	for _, good in Goods.List do
+		local quote = quotes[good.Id]
+		table.insert(entries, {
+			Id = good.Id,
+			Name = good.Name,
+			Blurb = good.Blurb,
+			Group = good.Group,
+			Base = good.Base,
+			Risk = good.Risk,
+			Factor = if quote then quote.Factor else 1.0,
+			Buy = Config.GetBuyPrice(good.Base, if quote then quote.Factor else 1.0),
+			Sell = Config.GetSellPrice(good.Base, if quote then quote.Factor else 1.0),
+			History = if quote then table.clone(quote.History) else { 1.0 },
+		})
+	end
+
+	return {
+		Goods = entries,
+		Event = if activeEvent
+			then { Group = activeEvent.Group, Text = activeEvent.Text, TicksLeft = activeEvent.TicksLeft }
+			else nil,
+		TickSeconds = Config.Market.TickSeconds,
+	}
+end
+
+local function broadcast()
+	local snapshot = MarketService.Snapshot()
+	for _, player in Players:GetPlayers() do
+		Remotes.MarketSync:FireClient(player, snapshot)
+	end
+end
+
+function MarketService.SyncTo(player: Player)
+	if player.Parent then
+		Remotes.MarketSync:FireClient(player, MarketService.Snapshot())
+	end
+end
+
+--==========================================================================
+-- Bewegung
+--==========================================================================
+
+local function rollEvent()
+	if activeEvent then
+		activeEvent.TicksLeft -= 1
+		if activeEvent.TicksLeft &lt;= 0 then
+			activeEvent = nil
+		end
+		return
+	end
+
+	if rng:NextNumber() &gt; Config.Market.EventChancePerTick then
+		return
+	end
+
+	-- Eine Gruppe zufaellig auswaehlen.
+	local groups: { string } = {}
+	local seen: { [string]: boolean } = {}
+	for _, good in Goods.List do
+		if not seen[good.Group] then
+			seen[good.Group] = true
+			table.insert(groups, good.Group)
+		end
+	end
+	if #groups == 0 then
+		return
+	end
+
+	local group = groups[rng:NextInteger(1, #groups)]
+	local up = rng:NextNumber() &lt; 0.5
+	local strength = rng:NextNumber(Config.Market.EventStrengthMin, Config.Market.EventStrengthMax)
+	if not up then
+		strength = -strength
+	end
+
+	local text = if up
+		then ("RAZZIA // %s knapp:  +%d%%"):format(group, math.floor(strength * 100 + 0.5))
+		else ("LECK // %s ueberschwemmt:  %d%%"):format(group, math.floor(strength * 100 - 0.5))
+
+	activeEvent = {
+		Group = group,
+		Strength = strength,
+		TicksLeft = Config.Market.EventDurationTicks,
+		Text = text,
+	}
+
+	print(("[GHOSTNET] Markt-Event: %s"):format(text))
+	for _, player in Players:GetPlayers() do
+		Remotes.MarketEvent:FireClient(player, { Text = text, Group = group })
+	end
+end
+
+local function tickPrices()
+	rollEvent()
+
+	for _, good in Goods.List do
+		local quote = quotes[good.Id]
+		if not quote then
+			continue
+		end
+
+		-- 1. Zufallsschritt im Rahmen der Volatilitaet.
+		local drift = rng:NextNumber(-good.Volatility, good.Volatility)
+
+		-- 2. Rueckkehr zum Basispreis (1.0). Das ist der Anker, ohne den
+		--    der Kurs davonlaeuft.
+		local pull = (1.0 - quote.Factor) * Config.Market.MeanReversion
+
+		-- 3. Ein laufendes Event zieht die ganze Gruppe.
+		local eventPush = 0
+		if activeEvent and activeEvent.Group == good.Group then
+			eventPush = activeEvent.Strength / Config.Market.EventDurationTicks
+		end
+
+		quote.Factor = math.clamp(
+			quote.Factor + drift + pull + eventPush,
+			Config.Market.MinFactor,
+			Config.Market.MaxFactor
+		)
+
+		table.insert(quote.History, quote.Factor)
+		while #quote.History &gt; Config.Market.HistoryPoints do
+			table.remove(quote.History, 1)
+		end
+	end
+
+	broadcast()
+end
+
+--==========================================================================
+
+function MarketService.Init()
+	local valid, errors = Goods.Validate()
+	if not valid then
+		for _, message in errors do
+			warn(("[GHOSTNET] Warenkatalog: %s"):format(message))
+		end
+	end
+
+	for _, good in Goods.List do
+		-- Kein Kaltstart auf exakt 1.0: sonst sehen alle Waren beim
+		-- Serverstart gleich langweilig aus.
+		local start = 1.0 + rng:NextNumber(-good.Volatility, good.Volatility)
+		quotes[good.Id] = { Factor = start, History = { start } }
+	end
+
+	Players.PlayerAdded:Connect(function(player)
+		task.defer(MarketService.SyncTo, player)
+	end)
+	for _, player in Players:GetPlayers() do
+		task.defer(MarketService.SyncTo, player)
+	end
+
+	task.spawn(function()
+		while true do
+			task.wait(Config.Market.TickSeconds)
+			local ok, err = pcall(tickPrices)
+			if not ok then
+				warn(("[GHOSTNET] Markt-Tick fehlgeschlagen: %s"):format(tostring(err)))
+			end
+		end
+	end)
+
+	print(("[GHOSTNET] MarketService bereit. %d Waren, Takt %ds."):format(
+		Goods.Count(),
+		Config.Market.TickSeconds
+	))
+end
+
+return MarketService
+</ProtectedString>
+</Properties>
+</Item>
+<Item class="Folder" referent="GN17">
 <Properties>
 <string name="Name">Minigames</string>
 </Properties>
-<Item class="ModuleScript" referent="GN13">
+<Item class="ModuleScript" referent="GN16">
 <Properties>
 <string name="Name">NodeBreach</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/Minigames/NodeBreach.luau
@@ -3024,7 +3833,7 @@ return NodeBreach
 </Properties>
 </Item>
 </Item>
-<Item class="ModuleScript" referent="GN15">
+<Item class="ModuleScript" referent="GN18">
 <Properties>
 <string name="Name">MissionService</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/MissionService.luau
@@ -3626,7 +4435,7 @@ return MissionService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN16">
+<Item class="ModuleScript" referent="GN19">
 <Properties>
 <string name="Name">RaidService</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/RaidService.luau
@@ -3889,7 +4698,7 @@ return RaidService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN17">
+<Item class="ModuleScript" referent="GN20">
 <Properties>
 <string name="Name">RateLimiter</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/RateLimiter.luau
@@ -3969,7 +4778,7 @@ return RateLimiter
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN18">
+<Item class="ModuleScript" referent="GN21">
 <Properties>
 <string name="Name">SaveService</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/SaveService.luau
@@ -4025,7 +4834,7 @@ local readyCallbacks: { (Player, Profile) -&gt; () } = {}
 --==========================================================================
 
 local function defaultStats(): Types.Stats
-	return { Hacks = 0, Fails = 0, Busts = 0, Sales = 0, Earned = 0, Upgrades = 0 }
+	return { Hacks = 0, Fails = 0, Busts = 0, Sales = 0, Earned = 0, Upgrades = 0, GoodsBought = 0, GoodsSold = 0 }
 end
 
 local function defaultStory(): Types.Story
@@ -4050,6 +4859,7 @@ function SaveService.DefaultProfile(): Profile
 		Cooldowns = {},
 		Stats = defaultStats(),
 		Story = defaultStory(),
+		Stash = {},
 		LastSeen = os.time(),
 		SessionId = "",
 	}
@@ -4142,6 +4952,15 @@ local function sanitize(raw: any): (Profile, number)
 		p.Story.Unlocks = cleanIdList(story.Unlocks, 128)
 	end
 
+	if typeof(raw.Stash) == "table" then
+		for goodId, amount in raw.Stash do
+			local count = toCount(amount)
+			if typeof(goodId) == "string" and #goodId &lt;= 32 and count and count &gt; 0 then
+				p.Stash[goodId] = count
+			end
+		end
+	end
+
 	p.LastSeen = toCount(raw.LastSeen) or p.LastSeen
 	if typeof(raw.SessionId) == "string" then
 		p.SessionId = raw.SessionId
@@ -4168,6 +4987,12 @@ local MIGRATIONS: { [number]: (Profile) -&gt; () } = {
 		profile.Story.Step = 1
 		profile.Story.StepProgress = 0
 		profile.Story.StepStartedAt = 0
+	end,
+
+	-- 2 -&gt; 3: Darknet-Lager kam dazu. Alte Profile starten mit leerem Lager;
+	-- Bank, Rig, Trace, Cooldowns und Story bleiben unangetastet.
+	[3] = function(profile: Profile)
+		profile.Stash = {}
 	end,
 }
 
@@ -4542,7 +5367,7 @@ return SaveService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN19">
+<Item class="ModuleScript" referent="GN22">
 <Properties>
 <string name="Name">SellService</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/SellService.luau
@@ -4708,7 +5533,7 @@ return SellService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN20">
+<Item class="ModuleScript" referent="GN23">
 <Properties>
 <string name="Name">ShopService</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/ShopService.luau
@@ -4834,7 +5659,7 @@ return ShopService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN21">
+<Item class="ModuleScript" referent="GN24">
 <Properties>
 <string name="Name">TraceService</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/TraceService.luau
@@ -5073,11 +5898,11 @@ return TraceService
 </Properties>
 </Item>
 </Item>
-<Item class="Folder" referent="GN25">
+<Item class="Folder" referent="GN28">
 <Properties>
 <string name="Name">World</string>
 </Properties>
-<Item class="Script" referent="GN23">
+<Item class="Script" referent="GN26">
 <Properties>
 <string name="Name">StoryWorld</string>
 <ProtectedString name="Source">-- ServerScriptService/World/StoryWorld.server.luau
@@ -5622,7 +6447,7 @@ print("[GHOSTNET] Story-Welt gebaut: Uebungsterminal, Laden, Apartment, Nakamura
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="Script" referent="GN24">
+<Item class="Script" referent="GN27">
 <Properties>
 <string name="Name">TestTargets</string>
 <ProtectedString name="Source">-- ServerScriptService/World/TestTargets.server.luau
@@ -5923,19 +6748,712 @@ print("[GHOSTNET] Testwelt gebaut: Kamera (D2), Sicherheitstuer (D4), Geldautoma
 </Item>
 </Item>
 </Item>
-<Item class="StarterPlayer" referent="GN40">
+<Item class="StarterPlayer" referent="GN44">
 <Properties>
 <string name="Name">StarterPlayer</string>
 </Properties>
-<Item class="StarterPlayerScripts" referent="GN41">
+<Item class="StarterPlayerScripts" referent="GN45">
 <Properties>
 <string name="Name">StarterPlayerScripts</string>
 </Properties>
-<Item class="Folder" referent="GN31">
+<Item class="Folder" referent="GN35">
 <Properties>
 <string name="Name">UI</string>
 </Properties>
-<Item class="LocalScript" referent="GN26">
+<Item class="LocalScript" referent="GN29">
+<Properties>
+<string name="Name">DarknetUI</string>
+<ProtectedString name="Source">-- StarterPlayer/StarterPlayerScripts/UI/DarknetUI.client.luau
+--!strict
+-- GHOSTNET :: Der Darknet-Markt am eigenen Rechner.
+--
+-- Reine Anzeige. Der Client schickt beim Handeln ausschliesslich
+-- { Action, GoodId, Amount } - nie einen Preis. Was etwas kostet, entscheidet
+-- allein der Server.
+--
+-- Der Mini-Chart ist kein Deko-Element: ohne ihn ist jede Kaufentscheidung
+-- ein Muenzwurf, und dann ist Handel kein Spiel, sondern Warten.
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+
+local Config = require(ReplicatedStorage.Shared.Config)
+local Geometry = require(ReplicatedStorage.Shared.Geometry)
+local Remotes = require(ReplicatedStorage.Shared.Remotes)
+local UITheme = require(ReplicatedStorage.Shared.UITheme)
+
+local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+
+local C = UITheme.Color
+
+--==========================================================================
+-- Zustand (Abschrift vom Server)
+--==========================================================================
+
+local market: { [string]: any } = { Goods = {}, Event = nil }
+local stash: { [string]: number } = {}
+local slots = { Used = 0, Total = Config.Market.SlotsBase }
+local banked = 0
+local unlocked = false
+local hackOpen = false
+local busy = false
+local amount = 1
+
+type Row = {
+	Frame: Frame,
+	Price: TextLabel,
+	Trend: TextLabel,
+	Owned: TextLabel,
+	Chart: Frame,
+	Bars: { Frame },
+	Buy: TextButton,
+	Sell: TextButton,
+}
+
+local rows: { [string]: Row } = {}
+
+--==========================================================================
+-- Aufbau
+--==========================================================================
+
+local gui = UITheme.Screen("GhostNetDarknet", 16)
+gui.Parent = playerGui
+
+local prompt = UITheme.Button({
+	Name = "OpenPrompt",
+	AnchorPoint = Vector2.new(0.5, 1),
+	Position = UDim2.new(0.5, 0, 1, -136),
+	Size = UDim2.fromOffset(320, 46),
+	BackgroundColor3 = C.Panel,
+	BackgroundTransparency = 0.06,
+	Text = "",
+	Visible = false,
+	Parent = gui,
+})
+UITheme.Corner(prompt, 4)
+UITheme.Stroke(prompt, C.Cyan)
+
+UITheme.Label({
+	Name = "Caption",
+	Text = "[E]  DARKNET OEFFNEN",
+	TextColor3 = C.Cyan,
+	TextSize = 14,
+	TextXAlignment = Enum.TextXAlignment.Center,
+	Size = UDim2.fromScale(1, 1),
+	Parent = prompt,
+})
+
+local backdrop = UITheme.Frame({
+	Name = "Backdrop",
+	Size = UDim2.fromScale(1, 1),
+	BackgroundColor3 = Color3.new(0, 0, 0),
+	BackgroundTransparency = 1,
+	Visible = false,
+	Parent = gui,
+})
+
+local window = UITheme.Frame({
+	Name = "Window",
+	AnchorPoint = Vector2.new(0.5, 0.5),
+	Position = UDim2.fromScale(0.5, 0.5),
+	Size = UDim2.new(0.94, 0, 0.88, 0),
+	BackgroundColor3 = C.Background,
+	ClipsDescendants = true,
+	Parent = backdrop,
+})
+UITheme.Corner(window, 5)
+UITheme.Stroke(window, C.CyanDim)
+
+local sizeConstraint = Instance.new("UISizeConstraint")
+sizeConstraint.MaxSize = Vector2.new(780, 560)
+sizeConstraint.MinSize = Vector2.new(320, 320)
+sizeConstraint.Parent = window
+
+local titleBar = UITheme.Frame({
+	Name = "TitleBar",
+	Size = UDim2.new(1, 0, 0, 34),
+	BackgroundColor3 = C.Panel,
+	Parent = window,
+})
+
+UITheme.Label({
+	Name = "Title",
+	Text = "GHOSTNET // DARKNET",
+	TextColor3 = C.Cyan,
+	TextSize = 14,
+	Position = UDim2.new(0, 12, 0, 0),
+	Size = UDim2.new(0.4, 0, 1, 0),
+	Parent = titleBar,
+})
+
+local walletLabel = UITheme.Label({
+	Name = "Wallet",
+	Text = "",
+	TextColor3 = C.Green,
+	TextSize = 13,
+	TextXAlignment = Enum.TextXAlignment.Right,
+	AnchorPoint = Vector2.new(1, 0),
+	Position = UDim2.new(1, -104, 0, 0),
+	Size = UDim2.new(0.6, 0, 1, 0),
+	Parent = titleBar,
+})
+
+local closeButton = UITheme.Button({
+	Name = "Close",
+	Text = "SCHLIESSEN",
+	TextSize = 11,
+	TextColor3 = C.Magenta,
+	BackgroundColor3 = C.PanelLight,
+	AnchorPoint = Vector2.new(1, 0.5),
+	Position = UDim2.new(1, -8, 0.5, 0),
+	Size = UDim2.fromOffset(88, 24),
+	Parent = titleBar,
+})
+UITheme.Corner(closeButton, 3)
+UITheme.Stroke(closeButton, C.Magenta)
+
+--== Kopfzeile: Event und Menge ============================================
+
+local eventLabel = UITheme.Label({
+	Name = "Event",
+	Text = "",
+	TextColor3 = C.Amber,
+	TextSize = 13,
+	Position = UDim2.new(0, 14, 0, 40),
+	Size = UDim2.new(1, -180, 0, 18),
+	Parent = window,
+})
+
+local amountHolder = UITheme.Frame({
+	Name = "Amount",
+	AnchorPoint = Vector2.new(1, 0),
+	Position = UDim2.new(1, -14, 0, 38),
+	Size = UDim2.fromOffset(150, 30),
+	BackgroundTransparency = 1,
+	Parent = window,
+})
+
+local amountLabel = UITheme.Label({
+	Name = "Value",
+	Text = "1",
+	TextColor3 = C.Text,
+	TextSize = 15,
+	TextXAlignment = Enum.TextXAlignment.Center,
+	Position = UDim2.new(0, 46, 0, 0),
+	Size = UDim2.fromOffset(58, 30),
+	Parent = amountHolder,
+})
+
+local function stepButton(text: string, x: number, delta: number): TextButton
+	local b = UITheme.Button({
+		Name = "Step" .. text,
+		Text = text,
+		TextSize = 18,
+		TextColor3 = C.Cyan,
+		BackgroundColor3 = C.PanelLight,
+		Position = UDim2.new(0, x, 0, 0),
+		Size = UDim2.fromOffset(44, 30),
+		Parent = amountHolder,
+	})
+	UITheme.Corner(b, 3)
+	UITheme.Stroke(b, C.Line)
+	b.Activated:Connect(function()
+		amount = math.clamp(amount + delta, 1, Config.Market.MaxPerTrade)
+		amountLabel.Text = tostring(amount)
+	end)
+	return b
+end
+
+stepButton("-", 0, -1)
+stepButton("+", 106, 1)
+
+--== Warenliste ============================================================
+
+local list = Instance.new("ScrollingFrame")
+list.Name = "List"
+list.BackgroundTransparency = 1
+list.BorderSizePixel = 0
+list.Position = UDim2.new(0, 14, 0, 72)
+list.Size = UDim2.new(1, -28, 1, -110)
+list.CanvasSize = UDim2.new()
+list.AutomaticCanvasSize = Enum.AutomaticSize.Y
+list.ScrollBarThickness = 4
+list.ScrollBarImageColor3 = C.CyanDim
+list.Parent = window
+
+local listLayout = Instance.new("UIListLayout")
+listLayout.SortOrder = Enum.SortOrder.LayoutOrder
+listLayout.Padding = UDim.new(0, 8)
+listLayout.Parent = list
+
+local statusLabel = UITheme.Label({
+	Name = "Status",
+	Text = "",
+	TextColor3 = C.TextDim,
+	TextSize = 12,
+	Position = UDim2.new(0, 14, 1, -30),
+	Size = UDim2.new(1, -28, 0, 18),
+	Parent = window,
+})
+
+--==========================================================================
+-- Eine Zeile je Ware
+--==========================================================================
+
+local trade: (string, string) -&gt; ()
+
+local CHART_BARS = 16
+
+local function buildRow(goodId: string, name: string, blurb: string, order: number): Row
+	local frame = UITheme.Frame({
+		Name = goodId,
+		Size = UDim2.new(1, -8, 0, 86),
+		BackgroundColor3 = C.Panel,
+		LayoutOrder = order,
+		Parent = list,
+	})
+	UITheme.Corner(frame, 4)
+	UITheme.Stroke(frame, C.Line)
+	UITheme.Padding(frame, 10)
+
+	UITheme.Label({
+		Name = "Name",
+		Text = name,
+		TextColor3 = C.Cyan,
+		TextSize = 15,
+		Size = UDim2.new(0.42, 0, 0, 17),
+		Parent = frame,
+	})
+
+	UITheme.Label({
+		Name = "Blurb",
+		Text = blurb,
+		TextColor3 = C.TextDim,
+		TextSize = 11,
+		TextWrapped = true,
+		Position = UDim2.new(0, 0, 0, 18),
+		Size = UDim2.new(0.42, 0, 0, 26),
+		Parent = frame,
+	})
+
+	local price = UITheme.Label({
+		Name = "Price",
+		Text = "",
+		TextColor3 = C.Text,
+		TextSize = 14,
+		Position = UDim2.new(0, 0, 0, 46),
+		Size = UDim2.new(0.42, 0, 0, 16),
+		Parent = frame,
+	})
+
+	local owned = UITheme.Label({
+		Name = "Owned",
+		Text = "",
+		TextColor3 = C.TextDim,
+		TextSize = 11,
+		Position = UDim2.new(0, 0, 1, -14),
+		Size = UDim2.new(0.42, 0, 0, 14),
+		Parent = frame,
+	})
+
+	-- Mini-Chart aus schmalen Balken. Kein Bild noetig, keine Asset-Id.
+	local chart = UITheme.Frame({
+		Name = "Chart",
+		Position = UDim2.new(0.44, 0, 0, 2),
+		Size = UDim2.new(0.24, 0, 1, -4),
+		BackgroundColor3 = C.Background,
+		Parent = frame,
+	})
+	UITheme.Corner(chart, 3)
+
+	local bars: { Frame } = {}
+	for i = 1, CHART_BARS do
+		local bar = UITheme.Frame({
+			Name = "B" .. i,
+			AnchorPoint = Vector2.new(0, 1),
+			Position = UDim2.new((i - 1) / CHART_BARS, 1, 1, -2),
+			Size = UDim2.new(1 / CHART_BARS, -2, 0, 2),
+			BackgroundColor3 = C.CyanDim,
+			Parent = chart,
+		})
+		table.insert(bars, bar)
+	end
+
+	local trend = UITheme.Label({
+		Name = "Trend",
+		Text = "",
+		TextColor3 = C.TextDim,
+		TextSize = 12,
+		TextXAlignment = Enum.TextXAlignment.Right,
+		AnchorPoint = Vector2.new(1, 0),
+		Position = UDim2.new(1, -2, 1, -16),
+		Size = UDim2.new(1, -6, 0, 14),
+		ZIndex = 2,
+		Parent = chart,
+	})
+
+	local function actionButton(text: string, colour: Color3, y: number, action: string): TextButton
+		local b = UITheme.Button({
+			Name = action,
+			Text = text,
+			TextSize = 13,
+			TextColor3 = colour,
+			BackgroundColor3 = C.PanelLight,
+			AnchorPoint = Vector2.new(1, 0),
+			Position = UDim2.new(1, 0, 0, y),
+			Size = UDim2.fromOffset(120, 30),
+			Parent = frame,
+		})
+		UITheme.Corner(b, 3)
+		UITheme.Stroke(b, colour)
+		b.Activated:Connect(function()
+			trade(action, goodId)
+		end)
+		return b
+	end
+
+	local buyButton = actionButton("KAUFEN", C.Cyan, 2, "BUY")
+	local sellButton = actionButton("VERKAUFEN", C.Green, 36, "SELL")
+
+	return {
+		Frame = frame,
+		Price = price,
+		Trend = trend,
+		Owned = owned,
+		Chart = chart,
+		Bars = bars,
+		Buy = buyButton,
+		Sell = sellButton,
+	}
+end
+
+--==========================================================================
+-- Anzeige
+--==========================================================================
+
+local function refresh()
+	walletLabel.Text = ("BANK %d CRY   //   LAGER %d/%d"):format(banked, slots.Used, slots.Total)
+
+	if market.Event then
+		eventLabel.Text = market.Event.Text or ""
+		eventLabel.TextColor3 = C.Amber
+	else
+		eventLabel.Text = "Markt ruhig."
+		eventLabel.TextColor3 = C.TextDim
+	end
+
+	for index, entry in market.Goods do
+		local row = rows[entry.Id]
+		if not row then
+			row = buildRow(entry.Id, entry.Name, entry.Blurb, index)
+			rows[entry.Id] = row
+		end
+
+		local owned = stash[entry.Id] or 0
+		row.Price.Text = ("KAUF %d   //   VERKAUF %d"):format(entry.Buy, entry.Sell)
+		row.Owned.Text = ("im Lager: %d   //   Ausschussrisiko %d%%"):format(
+			owned,
+			math.floor(Config.GetFakeRisk(entry.Risk, slots.Tier or 1) * 100 + 0.5)
+		)
+
+		-- Chart: die letzten Faktoren auf die Balkenhoehe abbilden.
+		local history = entry.History or {}
+		local count = #history
+		local lowest, highest = math.huge, -math.huge
+		for _, value in history do
+			lowest = math.min(lowest, value)
+			highest = math.max(highest, value)
+		end
+		if count == 0 then
+			lowest, highest = 0.9, 1.1
+		end
+		local span = math.max(0.02, highest - lowest)
+
+		for i, bar in row.Bars do
+			local historyIndex = count - CHART_BARS + i
+			if historyIndex &lt; 1 then
+				bar.Visible = false
+			else
+				bar.Visible = true
+				local value = history[historyIndex]
+				local fraction = math.clamp((value - lowest) / span, 0, 1)
+				bar.Size = UDim2.new(1 / CHART_BARS, -2, 0, 3 + fraction * 40)
+				bar.BackgroundColor3 = if value &gt;= 1 then C.Cyan else C.Magenta
+			end
+		end
+
+		-- Trend gegenueber dem Basispreis, damit man "teuer" von "billig"
+		-- unterscheiden kann, ohne zu rechnen.
+		local percent = math.floor((entry.Factor - 1) * 100 + 0.5)
+		if percent &gt; 2 then
+			row.Trend.Text = ("+%d%%"):format(percent)
+			row.Trend.TextColor3 = C.Green
+		elseif percent &lt; -2 then
+			row.Trend.Text = ("%d%%"):format(percent)
+			row.Trend.TextColor3 = C.Magenta
+		else
+			row.Trend.Text = "stabil"
+			row.Trend.TextColor3 = C.TextDim
+		end
+
+		local canBuy = not busy and banked &gt;= entry.Buy * amount and slots.Used + amount &lt;= slots.Total
+		local canSell = not busy and owned &gt;= amount
+		row.Buy.TextColor3 = if canBuy then C.Cyan else C.TextDim
+		row.Sell.TextColor3 = if canSell then C.Green else C.TextDim
+	end
+end
+
+--==========================================================================
+-- Handeln
+--==========================================================================
+
+local REASONS: { [string]: string } = {
+	FUNDS = "Zu wenig auf der Bank",
+	NO_SPACE = "Lager voll",
+	NOT_OWNED = "So viel hast du nicht",
+	BAD_AMOUNT = "Ungueltige Menge",
+	UNKNOWN_GOOD = "Diese Ware gibt es nicht",
+	LOCKED = "Darknet noch nicht freigeschaltet",
+	LOADING = "Profil laedt noch",
+	RATE = "Zu schnell hintereinander",
+	INTERNAL = "Fehler auf dem Server",
+}
+
+local function say(text: string, colour: Color3)
+	statusLabel.Text = text
+	statusLabel.TextColor3 = colour
+end
+
+trade = function(action: string, goodId: string)
+	if busy then
+		return
+	end
+	busy = true
+	refresh()
+
+	task.spawn(function()
+		local ok, response = pcall(function()
+			return Remotes.Trade:InvokeServer({ Action = action, GoodId = goodId, Amount = amount })
+		end)
+		busy = false
+
+		if not ok or typeof(response) ~= "table" then
+			say("Handel fehlgeschlagen.", C.Magenta)
+			refresh()
+			return
+		end
+
+		if response.Ok then
+			if action == "BUY" then
+				say(("Gekauft: %d Stueck zu je %d CRY - %d gesamt."):format(
+					response.Amount or 0,
+					response.Unit or 0,
+					response.Total or 0
+				), C.Cyan)
+			else
+				local fakes = response.Fakes or 0
+				if fakes &gt; 0 then
+					say(("Verkauft: %d von %d echt, %d Ausschuss. +%d CRY."):format(
+						response.Sold or 0,
+						response.Amount or 0,
+						fakes,
+						response.Total or 0
+					), C.Amber)
+				else
+					say(("Verkauft: %d Stueck zu je %d CRY. +%d CRY."):format(
+						response.Sold or 0,
+						response.Unit or 0,
+						response.Total or 0
+					), C.Green)
+				end
+			end
+			refresh()
+			return
+		end
+
+		-- Klartext mit Zahl, wo es eine gibt.
+		local text = REASONS[response.Reason] or "Abgelehnt"
+		if response.Reason == "FUNDS" and response.Missing then
+			text = ("Zu wenig auf der Bank - es fehlen %d CRY."):format(response.Missing)
+		elseif response.Reason == "NO_SPACE" then
+			text = ("Lager voll - noch %d von %d Plaetzen frei."):format(response.Free or 0, response.Slots or 0)
+		elseif response.Reason == "NOT_OWNED" then
+			text = ("Du hast nur %d davon."):format(response.Owned or 0)
+		elseif response.Reason == "BAD_AMOUNT" then
+			text = ("Menge muss zwischen 1 und %d liegen."):format(response.Max or Config.Market.MaxPerTrade)
+		end
+		say(text, C.Amber)
+		refresh()
+	end)
+end
+
+--==========================================================================
+-- Oeffnen / Schliessen
+--==========================================================================
+
+local nearRig = false
+
+local function setOpen(open: boolean)
+	if open and (hackOpen or not unlocked) then
+		return
+	end
+	backdrop.Visible = open
+	if open then
+		say("", C.TextDim)
+		refresh()
+		backdrop.BackgroundTransparency = 1
+		window.Size = UDim2.new(0.94, 0, 0.3, 0)
+		TweenService:Create(backdrop, UITheme.Tween.Normal, { BackgroundTransparency = 0.45 }):Play()
+		TweenService:Create(window, UITheme.Tween.Slow, { Size = UDim2.new(0.94, 0, 0.88, 0) }):Play()
+	end
+end
+
+local function toggle()
+	setOpen(not backdrop.Visible)
+end
+
+prompt.Activated:Connect(toggle)
+closeButton.Activated:Connect(function()
+	setOpen(false)
+end)
+
+UserInputService.InputBegan:Connect(function(input, processed)
+	if processed then
+		return
+	end
+	if input.KeyCode == Enum.KeyCode.E and nearRig and not backdrop.Visible then
+		setOpen(true)
+	elseif input.KeyCode == Enum.KeyCode.Escape and backdrop.Visible then
+		setOpen(false)
+	end
+end)
+
+--==========================================================================
+-- Server-Meldungen
+--==========================================================================
+
+Remotes.MarketSync.OnClientEvent:Connect(function(data: any)
+	if typeof(data) ~= "table" or typeof(data.Goods) ~= "table" then
+		return
+	end
+	market = data
+	if backdrop.Visible then
+		refresh()
+	end
+end)
+
+Remotes.MarketEvent.OnClientEvent:Connect(function(data: any)
+	if typeof(data) ~= "table" or typeof(data.Text) ~= "string" then
+		return
+	end
+	eventLabel.Text = data.Text
+	eventLabel.TextColor3 = C.Amber
+	UITheme.Flash(eventLabel, C.Amber)
+end)
+
+Remotes.InventorySync.OnClientEvent:Connect(function(data: any)
+	if typeof(data) ~= "table" then
+		return
+	end
+	stash = {}
+	if typeof(data.Stash) == "table" then
+		for _, entry in data.Stash do
+			if typeof(entry) == "table" and typeof(entry.Id) == "string" then
+				stash[entry.Id] = entry.Amount or 0
+			end
+		end
+	end
+	slots.Used = tonumber(data.Used) or 0
+	slots.Total = tonumber(data.Slots) or Config.Market.SlotsBase
+	;(slots :: any).Tier = tonumber(data.Tier) or 1
+	if backdrop.Visible then
+		refresh()
+	end
+end)
+
+Remotes.EconomySync.OnClientEvent:Connect(function(snapshot: any)
+	if typeof(snapshot) ~= "table" then
+		return
+	end
+	banked = snapshot.Banked or 0
+	if backdrop.Visible then
+		refresh()
+	end
+end)
+
+Remotes.MissionSync.OnClientEvent:Connect(function(data: any)
+	if typeof(data) ~= "table" or typeof(data.Unlocks) ~= "table" then
+		return
+	end
+	unlocked = false
+	for _, key in data.Unlocks do
+		if key == Config.Market.RequiredUnlock then
+			unlocked = true
+			break
+		end
+	end
+	if not unlocked and backdrop.Visible then
+		setOpen(false)
+	end
+end)
+
+Remotes.HackSessionStarted.OnClientEvent:Connect(function()
+	hackOpen = true
+	setOpen(false)
+	prompt.Visible = false
+end)
+
+Remotes.HackResolved.OnClientEvent:Connect(function()
+	hackOpen = false
+end)
+
+--==========================================================================
+-- Naehe zum Rechner
+--==========================================================================
+
+local CollectionService = game:GetService("CollectionService")
+
+local accumulator = 0
+RunService.RenderStepped:Connect(function(dt)
+	accumulator += dt
+	if accumulator &lt; 0.2 then
+		return
+	end
+	accumulator = 0
+
+	if hackOpen or not unlocked then
+		nearRig = false
+		prompt.Visible = false
+		return
+	end
+
+	local position = Geometry.AlivePosition(player)
+	if not position then
+		nearRig = false
+		prompt.Visible = false
+		return
+	end
+
+	nearRig = false
+	for _, inst in CollectionService:GetTagged(Config.ContactTag) do
+		if inst:IsA("BasePart") and inst:IsDescendantOf(workspace) then
+			if Geometry.SurfaceDistance(inst, position) &lt;= Config.Mission.ContactRange then
+				nearRig = true
+				break
+			end
+		end
+	end
+
+	prompt.Visible = nearRig and not backdrop.Visible
+end)
+</ProtectedString>
+</Properties>
+</Item>
+<Item class="LocalScript" referent="GN30">
 <Properties>
 <string name="Name">HUD</string>
 <ProtectedString name="Source">-- StarterPlayer/StarterPlayerScripts/UI/HUD.client.luau
@@ -6505,13 +8023,20 @@ Remotes.SellResult.OnClientEvent:Connect(function(data: any)
 		return
 	end
 
+	if data.Reason == "RANGE" then
+		toast(("Zu weit vom Hehler weg - du bist %d Studs entfernt, erlaubt sind %d"):format(
+			math.floor(tonumber(data.Distance) or 0),
+			math.floor(tonumber(data.Range) or Config.Sell.Range)
+		), C.Amber)
+		return
+	end
+
 	local reasons: { [string]: string } = {
-		EMPTY = "NICHTS ZU VERKAUFEN",
-		RANGE = "ZU WEIT VOM HEHLER WEG",
-		NO_FENCE = "KEIN HEHLER IN DER NAEHE",
-		LOADING = "PROFIL LAEDT NOCH - GLEICH NOCHMAL",
+		EMPTY = "Du hast nichts Unverkauftes dabei",
+		NO_FENCE = "Kein Hehler in der Naehe",
+		LOADING = "Profil laedt noch - gleich nochmal",
 	}
-	toast(reasons[data.Reason] or "VERKAUF ABGELEHNT", C.Amber)
+	toast(reasons[data.Reason] or "Verkauf abgelehnt", C.Amber)
 end)
 
 Remotes.HackSessionStarted.OnClientEvent:Connect(function()
@@ -6551,23 +8076,39 @@ Remotes.HackDenied.OnClientEvent:Connect(function(data: any)
 	end
 	local seconds = tonumber(data.Seconds) or 0
 
+	-- Jede Ablehnung nennt Grund UND Zahl. Ein Spieler, der nicht versteht,
+	-- warum sein Klick nichts tut, haelt das Spiel fuer kaputt und geht.
 	if data.Reason == "COOLDOWN" then
 		if typeof(data.TargetId) == "string" then
 			cooldownUntil[data.TargetId] = os.clock() + seconds
 		end
-		toast(("ZIEL NOCH GESPERRT // %ds"):format(math.ceil(seconds)), C.Amber)
+		toast(("Ziel noch heiss - %d s"):format(math.ceil(seconds)), C.Amber)
 	elseif data.Reason == "LEVEL" then
-		toast(("RIG ZU SCHWACH // TIER %d NOETIG"):format(seconds), C.Amber)
+		if typeof(data.Weakest) == "string" then
+			toast(("Braucht Rig-Tier %d - dein schwaechstes Bauteil ist %s %d"):format(
+				seconds,
+				data.Weakest,
+				math.floor(tonumber(data.WeakestLevel) or 1)
+			), C.Amber)
+		else
+			toast(("Braucht Rig-Tier %d"):format(seconds), C.Amber)
+		end
 	elseif data.Reason == "RANGE" then
-		toast("AUSSER REICHWEITE - NAEHER RAN", C.Amber)
+		if seconds &gt; 0 then
+			toast(("Zu weit weg - %d Studs zu viel. NetCard aufruesten?"):format(math.ceil(seconds)), C.Amber)
+		else
+			toast("Zu weit weg - naeher ran oder NetCard aufruesten", C.Amber)
+		end
 	elseif data.Reason == "OFFLINE" then
-		toast("ZIEL IST BEREITS OFFLINE", C.TextDim)
+		toast("Laeuft bereits offline - warte, bis es wieder hochfaehrt", C.TextDim)
 	elseif data.Reason == "BUSTED" then
-		toast(("AUFGEFLOGEN - NOCH %ds RUHE"):format(math.ceil(seconds)), C.Magenta)
+		toast(("Aufgeflogen - noch %d s Ruhe, bevor du wieder ran kannst"):format(math.ceil(seconds)), C.Magenta)
 	elseif data.Reason == "LOADING" then
-		toast("PROFIL LAEDT NOCH - GLEICH NOCHMAL", C.TextDim)
+		toast("Profil laedt noch - gleich nochmal", C.TextDim)
+	elseif data.Reason == "UNKNOWN_TARGET" then
+		toast("Dieses Ziel gibt es nicht mehr", C.TextDim)
 	else
-		toast("ZUGRIFF VERWEIGERT", C.Magenta)
+		toast("Zugriff verweigert - der Server hat abgelehnt", C.Magenta)
 	end
 end)
 
@@ -6610,7 +8151,7 @@ UITheme.Scanlines(walletPanel, 4)
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="LocalScript" referent="GN27">
+<Item class="LocalScript" referent="GN31">
 <Properties>
 <string name="Name">HackUI</string>
 <ProtectedString name="Source">-- StarterPlayer/StarterPlayerScripts/UI/HackUI.client.luau
@@ -7318,16 +8859,18 @@ Remotes.HackSessionStarted.OnClientEvent:Connect(function(data: any)
 	end
 end)
 
+-- Jede Rueckmeldung sagt, WARUM der Klick nichts getan hat - und wo es eine
+-- Zahl gibt, steht sie drin (siehe unten bei RELAYS_MISSING).
 local REASON_TEXT: { [string]: { Text: string, Color: Color3 } } = {
 	OK = { Text = "&gt; knoten uebernommen", Color = C.Cyan },
-	SOLVED = { Text = "&gt; exit erreicht", Color = C.Cyan },
-	BACKTRACK = { Text = "&gt; route zurueckgenommen", Color = C.TextDim },
-	NOT_ADJACENT = { Text = "&gt; kein direkter link", Color = C.TextDim },
-	REVISIT = { Text = "&gt; knoten bereits im pfad", Color = C.TextDim },
-	ALREADY_HERE = { Text = "&gt; du bist hier", Color = C.TextDim },
-	ICE = { Text = "&gt; ice blockiert", Color = C.Ice },
-	RELAYS_MISSING = { Text = "&gt; exit gesperrt - relays fehlen", Color = C.Amber },
-	MASKED_ICE = { Text = "&gt; GETARNTES ICE - rig ueberlastet", Color = C.Magenta },
+	SOLVED = { Text = "&gt; exit erreicht - zugriff gewaehrt", Color = C.Cyan },
+	BACKTRACK = { Text = "&gt; letzten knoten zurueckgenommen", Color = C.TextDim },
+	NOT_ADJACENT = { Text = "&gt; zu weit: nur direkte nachbarn gehen", Color = C.TextDim },
+	REVISIT = { Text = "&gt; dieser knoten liegt schon im pfad", Color = C.TextDim },
+	ALREADY_HERE = { Text = "&gt; da stehst du gerade", Color = C.TextDim },
+	ICE = { Text = "&gt; ICE (#) blockiert - drumherum", Color = C.Ice },
+	RELAYS_MISSING = { Text = "&gt; exit gesperrt: erst alle R mitnehmen", Color = C.Amber },
+	MASKED_ICE = { Text = "&gt; GETARNTES ICE - kostet einen versuch", Color = C.Magenta },
 	BAD_PAYLOAD = { Text = "&gt; eingabe verworfen", Color = C.Magenta },
 }
 
@@ -7367,7 +8910,14 @@ Remotes.HackFeedback.OnClientEvent:Connect(function(data: any)
 
 	local info = REASON_TEXT[data.Reason]
 	if info then
-		pushLog(info.Text, info.Color, true)
+		local text = info.Text
+		-- Mit konkreter Zahl, wo der Server eine liefert.
+		if data.Reason == "RELAYS_MISSING" and s.RelaysLeft &gt; 0 then
+			text = ("&gt; exit gesperrt: noch %d relay(s) offen"):format(s.RelaysLeft)
+		elseif data.Reason == "MASKED_ICE" then
+			text = ("&gt; GETARNTES ICE - noch %d versuch(e)"):format(math.max(0, s.AttemptsLeft))
+		end
+		pushLog(text, info.Color, true)
 	end
 
 	redrawGrid()
@@ -7453,7 +9003,7 @@ end)
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="LocalScript" referent="GN28">
+<Item class="LocalScript" referent="GN32">
 <Properties>
 <string name="Name">MissionUI</string>
 <ProtectedString name="Source">-- StarterPlayer/StarterPlayerScripts/UI/MissionUI.client.luau
@@ -7821,7 +9371,7 @@ refresh()
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="LocalScript" referent="GN29">
+<Item class="LocalScript" referent="GN33">
 <Properties>
 <string name="Name">ShopUI</string>
 <ProtectedString name="Source">-- StarterPlayer/StarterPlayerScripts/UI/ShopUI.client.luau
@@ -8297,7 +9847,7 @@ refresh()
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="LocalScript" referent="GN30">
+<Item class="LocalScript" referent="GN34">
 <Properties>
 <string name="Name">TutorialUI</string>
 <ProtectedString name="Source">-- StarterPlayer/StarterPlayerScripts/UI/TutorialUI.client.luau

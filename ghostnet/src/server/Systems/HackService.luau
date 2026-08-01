@@ -245,7 +245,25 @@ local function onRequestStart(player: Player, payload: any)
 	end
 
 	if EconomyService.GetTier(player) < target.RequiredLevel then
-		deny(player, target.Id, "LEVEL", target.RequiredLevel)
+		-- Nicht nur "Tier zu niedrig", sondern WELCHES Bauteil bremst.
+		-- Ohne das weiss der Spieler nicht, was er kaufen soll.
+		local rig = EconomyService.GetRig(player)
+		local weakest, weakestLevel = Config.Rig.Components[1], math.huge
+		for _, component in Config.Rig.Components do
+			local level = (rig :: any)[component] :: number
+			if level < weakestLevel then
+				weakest, weakestLevel = component, level
+			end
+		end
+		if player.Parent then
+			Remotes.HackDenied:FireClient(player, {
+				TargetId = target.Id,
+				Reason = "LEVEL",
+				Seconds = target.RequiredLevel,
+				Weakest = (Config.Rig.Labels :: any)[weakest],
+				WeakestLevel = weakestLevel,
+			})
+		end
 		return
 	end
 
@@ -263,7 +281,9 @@ local function onRequestStart(player: Player, payload: any)
 	local range = EconomyService.GetRange(player) + Config.Range.Tolerance
 	local distance = HackTargets.DistanceFromPlayer(target, player)
 	if not distance or distance > range then
-		deny(player, target.Id, "RANGE")
+		-- Die konkrete Zahl mitschicken: "zu weit weg" allein sagt dem
+		-- Spieler nicht, ob zwei Schritte reichen oder ein Upgrade noetig ist.
+		deny(player, target.Id, "RANGE", if distance then math.ceil(distance - range) else 0)
 		return
 	end
 
