@@ -30,19 +30,29 @@ früheren Nachtbonus, seit die Stadt dauerhaft hell ist.
 6. **Ein Hack-Ziel ist nur ein BasePart mit Tag `GhostNetHackable` + Attributen.**
    Ein Hehler ist nur ein BasePart mit Tag `GhostNetFence`. Neue Objekte
    brauchen keinen Code.
-7. **Minispiele halten die Schnittstelle ein:**
+7. **Code platziert Geometrie. Code baut keine Geometrie.** Alles, was ein
+   Spieler bewusst ansieht, liegt als Modell unter `ReplicatedStorage/Assets`
+   und wird über `AssetLibrary` geklont. `Instance.new("Part")` ist nur
+   erlaubt für Unsichtbares: Kollisionsboxen, Trigger, Wegpunkte, Radträger —
+   und im ausdrücklichen Platzhalterpfad. Fehlt ein Modell, wird es **nicht**
+   aus Parts nachgebaut, sondern zu einem magenta `MISSING_ASSET_…`.
+8. **Ein Modell wird über `Model:PivotTo` bewegt, nie über die `.CFrame` eines
+   Einzelteils.** Eine `WeldConstraint` zwischen zwei `Anchored`-Teilen tut
+   nichts — sie gilt für die Physiksimulation, und direktes CFrame-Setzen ist
+   keine. Genau daran haben die Verkehrsautos ihr Dach verloren.
+9. **Minispiele halten die Schnittstelle ein:**
    `Generate(difficulty, rng) -> publicState, serverState`,
    `Input(serverState, payload) -> InputResult`, `Label() -> string`.
    `publicState` enthält **nie** die Lösung.
-8. **`--!strict` bleibt überall an.**
-9. **Eine Kulissenänderung darf nie stillschweigend eine Mechanik mitnehmen.**
+10. **`--!strict` bleibt überall an.**
+11. **Eine Kulissenänderung darf nie stillschweigend eine Mechanik mitnehmen.**
    Als der Tag-/Nachtzyklus abgeschaltet wurde, ist der Nachtbonus nicht
    verschwunden, sondern an den Ort gewandert (`Config.Cover`). Wer etwas
    Optisches abschaltet, prüft zuerst, welche Regel daran hing.
-10. **Zeit:** Alles, was einen Serverwechsel überleben muss, benutzt `os.time()`.
+12. **Zeit:** Alles, was einen Serverwechsel überleben muss, benutzt `os.time()`.
    `os.clock()` nur für serverinterne Kurzzeit-Timer (`DownUntil`, Rate-Limits,
    Bust-Sperre).
-11. `task.wait` / `task.spawn` / `task.delay` — nie `wait()` / `spawn()` / `delay()`.
+13. `task.wait` / `task.spawn` / `task.delay` — nie `wait()` / `spawn()` / `delay()`.
 
 ## Arbeitsweise
 - Eine Phase aus `PHASEN.md` komplett abarbeiten, dann erst die nächste.

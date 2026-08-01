@@ -328,6 +328,109 @@ try {
     );
   }
 
+  // --- Asset-Pipeline: Code platziert Geometrie, Code baut keine ---
+  // Sichtbares kommt als Vorlage aus ReplicatedStorage/Assets. Instance.new
+  // fuer Parts ist nur noch erlaubt, wo es niemand ansieht: Kollisionsboxen,
+  // Trigger, Wegpunkte, Radtraeger - und im ausdruecklichen Platzhalterpfad.
+  {
+    const chassis = sources.get(join(SRC, "server/Systems/VehicleChassis.luau"));
+    if (chassis) {
+      const code = codeOnly(chassis);
+      check(
+        "VehicleChassis klont Vorlagen statt Karosserien zu bauen",
+        /AssetLibrary\.(Clone|Has)\(/.test(code),
+        "baut die Karosserie noch selbst - aus zwei Kaesten wird nie ein Auto"
+      );
+      check(
+        "VehicleChassis prueft den Modellvertrag",
+        /AssetLibrary\.Verify\(/.test(code),
+        "ein Modell mit fehlendem Teil wuerde still halb funktionieren"
+      );
+      check(
+        "VehicleChassis nennt bei fehlenden Teilen Modell und Teil",
+        /Fehlende Teile/.test(chassis),
+        "ohne klare Meldung sucht man den Fehler im Fahrverhalten"
+      );
+      check(
+        "Nur das Chassis kollidiert",
+        /CanCollide = false/.test(code) && /makeCosmetic/.test(code),
+        "jedes Karosserieteil kollidiert - das Auto haengt an jeder Kante fest"
+      );
+      check(
+        "Raeder haben eine eigene CollisionGroup",
+        /WheelCollisionGroup/.test(code),
+        "zwei Autos verhaken sich, sobald sie sich beruehren"
+      );
+    }
+  }
+
+  for (const [file, src] of sources) {
+    const short = relative(ROOT, file);
+    if (!short.startsWith("src/server/World/")) continue;
+    // World-Skripte stellen hin, was AssetLibrary liefert. Eigene Geometrie
+    // fuer Sichtbares gibt es dort nicht mehr - Ausnahme sind die Strassen
+    // selbst (Kollision und Genauigkeit statt Aussehen) und Trigger.
+    if (/City\.server/.test(short)) {
+      check(
+        `${short} stapelt Module statt Kloetze zu bauen`,
+        /AssetLibrary\.Clone\(/.test(codeOnly(src)),
+        "erzeugt Gebaeudegeometrie selbst"
+      );
+    }
+  }
+
+  {
+    const lib = sources.get(join(SRC, "shared/AssetLibrary.luau"));
+    if (lib) {
+      const code = codeOnly(lib);
+      check(
+        "Fehlende Vorlagen werden zu erkennbaren Platzhaltern",
+        /MISSING_ASSET_/.test(code),
+        "eine fehlende Vorlage verschwindet stillschweigend"
+      );
+      check(
+        "Fehlende Vorlagen werden gesammelt gemeldet",
+        /function AssetLibrary\.Report/.test(code) && /function AssetLibrary\.Missing/.test(code),
+        "Noah erfaehrt nie, was noch zu bauen ist"
+      );
+    }
+  }
+
+  // --- Bewegte Modelle: PivotTo statt Einzelteil-CFrame ---
+  // Der Dach-Bug: eine WeldConstraint zwischen zwei Anchored-Teilen tut
+  // nichts, und .CFrame auf einem Einzelteil nimmt den Rest des Modells
+  // nicht mit. Beides darf in den bewegenden Systemen nicht wieder auftauchen.
+  for (const name of ["TrafficService", "PursuitService", "GuardService"]) {
+    const src = sources.get(join(SRC, `server/Systems/${name}.luau`));
+    if (!src) continue;
+    const code = codeOnly(src);
+    check(
+      `${name} bewegt Modelle ueber PivotTo`,
+      /:PivotTo\(/.test(code),
+      "bewegt Einzelteile statt Modelle - der Rest bleibt stehen"
+    );
+    check(
+      `${name} setzt keine Einzelteil-CFrame beim Bewegen`,
+      !/\b(car|walker|unit|guard)\.\w*\.CFrame\s*=/.test(code),
+      "ein Einzelteil wird direkt bewegt, das Modell folgt nicht"
+    );
+    check(
+      `${name} verschweisst keine Anchored-Teile`,
+      !/Instance\.new\("WeldConstraint"\)/.test(code),
+      "WeldConstraint zwischen Anchored-Teilen tut nichts und taeuscht Sicherheit vor"
+    );
+  }
+  {
+    const src = sources.get(join(SRC, "server/World/BankInterior.server.luau"));
+    if (src) {
+      check(
+        "BankInterior verschweisst keine Anchored-Teile",
+        !/Instance\.new\("WeldConstraint"\)/.test(codeOnly(src)),
+        "die Wache wuerde ihren Kopf an der Startposition stehen lassen"
+      );
+    }
+  }
+
   // --- Helle Stadt: Farben kommen aus der Palette, nicht aus dem Skript ---
   for (const [file, src] of sources) {
     const short = relative(ROOT, file);
@@ -1013,7 +1116,7 @@ test("Keine Klasse macht eine andere ueberfluessig", function()
 end)
 
 test("Validate findet kaputte Fahrzeugdaten", function()
-	local base = { Id = "A", Name = "A", Blurb = "", Price = 100, MaxSpeed = 50,
+	local base = { Id = "A", Name = "A", Asset = "A", Blurb = "", Price = 100, MaxSpeed = 50,
 		Acceleration = 100, BrakeForce = 100, TurnAngle = 30, SuspensionStiffness = 100,
 		Mass = 1, Grip = 1, BodySize = Vector3.new(1, 1, 1), WheelRadius = 1, WheelWidth = 1,
 		Wheels = 4, Colour = nil, StashBonus = 0, HeatFactor = 1 }
@@ -1030,6 +1133,9 @@ test("Validate findet kaputte Fahrzeugdaten", function()
 	expect(with({ HeatFactor = 0 }), "HeatFactor 0 durchgelassen")
 	expect(with({ Id = "" }), "leere Id durchgelassen")
 	expect(with({ BodySize = 5 }), "BodySize als Zahl durchgelassen")
+	-- Ohne Asset-Namen findet VehicleChassis nie eine Vorlage und baut
+	-- fuer diese Klasse dauerhaft nur einen Platzhalter.
+	expect(with({ Asset = "" }), "Klasse ohne Asset-Namen durchgelassen")
 	local valid = Vehicles.Validate({ base })
 	expect(valid, "gueltige Klasse abgelehnt")
 end)

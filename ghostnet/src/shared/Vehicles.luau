@@ -34,7 +34,14 @@ export type VehicleClass = {
 	Mass: number, -- Dichte der Karosserie
 	Grip: number, -- Reibung der Reifen
 
-	-- Karosserie. Nur Maße, keine Modelle - gebaut wird aus Parts.
+	-- Name der Vorlage unter ReplicatedStorage/Assets/Vehicles.
+	-- Die Zuordnung steht als Daten hier und wird nicht aus der Id geraten.
+	Asset: string,
+
+	-- Masse. Seit der Asset-Pipeline ist das NICHT mehr die Bauanleitung,
+	-- sondern nur noch die Groesse des magenta Platzhalters, solange die
+	-- Vorlage fehlt - plus die Werte, die der Client fuer Tacho und
+	-- Kamera braucht.
 	BodySize: Vector3,
 	WheelRadius: number,
 	WheelWidth: number,
@@ -49,6 +56,7 @@ export type VehicleClass = {
 Vehicles.List = {
 	{
 		Id = "COMPACT",
+		Asset = "Compact",
 		Name = "Kompakt",
 		Blurb = "Billig, langsam, faellt niemandem auf.",
 		Price = 2500,
@@ -69,6 +77,7 @@ Vehicles.List = {
 	},
 	{
 		Id = "SEDAN",
+		Asset = "Sedan",
 		Name = "Limousine",
 		Blurb = "Klebt auf der Strasse. Kein Tempowunder, aber nichts bricht aus.",
 		Price = 7500,
@@ -89,6 +98,7 @@ Vehicles.List = {
 	},
 	{
 		Id = "SPORT",
+		Asset = "Sports",
 		Name = "Sportwagen",
 		Blurb = "Schnell und laut. Die Polizei liebt dich dafuer.",
 		Price = 34000,
@@ -109,6 +119,7 @@ Vehicles.List = {
 	},
 	{
 		Id = "VAN",
+		Asset = "Van",
 		Name = "Transporter",
 		Blurb = "Traege, aber es passt richtig was rein.",
 		Price = 16000,
@@ -129,6 +140,7 @@ Vehicles.List = {
 	},
 	{
 		Id = "BIKE",
+		Asset = "Bike",
 		Name = "Motorrad",
 		Blurb = "Passt durch jede Gasse. Platz fuer nichts.",
 		Price = 11000,
@@ -199,6 +211,11 @@ function Vehicles.Validate(list: { VehicleClass }?): (boolean, { string })
 
 		if typeof(class.Name) ~= "string" or class.Name == "" then
 			table.insert(errors, ("%s: Name fehlt"):format(label))
+		end
+		-- Ohne Asset-Namen findet VehicleChassis keine Vorlage und baut fuer
+		-- diese Klasse immer nur einen Platzhalter.
+		if typeof(class.Asset) ~= "string" or class.Asset == "" then
+			table.insert(errors, ("%s: Asset-Name fehlt"):format(label))
 		end
 		for _, field in { "Price", "MaxSpeed", "Acceleration", "BrakeForce", "TurnAngle", "Mass", "Grip" } do
 			local value = (class :: any)[field]

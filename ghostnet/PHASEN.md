@@ -1,7 +1,8 @@
 # GHOSTNET — Bauplan
 
 **Stand: alles abgearbeitet** — Phase 0 bis G, Open-World-Abschnitt 2 und
-Phase 1 bis 7, dazu v2.1.0 „Vantorra bei Tag" (`Config.Version = "2.1.0"`).
+Phase 1 bis 7, v2.1.0 „Vantorra bei Tag" und v2.2.0 „Rework"
+(`Config.Version = "2.2.0"`).
 Was jetzt ansteht, steht ganz unten unter „Offen".
 
 Reihenfolge war bindend. Eine Phase wurde komplett fertig, bevor die nächste
@@ -338,6 +339,78 @@ Ort statt Uhrzeit, Attribut statt Code.
 die Endgame-Entscheidung aus Mission 10 hatte damit gar keine Wirkung auf den
 Ertrag. Behoben, und ein Testlauf-Eintrag verhindert jetzt, dass so etwas
 wieder stillschweigend passiert.
+
+---
+
+# v2.2.0 — Rework: Optik und Verkehr
+
+Kein neues System, kein neues Feature. Zwei Dinge: echte Bugs beheben und
+ändern, **wie Geometrie entsteht**.
+
+## Der Bug, der „der Verkehr sieht kaputt aus" verursacht hat
+Verkehrsautos ließen ihr Dach an der Spawn-Position stehen und fuhren ohne
+weiter. Ursache: `WeldConstraint` gilt für die **Physiksimulation**. Zwischen
+zwei `Anchored`-Teilen tut sie gar nichts, und ein direktes `.CFrame`-Setzen
+ist keine Simulation.
+
+Derselbe Fehler steckte an **drei** Stellen, nicht an einer:
+
+| Wo | Was stehenblieb |
+| --- | --- |
+| `TrafficService` Autos | das Dach |
+| `TrafficService` Fußgänger | Kopf und Rumpf einzeln gesetzt |
+| `GuardService` Bankwachen | der Kopf, während der Rumpf patrouilliert |
+| `PursuitService` Streifenwagen | beide Blaulichter |
+
+Alle vier bewegen jetzt das **Modell** über `Model:PivotTo`. Die
+`WeldConstraint`s zwischen Anchored-Teilen sind ersatzlos raus. Der Testlauf
+lehnt beide Fehler ab, in allen vier Dateien.
+
+Dazu aus derselben Ecke:
+- **Bodenhöhe wird gerechnet**, nicht geraten. Vorher stand da `2.4`; richtig
+  sind Fahrbahnoberkante + halbe Modellhöhe + Spalt. Ein anderes Modell hat
+  eine andere Höhe und steht trotzdem auf der Straße.
+- **Gehweghöhe** kommt jetzt aus `Config.City` und wird von City *und*
+  Fußgängern gelesen — vorher eine feste `0.3` in City und eine feste `3` im
+  Verkehr, die zu nichts passten.
+- **Client-Interpolation** (`Client/World/TrafficSmoother`): der Server bleibt
+  bei 10 Schritten/s, der Client zieht dazwischen weich nach. Reine Optik —
+  Diebstahl-Reichweite und Wachsicht prüft weiter der Server.
+
+## Die Architekturänderung
+> **Code platziert Geometrie. Code baut keine Geometrie.**
+
+Ein Quader mit Betonmaterial sieht aus wie ein Quader mit Betonmaterial. Das
+ist die Decke, und kein Licht und keine Farbe hebt sie an.
+
+`Shared/AssetLibrary.luau` (neu) schlägt Vorlagen unter
+`ReplicatedStorage/Assets` nach, klont sie und prüft bei Fahrzeugen den
+Modellvertrag. Fehlt eine Vorlage, entsteht **kein Ersatzbau aus Parts**,
+sondern ein knallmagenta `MISSING_ASSET_<Kategorie>_<Name>` in der richtigen
+Größe — und beim Serverstart eine Liste, was noch fehlt.
+
+- **`VehicleChassis`** baut keine Karosserie mehr. Es verdrahtet: Federung,
+  Antrieb, Lenkung, Sitz, Netzwerkbesitz. Fehlt ein Pflichtteil, nennt die
+  Meldung Modell **und** Teil.
+- **Kollision getrennt:** nur `Chassis` kollidiert mit der Welt, alles
+  Sichtbare ist `CanCollide = false`. Räder haben eine eigene
+  `CollisionGroup` und verhaken sich nicht mehr mit dem Nachbarauto.
+- **Verkehr klont dieselben Vorlagen** wie Spielerfahrzeuge und übernimmt beim
+  Kurzschließen Pivot und Lackierung — der Übergang springt nicht mehr.
+  Ein Verkehrsauto ist jetzt eine echte, kaufbare Klasse, kein Sonderfall.
+- **`World/City`** stapelt Module (Sockel → n × Etage → Dach) statt Quader zu
+  setzen. Dachkante steht über, Sockel ist dunkler, Häuser sind versetzt und
+  leicht gedreht — kein Raster.
+- **Straßenmöblierung** entlang der Gehwege im ausgebauten Bezirk.
+- **`World/Cityscape` gelöscht.** Die alte Kulissen-Straßenzeile lag im selben
+  Koordinatenbereich wie die echte Stadt und hat sie durchschnitten.
+
+## Was das im Moment bedeutet
+Es gibt **keine einzige Vorlage** — der Ordner `ReplicatedStorage/Assets` ist
+leer. Bis Noah Modelle einträgt, ist die Stadt magenta. Das ist die Regel aus
+dem Auftrag, nicht ein Versehen: ein Platzhalter, den man übersehen kann, ist
+kein Platzhalter. Das Spiel bleibt dabei vollständig **fahrbar und testbar** —
+die Klötze haben die richtigen Maße, Kollisionen und Attribute.
 
 ---
 

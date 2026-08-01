@@ -6,7 +6,7 @@
 
 local Config = {}
 
-Config.Version = "2.1.0" -- Vantorra bei Tag: helle Stadt, Bonus haengt am Ort statt an der Uhr
+Config.Version = "2.2.0" -- Rework: Verkehrsbugs behoben, Geometrie kommt aus Assets
 
 -- CollectionService-Tags. Ein Part mit dem Tag ist ein Hack-Ziel, ein Hehler,
 -- ein Missions-Wegpunkt oder ein ansprechbarer Kontakt. Kein Code pro Objekt.
@@ -18,6 +18,9 @@ Config.VehicleTag = "GhostNetVehicle" -- fahrbares Fahrzeug
 Config.VehicleSpawnTag = "GhostNetVehicleSpawn" -- erlaubter Ausparkplatz
 Config.DealerTag = "GhostNetDealer" -- Autohaendler-Tresen
 Config.GuardTag = "GhostNetGuard" -- Wache mit Sichtkegel
+-- Modelle, deren CFrame der Server nur im Takt setzt und die der Client
+-- dazwischen weich nachzieht. Siehe Client/World/TrafficSmoother.
+Config.SmoothTag = "GhostNetSmoothed"
 
 --==========================================================================
 -- 1. REICHWEITE (Netzwerkkarte)
@@ -523,6 +526,11 @@ Config.Vehicle = {
 	MaxSpawned = 1, -- pro Spieler gleichzeitig ausgeparkt. Hoch = Server erstickt.
 	IdleDespawn = 120, -- Sekunden ohne Fahrer, dann verschwindet es
 	SpawnRange = 24, -- so nah muss man an einem Ausparkplatz stehen
+	EnterRange = 12, -- Reichweite des Einsteigen-Prompts
+
+	-- Raeder kollidieren mit dem Boden, aber nicht miteinander. Ohne eigene
+	-- Gruppe verhaken sich zwei Autos, sobald sie sich beruehren.
+	WheelCollisionGroup = "GhostNetWheels",
 
 	-- Fahrwerk. Diese Zahlen bestimmen das Fahrgefuehl mehr als MaxSpeed.
 	SuspensionLength = 2.2, -- Ruhelaenge der Feder
@@ -577,6 +585,15 @@ Config.City = {
 	RoadWidth = 34,
 	LaneOffset = 8, -- Abstand der Fahrspur von der Strassenmitte
 	SidewalkWidth = 8,
+	-- Dicke der Fahrbahnplatte. Die Knoten liegen auf y = 0, die Platte ist
+	-- um sie zentriert - die Oberkante liegt also bei RoadThickness / 2.
+	-- Genau darauf setzen Verkehr und Streifenwagen auf; frueher stand da
+	-- eine geratene 2.4 und die Autos hingen einen halben Stud im Boden.
+	RoadThickness = 1,
+	SidewalkThickness = 1.4,
+	-- Wie viel hoeher die Gehwegkante als die Fahrbahn liegt. Fussgaenger
+	-- rechnen damit, City baut damit - eine Zahl, zwei Nutzer.
+	SidewalkLift = 0.5,
 
 	BuildingMinHeight = 26,
 	BuildingMaxHeight = 92,
@@ -605,9 +622,30 @@ Config.Traffic = {
 	SpeedJitter = 8,
 	StopDistance = 22, -- Abstand, ab dem hinter einem anderen gebremst wird
 	PedestrianSpeed = 7,
+	-- Nur die Groesse des magenta Platzhalters, solange
+	-- Assets/Characters/Pedestrian fehlt.
+	PedestrianSize = Vector3.new(1.8, 5.4, 1),
 
 	-- Autodiebstahl. Haengt am Trace, damit er nicht neben der zentralen
 	-- Risiko-Mechanik herlaeuft.
+	-- Wie hoch ein Modell ueber der Fahrbahn schwebt. Die halbe Modellhoehe
+	-- rechnet der Code aus (Model:GetExtentsSize), das hier ist nur der
+	-- Rest-Spalt. Hoch = schwebt sichtbar, 0 = Raeder stecken in der Platte.
+	GroundClearance = 0.15,
+
+	-- Der Server setzt die CFrame nur alle Tick Sekunden (10x/s). Ohne
+	-- Glaettung sieht das auf dem Client aus wie Ruckeln. Der Client zieht
+	-- deshalb zwischen zwei Serverschritten weich nach.
+	-- Zeitkonstante in Sekunden: hoch = butterweich, aber traege und der
+	-- Wagen "haengt" hinter seiner echten Position. 0 = Glaettung aus.
+	-- WICHTIG: das ist reine Optik. Alle Pruefungen (Diebstahl-Reichweite,
+	-- Sicht der Polizei) laufen serverseitig gegen die echte Position.
+	ClientSmoothing = 0.09,
+	-- Ab diesem Sprung wird nicht mehr nachgezogen, sondern hart gesetzt.
+	-- Sonst sieht man ein recyceltes Auto quer durch die Stadt gleiten.
+	-- Muss groesser sein als die Strecke, die ein Auto in einem Tick macht.
+	SnapDistance = 24,
+
 	StealHoldSeconds = 2.5,
 	StealTrace = 12,
 	StealRange = 12,
@@ -672,6 +710,16 @@ Config.Pursuit = {
 	UnitsPerLevel = 1, -- Streifenwagen je Stufe
 	MaxUnits = 5,
 	UnitSpeed = 46,
+
+	-- Streifenwagen benutzt dieselbe Asset-Pipeline wie alles andere.
+	-- Fehlt Assets/Vehicles/Police, steht dort ein magenta Platzhalter.
+	UnitAsset = "Police",
+	UnitSize = Vector3.new(6.4, 2.9, 13), -- nur Platzhaltergroesse
+	LightBarSize = Vector3.new(1.6, 0.5, 1.2),
+	LightBlue = Color3.fromRGB(40, 90, 255),
+	LightRed = Color3.fromRGB(255, 40, 60),
+	LightBrightness = 4,
+	LightRange = 30,
 	RoadblockLevel = 4,
 	HelicopterLevel = 5,
 	Tick = 0.25,
@@ -794,6 +842,100 @@ Config.TargetDefaults = {
 Config.Session = {
 	TickRate = 0.25, -- Sekunden zwischen Ablauf- und Distanzpruefung
 	GraceAfterStart = 0.5, -- kurze Schonfrist, bevor die Distanz geprueft wird
+}
+
+--==========================================================================
+-- VORLAGEN (ReplicatedStorage/Assets)
+--
+-- Code platziert Geometrie, Code baut keine Geometrie. Alles Sichtbare liegt
+-- als fertiges Modell unter ReplicatedStorage/Assets und wird geklont.
+-- Fehlt eine Vorlage, entsteht ein magenta Platzhalter - siehe AssetLibrary.
+--==========================================================================
+Config.Assets = {
+	FolderName = "Assets",
+
+	-- Knallmagenta, damit man einen Platzhalter niemals uebersieht und
+	-- niemals versehentlich veroeffentlicht. Bewusst NICHT aus der Palette:
+	-- das hier ist kein Weltton, das ist eine Warnung.
+	PlaceholderColour = Color3.fromRGB(255, 0, 200),
+	PlaceholderTransparency = 0.15,
+	PlaceholderLabels = true, -- Schrift ueber dem Platzhalter mit dem Namen
+	PlaceholderLabelDistance = 260,
+
+	--== Fahrzeuge =========================================================
+	-- Teile, die ein Fahrzeugmodell tragen MUSS, damit VehicleChassis es
+	-- verdrahten kann. Fehlt eines, gibt es eine klare Meldung mit
+	-- Modellname und fehlendem Teil - keinen stillen Absturz.
+	VehicleRequired = {
+		"Chassis", -- unsichtbare Kollisionsbox, PrimaryPart
+		"Body", -- sichtbare Karosserie
+		"Wheels/FL",
+		"Wheels/FR",
+		"Wheels/RL",
+		"Wheels/RR",
+		"DriveSeat",
+	},
+	-- Zweiraeder: F vorne (gelenkt), R hinten (angetrieben).
+	VehicleRequiredTwoWheel = {
+		"Chassis",
+		"Body",
+		"Wheels/F",
+		"Wheels/R",
+		"DriveSeat",
+	},
+	-- Wie gross die Platzhalter-Karosserie im Verhaeltnis zur Kollisionsbox
+	-- ist. Etwas kleiner, damit man den Unterschied sieht.
+	PlaceholderBodyScale = 0.92,
+	-- Nice-to-have. Fehlen sie, faehrt das Auto trotzdem.
+	VehicleOptional = {
+		"Glass",
+		"Lights/HeadL",
+		"Lights/HeadR",
+		"Lights/TailL",
+		"Lights/TailR",
+	},
+
+	--== Gebaeudebaukasten =================================================
+	-- Module werden gestapelt: Sockel -> n x Etage -> Dach. Alle Module
+	-- haben dieselbe Grundflaeche und eine feste Hoehe, sonst passt der
+	-- Stapel nicht. Aus acht Modulen entstehen hunderte Haeuser.
+	BuildingFootprint = 28, -- Kantenlaenge eines Moduls in Studs
+	BaseHeight = 14, -- Hoehe eines Sockelmoduls
+	FloorHeight = 11, -- Hoehe einer Standardetage
+	RoofHeight = 4, -- Hoehe des Dachabschlusses
+	RoofOverhang = 1.2, -- wie weit die Dachkante uebersteht. 0 = Klotz.
+
+	Bases = { "Base_Shop", "Base_Entry", "Base_Garage" },
+	Floors = { "Floor_A", "Floor_B", "Floor_C" },
+	Roofs = { "Roof_Flat", "Roof_Tech" },
+
+	-- Wie hoch gestapelt wird. Hoch = Schluchten, runter = Vorstadt.
+	MinFloors = 2,
+	MaxFloors = 7,
+	-- Wie viel dunkler der Sockel ist. 0 = kein Absatz, 1 = fast schwarz.
+	BaseDarken = 0.45,
+	-- Kein Raster: jedes Haus etwas versetzt und leicht gedreht. Ohne das
+	-- sieht die Strasse nach Computer aus, und das faellt sofort auf.
+	BuildingJitter = 2.5, -- Studs
+	BuildingYaw = 4, -- Grad
+
+	-- Feuerleiter aufs Dach. Ohne die ist ein begehbares Dach nur Deko -
+	-- und "von oben" ist im Bankraub ein echter Weg.
+	RoofAccess = "Feuerleiter",
+	RoofAccessChance = 0.35,
+	RoofAccessSize = Vector3.new(2.6, 1, 1.2),
+	RoofAccessStep = 4, -- Abstand der Sprossen in Studs
+
+	--== Strassenmoeblierung ===============================================
+	-- Eine leere Strasse mit perfekten Haeusern wirkt tot, eine
+	-- durchschnittliche Strasse mit Kram darauf wirkt echt.
+	Props = { "Laterne", "Ampel", "Muelltonne", "Poller", "Verteiler", "Schild" },
+	PropSize = Vector3.new(1.6, 8, 1.6), -- Platzhaltergroesse
+	PropSpacing = 26, -- Abstand entlang des Gehwegs
+	PropChance = 0.55, -- Anteil der Plaetze, die belegt werden
+	PropJitter = 3, -- zufaellige Verschiebung, damit nichts im Raster steht
+
+	Characters = { "Pedestrian", "Guard" },
 }
 
 --==========================================================================

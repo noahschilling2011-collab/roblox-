@@ -13,12 +13,15 @@
 --   Die Fahndungsstufe kommt aus dem Trace. Gefasstwerden ist ein Bust ueber
 --   die vorhandene Kette - kein zweites Straf-System daneben.
 
+local CollectionService = game:GetService("CollectionService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config)
 local Geometry = require(ReplicatedStorage.Shared.Geometry)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
+
+local AssetLibrary = require(ReplicatedStorage.Shared.AssetLibrary)
 
 local RoadNetwork = require(script.Parent.RoadNetwork)
 local SaveService = require(script.Parent.SaveService)
@@ -32,6 +35,7 @@ local rng = Random.new()
 type Unit = {
 	Model: Model,
 	Body: BasePart,
+	GroundOffset: number, -- aus der Modellhoehe gerechnet, nicht geraten
 	From: number,
 	To: number,
 	Alpha: number,
@@ -65,50 +69,85 @@ end
 --==========================================================================
 
 local function buildUnit(): Unit
-	local model = Instance.new("Model")
+	-- Derselbe Weg wie beim Verkehr: Vorlage klonen, nicht bauen. Fehlt sie,
+	-- steht hier ein magenta Platzhalter - unuebersehbar, aber fahrbereit.
+	local model = AssetLibrary.Clone("Vehicles", P.UnitAsset, P.UnitSize)
 	model.Name = "Streifenwagen"
 
-	local body = Instance.new("Part")
-	body.Name = "Body"
-	body.Size = Vector3.new(6.4, 2.9, 13)
-	body.Color = Color3.fromRGB(18, 20, 28)
-	body.Material = Enum.Material.SmoothPlastic
-	body.Anchored = true
-	body.CanCollide = true
-	body.CanTouch = false
-	body.Parent = model
+	local pivot = model.PrimaryPart
+	if not pivot then
+		local chassis = AssetLibrary.Find(model, "Chassis")
+		if chassis and chassis:IsA("BasePart") then
+			pivot = chassis
+		else
+			warn(("[GHOSTNET] Streifenwagenvorlage '%s' hat weder PrimaryPart noch Chassis."):format(P.UnitAsset))
+			pivot = model:FindFirstChildWhichIsA("BasePart", true)
+		end
+	end
+	local body = pivot :: BasePart
 	model.PrimaryPart = body
 
-	-- Blaulicht. Neon statt PointLight fuer die Flaeche, EIN Licht fuer den
-	-- Schein - mehr braucht es nicht und mehr kostet zu viel.
-	for _, side in { -1, 1 } do
-		local bar = Instance.new("Part")
-		bar.Name = "Blaulicht"
-		bar.Size = Vector3.new(1.6, 0.5, 1.2)
-		bar.Color = if side < 0 then Color3.fromRGB(40, 90, 255) else Color3.fromRGB(255, 40, 60)
-		bar.Material = Enum.Material.Neon
-		bar.Anchored = true
-		bar.CanCollide = false
-		bar.CanQuery = false
-		bar.CanTouch = false
-		bar.CastShadow = false
-		bar.CFrame = body.CFrame * CFrame.new(side * 1.4, 1.9, 0)
-		bar.Parent = model
-
-		local weld = Instance.new("WeldConstraint")
-		weld.Part0 = body
-		weld.Part1 = bar
-		weld.Parent = body
+	-- Kulisse: Anchored, keine Physik, keine Abfrage.
+	for _, descendant in model:GetDescendants() do
+		if descendant:IsA("BasePart") then
+			descendant.Anchored = true
+			descendant.CanTouch = false
+			descendant.CanQuery = false
+			descendant.CanCollide = descendant == body
+			if descendant ~= body then
+				descendant.CastShadow = false
+			end
+		end
 	end
 
-	local light = Instance.new("PointLight")
-	light.Color = Color3.fromRGB(60, 110, 255)
-	light.Brightness = 4
-	light.Range = 30
-	light.Parent = body
+	-- Blaulicht. Neonflaechen statt Lichtquellen fuer die Farbe, EIN
+	-- PointLight fuer den Schein - mehr braucht es nicht und mehr kostet
+	-- zu viel. Bringt die Vorlage schon Lichter mit, bleibt es dabei.
+	if not AssetLibrary.Find(model, "Lights/Blau") then
+		local lights = model:FindFirstChild("Lights")
+		if not lights then
+			local folder = Instance.new("Folder")
+			folder.Name = "Lights"
+			folder.Parent = model
+			lights = folder
+		end
+		for index, side in { -1, 1 } do
+			local bar = Instance.new("Part")
+			bar.Name = if index == 1 then "Blau" else "Rot"
+			bar.Size = P.LightBarSize
+			bar.Color = if side < 0 then P.LightBlue else P.LightRed
+			bar.Material = Enum.Material.Neon
+			bar.Anchored = true
+			bar.CanCollide = false
+			bar.CanQuery = false
+			bar.CanTouch = false
+			bar.CastShadow = false
+			-- Bauposition relativ zur Karosserie. KEINE WeldConstraint -
+			-- beide Teile sind Anchored, bewegt wird per PivotTo.
+			bar.CFrame = body.CFrame * CFrame.new(side * 1.4, body.Size.Y * 0.5 + 0.4, 0)
+			bar.Parent = lights
+		end
+
+		local light = Instance.new("PointLight")
+		light.Color = P.LightBlue
+		light.Brightness = P.LightBrightness
+		light.Range = P.LightRange
+		light.Parent = body
+	end
 
 	model.Parent = ensureContainer()
-	return { Model = model, Body = body, From = 1, To = 1, Alpha = 0, Active = true }
+	CollectionService:AddTag(model, Config.SmoothTag)
+	return {
+		Model = model,
+		Body = body,
+		GroundOffset = Config.City.RoadThickness * 0.5
+			+ model:GetExtentsSize().Y * 0.5
+			+ Config.Traffic.GroundClearance,
+		From = 1,
+		To = 1,
+		Alpha = 0,
+		Active = true,
+	}
 end
 
 local function releaseUnit(unit: Unit)
@@ -166,7 +205,9 @@ local function moveUnit(unit: Unit, target: Vector3, dt: number)
 		return
 	end
 
-	unit.Body.CFrame = CFrame.lookAt(position + Vector3.new(0, 2.5, 0), position + direction + Vector3.new(0, 2.5, 0))
+	-- PivotTo, damit das Blaulicht mitfaehrt statt an der Kreuzung zu bleiben.
+	local lift = Vector3.new(0, unit.GroundOffset, 0)
+	unit.Model:PivotTo(CFrame.lookAt(position + lift, position + direction + lift))
 
 	unit.Alpha += (P.UnitSpeed * dt) / Config.City.BlockSize
 	if unit.Alpha >= 1 then

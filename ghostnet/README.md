@@ -90,6 +90,7 @@ src/shared/          -> ReplicatedStorage.Shared
   Types.luau           gemeinsame Typen, inkl. Profil-Schema
   Geometry.luau        die eine Abstandsrechnung für Server und Client
   Config.luau/Palette  Weltfarben (hell) - getrennt vom dunklen Fake-OS-Theme
+  AssetLibrary.luau    Vorlagen nachschlagen, klonen, Fehlendes melden
   Missions.luau        Missionen als Daten + die puren Regeln dazu
   Vehicles.luau        Fahrzeugklassen als Daten
   Districts.luau       die fünf Stadtbezirke als Daten
@@ -126,11 +127,12 @@ src/server/          -> ServerScriptService
   World/
     TestTargets.server.luau  Kamera (D2), Tür (D4), Automat (D6), Hehler
     StoryWorld.server.luau   Übungsterminal, Laden, Apartment, Bank
-    Cityscape.server.luau    Straßenzeile, Neon, nasse Fahrbahn (nur Kulisse)
     TestVehicles.server.luau ein Fahrzeug jeder Klasse am Spawn
     City.server.luau         die Stadt: Straßen, Häuser, Dächer, Neon
     Dealership.server.luau   Autohaus mit Showroom, Garage, Bezirks-Wegpunkte
     BankInterior.server.luau Halle, Sicherheitsbereich, Tresorraum, Lüftung
+src/client/World/    -> StarterPlayerScripts.World
+  TrafficSmoother.client.luau  zieht servergesetzte Modelle weich nach
 src/client/UI/       -> StarterPlayerScripts.UI
   HUD.client.luau          Wallet, Trace-Balken, Prompt, Meldungen
   HackUI.client.luau       das Fake-OS während eines Hacks
@@ -145,6 +147,31 @@ src/client/UI/       -> StarterPlayerScripts.UI
   VehicleController.client.luau  Fahren: Steuerung, Kamera, Klang, Tacho
   CityUI.client.luau       Fahndungssterne, Garage, Endgame-Entscheidung
 ```
+
+## Wo die Modelle liegen
+
+> **Code platziert Geometrie. Code baut keine Geometrie.**
+
+Alles, was ein Spieler bewusst ansieht, liegt als fertiges Modell unter
+`ReplicatedStorage/Assets` und wird von dort geklont:
+
+```
+ReplicatedStorage/Assets/
+    Vehicles/     Compact, Sedan, Sports, Van, Bike, Police
+    Buildings/    Base_*, Floor_*, Roof_*
+    Props/        Laterne, Ampel, Muelltonne, Poller, Verteiler, Schild, Feuerleiter
+    Characters/   Pedestrian, Guard
+```
+
+Prozedural bleibt nur, wo Genauigkeit statt Aussehen zählt: Straßenverlauf,
+Kollisionsboxen, unsichtbare Trigger, Wegpunkte.
+
+**Fehlt eine Vorlage, wird sie nicht aus Parts nachgebaut.** Stattdessen
+erscheint ein knallmagenta `MISSING_ASSET_<Ordner>_<Name>` in der richtigen
+Größe, und beim Serverstart steht in der Ausgabe, was noch fehlt. Das Spiel
+bleibt dabei fahrbar — es sieht nur absichtlich kaputt aus. Welche Modelle
+gebraucht werden und welche Teile ein Fahrzeugmodell enthalten muss, steht in
+`STATUS.md` unter „Manuelle Schritte".
 
 ## Neue Objekte in der Welt
 

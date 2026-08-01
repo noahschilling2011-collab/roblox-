@@ -8,9 +8,17 @@
 --   1. KEIN PathfindingService. Die Autos folgen dem festen Graphen aus
 --      RoadNetwork, Kante fuer Kante. Ein Pfad pro Auto, mehrfach pro
 --      Sekunde neu berechnet, frisst den Server auf.
---   2. KEINE Physik. Verkehrsautos sind Anchored und bewegen sich per
---      CFrame. Sie kollidieren nicht echt - sie bremsen, wenn auf ihrer
---      eigenen Kante jemand vor ihnen ist.
+--   2. KEINE Physik. Verkehrsautos sind Anchored und werden per
+--      Model:PivotTo bewegt. Sie kollidieren nicht echt - sie bremsen,
+--      wenn auf ihrer eigenen Kante jemand vor ihnen ist.
+--
+--      MERKE, DAS WAR EIN ECHTER BUG: frueher wurde nur die CFrame des
+--      Body-Parts gesetzt und das Dach per WeldConstraint "verbunden".
+--      Eine WeldConstraint gilt fuer die PHYSIKSIMULATION. Zwischen zwei
+--      Anchored-Teilen tut sie gar nichts, und ein direktes Setzen von
+--      .CFrame ist keine Simulation. Ergebnis: jedes Auto liess sein Dach
+--      an der Spawn-Position stehen und fuhr ohne weiter.
+--      -> Modelle IMMER als Ganzes ueber PivotTo bewegen.
 --   3. KEIN Humanoid fuer Fussgaenger. Humanoids sind teuer. Hintergrund-
 --      leute sind bewegte Modelle ohne Humanoid.
 --   4. POOL statt Instance.new/Destroy im Sekundentakt, harte Obergrenze,
@@ -18,12 +26,16 @@
 --
 -- Abstandspruefung laeuft NUR gegen die eigene Kante, nicht gegen alle Autos.
 
+local CollectionService = game:GetService("CollectionService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config)
 local Geometry = require(ReplicatedStorage.Shared.Geometry)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
+
+local AssetLibrary = require(ReplicatedStorage.Shared.AssetLibrary)
+local Vehicles = require(ReplicatedStorage.Shared.Vehicles)
 
 local RateLimiter = require(script.Parent.RateLimiter)
 local RoadNetwork = require(script.Parent.RoadNetwork)
@@ -39,23 +51,27 @@ local rng = Random.new()
 
 type Car = {
 	Model: Model,
-	Body: BasePart,
+	Body: BasePart, -- PrimaryPart, nur fuer Positionsabfragen
 	From: number,
 	To: number,
 	Alpha: number,
 	Speed: number,
 	Active: boolean,
 	ClassId: string,
+	-- Aus der echten Modellhoehe gerechnet, nicht geraten. Ein anderes
+	-- Modell hat eine andere Hoehe und soll trotzdem auf der Strasse stehen.
+	GroundOffset: number,
 }
 
 type Walker = {
 	Model: Model,
-	Body: BasePart,
+	Body: BasePart, -- PrimaryPart
 	From: number,
 	To: number,
 	Alpha: number,
 	Side: number,
 	Active: boolean,
+	GroundOffset: number,
 }
 
 local cars: { Car } = {}
@@ -68,6 +84,21 @@ local laneOccupancy: { [string]: { number } } = {}
 
 local function laneKey(from: number, to: number): string
 	return ("%d>%d"):format(from, to)
+end
+
+-- Oberkante der Fahrbahnplatte. Die Knoten liegen auf y = 0, die Platte ist
+-- um sie zentriert.
+local ROAD_TOP = Config.City.RoadThickness * 0.5
+
+-- Wie hoch der Pivot des Modells ueber dem Knoten liegen muss, damit das
+-- Modell AUF der Strasse steht statt darin oder darueber. Aus der echten
+-- Modellhoehe gerechnet - eine feste Zahl waere beim naechsten Modell falsch.
+local function groundOffsetFor(model: Model): number
+	local ok, extents = pcall(function()
+		return model:GetExtentsSize()
+	end)
+	local height = if ok and extents then extents.Y else 0
+	return ROAD_TOP + height * 0.5 + T.GroundClearance
 end
 
 --==========================================================================
@@ -85,54 +116,60 @@ local function ensureContainer(): Folder
 	return folder
 end
 
-local TRAFFIC_COLOURS = {
-	Color3.fromRGB(52, 58, 70),
-	Color3.fromRGB(84, 88, 96),
-	Color3.fromRGB(36, 40, 48),
-	Color3.fromRGB(70, 60, 58),
-	Color3.fromRGB(44, 56, 66),
-}
+-- Welche Klasse dieses Verkehrsauto ist. Aus dem Katalog, damit ein
+-- gestohlenes Auto immer eine echte, kaufbare Klasse ist.
+local function randomClass(): Vehicles.VehicleClass
+	local list = Vehicles.List
+	return list[rng:NextInteger(1, #list)]
+end
 
-local function buildCarShell(): (Model, BasePart)
-	local model = Instance.new("Model")
+-- EIN Modell fuer Verkehr und Spielerfahrzeug. Das ist der Punkt: beim
+-- Kurzschliessen wird das Verkehrsmodell entfernt und an derselben Stelle
+-- das echte Fahrzeug erzeugt - und weil beide dieselbe Vorlage benutzen,
+-- sieht man den Wechsel nicht.
+--
+-- Unterschied zum Spielerfahrzeug: alles Anchored, keine Constraints, kein
+-- Antrieb. Kulisse, die sich bewegt.
+local function buildCarShell(): (Model, BasePart, string)
+	local class = randomClass()
+	local model = AssetLibrary.Clone("Vehicles", class.Asset, class.BodySize)
 	model.Name = "TrafficCar"
 
-	local body = Instance.new("Part")
-	body.Name = "Body"
-	body.Size = Vector3.new(6.2, 2.8, 12.5)
-	body.Color = TRAFFIC_COLOURS[rng:NextInteger(1, #TRAFFIC_COLOURS)]
-	body.Material = Enum.Material.SmoothPlastic
-	body.Anchored = true
-	body.CanCollide = true
-	body.CanTouch = false
-	body.Parent = model
+	local pivot = model.PrimaryPart
+	if not pivot then
+		local chassis = AssetLibrary.Find(model, "Chassis")
+		if chassis and chassis:IsA("BasePart") then
+			pivot = chassis
+		else
+			-- Ohne Pivot koennte PivotTo nur die Bounding-Box benutzen und
+			-- das Auto stuende schief in der Strasse. Lieber laut sein.
+			warn(("[GHOSTNET] Verkehrsvorlage '%s' hat weder PrimaryPart noch Chassis."):format(class.Asset))
+			pivot = model:FindFirstChildWhichIsA("BasePart", true)
+		end
+	end
+	local body = pivot :: BasePart
 	model.PrimaryPart = body
 
-	local roof = Instance.new("Part")
-	roof.Name = "Roof"
-	roof.Size = Vector3.new(5.4, 2, 6)
-	roof.Color = body.Color:Lerp(Color3.new(0, 0, 0), 0.4)
-	roof.Material = Enum.Material.Glass
-	roof.Transparency = 0.4
-	roof.Anchored = true
-	roof.CanCollide = false
-	roof.CanQuery = false
-	roof.CanTouch = false
-	roof.CastShadow = false
-	roof.Parent = model
-
-	local weld = Instance.new("WeldConstraint")
-	weld.Part0 = body
-	weld.Part1 = roof
-	weld.Parent = body
-	roof.CFrame = body.CFrame * CFrame.new(0, 2.2, -0.6)
+	-- Kulisse: nichts rechnet Physik, nichts wird abgefragt.
+	for _, descendant in model:GetDescendants() do
+		if descendant:IsA("BasePart") then
+			descendant.Anchored = true
+			descendant.CanTouch = false
+			descendant.CanQuery = false
+			descendant.CanCollide = descendant == body
+			if descendant ~= body then
+				descendant.CastShadow = false
+			end
+		end
+	end
+	body.CanQuery = true -- der Diebstahl-Prompt braucht Abfragbarkeit
 
 	-- Der Diebstahl-Prompt. Halten statt tippen, damit es nicht aus Versehen
 	-- passiert.
 	local prompt = Instance.new("ProximityPrompt")
 	prompt.Name = "StealPrompt"
 	prompt.ActionText = "Kurzschliessen"
-	prompt.ObjectText = "Fremdes Auto"
+	prompt.ObjectText = class.Name
 	prompt.HoldDuration = T.StealHoldSeconds
 	prompt.MaxActivationDistance = T.StealRange
 	prompt.RequiresLineOfSight = false
@@ -144,42 +181,44 @@ local function buildCarShell(): (Model, BasePart)
 		TrafficService.HandleSteal(player)
 	end)
 
+	model:SetAttribute("ClassId", class.Id)
+	CollectionService:AddTag(model, Config.SmoothTag)
 	model.Parent = ensureContainer()
-	return model, body
+	return model, body, class.Id
 end
 
 local function buildWalkerShell(): (Model, BasePart)
-	local model = Instance.new("Model")
+	-- Bewusst KEIN Humanoid: ein Humanoid pro Fussgaenger kostet mehr als
+	-- der gesamte restliche Fussgaenger zusammen. Das gilt auch fuer ein
+	-- fertiges Modell aus Assets/Characters - geklont wird Geometrie, und
+	-- ein Humanoid darin waere ein Fehler in der Vorlage.
+	local model = AssetLibrary.Clone("Characters", "Pedestrian", T.PedestrianSize)
 	model.Name = "Pedestrian"
 
-	-- Bewusst KEIN Humanoid: ein Humanoid pro Fussgaenger kostet mehr als
-	-- der gesamte restliche Fussgaenger zusammen.
-	local body = Instance.new("Part")
-	body.Name = "Body"
-	body.Size = Vector3.new(1.8, 4, 1)
-	body.Color = Color3.fromRGB(rng:NextInteger(30, 70), rng:NextInteger(30, 70), rng:NextInteger(40, 80))
-	body.Material = Enum.Material.SmoothPlastic
-	body.Anchored = true
-	body.CanCollide = false
-	body.CanQuery = false
-	body.CanTouch = false
-	body.CastShadow = false
-	body.Parent = model
+	local pivot = model.PrimaryPart or model:FindFirstChildWhichIsA("BasePart", true)
+	if not pivot then
+		warn("[GHOSTNET] Fussgaengervorlage enthaelt keinen einzigen BasePart.")
+		local fallback = Instance.new("Part")
+		fallback.Size = T.PedestrianSize
+		fallback.Parent = model
+		pivot = fallback
+	end
+	local body = pivot :: BasePart
 	model.PrimaryPart = body
 
-	local head = Instance.new("Part")
-	head.Name = "Head"
-	head.Size = Vector3.new(1.1, 1.1, 1.1)
-	head.Color = Color3.fromRGB(180, 150, 130)
-	head.Anchored = true
-	head.CanCollide = false
-	head.CanQuery = false
-	head.CanTouch = false
-	head.CastShadow = false
-	head.Parent = model
+	for _, descendant in model:GetDescendants() do
+		if descendant:IsA("BasePart") then
+			descendant.Anchored = true
+			descendant.CanCollide = false
+			descendant.CanQuery = false
+			descendant.CanTouch = false
+			descendant.CastShadow = false
+		end
+	end
 
+	CollectionService:AddTag(model, Config.SmoothTag)
 	model.Parent = ensureContainer()
-	return model, head
+	return model, body
 end
 
 --==========================================================================
@@ -227,7 +266,10 @@ local function placeCar(car: Car)
 		car.Active = false
 		return
 	end
-	car.Body.CFrame = CFrame.lookAt(position + Vector3.new(0, 2.4, 0), position + direction + Vector3.new(0, 2.4, 0))
+	local lift = Vector3.new(0, car.GroundOffset, 0)
+	-- PivotTo statt .CFrame: bewegt ALLE Teile des Modells, unabhaengig von
+	-- Anchored. Genau das war der Dach-Bug.
+	car.Model:PivotTo(CFrame.lookAt(position + lift, position + direction + lift))
 end
 
 local function spawnCar()
@@ -252,7 +294,7 @@ local function spawnCar()
 		if #cars >= T.MaxActive then
 			return
 		end
-		local model, body = buildCarShell()
+		local model, body, classId = buildCarShell()
 		free = {
 			Model = model,
 			Body = body,
@@ -261,7 +303,8 @@ local function spawnCar()
 			Alpha = 0,
 			Speed = T.Speed,
 			Active = true,
-			ClassId = "SEDAN",
+			ClassId = classId,
+			GroundOffset = groundOffsetFor(model),
 		}
 		table.insert(cars, free :: Car)
 	end
@@ -359,12 +402,9 @@ local function placeWalker(walker: Walker)
 	end
 	local right = Vector3.new(-direction.Z, 0, direction.X)
 	local offset = right * (walker.Side * (Config.City.RoadWidth * 0.5 + Config.City.SidewalkWidth * 0.4))
-	local at = position + offset + Vector3.new(0, 3, 0)
-	walker.Body.CFrame = CFrame.lookAt(at, at + direction)
-	local torso = walker.Model:FindFirstChild("Body")
-	if torso and torso:IsA("BasePart") then
-		torso.CFrame = walker.Body.CFrame * CFrame.new(0, -2.4, 0)
-	end
+	local at = position + offset + Vector3.new(0, walker.GroundOffset, 0)
+	-- Frueher wurden Kopf und Rumpf einzeln gesetzt. Ein Modell, ein PivotTo.
+	walker.Model:PivotTo(CFrame.lookAt(at, at + direction))
 end
 
 local function spawnWalker()
@@ -389,15 +429,17 @@ local function spawnWalker()
 		if #walkers >= T.MaxPedestrians then
 			return
 		end
-		local model, head = buildWalkerShell()
+		local model, body = buildWalkerShell()
 		free = {
 			Model = model,
-			Body = head,
+			Body = body,
 			From = startId,
 			To = toId,
 			Alpha = 0,
 			Side = 1,
 			Active = true,
+			-- Gehweg statt Fahrbahn: die Platte ist ein wenig hoeher.
+			GroundOffset = groundOffsetFor(model) + Config.City.SidewalkLift,
 		}
 		table.insert(walkers, free :: Walker)
 	end
@@ -470,10 +512,22 @@ function TrafficService.HandleSteal(player: Player)
 		return
 	end
 
-	local cframe = CFrame.new(target.Body.Position + Vector3.new(0, 1, 0)) * (target.Body.CFrame - target.Body.Position)
+	-- Genau dort weitermachen, wo das Kulissenauto stand. Beide benutzen
+	-- dieselbe Vorlage, also darf der Uebergang nicht sichtbar springen:
+	-- Pivot des MODELLS uebernehmen, nicht die Position eines Einzelteils.
+	local cframe = target.Model:GetPivot()
+
+	-- Die Lackierung mitnehmen, damit es dasselbe Auto bleibt. Die Farbe
+	-- steht an der Karosserie, nicht am Chassis.
+	local paint: Color3? = nil
+	local shellBody = AssetLibrary.Find(target.Model, "Body")
+	if shellBody and shellBody:IsA("BasePart") then
+		paint = shellBody.Color
+	end
+
 	recycle(target)
 
-	local model = VehicleChassis.Build(target.ClassId, cframe, target.Body.Color)
+	local model = VehicleChassis.Build(target.ClassId, cframe, paint)
 	if not model then
 		return
 	end

@@ -7,6 +7,7 @@
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local AssetLibrary = require(ReplicatedStorage.Shared.AssetLibrary)
 local Config = require(ReplicatedStorage.Shared.Config)
 -- Das Requiren legt die Remote-Objekte an, bevor irgendein Client sie sucht.
 require(ReplicatedStorage.Shared.Remotes)
@@ -58,3 +59,8 @@ MonetizationService.Init()
 AdminService.Init() -- zuletzt: greift auf alle anderen zu
 
 print(("[GHOSTNET] Server hochgefahren - Version %s"):format(Config.Version))
+
+-- Zum Schluss: was an Vorlagen gefehlt hat. Die World-Skripte sind zu diesem
+-- Zeitpunkt durch, also ist die Liste vollstaendig. Steht hier ganz unten,
+-- damit sie nicht zwischen den Startmeldungen untergeht.
+task.defer(AssetLibrary.Report)

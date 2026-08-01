@@ -3,8 +3,8 @@
 > Wird am Ende jeder Session aktualisiert. Erstes, was eine neue Session liest.
 
 ## Aktuelle Phase
-**Alles abgearbeitet, dazu v2.1.0 „Vantorra bei Tag"**
-(`Config.Version = "2.1.0"`). Aus dem Hacking-Spiel ist ein Hacking-Spiel mit
+**Alles abgearbeitet, dazu v2.1.0 „Vantorra bei Tag" und v2.2.0 „Rework"**
+(`Config.Version = "2.2.0"`). Aus dem Hacking-Spiel ist ein Hacking-Spiel mit
 offener Stadt geworden — Bezirke, Verkehr, Autobesitz, ein Bankraub mit drei
 Wegen, eine Polizei ohne Waffen und eine 10-Missionen-Story mit Entscheidung
 am Ende. Seit v2.1.0 spielt das Ganze bei **hellem Tag**.
@@ -15,7 +15,7 @@ Warnung direkt darunter und Punkt 0 am Ende von `PHASEN.md`.
 ## ⚠️ Was ich NICHT prüfen konnte
 Der Bauplan verlangt nach jeder Phase eine **gemessene Bildrate**. Das kann ich
 nicht liefern und erfinde die Zahl auch nicht: Ich habe keine Roblox-Laufzeit,
-nur eine Luau-VM für Syntax und Logik. Die 582 Prüfungen sagen **nichts** über
+nur eine Luau-VM für Syntax und Logik. Die 605 Prüfungen sagen **nichts** über
 Bildrate, Fahrverhalten oder Physikstabilität aus. Das muss Noah im
 MicroProfiler messen, und zwar besonders jetzt — Verkehr, Fußgänger,
 Streifenwagen und eine gebaute Stadt sind zusammen der teuerste Teil des
@@ -34,6 +34,73 @@ gegenüber dem alten Standardzustand. Gegengerechnet: die PointLights an den
 Neonschildern entfallen bei Tag komplett.
 
 ## Fertig ✅
+
+### v2.2.0 — Rework: Optik und Verkehr
+
+#### Der Bug hinter „der Verkehr sieht kaputt aus"
+`WeldConstraint` gilt für die **Physiksimulation**. Zwischen zwei
+`Anchored`-Teilen tut sie gar nichts, und ein direktes `.CFrame`-Setzen ist
+keine Simulation. Verkehrsautos ließen deshalb ihr Dach an der
+Spawn-Position stehen und fuhren ohne weiter.
+
+Derselbe Fehler steckte an **vier** Stellen, nicht an einer:
+
+| Datei | Was stehenblieb |
+|---|---|
+| `TrafficService` (Autos) | das Dach |
+| `TrafficService` (Fußgänger) | Kopf und Rumpf einzeln gesetzt |
+| `GuardService` (Bankwachen) | der Kopf, während der Rumpf patrouilliert |
+| `PursuitService` (Streifen) | beide Blaulichter |
+
+Alle vier bewegen jetzt das **Modell** über `Model:PivotTo`; die
+`WeldConstraint`s zwischen Anchored-Teilen sind ersatzlos raus. Der Testlauf
+lehnt beide Fehler ab, in allen vier Dateien — das kann nicht zurückkommen.
+
+Aus derselben Ecke mit behoben:
+- **Bodenhöhe wird gerechnet, nicht geraten.** Vorher stand da `2.4`. Richtig
+  ist Fahrbahnoberkante + halbe Modellhöhe (`Model:GetExtentsSize`) + Spalt —
+  das war um einen halben Stud daneben und wäre beim nächsten Modell ganz
+  falsch gewesen.
+- **Gehweghöhe** kommt jetzt aus `Config.City` und wird von `City` *und* den
+  Fußgängern gelesen. Vorher: feste `0.3` in City, feste `3` im Verkehr, zu
+  nichts passend.
+- **Client-Interpolation** (`Client/World/TrafficSmoother.client.luau`, neu):
+  der Server bleibt bei 10 Schritten/s, der Client zieht dazwischen weich
+  nach. Reine Optik — Diebstahl-Reichweite und Wachsicht prüft weiter der
+  Server gegen die echte Position.
+
+#### Die Architekturänderung: Code platziert Geometrie, Code baut keine
+Ein Quader mit Betonmaterial sieht aus wie ein Quader mit Betonmaterial. Kein
+Material, kein Licht und keine Farbe heben diese Decke an.
+
+- **`Shared/AssetLibrary.luau`** (neu) — schlägt Vorlagen unter
+  `ReplicatedStorage/Assets` nach, klont sie, prüft den Modellvertrag und
+  sammelt, was fehlt. Beim Serverstart kommt eine Liste.
+- **`VehicleChassis`** baut keine Karosserie mehr, es **verdrahtet**:
+  Federung, Antrieb, Lenkung, Sitz, Netzwerkbesitz. Fehlt ein Pflichtteil,
+  nennt die Meldung Modell **und** Teil statt still halb zu funktionieren.
+- **Kollision sauber getrennt:** nur `Chassis` kollidiert mit der Welt, alles
+  Sichtbare ist `CanCollide = false`. Räder haben eine eigene
+  `CollisionGroup` — sonst verhaken sich zwei Autos beim Berühren.
+- **Verkehr klont dieselben Vorlagen** wie Spielerfahrzeuge. Beim
+  Kurzschließen werden Pivot und Lackierung übernommen, der Übergang springt
+  nicht mehr. Ein Verkehrsauto ist jetzt eine echte, kaufbare Klasse.
+- **`World/City`** stapelt Module (Sockel → n × Etage → Dach). Dachkante
+  steht über, Sockel dunkler, Häuser versetzt und leicht gedreht — kein
+  Raster. Dazu Feuerleitern und Straßenmöblierung im ausgebauten Bezirk.
+- **`World/Cityscape` gelöscht.** Die alte Kulissen-Straßenzeile lag im selben
+  Koordinatenbereich wie die echte Stadt und hat sie durchschnitten.
+
+#### ⚠️ Bis Noah Modelle einträgt, ist die Stadt magenta
+Es gibt **keine einzige Vorlage** — `ReplicatedStorage/Assets` ist leer (die
+Ordnerstruktur liegt aber schon in der Place-Datei). Jedes fehlende Modell
+wird zu einem `MISSING_ASSET_<Kategorie>_<Name>` in Knallmagenta.
+
+Das ist die Regel aus dem Auftrag, kein Versehen: ein Platzhalter, den man
+übersehen kann, ist kein Platzhalter, und aus Parts nachgebaute Ersatzautos
+sind genau das Problem, das dieses Rework beseitigt. Das Spiel bleibt dabei
+vollständig **fahrbar und testbar** — die Klötze haben die richtigen Maße,
+Kollisionen und Attribute. Die Liste steht unter „Manuelle Schritte".
 
 ### v2.1.0 — Vantorra bei Tag
 Entscheidung von Noah: die Stadt soll hell sein, dauerhaft Tag. Die
@@ -395,7 +462,7 @@ Testlauf prüft das.
   Hack kostet — auch das wird geprüft.
 
 ## Tests
-`cd ghostnet/tests && npm install && node testlauf.mjs` → **582/582 grün**.
+`cd ghostnet/tests && npm install && node testlauf.mjs` → **605/605 grün**.
 Drei Stufen:
 1. **Syntax** — `luau-compile` über jede `.luau`-Datei.
 2. **Struktur** — `--!strict` überall, keine veralteten APIs, jede Remote
@@ -447,7 +514,7 @@ Der Bauplan aus dem Prompt ist abgearbeitet. Was fehlt, fehlt mit Absicht:
   fertig, dann den nächsten" — und der Testlauf hält sie fest.
 - **Zwei weitere Minispiele**, **prozeduraler Weltgenerator**, **Tagesziele**
   und **Ranglisten** — Details am Ende von `PHASEN.md`.
-- **Kein echter Spielertest.** Alles ist im Code umgesetzt und durch 582
+- **Kein echter Spielertest.** Alles ist im Code umgesetzt und durch 605
   automatische Prüfungen abgesichert, aber noch nicht von einem Menschen in
   Studio durchgespielt.
 
@@ -471,6 +538,62 @@ Der Bauplan aus dem Prompt ist abgearbeitet. Was fehlt, fehlt mit Absicht:
   Attribute bleiben identisch, der Rest des Codes merkt nichts davon.
 
 ## Manuelle Schritte außerhalb des Codes (Noah) 🔑
+
+### 0. Die Modelle — das ist gerade der wichtigste Punkt
+Alles hier gehört nach `ReplicatedStorage/Assets/<Ordner>/<Name>` (die Ordner
+liegen schon in der Place-Datei). Zwei Wege, beide erlaubt, gerne gemischt:
+**A** selbst in Blender bauen → als `.obj`/`.fbx` exportieren → in Studio über
+den Asset Manager (3D-Import) hochladen. **B** fertige Modelle aus dem Creator
+Store — dann vorher jedes Modell prüfen: enthaltene Skripte löschen,
+Teilezahl ansehen, `Anchored` setzen. Nie ein Modell mit Skript ungeprüft
+einbauen. Das Dreiecks-Limit pro MeshPart steht in der offiziellen
+Roblox-Dokumentation — nachschlagen, nicht raten.
+
+| Ordner | Name | Wofür |
+|---|---|---|
+| `Vehicles` | `Compact` | Kompakt |
+| `Vehicles` | `Sedan` | Limousine |
+| `Vehicles` | `Sports` | Sportwagen |
+| `Vehicles` | `Van` | Transporter |
+| `Vehicles` | `Bike` | Motorrad |
+| `Vehicles` | `Police` | Streifenwagen |
+| `Buildings` | `Base_Shop`, `Base_Entry`, `Base_Garage` | Erdgeschosse |
+| `Buildings` | `Floor_A`, `Floor_B`, `Floor_C` | Standardetagen |
+| `Buildings` | `Roof_Flat`, `Roof_Tech` | Dachabschlüsse |
+| `Props` | `Laterne`, `Ampel`, `Muelltonne`, `Poller`, `Verteiler`, `Schild` | Straßenmöblierung |
+| `Props` | `Feuerleiter` | eine Sprosse, wird gestapelt |
+| `Characters` | `Pedestrian` | Fußgänger — **ohne Humanoid** |
+| `Characters` | `Guard` | Wache |
+
+**Fahrzeugmodelle müssen diese Teile enthalten**, sonst verweigert
+`VehicleChassis` die Arbeit und sagt dir genau, welches fehlt:
+
+```
+Sedan (Model)
+├── Chassis        Part, unsichtbar, PrimaryPart — die Kollisionsbox
+├── Body           MeshPart, die sichtbare Karosserie
+├── Glass          MeshPart, Fenster                    (optional)
+├── Wheels/  FL, FR, RL, RR   (Motorrad: F, R)
+├── Lights/  HeadL, HeadR, TailL, TailR                 (optional)
+└── DriveSeat      VehicleSeat
+```
+
+Das `Chassis` ist ein einfacher Quader, unsichtbar, etwas kleiner als die
+Karosserie: die Physik rechnet mit einem Kasten, der Spieler sieht ein Auto.
+Name fängt mit `F` an = gelenkt, mit `R` = angetrieben.
+
+**Gebäudemodule** brauchen alle dieselbe Grundfläche
+(`Config.Assets.BuildingFootprint`, aktuell 28) und die Höhe aus
+`BaseHeight`/`FloorHeight`/`RoofHeight`. Teile, die vom Bezirk eingefärbt
+werden sollen, bekommen das Attribut `Tintable = true` — alles andere behält
+seine eigenen Materialien.
+
+**Reihenfolge:** erst **ein** Fahrzeug ganz durch die Pipeline schicken und in
+Studio ansehen. Erst wenn genau ein Auto gut aussieht und gut fährt, die
+anderen fünf. Danach der Gebäudebaukasten, und auch da erst die Altstadt
+komplett, nicht fünf Bezirke halb.
+
+### Der Rest
 1. **Studio:** Game Settings → Security → *Enable Studio Access to API Services*
    einschalten, sonst wird nichts gespeichert.
 2. **Sounds:** `src/shared/SoundCatalog.luau` — Asset-IDs aus der Roblox-

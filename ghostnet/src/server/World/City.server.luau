@@ -23,6 +23,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerScriptService = game:GetService("ServerScriptService")
 
+local AssetLibrary = require(ReplicatedStorage.Shared.AssetLibrary)
 local Config = require(ReplicatedStorage.Shared.Config)
 local Districts = require(ReplicatedStorage.Shared.Districts)
 
@@ -42,6 +43,7 @@ folder.Parent = workspace
 
 local rng = Random.new(Config.World.Seed)
 local C = Config.City
+local A = Config.Assets
 
 local function decor(name: string, size: Vector3, cframe: CFrame, colour: Color3, material: Enum.Material, parent: Instance?): Part
 	local p = Instance.new("Part")
@@ -70,6 +72,10 @@ local roads = Instance.new("Folder")
 roads.Name = "Strassen"
 roads.Parent = folder
 
+local props = Instance.new("Folder")
+props.Name = "Moeblierung"
+props.Parent = folder
+
 local built: { [string]: boolean } = {}
 
 for _, node in RoadNetwork.All() do
@@ -93,8 +99,8 @@ for _, node in RoadNetwork.All() do
 		local length = delta.Magnitude
 		local horizontal = math.abs(delta.X) > math.abs(delta.Z)
 		local size = if horizontal
-			then Vector3.new(length, 1, C.RoadWidth)
-			else Vector3.new(C.RoadWidth, 1, length)
+			then Vector3.new(length, C.RoadThickness, C.RoadWidth)
+			else Vector3.new(C.RoadWidth, C.RoadThickness, length)
 
 		local road = decor("Fahrbahn", size, CFrame.new(mid), Config.Palette.Asphalt, Enum.Material.Slate, roads)
 		road.Reflectance = Config.World.RoadReflectance
@@ -102,12 +108,16 @@ for _, node in RoadNetwork.All() do
 
 		-- Gehwege links und rechts.
 		local sidewalkSize = if horizontal
-			then Vector3.new(length, 1.4, C.SidewalkWidth)
-			else Vector3.new(C.SidewalkWidth, 1.4, length)
+			then Vector3.new(length, C.SidewalkThickness, C.SidewalkWidth)
+			else Vector3.new(C.SidewalkWidth, C.SidewalkThickness, length)
+		-- Oberkante = Fahrbahnoberkante + SidewalkLift, daraus die Mitte.
+		-- Frueher stand hier eine feste 0.3, zu der nichts passte -
+		-- Fussgaenger schwebten oder steckten im Bordstein.
+		local sidewalkY = C.RoadThickness * 0.5 + C.SidewalkLift - C.SidewalkThickness * 0.5
 		for _, side in { -1, 1 } do
 			local offset = if horizontal
-				then Vector3.new(0, 0.3, side * (C.RoadWidth * 0.5 + C.SidewalkWidth * 0.5))
-				else Vector3.new(side * (C.RoadWidth * 0.5 + C.SidewalkWidth * 0.5), 0.3, 0)
+				then Vector3.new(0, sidewalkY, side * (C.RoadWidth * 0.5 + C.SidewalkWidth * 0.5))
+				else Vector3.new(side * (C.RoadWidth * 0.5 + C.SidewalkWidth * 0.5), sidewalkY, 0)
 			local walk = decor(
 				"Gehweg",
 				sidewalkSize,
@@ -146,112 +156,134 @@ local blocks = Instance.new("Folder")
 blocks.Name = "Bloecke"
 blocks.Parent = folder
 
-local function building(centre: Vector3, footprint: Vector3, district: Districts.District, dense: boolean)
-	local height = rng:NextInteger(C.BuildingMinHeight, if dense then C.BuildingMaxHeight else C.BuildingMinHeight + 20)
+-- EIN HAUS IST EIN STAPEL, KEIN KLOTZ.
+--
+-- Frueher stand hier ein Quader mit Betonmaterial. Ein Quader mit
+-- Betonmaterial sieht aus wie ein Quader mit Betonmaterial - da hilft kein
+-- Licht und keine Farbe. Ein Gebaeude braucht Gliederung: Sockel,
+-- Fensterachsen, Gesimse, Dachkante.
+--
+-- Also wird gestapelt:  Sockel -> n x Etage -> Dach.
+-- Die Module liegen fertig unter Assets/Buildings. Vielfalt entsteht aus
+-- Etagenzahl, Modulmischung, Farbe und leichter Drehung - aus acht Modulen
+-- bekommt man hunderte unterschiedliche Haeuser.
+local function building(centre: Vector3, district: Districts.District, dense: boolean, yaw: number)
 	local tint = district.Tint
+	local floors = rng:NextInteger(A.MinFloors, if dense then A.MaxFloors else A.MinFloors + 1)
 
-	-- Erdgeschoss: dunkler, mit Schaufensterband.
-	decor(
-		"Erdgeschoss",
-		Vector3.new(footprint.X, 12, footprint.Z),
-		CFrame.new(centre + Vector3.new(0, 6, 0)),
-		-- Erdgeschoss abgesetzt, aber nicht Richtung Schwarz: bei heller
-		-- Stadt wirkt ein schwarzer Sockel wie ein Loch in der Fassade.
-		tint:Lerp(Config.Palette.BetonDunkel, 0.55),
-		Enum.Material.Concrete,
-		blocks
-	).CanCollide = true
+	local model = Instance.new("Model")
+	model.Name = ("Haus_%s"):format(district.Id)
 
-	-- Standardetagen als ein Block; Fenster als Neonflaechen aufgeklebt.
-	decor(
-		"Etagen",
-		Vector3.new(footprint.X, height - 12, footprint.Z),
-		CFrame.new(centre + Vector3.new(0, 12 + (height - 12) * 0.5, 0)),
-		tint,
-		Enum.Material.Concrete,
-		blocks
-	).CanCollide = true
+	local y = 0
 
-	if dense then
-		-- Fensterbaender: bei Tag spiegelndes Glas statt leuchtender Neonflaechen.
-		local rows = math.floor((height - 14) / 10)
-		for row = 1, rows do
-			if rng:NextNumber() > Config.World.WindowChance then
+	local function place(name: string, height: number, colour: Color3, overhang: number)
+		local size = Vector3.new(A.BuildingFootprint + overhang, height, A.BuildingFootprint + overhang)
+		local part = AssetLibrary.Clone("Buildings", name, size)
+		part:PivotTo(CFrame.new(centre + Vector3.new(0, y + height * 0.5, 0)) * CFrame.Angles(0, yaw, 0))
+
+		local placeholder = part:GetAttribute("Placeholder") == true
+		for _, descendant in part:GetDescendants() do
+			if descendant:IsA("BasePart") then
+				descendant.Anchored = true
+				descendant.CanQuery = false
+				descendant.CanTouch = false
+				if descendant.Size.X < 6 and descendant.Size.Y < 6 and descendant.Size.Z < 6 then
+					descendant.CastShadow = false
+				end
+				-- Nur Platzhalter und ausdruecklich als toenbar markierte
+				-- Teile werden eingefaerbt. Ein fertiges Modul soll seine
+				-- eigenen Materialien behalten.
+				if placeholder or descendant:GetAttribute("Tintable") == true then
+					descendant.Color = colour
+				end
+			end
+		end
+		part.Parent = model
+		y += height
+	end
+
+	-- Sockel dunkler als der Rest: Gebaeude sind unten schmutziger, und ohne
+	-- diesen Absatz steht das Haus wie hingestellt statt gewachsen da.
+	place(A.Bases[rng:NextInteger(1, #A.Bases)], A.BaseHeight, tint:Lerp(Config.Palette.BetonDunkel, A.BaseDarken), 0)
+
+	for _ = 1, floors do
+		place(A.Floors[rng:NextInteger(1, #A.Floors)], A.FloorHeight, tint, 0)
+	end
+
+	-- Dachkante steht ueber. Ein Dach buendig mit der Fassade sieht immer
+	-- nach Klotz aus - das ist die billigste Verbesserung im ganzen Baukasten.
+	place(A.Roofs[rng:NextInteger(1, #A.Roofs)], A.RoofHeight, Config.Palette.Dach, A.RoofOverhang * 2)
+
+	-- Feuerleiter: der Weg nach oben. Ohne die ist das begehbare Dach Deko,
+	-- und "von oben" waere im Bankraub kein echter Weg.
+	if rng:NextNumber() < A.RoofAccessChance then
+		local x = centre.X + A.BuildingFootprint * 0.5 + 1
+		for rung = 1, math.floor(y / A.RoofAccessStep) do
+			local ladder = AssetLibrary.Clone("Props", A.RoofAccess, A.RoofAccessSize)
+			ladder:PivotTo(CFrame.new(x, rung * A.RoofAccessStep, centre.Z))
+			for _, descendant in ladder:GetDescendants() do
+				if descendant:IsA("BasePart") then
+					descendant.Anchored = true
+					descendant.CanQuery = false
+					descendant.CanTouch = false
+					descendant.CanCollide = true
+					descendant.CastShadow = false
+				end
+			end
+			ladder.Parent = model
+		end
+	end
+
+	model.Parent = blocks
+end
+
+--==========================================================================
+-- STRASSENMOEBLIERUNG
+--
+-- Eine leere Strasse mit perfekten Haeusern wirkt tot. Eine durchschnittliche
+-- Strasse mit Kram darauf wirkt echt. Laternen, Ampeln, Muelltonnen, Poller,
+-- Verteilerkaesten, Schilder - das ist der billigste Realismus, den es gibt.
+--==========================================================================
+
+local function furnish(from: Vector3, to: Vector3, horizontal: boolean)
+	local length = (to - from).Magnitude
+	local steps = math.floor(length / A.PropSpacing)
+	if steps < 1 then
+		return
+	end
+
+	-- Kante des Gehwegs, auf beiden Seiten.
+	local lateral = C.RoadWidth * 0.5 + C.SidewalkWidth * 0.5
+	local top = C.RoadThickness * 0.5 + C.SidewalkLift
+
+	for step = 1, steps - 1 do
+		for _, side in { -1, 1 } do
+			if rng:NextNumber() > A.PropChance then
 				continue
 			end
-			for _, face in { 1, -1 } do
-				local glass = decor(
-					"Fenster",
-					Vector3.new(footprint.X * 0.7, 2.4, 0.3),
-					CFrame.new(centre + Vector3.new(0, 12 + row * 10, face * (footprint.Z * 0.5 + 0.2))),
-					Config.Palette.Glas,
-					Enum.Material.SmoothPlastic,
-					blocks
-				)
-				glass.Reflectance = Config.World.WindowReflectance
-				glass.Transparency = 0.1
+			local along = from:Lerp(to, step / steps)
+			local sideways = if horizontal
+				then Vector3.new(0, 0, side * lateral)
+				else Vector3.new(side * lateral, 0, 0)
+			local jitter = if horizontal
+				then Vector3.new(rng:NextNumber(-A.PropJitter, A.PropJitter), 0, 0)
+				else Vector3.new(0, 0, rng:NextNumber(-A.PropJitter, A.PropJitter))
+
+			local name = A.Props[rng:NextInteger(1, #A.Props)]
+			local prop = AssetLibrary.Clone("Props", name, A.PropSize)
+			local at = along + sideways + jitter + Vector3.new(0, top + A.PropSize.Y * 0.5, 0)
+			prop:PivotTo(CFrame.new(at) * CFrame.Angles(0, rng:NextNumber(0, math.pi * 2), 0))
+
+			for _, descendant in prop:GetDescendants() do
+				if descendant:IsA("BasePart") then
+					descendant.Anchored = true
+					descendant.CanQuery = false
+					descendant.CanTouch = false
+					descendant.CanCollide = false -- man soll nicht am Poller haengenbleiben
+					descendant.CastShadow = false
+				end
 			end
-		end
-	end
-
-	-- Dachabschluss plus begehbares Dach mit Bruestung. Vertikalitaet macht
-	-- ein Hacking-Spiel deutlich besser: man kommt von oben an Ziele.
-	decor(
-		"Dach",
-		Vector3.new(footprint.X + 1.5, 1.2, footprint.Z + 1.5),
-		CFrame.new(centre + Vector3.new(0, height, 0)),
-		Config.Palette.Dach,
-		Enum.Material.Metal,
-		blocks
-	).CanCollide = true
-
-	for _, side in { { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 } } do
-		local size = if side[1] ~= 0
-			then Vector3.new(0.6, 3, footprint.Z + 1.5)
-			else Vector3.new(footprint.X + 1.5, 3, 0.6)
-		decor(
-			"Bruestung",
-			size,
-			CFrame.new(centre + Vector3.new(side[1] * footprint.X * 0.5, height + 2, side[2] * footprint.Z * 0.5)),
-			Config.Palette.Dach,
-			Enum.Material.Metal,
-			blocks
-		).CanCollide = true
-	end
-
-	-- Feuerleiter: der Weg nach oben. Ohne den ist das Dach Deko.
-	if rng:NextNumber() < C.RoofAccessChance then
-		local x = centre.X + footprint.X * 0.5 + 1
-		for y = 4, height, 4 do
-			decor(
-				"Sprosse",
-				Vector3.new(2.6, 0.4, 1.2),
-				CFrame.new(x, y, centre.Z),
-				Config.Palette.Metall,
-				Enum.Material.Metal,
-				blocks
-			).CanCollide = true
-		end
-	end
-
-	-- Genau ein Neonschild je Haus, mit echtem Licht. Sparsam.
-	if dense and rng:NextNumber() < C.SignChance then
-		local sign = decor(
-			"Neonschild",
-			Vector3.new(0.7, rng:NextInteger(6, 14), 4),
-			CFrame.new(centre + Vector3.new(footprint.X * 0.5 + 0.5, height * 0.5, footprint.Z * 0.25)),
-			district.Neon,
-			Enum.Material.Neon,
-			blocks
-		)
-		-- Bei Tageslicht kostet ein PointLight Bildrate und bringt optisch
-		-- nichts. Das Schild bleibt, das Licht entfaellt.
-		if not Config.World.PermanentDay and rng:NextNumber() < C.LightChance then
-			local light = Instance.new("PointLight")
-			light.Color = district.Neon
-			light.Brightness = Config.World.SignBrightness
-			light.Range = Config.World.SignRange
-			light.Parent = sign
+			prop.Parent = props
 		end
 	end
 end
@@ -275,13 +307,21 @@ for gz = -half, half - 1 do
 
 		-- Ein Block traegt vier Haeuser statt eines Klotzes: das gibt
 		-- Gassen, und Gassen sind fuer Motorrad und Flucht wichtig.
-		local size = inner * 0.44
+		--
+		-- KEINE GLEICHEN ABSTAENDE. Jedes Haus wird ein Stueck versetzt und
+		-- minimal gedreht. Ein perfektes Raster sieht immer nach Computer
+		-- aus, und genau das faellt sofort auf.
 		for _, corner in { { -1, -1 }, { 1, -1 }, { -1, 1 }, { 1, 1 } } do
+			local jitter = Vector3.new(
+				rng:NextNumber(-A.BuildingJitter, A.BuildingJitter),
+				0,
+				rng:NextNumber(-A.BuildingJitter, A.BuildingJitter)
+			)
 			building(
-				centre + Vector3.new(corner[1] * inner * 0.25, 0, corner[2] * inner * 0.25),
-				Vector3.new(size, 0, size),
+				centre + Vector3.new(corner[1] * inner * 0.25, 0, corner[2] * inner * 0.25) + jitter,
 				district,
-				dense
+				dense,
+				math.rad(rng:NextNumber(-A.BuildingYaw, A.BuildingYaw))
 			)
 		end
 
@@ -293,4 +333,44 @@ for gz = -half, half - 1 do
 	end
 end
 
-print(("[GHOSTNET] Vantorra gebaut: %d ausgebaute Bloecke, %d im Rohbau."):format(denseBlocks, roughBlocks))
+--==========================================================================
+-- Zweiter Durchgang: Moeblierung entlang der Strassen.
+-- Bewusst NACH den Haeusern, damit die Props schon wissen, wie hoch der
+-- Gehweg liegt, und nicht in einer Fassade landen.
+--==========================================================================
+
+local furnished: { [string]: boolean } = {}
+
+for _, node in RoadNetwork.All() do
+	for _, linkId in node.Links do
+		local edgeKey = if node.Id < linkId
+			then ("%d-%d"):format(node.Id, linkId)
+			else ("%d-%d"):format(linkId, node.Id)
+		if furnished[edgeKey] then
+			continue
+		end
+		furnished[edgeKey] = true
+
+		local other = RoadNetwork.Get(linkId)
+		if not other then
+			continue
+		end
+		-- Nur im ausgebauten Bezirk moeblieren. Der Rest ist Rohbau, und
+		-- Laternen an einer leeren Flaeche sehen schlimmer aus als nichts.
+		local district = RoadNetwork.DistrictAt((node.Position + other.Position) * 0.5)
+		if not district or not district.Dense then
+			continue
+		end
+
+		local delta = other.Position - node.Position
+		furnish(node.Position, other.Position, math.abs(delta.X) > math.abs(delta.Z))
+	end
+end
+
+print(
+	("[GHOSTNET] Vantorra gebaut: %d ausgebaute Bloecke, %d im Rohbau, %d Moebel."):format(
+		denseBlocks,
+		roughBlocks,
+		#props:GetChildren()
+	)
+)

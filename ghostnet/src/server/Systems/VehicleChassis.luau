@@ -1,10 +1,39 @@
 -- ServerScriptService/Systems/VehicleChassis.luau
 --!strict
--- GHOSTNET :: EIN Chassis, viele Karosserien.
+-- GHOSTNET :: Fahrzeuge VERDRAHTEN, nicht bauen.
 --
--- Es gibt kein Skript pro Auto. Dieses Modul baut aus einem Datensatz in
--- Shared/Vehicles.luau ein fahrbares Fahrzeug. Eine neue Klasse = ein
--- Tabelleneintrag, keine Zeile Code.
+-- WAS SICH GEAENDERT HAT
+--   Frueher hat dieses Modul die Karosserie selbst aus Parts zusammengesetzt:
+--   ein Kasten Body, ein Kasten Dach, vier Zylinder, zwei Kaestchen Licht.
+--   Das ist die Decke - kein Material und kein Licht macht aus einem Quader
+--   ein Auto. Ein Auto braucht Motorhaube, Kotfluegel, abfallende Dachlinie,
+--   Radkaesten, Fenster mit Rahmen. Das sind zwei Dutzend geformte Flaechen,
+--   und die entstehen in Blender oder Studio, nicht zur Laufzeit.
+--
+--   Jetzt gilt: die Karosserie kommt als fertiges Modell aus
+--   ReplicatedStorage/Assets/Vehicles, dieses Modul haengt Physik daran.
+--
+-- WAS EIN FAHRZEUGMODELL ENTHALTEN MUSS (Config.Assets.VehicleRequired)
+--   Sedan (Model)
+--   |-- Chassis     Part, unsichtbar, PrimaryPart - die Kollisionsbox
+--   |-- Body        MeshPart, die sichtbare Karosserie
+--   |-- Glass       MeshPart, Fenster                    (optional)
+--   |-- Wheels/     FL, FR, RL, RR   (bei 2 Raedern: F, R)
+--   |-- Lights/     HeadL, HeadR, TailL, TailR           (optional)
+--   +-- DriveSeat   VehicleSeat
+--
+--   Name faengt mit F an = gelenkt, mit R an = angetrieben. Damit passt
+--   dieselbe Verdrahtung auf Auto und Motorrad.
+--
+--   Fehlt ein Pflichtteil, gibt es eine klare Meldung mit Modellname UND
+--   fehlendem Teil - keinen stillen Absturz und kein halb fahrendes Auto.
+--
+-- KOLLISION SAUBER GETRENNT
+--   Nur Chassis kollidiert mit der Welt. Karosserie, Glas und Lichter sind
+--   CanCollide = false. Sonst haengt das Auto an jeder Kante fest, weil
+--   zwei Dutzend Einzelflaechen gleichzeitig kollidieren.
+--   Raeder kollidieren, aber in einer eigenen CollisionGroup: sie sollen den
+--   Boden treffen und nicht die Raeder des Nachbarautos.
 --
 -- AUFBAU PRO RAD (in dieser Reihenfolge wichtig)
 --   Chassis --SpringConstraint--> Radtraeger      Federung
@@ -25,9 +54,11 @@
 --   ueber einen serverseitigen Trigger geprueft - genau wie beim Hacken.
 
 local CollectionService = game:GetService("CollectionService")
+local PhysicsService = game:GetService("PhysicsService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local AssetLibrary = require(ReplicatedStorage.Shared.AssetLibrary)
 local Config = require(ReplicatedStorage.Shared.Config)
 local Vehicles = require(ReplicatedStorage.Shared.Vehicles)
 
@@ -36,6 +67,7 @@ local VehicleChassis = {}
 type VehicleClass = Vehicles.VehicleClass
 
 local FOLDER_NAME = "GhostNet_Vehicles"
+local A = Config.Assets
 
 local function container(): Folder
 	local existing = workspace:FindFirstChild(FOLDER_NAME)
@@ -47,10 +79,6 @@ local function container(): Folder
 	folder.Parent = workspace
 	return folder
 end
-
---==========================================================================
--- Bauteile
---==========================================================================
 
 local function physical(density: number, friction: number, elasticity: number): PhysicalProperties
 	return PhysicalProperties.new(density, friction, elasticity, 100, 1)
@@ -66,51 +94,126 @@ local function attachment(parent: BasePart, name: string, position: Vector3, axi
 	return a
 end
 
--- Ein Rad samt Traeger und den drei Verbindungen.
-local function buildWheel(
-	model: Model,
-	body: BasePart,
-	class: VehicleClass,
-	offset: Vector3,
-	steered: boolean,
-	driven: boolean,
-	side: number
-)
+--==========================================================================
+-- PLATZHALTER
+--
+-- Der einzige Ort in diesem Modul, an dem noch Geometrie entsteht - und das
+-- ist Absicht. Solange eine Vorlage fehlt, soll das Spiel FAHRBAR bleiben,
+-- aber unuebersehbar unfertig aussehen. Deshalb: magenta Kasten, vier
+-- Zylinder, sonst nichts. Kein Dach, keine Lichter, keine Farbwahl.
+--
+-- Sobald Assets/Vehicles/<Name> existiert, wird dieser Zweig nie wieder
+-- betreten. Er ist eine Baustellenabsperrung, kein Fahrzeugdesign.
+--==========================================================================
+
+local function placeholderVehicle(class: VehicleClass): Model
+	local model = AssetLibrary.Placeholder("Vehicles", class.Asset, class.BodySize)
+	local block = model.PrimaryPart :: BasePart
+
+	-- Der Platzhalterklotz wird zur unsichtbaren Kollisionsbox, damit das
+	-- Modell denselben Vertrag erfuellt wie eine echte Vorlage.
+	block.Name = "Chassis"
+	block.Transparency = 1
+	block.CanCollide = true
+
+	local body = Instance.new("Part")
+	body.Name = "Body"
+	body.Size = class.BodySize * A.PlaceholderBodyScale
+	body.Color = A.PlaceholderColour
+	body.Material = Enum.Material.SmoothPlastic
+	body.CFrame = block.CFrame
+	body.Parent = model
+
+	local wheels = Instance.new("Folder")
+	wheels.Name = "Wheels"
+	wheels.Parent = model
+
+	local halfX = class.BodySize.X * 0.5
+	local halfZ = class.BodySize.Z * 0.5
+	local wheelY = -class.BodySize.Y * 0.5
+
+	local slots: { { name: string, offset: Vector3 } }
+	if class.Wheels == 2 then
+		slots = {
+			{ name = "F", offset = Vector3.new(0, wheelY, -halfZ * 0.78) },
+			{ name = "R", offset = Vector3.new(0, wheelY, halfZ * 0.78) },
+		}
+	else
+		slots = {
+			{ name = "FL", offset = Vector3.new(-halfX, wheelY, -halfZ * 0.7) },
+			{ name = "FR", offset = Vector3.new(halfX, wheelY, -halfZ * 0.7) },
+			{ name = "RL", offset = Vector3.new(-halfX, wheelY, halfZ * 0.7) },
+			{ name = "RR", offset = Vector3.new(halfX, wheelY, halfZ * 0.7) },
+		}
+	end
+
+	for _, slot in slots do
+		local wheel = Instance.new("Part")
+		wheel.Name = slot.name
+		wheel.Shape = Enum.PartType.Cylinder
+		wheel.Size = Vector3.new(class.WheelWidth, class.WheelRadius * 2, class.WheelRadius * 2)
+		wheel.Color = A.PlaceholderColour
+		wheel.Material = Enum.Material.SmoothPlastic
+		-- Zylinder liegen in Roblox entlang ihrer X-Achse.
+		wheel.CFrame = block.CFrame * CFrame.new(slot.offset) * CFrame.Angles(0, 0, math.rad(90))
+		wheel.Parent = wheels
+	end
+
+	local seat = Instance.new("VehicleSeat")
+	seat.Name = "DriveSeat"
+	seat.Size = Vector3.new(2.4, 0.4, 2.4)
+	seat.CFrame = block.CFrame * CFrame.new(0, class.BodySize.Y * 0.5 + 0.2, 0)
+	seat.Transparency = 1
+	seat.Parent = model
+
+	return model
+end
+
+--==========================================================================
+-- Verdrahten
+--==========================================================================
+
+-- Ein Rad samt Traeger und den drei Verbindungen. Die POSITION kommt aus
+-- dem Modell - wo die Raeder sitzen, entscheidet der, der das Auto gebaut
+-- hat, nicht dieser Code.
+local function wireWheel(model: Model, chassis: BasePart, wheel: BasePart, class: VehicleClass)
 	local V = Config.Vehicle
+
+	local steered = string.sub(wheel.Name, 1, 1) == "F"
+	local driven = string.sub(wheel.Name, 1, 1) == "R"
+	local offset = chassis.CFrame:PointToObjectSpace(wheel.Position)
+	-- Linke Raeder drehen spiegelverkehrt zu den rechten.
+	local side = if offset.X < 0 then -1 else 1
+
+	wheel.CanQuery = false
+	wheel.CanCollide = true
+	wheel.Anchored = false
+	wheel.Massless = false
+	wheel.CustomPhysicalProperties = physical(V.WheelDensity, class.Grip * V.WheelFriction, V.WheelElasticity)
+	pcall(function()
+		wheel.CollisionGroup = V.WheelCollisionGroup
+	end)
 
 	--== Radtraeger: fast masselos, sonst schlingert das Auto ==============
 	local carrier = Instance.new("Part")
-	carrier.Name = "Carrier"
+	carrier.Name = wheel.Name .. "_Carrier"
 	carrier.Size = Vector3.new(0.4, 0.4, 0.4)
 	carrier.Transparency = 1
 	carrier.CanCollide = false
 	carrier.CanQuery = false
 	carrier.CanTouch = false
 	carrier.CustomPhysicalProperties = physical(V.CarrierDensity, 0.3, 0)
-	carrier.CFrame = body.CFrame * CFrame.new(offset - Vector3.new(0, V.SuspensionLength, 0))
+	carrier.CFrame = CFrame.new(wheel.Position)
 	carrier.Parent = model
-
-	--== Rad ===============================================================
-	local wheel = Instance.new("Part")
-	wheel.Name = "Wheel"
-	wheel.Shape = Enum.PartType.Cylinder
-	wheel.Size = Vector3.new(class.WheelWidth, class.WheelRadius * 2, class.WheelRadius * 2)
-	wheel.Color = Color3.fromRGB(18, 18, 20)
-	wheel.Material = Enum.Material.Rubber
-	wheel.CanQuery = false
-	wheel.CustomPhysicalProperties = physical(V.WheelDensity, class.Grip * V.WheelFriction, V.WheelElasticity)
-	-- Zylinder liegen in Roblox entlang ihrer X-Achse: um 90 Grad drehen,
-	-- damit die Lauflaeche zum Boden zeigt.
-	wheel.CFrame = carrier.CFrame * CFrame.Angles(0, 0, math.rad(90))
-	wheel.Parent = model
 
 	--== Federung und Lenkung (senkrechte Achse) ===========================
 	-- Achse zeigt nach UNTEN: positiver Abstand = ausgefedert.
-	local bodyAttach = attachment(body, "Susp", offset, Vector3.new(0, -1, 0), Vector3.new(0, 0, 1))
+	local mount = offset + Vector3.new(0, V.SuspensionLength, 0)
+	local bodyAttach = attachment(chassis, wheel.Name .. "_Susp", mount, Vector3.new(0, -1, 0), Vector3.new(0, 0, 1))
 	local carrierUp = attachment(carrier, "SuspHub", Vector3.zero, Vector3.new(0, -1, 0), Vector3.new(0, 0, 1))
 
 	local spring = Instance.new("SpringConstraint")
-	spring.Name = "Suspension"
+	spring.Name = wheel.Name .. "_Suspension"
 	spring.Attachment0 = bodyAttach
 	spring.Attachment1 = carrierUp
 	spring.FreeLength = V.SuspensionLength
@@ -163,6 +266,16 @@ local function buildWheel(
 	steer:SetAttribute("SideSign", side)
 end
 
+-- Alles, was man ansieht, aber nicht anfasst: keine Kollision, keine
+-- Abfrage, kaum Masse. Sonst haengt das Auto an jeder Bordsteinkante.
+local function makeCosmetic(part: BasePart)
+	part.CanCollide = false
+	part.CanQuery = false
+	part.CanTouch = false
+	part.Anchored = false
+	part.Massless = true
+end
+
 --==========================================================================
 -- Ein komplettes Fahrzeug
 --==========================================================================
@@ -174,97 +287,127 @@ function VehicleChassis.Build(classId: string, cframe: CFrame, colour: Color3?):
 		return nil
 	end
 
-	local V = Config.Vehicle
-	local model = Instance.new("Model")
+	local model: Model
+	if AssetLibrary.Has("Vehicles", class.Asset) then
+		model = AssetLibrary.Clone("Vehicles", class.Asset, class.BodySize)
+	else
+		model = placeholderVehicle(class)
+	end
 	model.Name = ("Vehicle_%s"):format(class.Id)
 
-	--== Karosserie ========================================================
-	local body = Instance.new("Part")
-	body.Name = "Body"
-	body.Size = class.BodySize
-	body.CFrame = cframe
-	body.Color = colour or class.Colour
-	body.Material = Enum.Material.SmoothPlastic
-	body.CustomPhysicalProperties = physical(class.Mass, 0.3, 0.1)
-	body.Parent = model
-	model.PrimaryPart = body
+	--== Vertrag pruefen ===================================================
+	local required = if class.Wheels == 2 then A.VehicleRequiredTwoWheel else A.VehicleRequired
+	local complete, gaps = AssetLibrary.Verify(model, required)
+	if not complete then
+		warn(
+			("[GHOSTNET] Fahrzeugvorlage '%s' (Klasse %s) ist unvollstaendig. Fehlende Teile: %s"):format(
+				class.Asset,
+				class.Id,
+				table.concat(gaps, ", ")
+			)
+		)
+		warn("           Erwartet wird: " .. table.concat(required, ", "))
+		model:Destroy()
+		return nil
+	end
 
-	-- Dach, damit es nicht wie eine Kiste aussieht. Nur Deko.
-	local roof = Instance.new("Part")
-	roof.Name = "Roof"
-	roof.Size = Vector3.new(class.BodySize.X * 0.86, class.BodySize.Y * 0.7, class.BodySize.Z * 0.5)
-	roof.CFrame = cframe * CFrame.new(0, class.BodySize.Y * 0.8, -class.BodySize.Z * 0.06)
-	roof.Color = (colour or class.Colour):Lerp(Color3.new(0, 0, 0), 0.35)
-	roof.Material = Enum.Material.Glass
-	roof.Transparency = 0.35
-	roof.CanQuery = false
-	roof.CustomPhysicalProperties = physical(0.05, 0.3, 0.1)
-	roof.Parent = model
+	local chassis = AssetLibrary.Find(model, "Chassis") :: BasePart
+	local seat = AssetLibrary.Find(model, "DriveSeat") :: VehicleSeat
+	local wheelFolder = AssetLibrary.Find(model, "Wheels") :: Instance
 
-	local roofWeld = Instance.new("WeldConstraint")
-	roofWeld.Part0 = body
-	roofWeld.Part1 = roof
-	roofWeld.Parent = body
+	if not chassis:IsA("BasePart") then
+		warn(("[GHOSTNET] '%s': Chassis ist kein BasePart."):format(class.Asset))
+		model:Destroy()
+		return nil
+	end
+	if not seat:IsA("VehicleSeat") then
+		warn(("[GHOSTNET] '%s': DriveSeat ist kein VehicleSeat."):format(class.Asset))
+		model:Destroy()
+		return nil
+	end
 
-	--== Rueckleuchten (der Client schaltet sie beim Bremsen hell) =========
-	for _, side in { -1, 1 } do
-		local light = Instance.new("Part")
-		light.Name = "BrakeLight"
-		light.Size = Vector3.new(class.BodySize.X * 0.22, 0.4, 0.3)
-		light.CFrame = cframe * CFrame.new(side * class.BodySize.X * 0.32, 0.2, class.BodySize.Z * 0.5)
-		light.Color = Color3.fromRGB(120, 20, 30)
-		light.Material = Enum.Material.Neon
-		light.CanQuery = false
-		light.CanTouch = false
-		light.CustomPhysicalProperties = physical(0.01, 0.3, 0)
-		light.Parent = model
+	model.PrimaryPart = chassis
+	model:PivotTo(cframe)
 
-		local weld = Instance.new("WeldConstraint")
-		weld.Part0 = body
-		weld.Part1 = light
-		weld.Parent = body
+	--== Chassis: die einzige echte Kollisionsbox ==========================
+	chassis.Transparency = 1
+	chassis.CanCollide = true
+	chassis.CanQuery = false
+	chassis.Anchored = false
+	chassis.Massless = false
+	chassis.CustomPhysicalProperties = physical(class.Mass, 0.3, 0.1)
+
+	--== Sichtbares: dekorativ, nie kollidierend ===========================
+	for _, descendant in model:GetDescendants() do
+		if not descendant:IsA("BasePart") then
+			continue
+		end
+		if descendant == chassis or descendant == seat then
+			continue
+		end
+		if descendant:IsDescendantOf(wheelFolder) then
+			continue
+		end
+		makeCosmetic(descendant)
+	end
+
+	-- Lackierung: nur die Karosserie, nicht Glas und nicht die Lichter.
+	local body = AssetLibrary.Find(model, "Body")
+	if colour and body and body:IsA("BasePart") then
+		body.Color = colour
+	elseif body and body:IsA("BasePart") and not model:GetAttribute("Placeholder") then
+		body.Color = class.Colour
 	end
 
 	--== Sitz ==============================================================
-	local seat = Instance.new("VehicleSeat")
-	seat.Name = "DriverSeat"
-	seat.Size = Vector3.new(2.4, 0.4, 2.4)
-	seat.CFrame = cframe * CFrame.new(0, class.BodySize.Y * 0.5 + 0.2, 0)
 	seat.Transparency = 1
 	seat.CanQuery = false
+	seat.CanCollide = false
+	seat.Massless = true
 	seat.MaxSpeed = class.MaxSpeed
 	seat.Torque = 0 -- der VehicleSeat treibt nichts an, das machen die Raeder
 	seat.TurnSpeed = 0
-	seat.CustomPhysicalProperties = physical(0.01, 0.3, 0)
-	seat.Parent = model
 
+	if not seat:FindFirstChild("EnterPrompt") then
+		local prompt = Instance.new("ProximityPrompt")
+		prompt.Name = "EnterPrompt"
+		prompt.ActionText = "Einsteigen"
+		prompt.ObjectText = class.Name
+		prompt.HoldDuration = 0
+		prompt.MaxActivationDistance = Config.Vehicle.EnterRange
+		prompt.RequiresLineOfSight = false
+		prompt.Parent = seat
+	end
+
+	-- Der Sitz haengt fest an der Kollisionsbox. Hier ist eine WeldConstraint
+	-- richtig: beide Teile sind NICHT anchored, es ist echte Physik.
 	local seatWeld = Instance.new("WeldConstraint")
-	seatWeld.Part0 = body
+	seatWeld.Part0 = chassis
 	seatWeld.Part1 = seat
-	seatWeld.Parent = body
+	seatWeld.Parent = chassis
 
-	local prompt = Instance.new("ProximityPrompt")
-	prompt.Name = "EnterPrompt"
-	prompt.ActionText = "Einsteigen"
-	prompt.ObjectText = class.Name
-	prompt.HoldDuration = 0
-	prompt.MaxActivationDistance = 12
-	prompt.RequiresLineOfSight = false
-	prompt.Parent = seat
+	-- Alles Kosmetische fest an die Kollisionsbox schweissen. Auch hier:
+	-- echte Physik zwischen nicht-anchored Teilen, also wirkt es.
+	for _, descendant in model:GetDescendants() do
+		if not descendant:IsA("BasePart") then
+			continue
+		end
+		if descendant == chassis or descendant == seat or descendant:IsDescendantOf(wheelFolder) then
+			continue
+		end
+		if descendant.Name:match("_Carrier$") then
+			continue
+		end
+		local weld = Instance.new("WeldConstraint")
+		weld.Part0 = chassis
+		weld.Part1 = descendant
+		weld.Parent = chassis
+	end
 
 	--== Raeder ============================================================
-	local halfX = class.BodySize.X * 0.5
-	local halfZ = class.BodySize.Z * 0.5
-	local wheelY = -class.BodySize.Y * 0.5 + V.SuspensionLength * 0.2
-
-	if class.Wheels == 2 then
-		-- Motorrad: vorne gelenkt, hinten angetrieben, beide mittig.
-		buildWheel(model, body, class, Vector3.new(0, wheelY, -halfZ * 0.78), true, false, 1)
-		buildWheel(model, body, class, Vector3.new(0, wheelY, halfZ * 0.78), false, true, 1)
-	else
-		for _, side in { -1, 1 } do
-			buildWheel(model, body, class, Vector3.new(side * halfX, wheelY, -halfZ * 0.7), true, false, side)
-			buildWheel(model, body, class, Vector3.new(side * halfX, wheelY, halfZ * 0.7), false, true, side)
+	for _, wheel in wheelFolder:GetChildren() do
+		if wheel:IsA("BasePart") then
+			wireWheel(model, chassis, wheel, class)
 		end
 	end
 
@@ -324,7 +467,7 @@ function VehicleChassis.Despawn(model: Model)
 end
 
 local function watchSeat(model: Model)
-	local seat = model:FindFirstChild("DriverSeat")
+	local seat = model:FindFirstChild("DriveSeat")
 	if not seat or not seat:IsA("VehicleSeat") then
 		return
 	end
@@ -362,6 +505,14 @@ function VehicleChassis.Init()
 		end
 	end
 
+	-- Raeder treffen den Boden, aber nicht die Raeder des Nachbarautos.
+	-- Ohne das verhaken sich zwei Fahrzeuge, sobald sie sich beruehren.
+	pcall(function()
+		local group = Config.Vehicle.WheelCollisionGroup
+		PhysicsService:RegisterCollisionGroup(group)
+		PhysicsService:CollisionGroupSetCollidable(group, group, false)
+	end)
+
 	for _, model in CollectionService:GetTagged(Config.VehicleTag) do
 		if model:IsA("Model") then
 			watchSeat(model)
@@ -394,7 +545,7 @@ function VehicleChassis.Init()
 		end
 	end)
 
-	print(("[GHOSTNET] VehicleChassis bereit. %d Klassen."):format(Vehicles.Count()))
+	print(("[GHOSTNET] VehicleChassis bereit. %d Klassen, Karosserien aus Assets/Vehicles."):format(Vehicles.Count()))
 end
 
 return VehicleChassis

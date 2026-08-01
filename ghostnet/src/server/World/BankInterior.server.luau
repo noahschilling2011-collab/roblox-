@@ -141,13 +141,11 @@ do
 	head.CanCollide = false
 	head.CanQuery = false
 	head.CastShadow = false
+	-- Bauposition relativ zum Rumpf. KEINE WeldConstraint: beide Teile sind
+	-- Anchored, da bewirkt sie nichts. Bewegt wird das Modell als Ganzes
+	-- ueber PivotTo (GuardService.patrol).
 	head.CFrame = root.CFrame * CFrame.new(0, 3.4, 0)
 	head.Parent = guard
-
-	local weld = Instance.new("WeldConstraint")
-	weld.Part0 = root
-	weld.Part1 = head
-	weld.Parent = root
 
 	guard:SetAttribute("PatrolA", route.A)
 	guard:SetAttribute("PatrolB", route.B)

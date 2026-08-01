@@ -151,6 +151,27 @@ const lightingXml = `<Item class="Lighting" referent="${nextReferent()}">
 </Item>
 `;
 
+// Leerer Vorlagen-Ordner. Rojo mappt ihn NICHT (er kommt nicht von der
+// Platte, sondern aus Studio) - er wird hier einmal angelegt, damit Noah
+// eine klare Ablage hat und nicht raten muss, wie die Ordner heissen.
+// Solange er leer ist, baut das Spiel ueberall magenta Platzhalter.
+const assetFolders = ["Vehicles", "Buildings", "Props", "Characters"];
+const assetsXml = `<Item class="Folder" referent="${nextReferent()}">
+<Properties>
+<string name="Name">Assets</string>
+</Properties>
+${assetFolders
+  .map(
+    (name) => `<Item class="Folder" referent="${nextReferent()}">
+<Properties>
+<string name="Name">${name}</string>
+</Properties>
+</Item>
+`
+  )
+  .join("")}</Item>
+`;
+
 const place = `<roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4">
 <Item class="Workspace" referent="${nextReferent()}">
 <Properties>
@@ -165,7 +186,7 @@ ${lightingXml}<Item class="ReplicatedStorage" referent="${nextReferent()}">
 <Properties>
 <string name="Name">ReplicatedStorage</string>
 </Properties>
-${sharedXml}</Item>
+${sharedXml}${assetsXml}</Item>
 <Item class="ServerScriptService" referent="${nextReferent()}">
 <Properties>
 <string name="Name">ServerScriptService</string>

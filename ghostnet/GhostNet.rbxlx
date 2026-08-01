@@ -1,5 +1,5 @@
 <roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4">
-<Item class="Workspace" referent="GN66">
+<Item class="Workspace" referent="GN73">
 <Properties>
 <string name="Name">Workspace</string>
 <float name="Gravity">196.2</float>
@@ -7,7 +7,7 @@
 <int name="StreamingMinRadius">128</int>
 <int name="StreamingTargetRadius">512</int>
 </Properties>
-<Item class="Part" referent="GN60">
+<Item class="Part" referent="GN62">
 <Properties>
 <string name="Name">Baseplate</string>
 <bool name="Anchored">true</bool>
@@ -21,7 +21,7 @@
 <token name="BottomSurface">0</token>
 </Properties>
 </Item>
-<Item class="SpawnLocation" referent="GN61">
+<Item class="SpawnLocation" referent="GN63">
 <Properties>
 <string name="Name">SpawnLocation</string>
 <bool name="Anchored">true</bool>
@@ -34,7 +34,7 @@
 </Properties>
 </Item>
 </Item>
-<Item class="Lighting" referent="GN62">
+<Item class="Lighting" referent="GN64">
 <Properties>
 <string name="Name">Lighting</string>
 <token name="Technology">4</token>
@@ -50,7 +50,7 @@
 <Color3 name="FogColor"><R>0.78</R><G>0.83</G><B>0.89</B></Color3>
 <float name="FogEnd">2200</float>
 </Properties>
-<Item class="Atmosphere" referent="GN63">
+<Item class="Atmosphere" referent="GN65">
 <Properties>
 <string name="Name">Atmosphere</string>
 <float name="Density">0.12</float>
@@ -60,7 +60,7 @@
 <Color3 name="Decay"><R>0.588</R><G>0.659</G><B>0.745</B></Color3>
 </Properties>
 </Item>
-<Item class="BloomEffect" referent="GN64">
+<Item class="BloomEffect" referent="GN66">
 <Properties>
 <string name="Name">Bloom</string>
 <bool name="Enabled">true</bool>
@@ -69,7 +69,7 @@
 <float name="Threshold">0.95</float>
 </Properties>
 </Item>
-<Item class="ColorCorrectionEffect" referent="GN65">
+<Item class="ColorCorrectionEffect" referent="GN67">
 <Properties>
 <string name="Name">ColorCorrection</string>
 <bool name="Enabled">true</bool>
@@ -80,15 +80,239 @@
 </Properties>
 </Item>
 </Item>
-<Item class="ReplicatedStorage" referent="GN67">
+<Item class="ReplicatedStorage" referent="GN74">
 <Properties>
 <string name="Name">ReplicatedStorage</string>
 </Properties>
-<Item class="Folder" referent="GN11">
+<Item class="Folder" referent="GN12">
 <Properties>
 <string name="Name">Shared</string>
 </Properties>
 <Item class="ModuleScript" referent="GN1">
+<Properties>
+<string name="Name">AssetLibrary</string>
+<ProtectedString name="Source">-- ReplicatedStorage/Shared/AssetLibrary.luau
+--!strict
+-- GHOSTNET :: Vorlagen nachschlagen, klonen, Fehlendes sichtbar machen.
+--
+-- DIE REGEL, DIE DIESES MODUL DURCHSETZT
+--   Code PLATZIERT Geometrie. Code BAUT keine Geometrie.
+--   Alles, was ein Spieler bewusst ansieht - Autos, Haeuser, Menschen,
+--   Strassenmoeblierung - liegt als fertiges Modell unter
+--   ReplicatedStorage/Assets und wird von hier geklont.
+--
+--   Prozedural bleibt nur, wo Genauigkeit statt Aussehen zaehlt:
+--   Strassenverlauf, Kollisionsboxen, unsichtbare Trigger, Wegpunkte.
+--
+-- WAS PASSIERT, WENN EINE VORLAGE FEHLT
+--   Nichts wird "ersatzweise nachgebaut". Stattdessen entsteht ein
+--   knallmagenta Platzhalter mit dem Namen MISSING_ASSET_&lt;Kategorie&gt;_&lt;Name&gt;,
+--   in der richtigen Groesse, damit die Stadt begehbar und testbar bleibt.
+--   Jeder fehlende Name landet in AssetLibrary.Missing() und wird beim
+--   Serverstart einmal gesammelt ausgegeben.
+--
+--   Magenta ist Absicht: einen Platzhalter darf man nicht uebersehen und
+--   schon gar nicht versehentlich veroeffentlichen.
+--
+-- ORDNERAUFBAU
+--   ReplicatedStorage/Assets/
+--       Vehicles/    Compact, Sedan, Sports, Van, Bike, Police
+--       Buildings/   Base_*, Floor_*, Roof_*
+--       Props/       Laterne, Ampel, Muelltonne, Poller, Verteiler, Schild
+--       Characters/  Pedestrian, Guard
+--
+--   Fehlt der ganze Ordner, laeuft das Spiel trotzdem - eben magenta.
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Config = require(ReplicatedStorage.Shared.Config)
+
+local AssetLibrary = {}
+
+local A = Config.Assets
+
+-- Was gefehlt hat, jeweils nur einmal. Sonst spammt eine fehlende Vorlage
+-- die Ausgabe mit hunderten Zeilen zu, sobald die Stadt gebaut wird.
+local missing: { [string]: boolean } = {}
+local missingOrder: { string } = {}
+
+local function noteMissing(label: string)
+	if missing[label] then
+		return
+	end
+	missing[label] = true
+	table.insert(missingOrder, label)
+end
+
+--==========================================================================
+-- Nachschlagen
+--==========================================================================
+
+local function assetsFolder(): Folder?
+	local folder = ReplicatedStorage:FindFirstChild(A.FolderName)
+	if folder and folder:IsA("Folder") then
+		return folder
+	end
+	return nil
+end
+
+-- Die Vorlage selbst. NICHT veraendern und NICHT ins Workspace haengen -
+-- dafuer gibt es Clone.
+function AssetLibrary.Get(category: string, name: string): Model?
+	local root = assetsFolder()
+	if not root then
+		return nil
+	end
+	local group = root:FindFirstChild(category)
+	if not group then
+		return nil
+	end
+	local template = group:FindFirstChild(name)
+	if template and template:IsA("Model") then
+		return template
+	end
+	return nil
+end
+
+function AssetLibrary.Has(category: string, name: string): boolean
+	return AssetLibrary.Get(category, name) ~= nil
+end
+
+--==========================================================================
+-- Platzhalter
+--==========================================================================
+
+-- Ein Klotz, der nicht so tut, als waere er fertig. Richtige Groesse, damit
+-- Kollision, Wegfindung und Bildrate schon stimmen; magenta, damit klar ist,
+-- dass hier noch ein Modell hingehoert.
+function AssetLibrary.Placeholder(category: string, name: string, size: Vector3): Model
+	local label = ("%s/%s"):format(category, name)
+	noteMissing(label)
+
+	local model = Instance.new("Model")
+	model.Name = ("MISSING_ASSET_%s_%s"):format(category, name)
+
+	local block = Instance.new("Part")
+	block.Name = "Platzhalter"
+	block.Size = size
+	block.Color = A.PlaceholderColour
+	block.Material = Enum.Material.SmoothPlastic
+	block.Transparency = A.PlaceholderTransparency
+	block.Anchored = true
+	block.CanCollide = true
+	block.CanQuery = false
+	block.CanTouch = false
+	block.TopSurface = Enum.SurfaceType.Smooth
+	block.BottomSurface = Enum.SurfaceType.Smooth
+	block.Parent = model
+	model.PrimaryPart = block
+
+	if A.PlaceholderLabels then
+		local gui = Instance.new("BillboardGui")
+		gui.Name = "FehltNoch"
+		gui.Size = UDim2.fromOffset(220, 28)
+		gui.StudsOffsetWorldSpace = Vector3.new(0, size.Y * 0.5 + 2, 0)
+		gui.MaxDistance = A.PlaceholderLabelDistance
+
+		local text = Instance.new("TextLabel")
+		text.BackgroundTransparency = 1
+		text.Font = Enum.Font.Code
+		text.Text = label
+		text.TextColor3 = A.PlaceholderColour
+		text.TextSize = 14
+		text.Size = UDim2.fromScale(1, 1)
+		text.Parent = gui
+
+		gui.Parent = block
+	end
+
+	model:SetAttribute("Placeholder", true)
+	return model
+end
+
+--==========================================================================
+-- Klonen
+--==========================================================================
+
+-- Der Normalfall. Gibt es die Vorlage, kommt ein Klon; gibt es sie nicht,
+-- kommt ein Platzhalter in der uebergebenen Groesse. Der Aufrufer muss sich
+-- nie mit dem Unterschied befassen - er stellt das Ergebnis einfach hin.
+function AssetLibrary.Clone(category: string, name: string, fallbackSize: Vector3): Model
+	local template = AssetLibrary.Get(category, name)
+	if not template then
+		return AssetLibrary.Placeholder(category, name, fallbackSize)
+	end
+
+	local clone = template:Clone()
+	if not clone.PrimaryPart then
+		-- Ohne PrimaryPart nimmt PivotTo den Mittelpunkt der Bounding-Box.
+		-- Das wirft keinen Fehler, das Modell steht dann nur schief oder im
+		-- Boden. Genau deshalb hier laut werden statt still weitermachen.
+		warn(("[GHOSTNET] Vorlage %s/%s hat keinen PrimaryPart gesetzt."):format(category, name))
+	end
+	return clone
+end
+
+--==========================================================================
+-- Vertrag pruefen
+--
+-- Ein Fahrzeugmodell muss bestimmte Teile mit bestimmten Namen enthalten,
+-- sonst kann VehicleChassis es nicht verdrahten. Faellt das erst beim
+-- Fahren auf, sucht man lange. Also vorher pruefen und klar sagen, WAS in
+-- WELCHEM Modell fehlt.
+--==========================================================================
+
+-- Sucht "Wheels/FL" auch ueber mehrere Ebenen.
+function AssetLibrary.Find(model: Model, path: string): Instance?
+	local current: Instance = model
+	for segment in string.gmatch(path, "[^/]+") do
+		local nextInstance = current:FindFirstChild(segment)
+		if not nextInstance then
+			return nil
+		end
+		current = nextInstance
+	end
+	return current
+end
+
+-- Gibt zurueck: alles da? und die Liste dessen, was fehlt.
+function AssetLibrary.Verify(model: Model, required: { string }): (boolean, { string })
+	local gaps: { string } = {}
+	for _, path in required do
+		if not AssetLibrary.Find(model, path) then
+			table.insert(gaps, path)
+		end
+	end
+	return #gaps == 0, gaps
+end
+
+--==========================================================================
+-- Bericht
+--==========================================================================
+
+function AssetLibrary.Missing(): { string }
+	return table.clone(missingOrder)
+end
+
+-- Einmal beim Serverstart aufrufen. Sagt Noah in einer Zeile pro Modell,
+-- was noch zu bauen oder zu besorgen ist.
+function AssetLibrary.Report()
+	if #missingOrder == 0 then
+		print("[GHOSTNET] Alle Vorlagen gefunden.")
+		return
+	end
+	warn(("[GHOSTNET] %d Vorlage(n) fehlen - im Spiel stehen dafuer magenta Platzhalter:"):format(#missingOrder))
+	for _, label in missingOrder do
+		warn(("            ReplicatedStorage/%s/%s"):format(A.FolderName, label))
+	end
+	warn("            Solange sie fehlen, sieht die Stadt absichtlich kaputt aus.")
+end
+
+return AssetLibrary
+</ProtectedString>
+</Properties>
+</Item>
+<Item class="ModuleScript" referent="GN2">
 <Properties>
 <string name="Name">Config</string>
 <ProtectedString name="Source">-- ReplicatedStorage/Shared/Config.luau
@@ -99,7 +323,7 @@
 
 local Config = {}
 
-Config.Version = "2.1.0" -- Vantorra bei Tag: helle Stadt, Bonus haengt am Ort statt an der Uhr
+Config.Version = "2.2.0" -- Rework: Verkehrsbugs behoben, Geometrie kommt aus Assets
 
 -- CollectionService-Tags. Ein Part mit dem Tag ist ein Hack-Ziel, ein Hehler,
 -- ein Missions-Wegpunkt oder ein ansprechbarer Kontakt. Kein Code pro Objekt.
@@ -111,6 +335,9 @@ Config.VehicleTag = "GhostNetVehicle" -- fahrbares Fahrzeug
 Config.VehicleSpawnTag = "GhostNetVehicleSpawn" -- erlaubter Ausparkplatz
 Config.DealerTag = "GhostNetDealer" -- Autohaendler-Tresen
 Config.GuardTag = "GhostNetGuard" -- Wache mit Sichtkegel
+-- Modelle, deren CFrame der Server nur im Takt setzt und die der Client
+-- dazwischen weich nachzieht. Siehe Client/World/TrafficSmoother.
+Config.SmoothTag = "GhostNetSmoothed"
 
 --==========================================================================
 -- 1. REICHWEITE (Netzwerkkarte)
@@ -616,6 +843,11 @@ Config.Vehicle = {
 	MaxSpawned = 1, -- pro Spieler gleichzeitig ausgeparkt. Hoch = Server erstickt.
 	IdleDespawn = 120, -- Sekunden ohne Fahrer, dann verschwindet es
 	SpawnRange = 24, -- so nah muss man an einem Ausparkplatz stehen
+	EnterRange = 12, -- Reichweite des Einsteigen-Prompts
+
+	-- Raeder kollidieren mit dem Boden, aber nicht miteinander. Ohne eigene
+	-- Gruppe verhaken sich zwei Autos, sobald sie sich beruehren.
+	WheelCollisionGroup = "GhostNetWheels",
 
 	-- Fahrwerk. Diese Zahlen bestimmen das Fahrgefuehl mehr als MaxSpeed.
 	SuspensionLength = 2.2, -- Ruhelaenge der Feder
@@ -670,6 +902,15 @@ Config.City = {
 	RoadWidth = 34,
 	LaneOffset = 8, -- Abstand der Fahrspur von der Strassenmitte
 	SidewalkWidth = 8,
+	-- Dicke der Fahrbahnplatte. Die Knoten liegen auf y = 0, die Platte ist
+	-- um sie zentriert - die Oberkante liegt also bei RoadThickness / 2.
+	-- Genau darauf setzen Verkehr und Streifenwagen auf; frueher stand da
+	-- eine geratene 2.4 und die Autos hingen einen halben Stud im Boden.
+	RoadThickness = 1,
+	SidewalkThickness = 1.4,
+	-- Wie viel hoeher die Gehwegkante als die Fahrbahn liegt. Fussgaenger
+	-- rechnen damit, City baut damit - eine Zahl, zwei Nutzer.
+	SidewalkLift = 0.5,
 
 	BuildingMinHeight = 26,
 	BuildingMaxHeight = 92,
@@ -698,9 +939,30 @@ Config.Traffic = {
 	SpeedJitter = 8,
 	StopDistance = 22, -- Abstand, ab dem hinter einem anderen gebremst wird
 	PedestrianSpeed = 7,
+	-- Nur die Groesse des magenta Platzhalters, solange
+	-- Assets/Characters/Pedestrian fehlt.
+	PedestrianSize = Vector3.new(1.8, 5.4, 1),
 
 	-- Autodiebstahl. Haengt am Trace, damit er nicht neben der zentralen
 	-- Risiko-Mechanik herlaeuft.
+	-- Wie hoch ein Modell ueber der Fahrbahn schwebt. Die halbe Modellhoehe
+	-- rechnet der Code aus (Model:GetExtentsSize), das hier ist nur der
+	-- Rest-Spalt. Hoch = schwebt sichtbar, 0 = Raeder stecken in der Platte.
+	GroundClearance = 0.15,
+
+	-- Der Server setzt die CFrame nur alle Tick Sekunden (10x/s). Ohne
+	-- Glaettung sieht das auf dem Client aus wie Ruckeln. Der Client zieht
+	-- deshalb zwischen zwei Serverschritten weich nach.
+	-- Zeitkonstante in Sekunden: hoch = butterweich, aber traege und der
+	-- Wagen "haengt" hinter seiner echten Position. 0 = Glaettung aus.
+	-- WICHTIG: das ist reine Optik. Alle Pruefungen (Diebstahl-Reichweite,
+	-- Sicht der Polizei) laufen serverseitig gegen die echte Position.
+	ClientSmoothing = 0.09,
+	-- Ab diesem Sprung wird nicht mehr nachgezogen, sondern hart gesetzt.
+	-- Sonst sieht man ein recyceltes Auto quer durch die Stadt gleiten.
+	-- Muss groesser sein als die Strecke, die ein Auto in einem Tick macht.
+	SnapDistance = 24,
+
 	StealHoldSeconds = 2.5,
 	StealTrace = 12,
 	StealRange = 12,
@@ -765,6 +1027,16 @@ Config.Pursuit = {
 	UnitsPerLevel = 1, -- Streifenwagen je Stufe
 	MaxUnits = 5,
 	UnitSpeed = 46,
+
+	-- Streifenwagen benutzt dieselbe Asset-Pipeline wie alles andere.
+	-- Fehlt Assets/Vehicles/Police, steht dort ein magenta Platzhalter.
+	UnitAsset = "Police",
+	UnitSize = Vector3.new(6.4, 2.9, 13), -- nur Platzhaltergroesse
+	LightBarSize = Vector3.new(1.6, 0.5, 1.2),
+	LightBlue = Color3.fromRGB(40, 90, 255),
+	LightRed = Color3.fromRGB(255, 40, 60),
+	LightBrightness = 4,
+	LightRange = 30,
 	RoadblockLevel = 4,
 	HelicopterLevel = 5,
 	Tick = 0.25,
@@ -890,6 +1162,100 @@ Config.Session = {
 }
 
 --==========================================================================
+-- VORLAGEN (ReplicatedStorage/Assets)
+--
+-- Code platziert Geometrie, Code baut keine Geometrie. Alles Sichtbare liegt
+-- als fertiges Modell unter ReplicatedStorage/Assets und wird geklont.
+-- Fehlt eine Vorlage, entsteht ein magenta Platzhalter - siehe AssetLibrary.
+--==========================================================================
+Config.Assets = {
+	FolderName = "Assets",
+
+	-- Knallmagenta, damit man einen Platzhalter niemals uebersieht und
+	-- niemals versehentlich veroeffentlicht. Bewusst NICHT aus der Palette:
+	-- das hier ist kein Weltton, das ist eine Warnung.
+	PlaceholderColour = Color3.fromRGB(255, 0, 200),
+	PlaceholderTransparency = 0.15,
+	PlaceholderLabels = true, -- Schrift ueber dem Platzhalter mit dem Namen
+	PlaceholderLabelDistance = 260,
+
+	--== Fahrzeuge =========================================================
+	-- Teile, die ein Fahrzeugmodell tragen MUSS, damit VehicleChassis es
+	-- verdrahten kann. Fehlt eines, gibt es eine klare Meldung mit
+	-- Modellname und fehlendem Teil - keinen stillen Absturz.
+	VehicleRequired = {
+		"Chassis", -- unsichtbare Kollisionsbox, PrimaryPart
+		"Body", -- sichtbare Karosserie
+		"Wheels/FL",
+		"Wheels/FR",
+		"Wheels/RL",
+		"Wheels/RR",
+		"DriveSeat",
+	},
+	-- Zweiraeder: F vorne (gelenkt), R hinten (angetrieben).
+	VehicleRequiredTwoWheel = {
+		"Chassis",
+		"Body",
+		"Wheels/F",
+		"Wheels/R",
+		"DriveSeat",
+	},
+	-- Wie gross die Platzhalter-Karosserie im Verhaeltnis zur Kollisionsbox
+	-- ist. Etwas kleiner, damit man den Unterschied sieht.
+	PlaceholderBodyScale = 0.92,
+	-- Nice-to-have. Fehlen sie, faehrt das Auto trotzdem.
+	VehicleOptional = {
+		"Glass",
+		"Lights/HeadL",
+		"Lights/HeadR",
+		"Lights/TailL",
+		"Lights/TailR",
+	},
+
+	--== Gebaeudebaukasten =================================================
+	-- Module werden gestapelt: Sockel -&gt; n x Etage -&gt; Dach. Alle Module
+	-- haben dieselbe Grundflaeche und eine feste Hoehe, sonst passt der
+	-- Stapel nicht. Aus acht Modulen entstehen hunderte Haeuser.
+	BuildingFootprint = 28, -- Kantenlaenge eines Moduls in Studs
+	BaseHeight = 14, -- Hoehe eines Sockelmoduls
+	FloorHeight = 11, -- Hoehe einer Standardetage
+	RoofHeight = 4, -- Hoehe des Dachabschlusses
+	RoofOverhang = 1.2, -- wie weit die Dachkante uebersteht. 0 = Klotz.
+
+	Bases = { "Base_Shop", "Base_Entry", "Base_Garage" },
+	Floors = { "Floor_A", "Floor_B", "Floor_C" },
+	Roofs = { "Roof_Flat", "Roof_Tech" },
+
+	-- Wie hoch gestapelt wird. Hoch = Schluchten, runter = Vorstadt.
+	MinFloors = 2,
+	MaxFloors = 7,
+	-- Wie viel dunkler der Sockel ist. 0 = kein Absatz, 1 = fast schwarz.
+	BaseDarken = 0.45,
+	-- Kein Raster: jedes Haus etwas versetzt und leicht gedreht. Ohne das
+	-- sieht die Strasse nach Computer aus, und das faellt sofort auf.
+	BuildingJitter = 2.5, -- Studs
+	BuildingYaw = 4, -- Grad
+
+	-- Feuerleiter aufs Dach. Ohne die ist ein begehbares Dach nur Deko -
+	-- und "von oben" ist im Bankraub ein echter Weg.
+	RoofAccess = "Feuerleiter",
+	RoofAccessChance = 0.35,
+	RoofAccessSize = Vector3.new(2.6, 1, 1.2),
+	RoofAccessStep = 4, -- Abstand der Sprossen in Studs
+
+	--== Strassenmoeblierung ===============================================
+	-- Eine leere Strasse mit perfekten Haeusern wirkt tot, eine
+	-- durchschnittliche Strasse mit Kram darauf wirkt echt.
+	Props = { "Laterne", "Ampel", "Muelltonne", "Poller", "Verteiler", "Schild" },
+	PropSize = Vector3.new(1.6, 8, 1.6), -- Platzhaltergroesse
+	PropSpacing = 26, -- Abstand entlang des Gehwegs
+	PropChance = 0.55, -- Anteil der Plaetze, die belegt werden
+	PropJitter = 3, -- zufaellige Verschiebung, damit nichts im Raster steht
+
+	Characters = { "Pedestrian", "Guard" },
+}
+
+--==========================================================================
 -- WELT-FARBEN (Vantorra bei Tag)
 --
 -- Zwei getrennte Paletten, und das mit Absicht:
@@ -957,7 +1323,7 @@ return Config
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN2">
+<Item class="ModuleScript" referent="GN3">
 <Properties>
 <string name="Name">Districts</string>
 <ProtectedString name="Source">-- ReplicatedStorage/Shared/Districts.luau
@@ -1150,7 +1516,7 @@ return Districts
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN3">
+<Item class="ModuleScript" referent="GN4">
 <Properties>
 <string name="Name">Geometry</string>
 <ProtectedString name="Source">-- ReplicatedStorage/Shared/Geometry.luau
@@ -1221,7 +1587,7 @@ return Geometry
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN4">
+<Item class="ModuleScript" referent="GN5">
 <Properties>
 <string name="Name">Goods</string>
 <ProtectedString name="Source">-- ReplicatedStorage/Shared/Goods.luau
@@ -1359,7 +1725,7 @@ return Goods
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN5">
+<Item class="ModuleScript" referent="GN6">
 <Properties>
 <string name="Name">Missions</string>
 <ProtectedString name="Source">-- ReplicatedStorage/Shared/Missions.luau
@@ -1844,7 +2210,7 @@ return Missions
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN6">
+<Item class="ModuleScript" referent="GN7">
 <Properties>
 <string name="Name">Remotes</string>
 <ProtectedString name="Source">-- ReplicatedStorage/Shared/Remotes.luau
@@ -1952,7 +2318,7 @@ return Remotes
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN7">
+<Item class="ModuleScript" referent="GN8">
 <Properties>
 <string name="Name">SoundCatalog</string>
 <ProtectedString name="Source">-- ReplicatedStorage/Shared/SoundCatalog.luau
@@ -2076,7 +2442,7 @@ return SoundCatalog
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN8">
+<Item class="ModuleScript" referent="GN9">
 <Properties>
 <string name="Name">Types</string>
 <ProtectedString name="Source">-- ReplicatedStorage/Shared/Types.luau
@@ -2211,7 +2577,7 @@ return {}
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN9">
+<Item class="ModuleScript" referent="GN10">
 <Properties>
 <string name="Name">UITheme</string>
 <ProtectedString name="Source">-- ReplicatedStorage/Shared/UITheme.luau
@@ -2413,7 +2779,7 @@ return UITheme
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN10">
+<Item class="ModuleScript" referent="GN11">
 <Properties>
 <string name="Name">Vehicles</string>
 <ProtectedString name="Source">-- ReplicatedStorage/Shared/Vehicles.luau
@@ -2452,7 +2818,14 @@ export type VehicleClass = {
 	Mass: number, -- Dichte der Karosserie
 	Grip: number, -- Reibung der Reifen
 
-	-- Karosserie. Nur Maße, keine Modelle - gebaut wird aus Parts.
+	-- Name der Vorlage unter ReplicatedStorage/Assets/Vehicles.
+	-- Die Zuordnung steht als Daten hier und wird nicht aus der Id geraten.
+	Asset: string,
+
+	-- Masse. Seit der Asset-Pipeline ist das NICHT mehr die Bauanleitung,
+	-- sondern nur noch die Groesse des magenta Platzhalters, solange die
+	-- Vorlage fehlt - plus die Werte, die der Client fuer Tacho und
+	-- Kamera braucht.
 	BodySize: Vector3,
 	WheelRadius: number,
 	WheelWidth: number,
@@ -2467,6 +2840,7 @@ export type VehicleClass = {
 Vehicles.List = {
 	{
 		Id = "COMPACT",
+		Asset = "Compact",
 		Name = "Kompakt",
 		Blurb = "Billig, langsam, faellt niemandem auf.",
 		Price = 2500,
@@ -2487,6 +2861,7 @@ Vehicles.List = {
 	},
 	{
 		Id = "SEDAN",
+		Asset = "Sedan",
 		Name = "Limousine",
 		Blurb = "Klebt auf der Strasse. Kein Tempowunder, aber nichts bricht aus.",
 		Price = 7500,
@@ -2507,6 +2882,7 @@ Vehicles.List = {
 	},
 	{
 		Id = "SPORT",
+		Asset = "Sports",
 		Name = "Sportwagen",
 		Blurb = "Schnell und laut. Die Polizei liebt dich dafuer.",
 		Price = 34000,
@@ -2527,6 +2903,7 @@ Vehicles.List = {
 	},
 	{
 		Id = "VAN",
+		Asset = "Van",
 		Name = "Transporter",
 		Blurb = "Traege, aber es passt richtig was rein.",
 		Price = 16000,
@@ -2547,6 +2924,7 @@ Vehicles.List = {
 	},
 	{
 		Id = "BIKE",
+		Asset = "Bike",
 		Name = "Motorrad",
 		Blurb = "Passt durch jede Gasse. Platz fuer nichts.",
 		Price = 11000,
@@ -2618,6 +2996,11 @@ function Vehicles.Validate(list: { VehicleClass }?): (boolean, { string })
 		if typeof(class.Name) ~= "string" or class.Name == "" then
 			table.insert(errors, ("%s: Name fehlt"):format(label))
 		end
+		-- Ohne Asset-Namen findet VehicleChassis keine Vorlage und baut fuer
+		-- diese Klasse immer nur einen Platzhalter.
+		if typeof(class.Asset) ~= "string" or class.Asset == "" then
+			table.insert(errors, ("%s: Asset-Name fehlt"):format(label))
+		end
 		for _, field in { "Price", "MaxSpeed", "Acceleration", "BrakeForce", "TurnAngle", "Mass", "Grip" } do
 			local value = (class :: any)[field]
 			if typeof(value) ~= "number" or value &lt;= 0 then
@@ -2661,12 +3044,37 @@ return Vehicles
 </Properties>
 </Item>
 </Item>
+<Item class="Folder" referent="GN68">
+<Properties>
+<string name="Name">Assets</string>
+</Properties>
+<Item class="Folder" referent="GN69">
+<Properties>
+<string name="Name">Vehicles</string>
+</Properties>
 </Item>
-<Item class="ServerScriptService" referent="GN68">
+<Item class="Folder" referent="GN70">
+<Properties>
+<string name="Name">Buildings</string>
+</Properties>
+</Item>
+<Item class="Folder" referent="GN71">
+<Properties>
+<string name="Name">Props</string>
+</Properties>
+</Item>
+<Item class="Folder" referent="GN72">
+<Properties>
+<string name="Name">Characters</string>
+</Properties>
+</Item>
+</Item>
+</Item>
+<Item class="ServerScriptService" referent="GN75">
 <Properties>
 <string name="Name">ServerScriptService</string>
 </Properties>
-<Item class="ModuleScript" referent="GN12">
+<Item class="ModuleScript" referent="GN13">
 <Properties>
 <string name="Name">AdminList</string>
 <ProtectedString name="Source">-- ServerScriptService/AdminList.luau
@@ -2732,7 +3140,7 @@ return AdminList
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="Script" referent="GN13">
+<Item class="Script" referent="GN14">
 <Properties>
 <string name="Name">GhostNetServer</string>
 <ProtectedString name="Source">-- ServerScriptService/GhostNetServer.server.luau
@@ -2744,6 +3152,7 @@ return AdminList
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local AssetLibrary = require(ReplicatedStorage.Shared.AssetLibrary)
 local Config = require(ReplicatedStorage.Shared.Config)
 -- Das Requiren legt die Remote-Objekte an, bevor irgendein Client sie sucht.
 require(ReplicatedStorage.Shared.Remotes)
@@ -2795,14 +3204,19 @@ MonetizationService.Init()
 AdminService.Init() -- zuletzt: greift auf alle anderen zu
 
 print(("[GHOSTNET] Server hochgefahren - Version %s"):format(Config.Version))
+
+-- Zum Schluss: was an Vorlagen gefehlt hat. Die World-Skripte sind zu diesem
+-- Zeitpunkt durch, also ist die Liste vollstaendig. Steht hier ganz unten,
+-- damit sie nicht zwischen den Startmeldungen untergeht.
+task.defer(AssetLibrary.Report)
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="Folder" referent="GN38">
+<Item class="Folder" referent="GN39">
 <Properties>
 <string name="Name">Systems</string>
 </Properties>
-<Item class="ModuleScript" referent="GN14">
+<Item class="ModuleScript" referent="GN15">
 <Properties>
 <string name="Name">AdminService</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/AdminService.luau
@@ -3374,7 +3788,7 @@ return AdminService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN15">
+<Item class="ModuleScript" referent="GN16">
 <Properties>
 <string name="Name">EconomyService</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/EconomyService.luau
@@ -3636,7 +4050,7 @@ return EconomyService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN16">
+<Item class="ModuleScript" referent="GN17">
 <Properties>
 <string name="Name">GuardService</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/GuardService.luau
@@ -3775,7 +4189,10 @@ local function patrol(guard: Guard, dt: number)
 
 	local target = guard.A:Lerp(guard.B, guard.Alpha)
 	local look = if guard.Direction &gt; 0 then guard.B else guard.A
-	guard.Root.CFrame = CFrame.lookAt(target, Vector3.new(look.X, target.Y, look.Z))
+	-- PivotTo statt Root.CFrame: der Kopf ist ein eigener Anchored-Part.
+	-- Mit .CFrame waere er an der Startposition stehen geblieben, waehrend
+	-- der Rumpf patrouilliert - derselbe Fehler wie frueher beim Verkehr.
+	guard.Model:PivotTo(CFrame.lookAt(target, Vector3.new(look.X, target.Y, look.Z)))
 end
 
 --==========================================================================
@@ -3849,7 +4266,7 @@ return GuardService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN17">
+<Item class="ModuleScript" referent="GN18">
 <Properties>
 <string name="Name">HackEffects</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/HackEffects.luau
@@ -4038,7 +4455,7 @@ return HackEffects
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN18">
+<Item class="ModuleScript" referent="GN19">
 <Properties>
 <string name="Name">HackService</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/HackService.luau
@@ -4622,7 +5039,7 @@ return HackService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN19">
+<Item class="ModuleScript" referent="GN20">
 <Properties>
 <string name="Name">HackTargets</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/HackTargets.luau
@@ -4872,7 +5289,7 @@ return HackTargets
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN20">
+<Item class="ModuleScript" referent="GN21">
 <Properties>
 <string name="Name">InventoryService</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/InventoryService.luau
@@ -5190,7 +5607,7 @@ return InventoryService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN21">
+<Item class="ModuleScript" referent="GN22">
 <Properties>
 <string name="Name">MarketService</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/MarketService.luau
@@ -5480,11 +5897,11 @@ return MarketService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="Folder" referent="GN23">
+<Item class="Folder" referent="GN24">
 <Properties>
 <string name="Name">Minigames</string>
 </Properties>
-<Item class="ModuleScript" referent="GN22">
+<Item class="ModuleScript" referent="GN23">
 <Properties>
 <string name="Name">NodeBreach</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/Minigames/NodeBreach.luau
@@ -5859,7 +6276,7 @@ return NodeBreach
 </Properties>
 </Item>
 </Item>
-<Item class="ModuleScript" referent="GN24">
+<Item class="ModuleScript" referent="GN25">
 <Properties>
 <string name="Name">MissionService</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/MissionService.luau
@@ -6546,7 +6963,7 @@ return MissionService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN25">
+<Item class="ModuleScript" referent="GN26">
 <Properties>
 <string name="Name">MonetizationService</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/MonetizationService.luau
@@ -6965,7 +7382,7 @@ return MonetizationService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN26">
+<Item class="ModuleScript" referent="GN27">
 <Properties>
 <string name="Name">PursuitService</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/PursuitService.luau
@@ -6983,12 +7400,15 @@ return MonetizationService
 --   Die Fahndungsstufe kommt aus dem Trace. Gefasstwerden ist ein Bust ueber
 --   die vorhandene Kette - kein zweites Straf-System daneben.
 
+local CollectionService = game:GetService("CollectionService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config)
 local Geometry = require(ReplicatedStorage.Shared.Geometry)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
+
+local AssetLibrary = require(ReplicatedStorage.Shared.AssetLibrary)
 
 local RoadNetwork = require(script.Parent.RoadNetwork)
 local SaveService = require(script.Parent.SaveService)
@@ -7002,6 +7422,7 @@ local rng = Random.new()
 type Unit = {
 	Model: Model,
 	Body: BasePart,
+	GroundOffset: number, -- aus der Modellhoehe gerechnet, nicht geraten
 	From: number,
 	To: number,
 	Alpha: number,
@@ -7035,50 +7456,85 @@ end
 --==========================================================================
 
 local function buildUnit(): Unit
-	local model = Instance.new("Model")
+	-- Derselbe Weg wie beim Verkehr: Vorlage klonen, nicht bauen. Fehlt sie,
+	-- steht hier ein magenta Platzhalter - unuebersehbar, aber fahrbereit.
+	local model = AssetLibrary.Clone("Vehicles", P.UnitAsset, P.UnitSize)
 	model.Name = "Streifenwagen"
 
-	local body = Instance.new("Part")
-	body.Name = "Body"
-	body.Size = Vector3.new(6.4, 2.9, 13)
-	body.Color = Color3.fromRGB(18, 20, 28)
-	body.Material = Enum.Material.SmoothPlastic
-	body.Anchored = true
-	body.CanCollide = true
-	body.CanTouch = false
-	body.Parent = model
+	local pivot = model.PrimaryPart
+	if not pivot then
+		local chassis = AssetLibrary.Find(model, "Chassis")
+		if chassis and chassis:IsA("BasePart") then
+			pivot = chassis
+		else
+			warn(("[GHOSTNET] Streifenwagenvorlage '%s' hat weder PrimaryPart noch Chassis."):format(P.UnitAsset))
+			pivot = model:FindFirstChildWhichIsA("BasePart", true)
+		end
+	end
+	local body = pivot :: BasePart
 	model.PrimaryPart = body
 
-	-- Blaulicht. Neon statt PointLight fuer die Flaeche, EIN Licht fuer den
-	-- Schein - mehr braucht es nicht und mehr kostet zu viel.
-	for _, side in { -1, 1 } do
-		local bar = Instance.new("Part")
-		bar.Name = "Blaulicht"
-		bar.Size = Vector3.new(1.6, 0.5, 1.2)
-		bar.Color = if side &lt; 0 then Color3.fromRGB(40, 90, 255) else Color3.fromRGB(255, 40, 60)
-		bar.Material = Enum.Material.Neon
-		bar.Anchored = true
-		bar.CanCollide = false
-		bar.CanQuery = false
-		bar.CanTouch = false
-		bar.CastShadow = false
-		bar.CFrame = body.CFrame * CFrame.new(side * 1.4, 1.9, 0)
-		bar.Parent = model
-
-		local weld = Instance.new("WeldConstraint")
-		weld.Part0 = body
-		weld.Part1 = bar
-		weld.Parent = body
+	-- Kulisse: Anchored, keine Physik, keine Abfrage.
+	for _, descendant in model:GetDescendants() do
+		if descendant:IsA("BasePart") then
+			descendant.Anchored = true
+			descendant.CanTouch = false
+			descendant.CanQuery = false
+			descendant.CanCollide = descendant == body
+			if descendant ~= body then
+				descendant.CastShadow = false
+			end
+		end
 	end
 
-	local light = Instance.new("PointLight")
-	light.Color = Color3.fromRGB(60, 110, 255)
-	light.Brightness = 4
-	light.Range = 30
-	light.Parent = body
+	-- Blaulicht. Neonflaechen statt Lichtquellen fuer die Farbe, EIN
+	-- PointLight fuer den Schein - mehr braucht es nicht und mehr kostet
+	-- zu viel. Bringt die Vorlage schon Lichter mit, bleibt es dabei.
+	if not AssetLibrary.Find(model, "Lights/Blau") then
+		local lights = model:FindFirstChild("Lights")
+		if not lights then
+			local folder = Instance.new("Folder")
+			folder.Name = "Lights"
+			folder.Parent = model
+			lights = folder
+		end
+		for index, side in { -1, 1 } do
+			local bar = Instance.new("Part")
+			bar.Name = if index == 1 then "Blau" else "Rot"
+			bar.Size = P.LightBarSize
+			bar.Color = if side &lt; 0 then P.LightBlue else P.LightRed
+			bar.Material = Enum.Material.Neon
+			bar.Anchored = true
+			bar.CanCollide = false
+			bar.CanQuery = false
+			bar.CanTouch = false
+			bar.CastShadow = false
+			-- Bauposition relativ zur Karosserie. KEINE WeldConstraint -
+			-- beide Teile sind Anchored, bewegt wird per PivotTo.
+			bar.CFrame = body.CFrame * CFrame.new(side * 1.4, body.Size.Y * 0.5 + 0.4, 0)
+			bar.Parent = lights
+		end
+
+		local light = Instance.new("PointLight")
+		light.Color = P.LightBlue
+		light.Brightness = P.LightBrightness
+		light.Range = P.LightRange
+		light.Parent = body
+	end
 
 	model.Parent = ensureContainer()
-	return { Model = model, Body = body, From = 1, To = 1, Alpha = 0, Active = true }
+	CollectionService:AddTag(model, Config.SmoothTag)
+	return {
+		Model = model,
+		Body = body,
+		GroundOffset = Config.City.RoadThickness * 0.5
+			+ model:GetExtentsSize().Y * 0.5
+			+ Config.Traffic.GroundClearance,
+		From = 1,
+		To = 1,
+		Alpha = 0,
+		Active = true,
+	}
 end
 
 local function releaseUnit(unit: Unit)
@@ -7136,7 +7592,9 @@ local function moveUnit(unit: Unit, target: Vector3, dt: number)
 		return
 	end
 
-	unit.Body.CFrame = CFrame.lookAt(position + Vector3.new(0, 2.5, 0), position + direction + Vector3.new(0, 2.5, 0))
+	-- PivotTo, damit das Blaulicht mitfaehrt statt an der Kreuzung zu bleiben.
+	local lift = Vector3.new(0, unit.GroundOffset, 0)
+	unit.Model:PivotTo(CFrame.lookAt(position + lift, position + direction + lift))
 
 	unit.Alpha += (P.UnitSpeed * dt) / Config.City.BlockSize
 	if unit.Alpha &gt;= 1 then
@@ -7321,7 +7779,7 @@ return PursuitService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN27">
+<Item class="ModuleScript" referent="GN28">
 <Properties>
 <string name="Name">RaidService</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/RaidService.luau
@@ -7597,7 +8055,7 @@ return RaidService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN28">
+<Item class="ModuleScript" referent="GN29">
 <Properties>
 <string name="Name">RateLimiter</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/RateLimiter.luau
@@ -7677,7 +8135,7 @@ return RateLimiter
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN29">
+<Item class="ModuleScript" referent="GN30">
 <Properties>
 <string name="Name">RoadNetwork</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/RoadNetwork.luau
@@ -7892,7 +8350,7 @@ return RoadNetwork
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN30">
+<Item class="ModuleScript" referent="GN31">
 <Properties>
 <string name="Name">SaveService</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/SaveService.luau
@@ -8523,7 +8981,7 @@ return SaveService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN31">
+<Item class="ModuleScript" referent="GN32">
 <Properties>
 <string name="Name">SellService</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/SellService.luau
@@ -8689,7 +9147,7 @@ return SellService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN32">
+<Item class="ModuleScript" referent="GN33">
 <Properties>
 <string name="Name">ShopService</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/ShopService.luau
@@ -8815,7 +9273,7 @@ return ShopService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN33">
+<Item class="ModuleScript" referent="GN34">
 <Properties>
 <string name="Name">TimeService</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/TimeService.luau
@@ -9136,7 +9594,7 @@ return TimeService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN34">
+<Item class="ModuleScript" referent="GN35">
 <Properties>
 <string name="Name">TraceService</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/TraceService.luau
@@ -9374,7 +9832,7 @@ return TraceService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN35">
+<Item class="ModuleScript" referent="GN36">
 <Properties>
 <string name="Name">TrafficService</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/TrafficService.luau
@@ -9387,9 +9845,17 @@ return TraceService
 --   1. KEIN PathfindingService. Die Autos folgen dem festen Graphen aus
 --      RoadNetwork, Kante fuer Kante. Ein Pfad pro Auto, mehrfach pro
 --      Sekunde neu berechnet, frisst den Server auf.
---   2. KEINE Physik. Verkehrsautos sind Anchored und bewegen sich per
---      CFrame. Sie kollidieren nicht echt - sie bremsen, wenn auf ihrer
---      eigenen Kante jemand vor ihnen ist.
+--   2. KEINE Physik. Verkehrsautos sind Anchored und werden per
+--      Model:PivotTo bewegt. Sie kollidieren nicht echt - sie bremsen,
+--      wenn auf ihrer eigenen Kante jemand vor ihnen ist.
+--
+--      MERKE, DAS WAR EIN ECHTER BUG: frueher wurde nur die CFrame des
+--      Body-Parts gesetzt und das Dach per WeldConstraint "verbunden".
+--      Eine WeldConstraint gilt fuer die PHYSIKSIMULATION. Zwischen zwei
+--      Anchored-Teilen tut sie gar nichts, und ein direktes Setzen von
+--      .CFrame ist keine Simulation. Ergebnis: jedes Auto liess sein Dach
+--      an der Spawn-Position stehen und fuhr ohne weiter.
+--      -&gt; Modelle IMMER als Ganzes ueber PivotTo bewegen.
 --   3. KEIN Humanoid fuer Fussgaenger. Humanoids sind teuer. Hintergrund-
 --      leute sind bewegte Modelle ohne Humanoid.
 --   4. POOL statt Instance.new/Destroy im Sekundentakt, harte Obergrenze,
@@ -9397,12 +9863,16 @@ return TraceService
 --
 -- Abstandspruefung laeuft NUR gegen die eigene Kante, nicht gegen alle Autos.
 
+local CollectionService = game:GetService("CollectionService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config)
 local Geometry = require(ReplicatedStorage.Shared.Geometry)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
+
+local AssetLibrary = require(ReplicatedStorage.Shared.AssetLibrary)
+local Vehicles = require(ReplicatedStorage.Shared.Vehicles)
 
 local RateLimiter = require(script.Parent.RateLimiter)
 local RoadNetwork = require(script.Parent.RoadNetwork)
@@ -9418,23 +9888,27 @@ local rng = Random.new()
 
 type Car = {
 	Model: Model,
-	Body: BasePart,
+	Body: BasePart, -- PrimaryPart, nur fuer Positionsabfragen
 	From: number,
 	To: number,
 	Alpha: number,
 	Speed: number,
 	Active: boolean,
 	ClassId: string,
+	-- Aus der echten Modellhoehe gerechnet, nicht geraten. Ein anderes
+	-- Modell hat eine andere Hoehe und soll trotzdem auf der Strasse stehen.
+	GroundOffset: number,
 }
 
 type Walker = {
 	Model: Model,
-	Body: BasePart,
+	Body: BasePart, -- PrimaryPart
 	From: number,
 	To: number,
 	Alpha: number,
 	Side: number,
 	Active: boolean,
+	GroundOffset: number,
 }
 
 local cars: { Car } = {}
@@ -9447,6 +9921,21 @@ local laneOccupancy: { [string]: { number } } = {}
 
 local function laneKey(from: number, to: number): string
 	return ("%d&gt;%d"):format(from, to)
+end
+
+-- Oberkante der Fahrbahnplatte. Die Knoten liegen auf y = 0, die Platte ist
+-- um sie zentriert.
+local ROAD_TOP = Config.City.RoadThickness * 0.5
+
+-- Wie hoch der Pivot des Modells ueber dem Knoten liegen muss, damit das
+-- Modell AUF der Strasse steht statt darin oder darueber. Aus der echten
+-- Modellhoehe gerechnet - eine feste Zahl waere beim naechsten Modell falsch.
+local function groundOffsetFor(model: Model): number
+	local ok, extents = pcall(function()
+		return model:GetExtentsSize()
+	end)
+	local height = if ok and extents then extents.Y else 0
+	return ROAD_TOP + height * 0.5 + T.GroundClearance
 end
 
 --==========================================================================
@@ -9464,54 +9953,60 @@ local function ensureContainer(): Folder
 	return folder
 end
 
-local TRAFFIC_COLOURS = {
-	Color3.fromRGB(52, 58, 70),
-	Color3.fromRGB(84, 88, 96),
-	Color3.fromRGB(36, 40, 48),
-	Color3.fromRGB(70, 60, 58),
-	Color3.fromRGB(44, 56, 66),
-}
+-- Welche Klasse dieses Verkehrsauto ist. Aus dem Katalog, damit ein
+-- gestohlenes Auto immer eine echte, kaufbare Klasse ist.
+local function randomClass(): Vehicles.VehicleClass
+	local list = Vehicles.List
+	return list[rng:NextInteger(1, #list)]
+end
 
-local function buildCarShell(): (Model, BasePart)
-	local model = Instance.new("Model")
+-- EIN Modell fuer Verkehr und Spielerfahrzeug. Das ist der Punkt: beim
+-- Kurzschliessen wird das Verkehrsmodell entfernt und an derselben Stelle
+-- das echte Fahrzeug erzeugt - und weil beide dieselbe Vorlage benutzen,
+-- sieht man den Wechsel nicht.
+--
+-- Unterschied zum Spielerfahrzeug: alles Anchored, keine Constraints, kein
+-- Antrieb. Kulisse, die sich bewegt.
+local function buildCarShell(): (Model, BasePart, string)
+	local class = randomClass()
+	local model = AssetLibrary.Clone("Vehicles", class.Asset, class.BodySize)
 	model.Name = "TrafficCar"
 
-	local body = Instance.new("Part")
-	body.Name = "Body"
-	body.Size = Vector3.new(6.2, 2.8, 12.5)
-	body.Color = TRAFFIC_COLOURS[rng:NextInteger(1, #TRAFFIC_COLOURS)]
-	body.Material = Enum.Material.SmoothPlastic
-	body.Anchored = true
-	body.CanCollide = true
-	body.CanTouch = false
-	body.Parent = model
+	local pivot = model.PrimaryPart
+	if not pivot then
+		local chassis = AssetLibrary.Find(model, "Chassis")
+		if chassis and chassis:IsA("BasePart") then
+			pivot = chassis
+		else
+			-- Ohne Pivot koennte PivotTo nur die Bounding-Box benutzen und
+			-- das Auto stuende schief in der Strasse. Lieber laut sein.
+			warn(("[GHOSTNET] Verkehrsvorlage '%s' hat weder PrimaryPart noch Chassis."):format(class.Asset))
+			pivot = model:FindFirstChildWhichIsA("BasePart", true)
+		end
+	end
+	local body = pivot :: BasePart
 	model.PrimaryPart = body
 
-	local roof = Instance.new("Part")
-	roof.Name = "Roof"
-	roof.Size = Vector3.new(5.4, 2, 6)
-	roof.Color = body.Color:Lerp(Color3.new(0, 0, 0), 0.4)
-	roof.Material = Enum.Material.Glass
-	roof.Transparency = 0.4
-	roof.Anchored = true
-	roof.CanCollide = false
-	roof.CanQuery = false
-	roof.CanTouch = false
-	roof.CastShadow = false
-	roof.Parent = model
-
-	local weld = Instance.new("WeldConstraint")
-	weld.Part0 = body
-	weld.Part1 = roof
-	weld.Parent = body
-	roof.CFrame = body.CFrame * CFrame.new(0, 2.2, -0.6)
+	-- Kulisse: nichts rechnet Physik, nichts wird abgefragt.
+	for _, descendant in model:GetDescendants() do
+		if descendant:IsA("BasePart") then
+			descendant.Anchored = true
+			descendant.CanTouch = false
+			descendant.CanQuery = false
+			descendant.CanCollide = descendant == body
+			if descendant ~= body then
+				descendant.CastShadow = false
+			end
+		end
+	end
+	body.CanQuery = true -- der Diebstahl-Prompt braucht Abfragbarkeit
 
 	-- Der Diebstahl-Prompt. Halten statt tippen, damit es nicht aus Versehen
 	-- passiert.
 	local prompt = Instance.new("ProximityPrompt")
 	prompt.Name = "StealPrompt"
 	prompt.ActionText = "Kurzschliessen"
-	prompt.ObjectText = "Fremdes Auto"
+	prompt.ObjectText = class.Name
 	prompt.HoldDuration = T.StealHoldSeconds
 	prompt.MaxActivationDistance = T.StealRange
 	prompt.RequiresLineOfSight = false
@@ -9523,42 +10018,44 @@ local function buildCarShell(): (Model, BasePart)
 		TrafficService.HandleSteal(player)
 	end)
 
+	model:SetAttribute("ClassId", class.Id)
+	CollectionService:AddTag(model, Config.SmoothTag)
 	model.Parent = ensureContainer()
-	return model, body
+	return model, body, class.Id
 end
 
 local function buildWalkerShell(): (Model, BasePart)
-	local model = Instance.new("Model")
+	-- Bewusst KEIN Humanoid: ein Humanoid pro Fussgaenger kostet mehr als
+	-- der gesamte restliche Fussgaenger zusammen. Das gilt auch fuer ein
+	-- fertiges Modell aus Assets/Characters - geklont wird Geometrie, und
+	-- ein Humanoid darin waere ein Fehler in der Vorlage.
+	local model = AssetLibrary.Clone("Characters", "Pedestrian", T.PedestrianSize)
 	model.Name = "Pedestrian"
 
-	-- Bewusst KEIN Humanoid: ein Humanoid pro Fussgaenger kostet mehr als
-	-- der gesamte restliche Fussgaenger zusammen.
-	local body = Instance.new("Part")
-	body.Name = "Body"
-	body.Size = Vector3.new(1.8, 4, 1)
-	body.Color = Color3.fromRGB(rng:NextInteger(30, 70), rng:NextInteger(30, 70), rng:NextInteger(40, 80))
-	body.Material = Enum.Material.SmoothPlastic
-	body.Anchored = true
-	body.CanCollide = false
-	body.CanQuery = false
-	body.CanTouch = false
-	body.CastShadow = false
-	body.Parent = model
+	local pivot = model.PrimaryPart or model:FindFirstChildWhichIsA("BasePart", true)
+	if not pivot then
+		warn("[GHOSTNET] Fussgaengervorlage enthaelt keinen einzigen BasePart.")
+		local fallback = Instance.new("Part")
+		fallback.Size = T.PedestrianSize
+		fallback.Parent = model
+		pivot = fallback
+	end
+	local body = pivot :: BasePart
 	model.PrimaryPart = body
 
-	local head = Instance.new("Part")
-	head.Name = "Head"
-	head.Size = Vector3.new(1.1, 1.1, 1.1)
-	head.Color = Color3.fromRGB(180, 150, 130)
-	head.Anchored = true
-	head.CanCollide = false
-	head.CanQuery = false
-	head.CanTouch = false
-	head.CastShadow = false
-	head.Parent = model
+	for _, descendant in model:GetDescendants() do
+		if descendant:IsA("BasePart") then
+			descendant.Anchored = true
+			descendant.CanCollide = false
+			descendant.CanQuery = false
+			descendant.CanTouch = false
+			descendant.CastShadow = false
+		end
+	end
 
+	CollectionService:AddTag(model, Config.SmoothTag)
 	model.Parent = ensureContainer()
-	return model, head
+	return model, body
 end
 
 --==========================================================================
@@ -9606,7 +10103,10 @@ local function placeCar(car: Car)
 		car.Active = false
 		return
 	end
-	car.Body.CFrame = CFrame.lookAt(position + Vector3.new(0, 2.4, 0), position + direction + Vector3.new(0, 2.4, 0))
+	local lift = Vector3.new(0, car.GroundOffset, 0)
+	-- PivotTo statt .CFrame: bewegt ALLE Teile des Modells, unabhaengig von
+	-- Anchored. Genau das war der Dach-Bug.
+	car.Model:PivotTo(CFrame.lookAt(position + lift, position + direction + lift))
 end
 
 local function spawnCar()
@@ -9631,7 +10131,7 @@ local function spawnCar()
 		if #cars &gt;= T.MaxActive then
 			return
 		end
-		local model, body = buildCarShell()
+		local model, body, classId = buildCarShell()
 		free = {
 			Model = model,
 			Body = body,
@@ -9640,7 +10140,8 @@ local function spawnCar()
 			Alpha = 0,
 			Speed = T.Speed,
 			Active = true,
-			ClassId = "SEDAN",
+			ClassId = classId,
+			GroundOffset = groundOffsetFor(model),
 		}
 		table.insert(cars, free :: Car)
 	end
@@ -9738,12 +10239,9 @@ local function placeWalker(walker: Walker)
 	end
 	local right = Vector3.new(-direction.Z, 0, direction.X)
 	local offset = right * (walker.Side * (Config.City.RoadWidth * 0.5 + Config.City.SidewalkWidth * 0.4))
-	local at = position + offset + Vector3.new(0, 3, 0)
-	walker.Body.CFrame = CFrame.lookAt(at, at + direction)
-	local torso = walker.Model:FindFirstChild("Body")
-	if torso and torso:IsA("BasePart") then
-		torso.CFrame = walker.Body.CFrame * CFrame.new(0, -2.4, 0)
-	end
+	local at = position + offset + Vector3.new(0, walker.GroundOffset, 0)
+	-- Frueher wurden Kopf und Rumpf einzeln gesetzt. Ein Modell, ein PivotTo.
+	walker.Model:PivotTo(CFrame.lookAt(at, at + direction))
 end
 
 local function spawnWalker()
@@ -9768,15 +10266,17 @@ local function spawnWalker()
 		if #walkers &gt;= T.MaxPedestrians then
 			return
 		end
-		local model, head = buildWalkerShell()
+		local model, body = buildWalkerShell()
 		free = {
 			Model = model,
-			Body = head,
+			Body = body,
 			From = startId,
 			To = toId,
 			Alpha = 0,
 			Side = 1,
 			Active = true,
+			-- Gehweg statt Fahrbahn: die Platte ist ein wenig hoeher.
+			GroundOffset = groundOffsetFor(model) + Config.City.SidewalkLift,
 		}
 		table.insert(walkers, free :: Walker)
 	end
@@ -9849,10 +10349,22 @@ function TrafficService.HandleSteal(player: Player)
 		return
 	end
 
-	local cframe = CFrame.new(target.Body.Position + Vector3.new(0, 1, 0)) * (target.Body.CFrame - target.Body.Position)
+	-- Genau dort weitermachen, wo das Kulissenauto stand. Beide benutzen
+	-- dieselbe Vorlage, also darf der Uebergang nicht sichtbar springen:
+	-- Pivot des MODELLS uebernehmen, nicht die Position eines Einzelteils.
+	local cframe = target.Model:GetPivot()
+
+	-- Die Lackierung mitnehmen, damit es dasselbe Auto bleibt. Die Farbe
+	-- steht an der Karosserie, nicht am Chassis.
+	local paint: Color3? = nil
+	local shellBody = AssetLibrary.Find(target.Model, "Body")
+	if shellBody and shellBody:IsA("BasePart") then
+		paint = shellBody.Color
+	end
+
 	recycle(target)
 
-	local model = VehicleChassis.Build(target.ClassId, cframe, target.Body.Color)
+	local model = VehicleChassis.Build(target.ClassId, cframe, paint)
 	if not model then
 		return
 	end
@@ -9943,16 +10455,45 @@ return TrafficService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN36">
+<Item class="ModuleScript" referent="GN37">
 <Properties>
 <string name="Name">VehicleChassis</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/VehicleChassis.luau
 --!strict
--- GHOSTNET :: EIN Chassis, viele Karosserien.
+-- GHOSTNET :: Fahrzeuge VERDRAHTEN, nicht bauen.
 --
--- Es gibt kein Skript pro Auto. Dieses Modul baut aus einem Datensatz in
--- Shared/Vehicles.luau ein fahrbares Fahrzeug. Eine neue Klasse = ein
--- Tabelleneintrag, keine Zeile Code.
+-- WAS SICH GEAENDERT HAT
+--   Frueher hat dieses Modul die Karosserie selbst aus Parts zusammengesetzt:
+--   ein Kasten Body, ein Kasten Dach, vier Zylinder, zwei Kaestchen Licht.
+--   Das ist die Decke - kein Material und kein Licht macht aus einem Quader
+--   ein Auto. Ein Auto braucht Motorhaube, Kotfluegel, abfallende Dachlinie,
+--   Radkaesten, Fenster mit Rahmen. Das sind zwei Dutzend geformte Flaechen,
+--   und die entstehen in Blender oder Studio, nicht zur Laufzeit.
+--
+--   Jetzt gilt: die Karosserie kommt als fertiges Modell aus
+--   ReplicatedStorage/Assets/Vehicles, dieses Modul haengt Physik daran.
+--
+-- WAS EIN FAHRZEUGMODELL ENTHALTEN MUSS (Config.Assets.VehicleRequired)
+--   Sedan (Model)
+--   |-- Chassis     Part, unsichtbar, PrimaryPart - die Kollisionsbox
+--   |-- Body        MeshPart, die sichtbare Karosserie
+--   |-- Glass       MeshPart, Fenster                    (optional)
+--   |-- Wheels/     FL, FR, RL, RR   (bei 2 Raedern: F, R)
+--   |-- Lights/     HeadL, HeadR, TailL, TailR           (optional)
+--   +-- DriveSeat   VehicleSeat
+--
+--   Name faengt mit F an = gelenkt, mit R an = angetrieben. Damit passt
+--   dieselbe Verdrahtung auf Auto und Motorrad.
+--
+--   Fehlt ein Pflichtteil, gibt es eine klare Meldung mit Modellname UND
+--   fehlendem Teil - keinen stillen Absturz und kein halb fahrendes Auto.
+--
+-- KOLLISION SAUBER GETRENNT
+--   Nur Chassis kollidiert mit der Welt. Karosserie, Glas und Lichter sind
+--   CanCollide = false. Sonst haengt das Auto an jeder Kante fest, weil
+--   zwei Dutzend Einzelflaechen gleichzeitig kollidieren.
+--   Raeder kollidieren, aber in einer eigenen CollisionGroup: sie sollen den
+--   Boden treffen und nicht die Raeder des Nachbarautos.
 --
 -- AUFBAU PRO RAD (in dieser Reihenfolge wichtig)
 --   Chassis --SpringConstraint--&gt; Radtraeger      Federung
@@ -9973,9 +10514,11 @@ return TrafficService
 --   ueber einen serverseitigen Trigger geprueft - genau wie beim Hacken.
 
 local CollectionService = game:GetService("CollectionService")
+local PhysicsService = game:GetService("PhysicsService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local AssetLibrary = require(ReplicatedStorage.Shared.AssetLibrary)
 local Config = require(ReplicatedStorage.Shared.Config)
 local Vehicles = require(ReplicatedStorage.Shared.Vehicles)
 
@@ -9984,6 +10527,7 @@ local VehicleChassis = {}
 type VehicleClass = Vehicles.VehicleClass
 
 local FOLDER_NAME = "GhostNet_Vehicles"
+local A = Config.Assets
 
 local function container(): Folder
 	local existing = workspace:FindFirstChild(FOLDER_NAME)
@@ -9995,10 +10539,6 @@ local function container(): Folder
 	folder.Parent = workspace
 	return folder
 end
-
---==========================================================================
--- Bauteile
---==========================================================================
 
 local function physical(density: number, friction: number, elasticity: number): PhysicalProperties
 	return PhysicalProperties.new(density, friction, elasticity, 100, 1)
@@ -10014,51 +10554,126 @@ local function attachment(parent: BasePart, name: string, position: Vector3, axi
 	return a
 end
 
--- Ein Rad samt Traeger und den drei Verbindungen.
-local function buildWheel(
-	model: Model,
-	body: BasePart,
-	class: VehicleClass,
-	offset: Vector3,
-	steered: boolean,
-	driven: boolean,
-	side: number
-)
+--==========================================================================
+-- PLATZHALTER
+--
+-- Der einzige Ort in diesem Modul, an dem noch Geometrie entsteht - und das
+-- ist Absicht. Solange eine Vorlage fehlt, soll das Spiel FAHRBAR bleiben,
+-- aber unuebersehbar unfertig aussehen. Deshalb: magenta Kasten, vier
+-- Zylinder, sonst nichts. Kein Dach, keine Lichter, keine Farbwahl.
+--
+-- Sobald Assets/Vehicles/&lt;Name&gt; existiert, wird dieser Zweig nie wieder
+-- betreten. Er ist eine Baustellenabsperrung, kein Fahrzeugdesign.
+--==========================================================================
+
+local function placeholderVehicle(class: VehicleClass): Model
+	local model = AssetLibrary.Placeholder("Vehicles", class.Asset, class.BodySize)
+	local block = model.PrimaryPart :: BasePart
+
+	-- Der Platzhalterklotz wird zur unsichtbaren Kollisionsbox, damit das
+	-- Modell denselben Vertrag erfuellt wie eine echte Vorlage.
+	block.Name = "Chassis"
+	block.Transparency = 1
+	block.CanCollide = true
+
+	local body = Instance.new("Part")
+	body.Name = "Body"
+	body.Size = class.BodySize * A.PlaceholderBodyScale
+	body.Color = A.PlaceholderColour
+	body.Material = Enum.Material.SmoothPlastic
+	body.CFrame = block.CFrame
+	body.Parent = model
+
+	local wheels = Instance.new("Folder")
+	wheels.Name = "Wheels"
+	wheels.Parent = model
+
+	local halfX = class.BodySize.X * 0.5
+	local halfZ = class.BodySize.Z * 0.5
+	local wheelY = -class.BodySize.Y * 0.5
+
+	local slots: { { name: string, offset: Vector3 } }
+	if class.Wheels == 2 then
+		slots = {
+			{ name = "F", offset = Vector3.new(0, wheelY, -halfZ * 0.78) },
+			{ name = "R", offset = Vector3.new(0, wheelY, halfZ * 0.78) },
+		}
+	else
+		slots = {
+			{ name = "FL", offset = Vector3.new(-halfX, wheelY, -halfZ * 0.7) },
+			{ name = "FR", offset = Vector3.new(halfX, wheelY, -halfZ * 0.7) },
+			{ name = "RL", offset = Vector3.new(-halfX, wheelY, halfZ * 0.7) },
+			{ name = "RR", offset = Vector3.new(halfX, wheelY, halfZ * 0.7) },
+		}
+	end
+
+	for _, slot in slots do
+		local wheel = Instance.new("Part")
+		wheel.Name = slot.name
+		wheel.Shape = Enum.PartType.Cylinder
+		wheel.Size = Vector3.new(class.WheelWidth, class.WheelRadius * 2, class.WheelRadius * 2)
+		wheel.Color = A.PlaceholderColour
+		wheel.Material = Enum.Material.SmoothPlastic
+		-- Zylinder liegen in Roblox entlang ihrer X-Achse.
+		wheel.CFrame = block.CFrame * CFrame.new(slot.offset) * CFrame.Angles(0, 0, math.rad(90))
+		wheel.Parent = wheels
+	end
+
+	local seat = Instance.new("VehicleSeat")
+	seat.Name = "DriveSeat"
+	seat.Size = Vector3.new(2.4, 0.4, 2.4)
+	seat.CFrame = block.CFrame * CFrame.new(0, class.BodySize.Y * 0.5 + 0.2, 0)
+	seat.Transparency = 1
+	seat.Parent = model
+
+	return model
+end
+
+--==========================================================================
+-- Verdrahten
+--==========================================================================
+
+-- Ein Rad samt Traeger und den drei Verbindungen. Die POSITION kommt aus
+-- dem Modell - wo die Raeder sitzen, entscheidet der, der das Auto gebaut
+-- hat, nicht dieser Code.
+local function wireWheel(model: Model, chassis: BasePart, wheel: BasePart, class: VehicleClass)
 	local V = Config.Vehicle
+
+	local steered = string.sub(wheel.Name, 1, 1) == "F"
+	local driven = string.sub(wheel.Name, 1, 1) == "R"
+	local offset = chassis.CFrame:PointToObjectSpace(wheel.Position)
+	-- Linke Raeder drehen spiegelverkehrt zu den rechten.
+	local side = if offset.X &lt; 0 then -1 else 1
+
+	wheel.CanQuery = false
+	wheel.CanCollide = true
+	wheel.Anchored = false
+	wheel.Massless = false
+	wheel.CustomPhysicalProperties = physical(V.WheelDensity, class.Grip * V.WheelFriction, V.WheelElasticity)
+	pcall(function()
+		wheel.CollisionGroup = V.WheelCollisionGroup
+	end)
 
 	--== Radtraeger: fast masselos, sonst schlingert das Auto ==============
 	local carrier = Instance.new("Part")
-	carrier.Name = "Carrier"
+	carrier.Name = wheel.Name .. "_Carrier"
 	carrier.Size = Vector3.new(0.4, 0.4, 0.4)
 	carrier.Transparency = 1
 	carrier.CanCollide = false
 	carrier.CanQuery = false
 	carrier.CanTouch = false
 	carrier.CustomPhysicalProperties = physical(V.CarrierDensity, 0.3, 0)
-	carrier.CFrame = body.CFrame * CFrame.new(offset - Vector3.new(0, V.SuspensionLength, 0))
+	carrier.CFrame = CFrame.new(wheel.Position)
 	carrier.Parent = model
-
-	--== Rad ===============================================================
-	local wheel = Instance.new("Part")
-	wheel.Name = "Wheel"
-	wheel.Shape = Enum.PartType.Cylinder
-	wheel.Size = Vector3.new(class.WheelWidth, class.WheelRadius * 2, class.WheelRadius * 2)
-	wheel.Color = Color3.fromRGB(18, 18, 20)
-	wheel.Material = Enum.Material.Rubber
-	wheel.CanQuery = false
-	wheel.CustomPhysicalProperties = physical(V.WheelDensity, class.Grip * V.WheelFriction, V.WheelElasticity)
-	-- Zylinder liegen in Roblox entlang ihrer X-Achse: um 90 Grad drehen,
-	-- damit die Lauflaeche zum Boden zeigt.
-	wheel.CFrame = carrier.CFrame * CFrame.Angles(0, 0, math.rad(90))
-	wheel.Parent = model
 
 	--== Federung und Lenkung (senkrechte Achse) ===========================
 	-- Achse zeigt nach UNTEN: positiver Abstand = ausgefedert.
-	local bodyAttach = attachment(body, "Susp", offset, Vector3.new(0, -1, 0), Vector3.new(0, 0, 1))
+	local mount = offset + Vector3.new(0, V.SuspensionLength, 0)
+	local bodyAttach = attachment(chassis, wheel.Name .. "_Susp", mount, Vector3.new(0, -1, 0), Vector3.new(0, 0, 1))
 	local carrierUp = attachment(carrier, "SuspHub", Vector3.zero, Vector3.new(0, -1, 0), Vector3.new(0, 0, 1))
 
 	local spring = Instance.new("SpringConstraint")
-	spring.Name = "Suspension"
+	spring.Name = wheel.Name .. "_Suspension"
 	spring.Attachment0 = bodyAttach
 	spring.Attachment1 = carrierUp
 	spring.FreeLength = V.SuspensionLength
@@ -10111,6 +10726,16 @@ local function buildWheel(
 	steer:SetAttribute("SideSign", side)
 end
 
+-- Alles, was man ansieht, aber nicht anfasst: keine Kollision, keine
+-- Abfrage, kaum Masse. Sonst haengt das Auto an jeder Bordsteinkante.
+local function makeCosmetic(part: BasePart)
+	part.CanCollide = false
+	part.CanQuery = false
+	part.CanTouch = false
+	part.Anchored = false
+	part.Massless = true
+end
+
 --==========================================================================
 -- Ein komplettes Fahrzeug
 --==========================================================================
@@ -10122,97 +10747,127 @@ function VehicleChassis.Build(classId: string, cframe: CFrame, colour: Color3?):
 		return nil
 	end
 
-	local V = Config.Vehicle
-	local model = Instance.new("Model")
+	local model: Model
+	if AssetLibrary.Has("Vehicles", class.Asset) then
+		model = AssetLibrary.Clone("Vehicles", class.Asset, class.BodySize)
+	else
+		model = placeholderVehicle(class)
+	end
 	model.Name = ("Vehicle_%s"):format(class.Id)
 
-	--== Karosserie ========================================================
-	local body = Instance.new("Part")
-	body.Name = "Body"
-	body.Size = class.BodySize
-	body.CFrame = cframe
-	body.Color = colour or class.Colour
-	body.Material = Enum.Material.SmoothPlastic
-	body.CustomPhysicalProperties = physical(class.Mass, 0.3, 0.1)
-	body.Parent = model
-	model.PrimaryPart = body
+	--== Vertrag pruefen ===================================================
+	local required = if class.Wheels == 2 then A.VehicleRequiredTwoWheel else A.VehicleRequired
+	local complete, gaps = AssetLibrary.Verify(model, required)
+	if not complete then
+		warn(
+			("[GHOSTNET] Fahrzeugvorlage '%s' (Klasse %s) ist unvollstaendig. Fehlende Teile: %s"):format(
+				class.Asset,
+				class.Id,
+				table.concat(gaps, ", ")
+			)
+		)
+		warn("           Erwartet wird: " .. table.concat(required, ", "))
+		model:Destroy()
+		return nil
+	end
 
-	-- Dach, damit es nicht wie eine Kiste aussieht. Nur Deko.
-	local roof = Instance.new("Part")
-	roof.Name = "Roof"
-	roof.Size = Vector3.new(class.BodySize.X * 0.86, class.BodySize.Y * 0.7, class.BodySize.Z * 0.5)
-	roof.CFrame = cframe * CFrame.new(0, class.BodySize.Y * 0.8, -class.BodySize.Z * 0.06)
-	roof.Color = (colour or class.Colour):Lerp(Color3.new(0, 0, 0), 0.35)
-	roof.Material = Enum.Material.Glass
-	roof.Transparency = 0.35
-	roof.CanQuery = false
-	roof.CustomPhysicalProperties = physical(0.05, 0.3, 0.1)
-	roof.Parent = model
+	local chassis = AssetLibrary.Find(model, "Chassis") :: BasePart
+	local seat = AssetLibrary.Find(model, "DriveSeat") :: VehicleSeat
+	local wheelFolder = AssetLibrary.Find(model, "Wheels") :: Instance
 
-	local roofWeld = Instance.new("WeldConstraint")
-	roofWeld.Part0 = body
-	roofWeld.Part1 = roof
-	roofWeld.Parent = body
+	if not chassis:IsA("BasePart") then
+		warn(("[GHOSTNET] '%s': Chassis ist kein BasePart."):format(class.Asset))
+		model:Destroy()
+		return nil
+	end
+	if not seat:IsA("VehicleSeat") then
+		warn(("[GHOSTNET] '%s': DriveSeat ist kein VehicleSeat."):format(class.Asset))
+		model:Destroy()
+		return nil
+	end
 
-	--== Rueckleuchten (der Client schaltet sie beim Bremsen hell) =========
-	for _, side in { -1, 1 } do
-		local light = Instance.new("Part")
-		light.Name = "BrakeLight"
-		light.Size = Vector3.new(class.BodySize.X * 0.22, 0.4, 0.3)
-		light.CFrame = cframe * CFrame.new(side * class.BodySize.X * 0.32, 0.2, class.BodySize.Z * 0.5)
-		light.Color = Color3.fromRGB(120, 20, 30)
-		light.Material = Enum.Material.Neon
-		light.CanQuery = false
-		light.CanTouch = false
-		light.CustomPhysicalProperties = physical(0.01, 0.3, 0)
-		light.Parent = model
+	model.PrimaryPart = chassis
+	model:PivotTo(cframe)
 
-		local weld = Instance.new("WeldConstraint")
-		weld.Part0 = body
-		weld.Part1 = light
-		weld.Parent = body
+	--== Chassis: die einzige echte Kollisionsbox ==========================
+	chassis.Transparency = 1
+	chassis.CanCollide = true
+	chassis.CanQuery = false
+	chassis.Anchored = false
+	chassis.Massless = false
+	chassis.CustomPhysicalProperties = physical(class.Mass, 0.3, 0.1)
+
+	--== Sichtbares: dekorativ, nie kollidierend ===========================
+	for _, descendant in model:GetDescendants() do
+		if not descendant:IsA("BasePart") then
+			continue
+		end
+		if descendant == chassis or descendant == seat then
+			continue
+		end
+		if descendant:IsDescendantOf(wheelFolder) then
+			continue
+		end
+		makeCosmetic(descendant)
+	end
+
+	-- Lackierung: nur die Karosserie, nicht Glas und nicht die Lichter.
+	local body = AssetLibrary.Find(model, "Body")
+	if colour and body and body:IsA("BasePart") then
+		body.Color = colour
+	elseif body and body:IsA("BasePart") and not model:GetAttribute("Placeholder") then
+		body.Color = class.Colour
 	end
 
 	--== Sitz ==============================================================
-	local seat = Instance.new("VehicleSeat")
-	seat.Name = "DriverSeat"
-	seat.Size = Vector3.new(2.4, 0.4, 2.4)
-	seat.CFrame = cframe * CFrame.new(0, class.BodySize.Y * 0.5 + 0.2, 0)
 	seat.Transparency = 1
 	seat.CanQuery = false
+	seat.CanCollide = false
+	seat.Massless = true
 	seat.MaxSpeed = class.MaxSpeed
 	seat.Torque = 0 -- der VehicleSeat treibt nichts an, das machen die Raeder
 	seat.TurnSpeed = 0
-	seat.CustomPhysicalProperties = physical(0.01, 0.3, 0)
-	seat.Parent = model
 
+	if not seat:FindFirstChild("EnterPrompt") then
+		local prompt = Instance.new("ProximityPrompt")
+		prompt.Name = "EnterPrompt"
+		prompt.ActionText = "Einsteigen"
+		prompt.ObjectText = class.Name
+		prompt.HoldDuration = 0
+		prompt.MaxActivationDistance = Config.Vehicle.EnterRange
+		prompt.RequiresLineOfSight = false
+		prompt.Parent = seat
+	end
+
+	-- Der Sitz haengt fest an der Kollisionsbox. Hier ist eine WeldConstraint
+	-- richtig: beide Teile sind NICHT anchored, es ist echte Physik.
 	local seatWeld = Instance.new("WeldConstraint")
-	seatWeld.Part0 = body
+	seatWeld.Part0 = chassis
 	seatWeld.Part1 = seat
-	seatWeld.Parent = body
+	seatWeld.Parent = chassis
 
-	local prompt = Instance.new("ProximityPrompt")
-	prompt.Name = "EnterPrompt"
-	prompt.ActionText = "Einsteigen"
-	prompt.ObjectText = class.Name
-	prompt.HoldDuration = 0
-	prompt.MaxActivationDistance = 12
-	prompt.RequiresLineOfSight = false
-	prompt.Parent = seat
+	-- Alles Kosmetische fest an die Kollisionsbox schweissen. Auch hier:
+	-- echte Physik zwischen nicht-anchored Teilen, also wirkt es.
+	for _, descendant in model:GetDescendants() do
+		if not descendant:IsA("BasePart") then
+			continue
+		end
+		if descendant == chassis or descendant == seat or descendant:IsDescendantOf(wheelFolder) then
+			continue
+		end
+		if descendant.Name:match("_Carrier$") then
+			continue
+		end
+		local weld = Instance.new("WeldConstraint")
+		weld.Part0 = chassis
+		weld.Part1 = descendant
+		weld.Parent = chassis
+	end
 
 	--== Raeder ============================================================
-	local halfX = class.BodySize.X * 0.5
-	local halfZ = class.BodySize.Z * 0.5
-	local wheelY = -class.BodySize.Y * 0.5 + V.SuspensionLength * 0.2
-
-	if class.Wheels == 2 then
-		-- Motorrad: vorne gelenkt, hinten angetrieben, beide mittig.
-		buildWheel(model, body, class, Vector3.new(0, wheelY, -halfZ * 0.78), true, false, 1)
-		buildWheel(model, body, class, Vector3.new(0, wheelY, halfZ * 0.78), false, true, 1)
-	else
-		for _, side in { -1, 1 } do
-			buildWheel(model, body, class, Vector3.new(side * halfX, wheelY, -halfZ * 0.7), true, false, side)
-			buildWheel(model, body, class, Vector3.new(side * halfX, wheelY, halfZ * 0.7), false, true, side)
+	for _, wheel in wheelFolder:GetChildren() do
+		if wheel:IsA("BasePart") then
+			wireWheel(model, chassis, wheel, class)
 		end
 	end
 
@@ -10272,7 +10927,7 @@ function VehicleChassis.Despawn(model: Model)
 end
 
 local function watchSeat(model: Model)
-	local seat = model:FindFirstChild("DriverSeat")
+	local seat = model:FindFirstChild("DriveSeat")
 	if not seat or not seat:IsA("VehicleSeat") then
 		return
 	end
@@ -10310,6 +10965,14 @@ function VehicleChassis.Init()
 		end
 	end
 
+	-- Raeder treffen den Boden, aber nicht die Raeder des Nachbarautos.
+	-- Ohne das verhaken sich zwei Fahrzeuge, sobald sie sich beruehren.
+	pcall(function()
+		local group = Config.Vehicle.WheelCollisionGroup
+		PhysicsService:RegisterCollisionGroup(group)
+		PhysicsService:CollisionGroupSetCollidable(group, group, false)
+	end)
+
 	for _, model in CollectionService:GetTagged(Config.VehicleTag) do
 		if model:IsA("Model") then
 			watchSeat(model)
@@ -10342,14 +11005,14 @@ function VehicleChassis.Init()
 		end
 	end)
 
-	print(("[GHOSTNET] VehicleChassis bereit. %d Klassen."):format(Vehicles.Count()))
+	print(("[GHOSTNET] VehicleChassis bereit. %d Klassen, Karosserien aus Assets/Vehicles."):format(Vehicles.Count()))
 end
 
 return VehicleChassis
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN37">
+<Item class="ModuleScript" referent="GN38">
 <Properties>
 <string name="Name">VehicleService</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/VehicleService.luau
@@ -10734,7 +11397,7 @@ return VehicleService
 <Properties>
 <string name="Name">World</string>
 </Properties>
-<Item class="Script" referent="GN39">
+<Item class="Script" referent="GN40">
 <Properties>
 <string name="Name">BankInterior</string>
 <ProtectedString name="Source">-- ServerScriptService/World/BankInterior.server.luau
@@ -10880,13 +11543,11 @@ do
 	head.CanCollide = false
 	head.CanQuery = false
 	head.CastShadow = false
+	-- Bauposition relativ zum Rumpf. KEINE WeldConstraint: beide Teile sind
+	-- Anchored, da bewirkt sie nichts. Bewegt wird das Modell als Ganzes
+	-- ueber PivotTo (GuardService.patrol).
 	head.CFrame = root.CFrame * CFrame.new(0, 3.4, 0)
 	head.Parent = guard
-
-	local weld = Instance.new("WeldConstraint")
-	weld.Part0 = root
-	weld.Part1 = head
-	weld.Parent = root
 
 	guard:SetAttribute("PatrolA", route.A)
 	guard:SetAttribute("PatrolB", route.B)
@@ -11034,7 +11695,7 @@ print("[GHOSTNET] Bank-Innenraum gebaut: Halle, Sicherheitsbereich, Tresorraum, 
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="Script" referent="GN40">
+<Item class="Script" referent="GN41">
 <Properties>
 <string name="Name">City</string>
 <ProtectedString name="Source">-- ServerScriptService/World/City.server.luau
@@ -11062,6 +11723,7 @@ print("[GHOSTNET] Bank-Innenraum gebaut: Halle, Sicherheitsbereich, Tresorraum, 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerScriptService = game:GetService("ServerScriptService")
 
+local AssetLibrary = require(ReplicatedStorage.Shared.AssetLibrary)
 local Config = require(ReplicatedStorage.Shared.Config)
 local Districts = require(ReplicatedStorage.Shared.Districts)
 
@@ -11081,6 +11743,7 @@ folder.Parent = workspace
 
 local rng = Random.new(Config.World.Seed)
 local C = Config.City
+local A = Config.Assets
 
 local function decor(name: string, size: Vector3, cframe: CFrame, colour: Color3, material: Enum.Material, parent: Instance?): Part
 	local p = Instance.new("Part")
@@ -11109,6 +11772,10 @@ local roads = Instance.new("Folder")
 roads.Name = "Strassen"
 roads.Parent = folder
 
+local props = Instance.new("Folder")
+props.Name = "Moeblierung"
+props.Parent = folder
+
 local built: { [string]: boolean } = {}
 
 for _, node in RoadNetwork.All() do
@@ -11132,8 +11799,8 @@ for _, node in RoadNetwork.All() do
 		local length = delta.Magnitude
 		local horizontal = math.abs(delta.X) &gt; math.abs(delta.Z)
 		local size = if horizontal
-			then Vector3.new(length, 1, C.RoadWidth)
-			else Vector3.new(C.RoadWidth, 1, length)
+			then Vector3.new(length, C.RoadThickness, C.RoadWidth)
+			else Vector3.new(C.RoadWidth, C.RoadThickness, length)
 
 		local road = decor("Fahrbahn", size, CFrame.new(mid), Config.Palette.Asphalt, Enum.Material.Slate, roads)
 		road.Reflectance = Config.World.RoadReflectance
@@ -11141,12 +11808,16 @@ for _, node in RoadNetwork.All() do
 
 		-- Gehwege links und rechts.
 		local sidewalkSize = if horizontal
-			then Vector3.new(length, 1.4, C.SidewalkWidth)
-			else Vector3.new(C.SidewalkWidth, 1.4, length)
+			then Vector3.new(length, C.SidewalkThickness, C.SidewalkWidth)
+			else Vector3.new(C.SidewalkWidth, C.SidewalkThickness, length)
+		-- Oberkante = Fahrbahnoberkante + SidewalkLift, daraus die Mitte.
+		-- Frueher stand hier eine feste 0.3, zu der nichts passte -
+		-- Fussgaenger schwebten oder steckten im Bordstein.
+		local sidewalkY = C.RoadThickness * 0.5 + C.SidewalkLift - C.SidewalkThickness * 0.5
 		for _, side in { -1, 1 } do
 			local offset = if horizontal
-				then Vector3.new(0, 0.3, side * (C.RoadWidth * 0.5 + C.SidewalkWidth * 0.5))
-				else Vector3.new(side * (C.RoadWidth * 0.5 + C.SidewalkWidth * 0.5), 0.3, 0)
+				then Vector3.new(0, sidewalkY, side * (C.RoadWidth * 0.5 + C.SidewalkWidth * 0.5))
+				else Vector3.new(side * (C.RoadWidth * 0.5 + C.SidewalkWidth * 0.5), sidewalkY, 0)
 			local walk = decor(
 				"Gehweg",
 				sidewalkSize,
@@ -11185,112 +11856,134 @@ local blocks = Instance.new("Folder")
 blocks.Name = "Bloecke"
 blocks.Parent = folder
 
-local function building(centre: Vector3, footprint: Vector3, district: Districts.District, dense: boolean)
-	local height = rng:NextInteger(C.BuildingMinHeight, if dense then C.BuildingMaxHeight else C.BuildingMinHeight + 20)
+-- EIN HAUS IST EIN STAPEL, KEIN KLOTZ.
+--
+-- Frueher stand hier ein Quader mit Betonmaterial. Ein Quader mit
+-- Betonmaterial sieht aus wie ein Quader mit Betonmaterial - da hilft kein
+-- Licht und keine Farbe. Ein Gebaeude braucht Gliederung: Sockel,
+-- Fensterachsen, Gesimse, Dachkante.
+--
+-- Also wird gestapelt:  Sockel -&gt; n x Etage -&gt; Dach.
+-- Die Module liegen fertig unter Assets/Buildings. Vielfalt entsteht aus
+-- Etagenzahl, Modulmischung, Farbe und leichter Drehung - aus acht Modulen
+-- bekommt man hunderte unterschiedliche Haeuser.
+local function building(centre: Vector3, district: Districts.District, dense: boolean, yaw: number)
 	local tint = district.Tint
+	local floors = rng:NextInteger(A.MinFloors, if dense then A.MaxFloors else A.MinFloors + 1)
 
-	-- Erdgeschoss: dunkler, mit Schaufensterband.
-	decor(
-		"Erdgeschoss",
-		Vector3.new(footprint.X, 12, footprint.Z),
-		CFrame.new(centre + Vector3.new(0, 6, 0)),
-		-- Erdgeschoss abgesetzt, aber nicht Richtung Schwarz: bei heller
-		-- Stadt wirkt ein schwarzer Sockel wie ein Loch in der Fassade.
-		tint:Lerp(Config.Palette.BetonDunkel, 0.55),
-		Enum.Material.Concrete,
-		blocks
-	).CanCollide = true
+	local model = Instance.new("Model")
+	model.Name = ("Haus_%s"):format(district.Id)
 
-	-- Standardetagen als ein Block; Fenster als Neonflaechen aufgeklebt.
-	decor(
-		"Etagen",
-		Vector3.new(footprint.X, height - 12, footprint.Z),
-		CFrame.new(centre + Vector3.new(0, 12 + (height - 12) * 0.5, 0)),
-		tint,
-		Enum.Material.Concrete,
-		blocks
-	).CanCollide = true
+	local y = 0
 
-	if dense then
-		-- Fensterbaender: bei Tag spiegelndes Glas statt leuchtender Neonflaechen.
-		local rows = math.floor((height - 14) / 10)
-		for row = 1, rows do
-			if rng:NextNumber() &gt; Config.World.WindowChance then
+	local function place(name: string, height: number, colour: Color3, overhang: number)
+		local size = Vector3.new(A.BuildingFootprint + overhang, height, A.BuildingFootprint + overhang)
+		local part = AssetLibrary.Clone("Buildings", name, size)
+		part:PivotTo(CFrame.new(centre + Vector3.new(0, y + height * 0.5, 0)) * CFrame.Angles(0, yaw, 0))
+
+		local placeholder = part:GetAttribute("Placeholder") == true
+		for _, descendant in part:GetDescendants() do
+			if descendant:IsA("BasePart") then
+				descendant.Anchored = true
+				descendant.CanQuery = false
+				descendant.CanTouch = false
+				if descendant.Size.X &lt; 6 and descendant.Size.Y &lt; 6 and descendant.Size.Z &lt; 6 then
+					descendant.CastShadow = false
+				end
+				-- Nur Platzhalter und ausdruecklich als toenbar markierte
+				-- Teile werden eingefaerbt. Ein fertiges Modul soll seine
+				-- eigenen Materialien behalten.
+				if placeholder or descendant:GetAttribute("Tintable") == true then
+					descendant.Color = colour
+				end
+			end
+		end
+		part.Parent = model
+		y += height
+	end
+
+	-- Sockel dunkler als der Rest: Gebaeude sind unten schmutziger, und ohne
+	-- diesen Absatz steht das Haus wie hingestellt statt gewachsen da.
+	place(A.Bases[rng:NextInteger(1, #A.Bases)], A.BaseHeight, tint:Lerp(Config.Palette.BetonDunkel, A.BaseDarken), 0)
+
+	for _ = 1, floors do
+		place(A.Floors[rng:NextInteger(1, #A.Floors)], A.FloorHeight, tint, 0)
+	end
+
+	-- Dachkante steht ueber. Ein Dach buendig mit der Fassade sieht immer
+	-- nach Klotz aus - das ist die billigste Verbesserung im ganzen Baukasten.
+	place(A.Roofs[rng:NextInteger(1, #A.Roofs)], A.RoofHeight, Config.Palette.Dach, A.RoofOverhang * 2)
+
+	-- Feuerleiter: der Weg nach oben. Ohne die ist das begehbare Dach Deko,
+	-- und "von oben" waere im Bankraub kein echter Weg.
+	if rng:NextNumber() &lt; A.RoofAccessChance then
+		local x = centre.X + A.BuildingFootprint * 0.5 + 1
+		for rung = 1, math.floor(y / A.RoofAccessStep) do
+			local ladder = AssetLibrary.Clone("Props", A.RoofAccess, A.RoofAccessSize)
+			ladder:PivotTo(CFrame.new(x, rung * A.RoofAccessStep, centre.Z))
+			for _, descendant in ladder:GetDescendants() do
+				if descendant:IsA("BasePart") then
+					descendant.Anchored = true
+					descendant.CanQuery = false
+					descendant.CanTouch = false
+					descendant.CanCollide = true
+					descendant.CastShadow = false
+				end
+			end
+			ladder.Parent = model
+		end
+	end
+
+	model.Parent = blocks
+end
+
+--==========================================================================
+-- STRASSENMOEBLIERUNG
+--
+-- Eine leere Strasse mit perfekten Haeusern wirkt tot. Eine durchschnittliche
+-- Strasse mit Kram darauf wirkt echt. Laternen, Ampeln, Muelltonnen, Poller,
+-- Verteilerkaesten, Schilder - das ist der billigste Realismus, den es gibt.
+--==========================================================================
+
+local function furnish(from: Vector3, to: Vector3, horizontal: boolean)
+	local length = (to - from).Magnitude
+	local steps = math.floor(length / A.PropSpacing)
+	if steps &lt; 1 then
+		return
+	end
+
+	-- Kante des Gehwegs, auf beiden Seiten.
+	local lateral = C.RoadWidth * 0.5 + C.SidewalkWidth * 0.5
+	local top = C.RoadThickness * 0.5 + C.SidewalkLift
+
+	for step = 1, steps - 1 do
+		for _, side in { -1, 1 } do
+			if rng:NextNumber() &gt; A.PropChance then
 				continue
 			end
-			for _, face in { 1, -1 } do
-				local glass = decor(
-					"Fenster",
-					Vector3.new(footprint.X * 0.7, 2.4, 0.3),
-					CFrame.new(centre + Vector3.new(0, 12 + row * 10, face * (footprint.Z * 0.5 + 0.2))),
-					Config.Palette.Glas,
-					Enum.Material.SmoothPlastic,
-					blocks
-				)
-				glass.Reflectance = Config.World.WindowReflectance
-				glass.Transparency = 0.1
+			local along = from:Lerp(to, step / steps)
+			local sideways = if horizontal
+				then Vector3.new(0, 0, side * lateral)
+				else Vector3.new(side * lateral, 0, 0)
+			local jitter = if horizontal
+				then Vector3.new(rng:NextNumber(-A.PropJitter, A.PropJitter), 0, 0)
+				else Vector3.new(0, 0, rng:NextNumber(-A.PropJitter, A.PropJitter))
+
+			local name = A.Props[rng:NextInteger(1, #A.Props)]
+			local prop = AssetLibrary.Clone("Props", name, A.PropSize)
+			local at = along + sideways + jitter + Vector3.new(0, top + A.PropSize.Y * 0.5, 0)
+			prop:PivotTo(CFrame.new(at) * CFrame.Angles(0, rng:NextNumber(0, math.pi * 2), 0))
+
+			for _, descendant in prop:GetDescendants() do
+				if descendant:IsA("BasePart") then
+					descendant.Anchored = true
+					descendant.CanQuery = false
+					descendant.CanTouch = false
+					descendant.CanCollide = false -- man soll nicht am Poller haengenbleiben
+					descendant.CastShadow = false
+				end
 			end
-		end
-	end
-
-	-- Dachabschluss plus begehbares Dach mit Bruestung. Vertikalitaet macht
-	-- ein Hacking-Spiel deutlich besser: man kommt von oben an Ziele.
-	decor(
-		"Dach",
-		Vector3.new(footprint.X + 1.5, 1.2, footprint.Z + 1.5),
-		CFrame.new(centre + Vector3.new(0, height, 0)),
-		Config.Palette.Dach,
-		Enum.Material.Metal,
-		blocks
-	).CanCollide = true
-
-	for _, side in { { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 } } do
-		local size = if side[1] ~= 0
-			then Vector3.new(0.6, 3, footprint.Z + 1.5)
-			else Vector3.new(footprint.X + 1.5, 3, 0.6)
-		decor(
-			"Bruestung",
-			size,
-			CFrame.new(centre + Vector3.new(side[1] * footprint.X * 0.5, height + 2, side[2] * footprint.Z * 0.5)),
-			Config.Palette.Dach,
-			Enum.Material.Metal,
-			blocks
-		).CanCollide = true
-	end
-
-	-- Feuerleiter: der Weg nach oben. Ohne den ist das Dach Deko.
-	if rng:NextNumber() &lt; C.RoofAccessChance then
-		local x = centre.X + footprint.X * 0.5 + 1
-		for y = 4, height, 4 do
-			decor(
-				"Sprosse",
-				Vector3.new(2.6, 0.4, 1.2),
-				CFrame.new(x, y, centre.Z),
-				Config.Palette.Metall,
-				Enum.Material.Metal,
-				blocks
-			).CanCollide = true
-		end
-	end
-
-	-- Genau ein Neonschild je Haus, mit echtem Licht. Sparsam.
-	if dense and rng:NextNumber() &lt; C.SignChance then
-		local sign = decor(
-			"Neonschild",
-			Vector3.new(0.7, rng:NextInteger(6, 14), 4),
-			CFrame.new(centre + Vector3.new(footprint.X * 0.5 + 0.5, height * 0.5, footprint.Z * 0.25)),
-			district.Neon,
-			Enum.Material.Neon,
-			blocks
-		)
-		-- Bei Tageslicht kostet ein PointLight Bildrate und bringt optisch
-		-- nichts. Das Schild bleibt, das Licht entfaellt.
-		if not Config.World.PermanentDay and rng:NextNumber() &lt; C.LightChance then
-			local light = Instance.new("PointLight")
-			light.Color = district.Neon
-			light.Brightness = Config.World.SignBrightness
-			light.Range = Config.World.SignRange
-			light.Parent = sign
+			prop.Parent = props
 		end
 	end
 end
@@ -11314,13 +12007,21 @@ for gz = -half, half - 1 do
 
 		-- Ein Block traegt vier Haeuser statt eines Klotzes: das gibt
 		-- Gassen, und Gassen sind fuer Motorrad und Flucht wichtig.
-		local size = inner * 0.44
+		--
+		-- KEINE GLEICHEN ABSTAENDE. Jedes Haus wird ein Stueck versetzt und
+		-- minimal gedreht. Ein perfektes Raster sieht immer nach Computer
+		-- aus, und genau das faellt sofort auf.
 		for _, corner in { { -1, -1 }, { 1, -1 }, { -1, 1 }, { 1, 1 } } do
+			local jitter = Vector3.new(
+				rng:NextNumber(-A.BuildingJitter, A.BuildingJitter),
+				0,
+				rng:NextNumber(-A.BuildingJitter, A.BuildingJitter)
+			)
 			building(
-				centre + Vector3.new(corner[1] * inner * 0.25, 0, corner[2] * inner * 0.25),
-				Vector3.new(size, 0, size),
+				centre + Vector3.new(corner[1] * inner * 0.25, 0, corner[2] * inner * 0.25) + jitter,
 				district,
-				dense
+				dense,
+				math.rad(rng:NextNumber(-A.BuildingYaw, A.BuildingYaw))
 			)
 		end
 
@@ -11332,180 +12033,47 @@ for gz = -half, half - 1 do
 	end
 end
 
-print(("[GHOSTNET] Vantorra gebaut: %d ausgebaute Bloecke, %d im Rohbau."):format(denseBlocks, roughBlocks))
-</ProtectedString>
-</Properties>
-</Item>
-<Item class="Script" referent="GN41">
-<Properties>
-<string name="Name">Cityscape</string>
-<ProtectedString name="Source">-- ServerScriptService/World/Cityscape.server.luau
---!strict
--- GHOSTNET :: Die Stadt drumherum.
---
--- Ersetzt die nackte Baseplate durch eine Strassenzeile bei Tag: helle
--- Fahrbahn, Betonfronten, Glasfenster. Reine Kulisse - kein einziges Objekt
--- hier traegt einen Tag oder eine Spiellogik.
---
--- ALLE FARBEN KOMMEN AUS Config.Palette
---   In dieser Datei steht kein einziger Farbwert mehr. Wer die Stadt heller
---   oder dunkler will, aendert die Palette und sonst nichts.
---
--- SPARSAM MIT EFFEKTEN
---   Ein Hacking-Spiel lebt von Ruhe, nicht von Partikeln. Bei Tageslicht
---   sieht man von PointLights ohnehin fast nichts - deshalb werden sie bei
---   Config.World.PermanentDay gar nicht erst erzeugt. Geschenkte Bildrate.
---
--- LEISTUNG
---   Alles ist anchored, CanQuery und CanTouch sind aus. Wer auf schwachen
---   Geraeten Probleme hat, dreht in Config.World die Anzahl runter oder
---   stellt Lighting.Technology in der Place-Datei auf ShadowMap.
-
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-
-local Config = require(ReplicatedStorage.Shared.Config)
-
-local FOLDER_NAME = "GhostNet_Cityscape"
-
-if workspace:FindFirstChild(FOLDER_NAME) then
-	return
-end
-
-local folder = Instance.new("Folder")
-folder.Name = FOLDER_NAME
-folder.Parent = workspace
-
-local rng = Random.new(Config.World.Seed)
-
-local function decor(name: string, size: Vector3, cframe: CFrame, colour: Color3, material: Enum.Material): Part
-	local p = Instance.new("Part")
-	p.Name = name
-	p.Size = size
-	p.CFrame = cframe
-	p.Color = colour
-	p.Material = material
-	p.Anchored = true
-	p.CanCollide = true
-	p.CanQuery = false
-	p.CanTouch = false
-	p.TopSurface = Enum.SurfaceType.Smooth
-	p.BottomSurface = Enum.SurfaceType.Smooth
-	p.Parent = folder
-	return p
-end
-
 --==========================================================================
--- Fahrbahn
--- Der Glanz kommt ueber Material und Reflectance, nicht ueber eine Textur -
--- es soll keine Asset-Id noetig sein.
---==========================================================================
-do
-	local road = decor(
-		"Fahrbahn",
-		Vector3.new(Config.World.RoadWidth, 1, Config.World.RoadLength),
-		CFrame.new(0, 0.05, -Config.World.RoadLength * 0.25),
-		Config.Palette.Asphalt,
-		Enum.Material.Slate
-	)
-	road.Reflectance = Config.World.RoadReflectance
-
-	-- Mittellinie, matt, damit die Strasse eine Richtung bekommt.
-	for i = -Config.World.RoadLength // 2, Config.World.RoadLength // 2, 18 do
-		decor(
-			"Markierung",
-			Vector3.new(0.6, 0.05, 7),
-			CFrame.new(0, 0.6, -Config.World.RoadLength * 0.25 + i),
-			Config.Palette.Markierung,
-			Enum.Material.SmoothPlastic
-		)
-	end
-
-	-- Gehwege links und rechts.
-	for _, side in { -1, 1 } do
-		decor(
-			"Gehweg",
-			Vector3.new(10, 1.4, Config.World.RoadLength),
-			CFrame.new(side * (Config.World.RoadWidth * 0.5 + 5), 0.7, -Config.World.RoadLength * 0.25),
-			Config.Palette.Gehweg,
-			Enum.Material.Concrete
-		)
-	end
-end
-
---==========================================================================
--- Haeuserfronten mit Neonschildern
+-- Zweiter Durchgang: Moeblierung entlang der Strassen.
+-- Bewusst NACH den Haeusern, damit die Props schon wissen, wie hoch der
+-- Gehweg liegt, und nicht in einer Fassade landen.
 --==========================================================================
 
-local NEON_COLOURS = { Config.Theme.Cyan, Config.Theme.Magenta, Config.Theme.Amber }
+local furnished: { [string]: boolean } = {}
 
-local function building(x: number, z: number, width: number, depth: number, height: number)
-	decor(
-		"Haus",
-		Vector3.new(width, height, depth),
-		CFrame.new(x, height * 0.5, z),
-		-- Vielfalt ueber die Mischung zweier Palettentoene statt ueber
-		-- freie Zufallsfarben: so bleibt die Zeile bei jeder Palette stimmig.
-		Config.Palette.Beton:Lerp(Config.Palette.BetonHell, rng:NextNumber()),
-		Enum.Material.Concrete
-	)
-
-	-- Fensterbaender. Bei Tag sind das spiegelnde Glasflaechen, keine
-	-- Leuchtflaechen - erleuchtete Fenster mittags sehen falsch aus.
-	local rows = math.floor(height / 9)
-	for row = 1, rows do
-		if rng:NextNumber() &gt; Config.World.WindowChance then
+for _, node in RoadNetwork.All() do
+	for _, linkId in node.Links do
+		local edgeKey = if node.Id &lt; linkId
+			then ("%d-%d"):format(node.Id, linkId)
+			else ("%d-%d"):format(linkId, node.Id)
+		if furnished[edgeKey] then
 			continue
 		end
-		local glass = decor(
-			"Fenster",
-			Vector3.new(width * 0.62, 2.2, 0.3),
-			CFrame.new(x, row * 9 - 2, z + depth * 0.5 + 0.2),
-			Config.Palette.Glas,
-			Enum.Material.SmoothPlastic
-		)
-		glass.Reflectance = Config.World.WindowReflectance
-		glass.Transparency = 0.1
-	end
+		furnished[edgeKey] = true
 
-	-- Genau ein Neonschild je Haus, mit echtem Licht.
-	if rng:NextNumber() &lt; Config.World.SignChance then
-		local colour = NEON_COLOURS[rng:NextInteger(1, #NEON_COLOURS)]
-		local signPart = decor(
-			"Neonschild",
-			Vector3.new(0.6, rng:NextInteger(6, 12), 3.4),
-			CFrame.new(x + width * 0.5 + 0.4, height * 0.55, z + depth * 0.35),
-			colour,
-			Enum.Material.Neon
-		)
-		-- Bei Tageslicht ist ein PointLight praktisch unsichtbar und trotzdem
-		-- teuer. Das Schild selbst bleibt, das Licht sparen wir uns.
-		if not Config.World.PermanentDay then
-			local light = Instance.new("PointLight")
-			light.Color = colour
-			light.Brightness = Config.World.SignBrightness
-			light.Range = Config.World.SignRange
-			light.Parent = signPart
+		local other = RoadNetwork.Get(linkId)
+		if not other then
+			continue
 		end
+		-- Nur im ausgebauten Bezirk moeblieren. Der Rest ist Rohbau, und
+		-- Laternen an einer leeren Flaeche sehen schlimmer aus als nichts.
+		local district = RoadNetwork.DistrictAt((node.Position + other.Position) * 0.5)
+		if not district or not district.Dense then
+			continue
+		end
+
+		local delta = other.Position - node.Position
+		furnish(node.Position, other.Position, math.abs(delta.X) &gt; math.abs(delta.Z))
 	end
 end
 
-do
-	local halfLength = Config.World.RoadLength * 0.5
-	local edge = Config.World.RoadWidth * 0.5 + 10
-
-	for _, side in { -1, 1 } do
-		local z = -halfLength * 0.5
-		while z &lt; halfLength * 0.5 do
-			local width = rng:NextInteger(18, 30)
-			local depth = rng:NextInteger(18, 26)
-			local height = rng:NextInteger(28, Config.World.MaxBuildingHeight)
-			building(side * (edge + depth * 0.5), -Config.World.RoadLength * 0.25 + z, width, depth, height)
-			z += width + rng:NextInteger(6, 14)
-		end
-	end
-end
-
-print("[GHOSTNET] Stadtkulisse gebaut.")
+print(
+	("[GHOSTNET] Vantorra gebaut: %d ausgebaute Bloecke, %d im Rohbau, %d Moebel."):format(
+		denseBlocks,
+		roughBlocks,
+		#props:GetChildren()
+	)
+)
 </ProtectedString>
 </Properties>
 </Item>
@@ -12690,11 +13258,11 @@ print(("[GHOSTNET] %d Testfahrzeuge gebaut."):format(built))
 </Item>
 </Item>
 </Item>
-<Item class="StarterPlayer" referent="GN69">
+<Item class="StarterPlayer" referent="GN76">
 <Properties>
 <string name="Name">StarterPlayer</string>
 </Properties>
-<Item class="StarterPlayerScripts" referent="GN70">
+<Item class="StarterPlayerScripts" referent="GN77">
 <Properties>
 <string name="Name">StarterPlayerScripts</string>
 </Properties>
@@ -18250,6 +18818,144 @@ RunService.RenderStepped:Connect(function(dt)
 	barFill.BackgroundColor3 = speedLabel.TextColor3
 	hintLabel.Text = if drifting then "GRIP VERLOREN" else "[W][S] Gas/Bremse   [A][D] Lenken"
 end)
+</ProtectedString>
+</Properties>
+</Item>
+</Item>
+<Item class="Folder" referent="GN61">
+<Properties>
+<string name="Name">World</string>
+</Properties>
+<Item class="LocalScript" referent="GN60">
+<Properties>
+<string name="Name">TrafficSmoother</string>
+<ProtectedString name="Source">-- StarterPlayerScripts/World/TrafficSmoother.client.luau
+--!strict
+-- GHOSTNET :: Weiches Nachziehen fuer servergesetzte Modelle.
+--
+-- DAS PROBLEM
+--   Verkehr, Fussgaenger und Streifenwagen sind Anchored. Der Server setzt
+--   ihre CFrame nur alle Config.Traffic.Tick Sekunden (10x/s) - haeufiger
+--   waere zu teuer. Auf dem Client kommt das als Sprung alle 100 ms an, und
+--   das sieht aus, als waere das Spiel kaputt. Nicht langsam: kaputt.
+--
+-- DIE LOESUNG
+--   Der Server bleibt bei 10 Schritten pro Sekunde. Dieser Client zieht die
+--   Modelle dazwischen weich nach. Kostet fast nichts und ist der
+--   Unterschied zwischen "ruckelt" und "faehrt".
+--
+-- DAS IST REINE OPTIK
+--   Der Client verschiebt die Modelle nur lokal. Jede Pruefung, die zaehlt -
+--   Diebstahl-Reichweite, Sichtlinie der Wachen, Fassen durch die Polizei -
+--   laeuft serverseitig gegen die echte Position. Wer hier manipuliert,
+--   verschiebt ein Bild und sonst nichts.
+--
+-- KEINE SIGNALE, SONDERN VERGLEICH
+--   Naheliegend waere GetPropertyChangedSignal("CFrame"). Damit faengt man
+--   sich aber die eigenen Schreibvorgaenge wieder ein, und ob das Signal
+--   sofort oder verzoegert feuert, haengt an SignalBehavior. Stattdessen
+--   merkt sich der Client, was er selbst zuletzt geschrieben hat: weicht die
+--   aktuelle CFrame davon ab, kam sie vom Server. Kein Timing-Verlass.
+
+local CollectionService = game:GetService("CollectionService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+
+local Config = require(ReplicatedStorage.Shared.Config)
+
+local SMOOTHING = Config.Traffic.ClientSmoothing
+
+type Entry = {
+	Model: Model,
+	Pivot: BasePart,
+	Target: CFrame, -- wohin der Server das Modell gestellt hat
+	Shown: CFrame, -- wo es gerade gezeichnet wird
+	Written: CFrame, -- was dieser Client zuletzt selbst geschrieben hat
+}
+
+local entries: { [Model]: Entry } = {}
+
+--==========================================================================
+
+-- Gleich genug? Fliesskomma-Rundung beim Replizieren darf nicht als
+-- "der Server hat etwas Neues geschickt" durchgehen.
+local function samePosition(a: CFrame, b: CFrame): boolean
+	return (a.Position - b.Position).Magnitude &lt; 0.01
+		and a.LookVector:Dot(b.LookVector) &gt; 0.9999
+end
+
+local function track(instance: Instance)
+	if not instance:IsA("Model") then
+		return
+	end
+	local pivot = instance.PrimaryPart
+	if not pivot then
+		-- Ohne PrimaryPart nimmt PivotTo den Mittelpunkt der Bounding-Box.
+		-- Das geht nicht schief, es sieht nur falsch aus - deshalb laut sein.
+		warn(("[GHOSTNET] %s ist als geglaettet markiert, hat aber keinen PrimaryPart."):format(instance:GetFullName()))
+		return
+	end
+	local now = instance:GetPivot()
+	entries[instance] = {
+		Model = instance,
+		Pivot = pivot,
+		Target = now,
+		Shown = now,
+		Written = now,
+	}
+end
+
+local function untrack(instance: Instance)
+	if instance:IsA("Model") then
+		entries[instance] = nil
+	end
+end
+
+--==========================================================================
+
+local function step(deltaTime: number)
+	-- Exponentielle Annaeherung statt fester Schrittweite: unabhaengig von
+	-- der Bildrate landet man immer gleich schnell am Ziel.
+	local alpha = 1 - math.exp(-deltaTime / SMOOTHING)
+
+	for model, entry in entries do
+		if not model.Parent or not entry.Pivot.Parent then
+			entries[model] = nil
+			continue
+		end
+
+		local current = entry.Pivot.CFrame
+		if not samePosition(current, entry.Written) then
+			-- Weicht von dem ab, was wir selbst geschrieben haben: das kam
+			-- ueber die Replikation vom Server.
+			entry.Target = model:GetPivot()
+		end
+
+		-- Grosser Sprung = das Modell wurde neu eingesetzt (Pool!) oder ist
+		-- ueber die halbe Stadt gesprungen. Dann nicht hinterherfahren,
+		-- sondern hart setzen - sonst sieht man es durch die Stadt gleiten.
+		if (entry.Target.Position - entry.Shown.Position).Magnitude &gt; Config.Traffic.SnapDistance then
+			entry.Shown = entry.Target
+		else
+			entry.Shown = entry.Shown:Lerp(entry.Target, alpha)
+		end
+
+		model:PivotTo(entry.Shown)
+		entry.Written = entry.Shown
+	end
+end
+
+--==========================================================================
+
+if SMOOTHING &gt; 0 then
+	for _, instance in CollectionService:GetTagged(Config.SmoothTag) do
+		track(instance)
+	end
+	CollectionService:GetInstanceAddedSignal(Config.SmoothTag):Connect(track)
+	CollectionService:GetInstanceRemovedSignal(Config.SmoothTag):Connect(untrack)
+
+	RunService.RenderStepped:Connect(step)
+end
 </ProtectedString>
 </Properties>
 </Item>

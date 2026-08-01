@@ -134,7 +134,10 @@ local function patrol(guard: Guard, dt: number)
 
 	local target = guard.A:Lerp(guard.B, guard.Alpha)
 	local look = if guard.Direction > 0 then guard.B else guard.A
-	guard.Root.CFrame = CFrame.lookAt(target, Vector3.new(look.X, target.Y, look.Z))
+	-- PivotTo statt Root.CFrame: der Kopf ist ein eigener Anchored-Part.
+	-- Mit .CFrame waere er an der Startposition stehen geblieben, waehrend
+	-- der Rumpf patrouilliert - derselbe Fehler wie frueher beim Verkehr.
+	guard.Model:PivotTo(CFrame.lookAt(target, Vector3.new(look.X, target.Y, look.Z)))
 end
 
 --==========================================================================
