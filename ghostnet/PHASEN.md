@@ -1,6 +1,6 @@
 # GHOSTNET — Bauplan
 
-**Stand: Phase 0 bis G sind gebaut** (`Config.Version = "1.0.0"`).
+**Stand: Phase 0 bis G plus Open-World-Phase 1** (`Config.Version = "1.1.0"`).
 Was jetzt ansteht, steht ganz unten unter „Offen".
 
 Reihenfolge war bindend. Eine Phase wurde komplett fertig, bevor die nächste
@@ -191,6 +191,66 @@ Erst bauen, wenn Phase 1–3 laufen. Monetarisierung vor Retention verdient nich
   erst gutschreiben und speichern, dann `PurchaseGranted`.
 - Kauf-Effekte laufen ausschließlich über `EconomyService`.
 
+
+---
+
+# Open-World-Umbau
+
+Aus dem Hacking-Spiel wird eine offene Stadt. **Kein GTA-Klon mit Hacking,
+sondern ein Hacking-Spiel mit offener Stadt** — der Unterschied entscheidet
+jedes Detail: keine Schusswaffen, Autos sind Werkzeug statt Selbstzweck,
+NPCs sind Hindernis statt Gegner, Polizei ist Verfolgung statt Schießerei.
+
+## OW-Abschnitt 2 — Tag und Nacht ✅
+`TimeService`. Voller Zyklus in `Config.World.DayLengthMinutes` (24 min).
+Der Server ist die Uhr, `Lighting` wird weich interpoliert.
+**Mechanisch, nicht dekorativ:** nachts +35 % auf jeden Hack-Ertrag und
+kürzere NPC-Sichtweite, tagsüber ruhigere Darknet-Kurse und (ab OW-Phase 4)
+geöffnete Händler. `Lighting.Technology` ist über `Config.World` umschaltbar.
+
+## OW-Phase 1 — Fahrzeuge ✅
+`Shared/Vehicles.luau` (fünf Klassen als Daten) + `VehicleChassis`
+(ein Chassis, viele Karosserien) + `VehicleController` (Fahrgefühl).
+SpringConstraint für die Federung, CylindricalConstraint für Antrieb und
+Lenkung, `SetNetworkOwner` beim Einsteigen und zurück beim Aussteigen.
+
+## OW-Phase 2 — Die Stadt
+`StreamingEnabled` ist Pflicht (steht schon in `Config.World`, Radien noch
+ungetestet). Bezirke statt einer großen Fläche — **erst einen fertig und
+dicht, dann den nächsten**: Altstadt (D1–3), Hafen (3–5), Finanzviertel (5–7),
+Höhenzug (6–8), Industriegebiet (4–6). Straßenmittellinien gleich als
+unsichtbare Wegpunkt-Kette mitlegen, sonst muss man sie für Phase 3 nachziehen.
+Häuserfronten aus wiederverwendbaren Modulen. Dächer begehbar.
+
+## OW-Phase 3 — Verkehr und Fußgänger
+Der performancekritischste Teil. **Kein `PathfindingService` für Verkehr** —
+Wegpunkt-Graph, `CFrame`-Interpolation, `Anchored`, Objekt-Pool, harte
+Obergrenze, nur im Radius um Spieler aktiv. Fußgänger **ohne `Humanoid`**.
+Verkehrsautos lassen sich stehlen ([E] halten) — das erhöht den Trace.
+
+## OW-Phase 4 — Autohändler, Besitz, Garage
+`VehicleService`: Besitz im Profil (Schema-Migration!), ein Fahrzeug
+gleichzeitig ausgeparkt, Ausparken nur an markierten Punkten. Händler als
+Modell mit Tag `GhostNetDealer`, ausgestellte Fahrzeuge stehen physisch im
+Showroom mit Testrunde. Preis serverseitig. Anpassung rein kosmetisch —
+**keine Leistungsteile**.
+
+## OW-Phase 5 — Die Bank
+Drei Ebenen (Schalterhalle, Sicherheitsbereich, Tresorraum), drei Wege hinein
+(leise / schnell / von oben). Wachen mit Sichtkegel per Raycast, die
+**melden statt anzugreifen**. Beute landet als Unsold — das bestehende
+Trace-System trägt den ganzen Raub.
+
+## OW-Phase 6 — Polizei statt Kampf
+`PursuitService`. Fahndungsstufe 1–5 aus Trace plus aktuellen Taten.
+Streifenwagen auf dem Verkehrsgraphen. Entkommen durch Sichtverlust,
+Gefasstwerden = Bust über die bestehende `TraceService.OnBust`-Kette.
+**Kein Schusswechsel.**
+
+## OW-Phase 7 — Die Story
+Neue Story in Vantorra, 10 Missionen, Wendung in Mission 8 (Wren arbeitet für
+Meridian), Entscheidung in Mission 10 (Kassieren / Verbrennen), im Profil
+gespeichert und einmal pro Woche umstellbar.
 
 ---
 

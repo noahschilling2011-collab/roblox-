@@ -6,7 +6,7 @@
 
 local Config = {}
 
-Config.Version = "1.0.0" -- Phase A-G komplett
+Config.Version = "1.1.0" -- Open-World: Tag/Nacht und Fahrzeuge
 
 -- CollectionService-Tags. Ein Part mit dem Tag ist ein Hack-Ziel, ein Hehler,
 -- ein Missions-Wegpunkt oder ein ansprechbarer Kontakt. Kein Code pro Objekt.
@@ -14,6 +14,8 @@ Config.HackableTag = "GhostNetHackable"
 Config.FenceTag = "GhostNetFence"
 Config.WaypointTag = "GhostNetWaypoint"
 Config.ContactTag = "GhostNetContact"
+Config.VehicleTag = "GhostNetVehicle" -- fahrbares Fahrzeug
+Config.VehicleSpawnTag = "GhostNetVehicleSpawn" -- erlaubter Ausparkplatz
 
 --==========================================================================
 -- 1. REICHWEITE (Netzwerkkarte)
@@ -422,6 +424,41 @@ Config.Monetization = {
 Config.World = {
 	Seed = 20260801, -- feste Zahl: die Stadt sieht auf jedem Server gleich aus
 
+	--== TAG UND NACHT =====================================================
+	-- Ein echter Zyklus, der Spielmechanik ist - keine Kulisse. Dauerhaftes
+	-- Tageslicht wuerde Neon, Bloom und die Terminal-Aesthetik zerstoeren,
+	-- dauerhafte Nacht macht die Stadt eintoenig.
+	DayLengthMinutes = 24, -- voller Zyklus. 24 = eine Minute pro Stunde.
+	StartClock = 21, -- womit ein frischer Server anfaengt (Nacht)
+	TimeTick = 0.25, -- wie oft die Uhr gestellt wird (reine Performance)
+
+	DayStartHour = 6, -- ab hier gilt "Tag"
+	NightStartHour = 20, -- ab hier gilt "Nacht"
+
+	-- DER MECHANISCHE UNTERSCHIED. Ohne den ist der Zyklus nur Deko.
+	-- Hoch = Nachtspiel lohnt deutlich, runter = Tageszeit wird egal.
+	NightRewardBonus = 0.35, -- +35 % auf jeden Hack-Ertrag nachts
+	NightSightFactor = 0.6, -- NPCs sehen nachts kuerzer (Phase 5/6)
+	DayMarketCalm = 0.6, -- tagsuebers schwanken die Kurse nur 60 %
+
+	-- Lighting. Future sieht deutlich besser aus, kostet auf schwachen
+	-- Geraeten aber spuerbar Bildrate. Auf "ShadowMap" stellen, wenn es
+	-- auf dem Handy ruckelt - der Rest des Spiels aendert sich nicht.
+	LightingTechnology = "Future",
+	FogNight = 380,
+	FogDay = 900,
+	AtmosphereDensityNight = 0.42,
+	AtmosphereDensityDay = 0.28,
+	BloomNight = 0.9,
+	BloomDay = 0.35,
+
+	--== STREAMING =========================================================
+	-- Pflicht fuer eine grosse Karte: ohne laedt jeder Spieler die ganze
+	-- Stadt in den Speicher und Handys brechen zusammen.
+	StreamingEnabled = true,
+	StreamingMinRadius = 128, -- was immer geladen ist
+	StreamingTargetRadius = 512, -- was angestrebt wird
+
 	RoadWidth = 46,
 	RoadLength = 320,
 	RoadReflectance = 0.28, -- nasse Fahrbahn. 0 = trocken und matt.
@@ -439,7 +476,63 @@ Config.World = {
 }
 
 --==========================================================================
--- 16. RATE-LIMITS (Token-Bucket pro Spieler und Remote)
+-- 16. FAHRZEUGE
+-- Die Klassen selbst stehen in Shared/Vehicles.luau. Hier steht, was fuer
+-- alle gilt, und die Defaults fuer fehlende Attribute.
+--
+-- WICHTIG ZUR SICHERHEIT: Sobald jemand einsteigt, bekommt der Client den
+-- Netzwerkbesitz ueber das Chassis - sonst faehrt sich das Auto wie durch
+-- Sirup. Damit besitzt der Client die Fahrzeugphysik. Deshalb darf NIE eine
+-- Fahrzeugposition oder -geschwindigkeit als Beweis fuer eine Belohnung
+-- dienen. Ankommen wird ueber serverseitige Trigger-Parts geprueft.
+--==========================================================================
+Config.Vehicle = {
+	MaxSpawned = 1, -- pro Spieler gleichzeitig ausgeparkt. Hoch = Server erstickt.
+	IdleDespawn = 120, -- Sekunden ohne Fahrer, dann verschwindet es
+	SpawnRange = 24, -- so nah muss man an einem Ausparkplatz stehen
+
+	-- Fahrwerk. Diese Zahlen bestimmen das Fahrgefuehl mehr als MaxSpeed.
+	SuspensionLength = 2.2, -- Ruhelaenge der Feder
+	SuspensionTravel = 1.1, -- wie weit sie ein- und ausfedern darf
+	SuspensionDamping = 900, -- zu wenig = Wackelpudding, zu viel = Brett
+	SteerSpeed = 6, -- wie schnell der Lenkeinschlag folgt (Grad/Tick-Faktor)
+	SteerSpeedFalloff = 0.55, -- bei Tempo weniger Einschlag, sonst ueberschlaegt es
+
+	WheelDensity = 0.4,
+	CarrierDensity = 0.05, -- Radtraeger fast masselos, sonst schlingert es
+	WheelFriction = 2.0,
+	WheelElasticity = 0.1,
+
+	-- Antriebsdrehmoment wird mit diesem Faktor auf die Raeder verteilt.
+	TorqueScale = 1.0,
+	BrakeTorqueScale = 1.6,
+
+	--== FAHRGEFUEHL (Client) ==============================================
+	-- Ohne das fuehlt sich kein Auto schnell an, egal wie hoch MaxSpeed steht.
+	CameraFovBase = 70,
+	CameraFovFast = 85,
+	CameraFovLerp = 0.06,
+	CameraDistanceBase = 18,
+	CameraDistanceFast = 26,
+
+	EngineVolume = 0.4,
+	EnginePitchIdle = 0.8,
+	EnginePitchMax = 2.4,
+
+	SkidThreshold = 14, -- Seitwaertstempo, ab dem die Reifen quietschen
+	SkidLifetime = 6, -- wie lange eine Bremsspur liegen bleibt
+	SkidMaxMarks = 60, -- Obergrenze, sonst wachsen die Spuren endlos
+
+	-- Schaden ist rein optisch: sichtbare Verfaerbung, keine Reparatur.
+	-- Kostet fast nichts und wirkt stark.
+	DamageEnabled = true,
+	DamageSpeedThreshold = 55, -- ab diesem Aufpralltempo wird es sichtbar
+	DamageMax = 1.0,
+	DamagePerHit = 0.25,
+}
+
+--==========================================================================
+-- 17. RATE-LIMITS (Token-Bucket pro Spieler und Remote)
 -- Jede neue Remote braucht hier einen Eintrag, sonst wird sie verworfen.
 --==========================================================================
 Config.RateLimits = {
@@ -458,7 +551,7 @@ Config.RateLimits = {
 }
 
 --==========================================================================
--- 17. NODE-BREACH
+-- 18. NODE-BREACH
 --==========================================================================
 Config.NodeBreach = {
 	-- Pro Schwierigkeitsband: Gittergroesse, Anzahl Relays, Anteil sichtbares
@@ -475,7 +568,7 @@ Config.NodeBreach = {
 }
 
 --==========================================================================
--- 18. DEFAULTS FUER HACK-ZIELE
+-- 19. DEFAULTS FUER HACK-ZIELE
 -- Ein Part braucht KEIN einziges Attribut. Alles, was fehlt, kommt von hier.
 --==========================================================================
 Config.TargetDefaults = {

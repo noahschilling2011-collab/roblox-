@@ -140,6 +140,9 @@ const place = `<roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi
 <Properties>
 <string name="Name">Workspace</string>
 <float name="Gravity">196.2</float>
+<bool name="StreamingEnabled">true</bool>
+<int name="StreamingMinRadius">128</int>
+<int name="StreamingTargetRadius">512</int>
 </Properties>
 ${worldXml}</Item>
 ${lightingXml}<Item class="ReplicatedStorage" referent="${nextReferent()}">

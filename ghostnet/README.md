@@ -69,6 +69,7 @@ src/shared/          -> ReplicatedStorage.Shared
   Types.luau           gemeinsame Typen, inkl. Profil-Schema
   Geometry.luau        die eine Abstandsrechnung für Server und Client
   Missions.luau        Missionen als Daten + die puren Regeln dazu
+  Vehicles.luau        Fahrzeugklassen als Daten
   Goods.luau           Warenkatalog fürs Darknet
   SoundCatalog.luau    alle Klänge (IDs leer)
   UITheme.luau         Bausteine fürs Fake-OS
@@ -86,6 +87,8 @@ src/server/          -> ServerScriptService
     ShopService.luau        Rig-Upgrades
     RaidService.luau        Alarm-Uhr für mehrstufige Ziele, Co-Op
     MissionService.luau     Story-Fortschritt, serverseitig geprüft
+    TimeService.luau        Tag/Nacht - Uhr, Licht, Nachtbonus
+    VehicleChassis.luau     baut Fahrzeuge aus dem Datensatz
     MarketService.luau      Darknet-Kurse, serverweit
     InventoryService.luau   Lager und Handel
     MonetizationService.luau Gamepässe und Produkte (IDs = 0)
@@ -96,6 +99,7 @@ src/server/          -> ServerScriptService
     TestTargets.server.luau  Kamera (D2), Tür (D4), Automat (D6), Hehler
     StoryWorld.server.luau   Übungsterminal, Laden, Apartment, Bank
     Cityscape.server.luau    Straßenzeile, Neon, nasse Fahrbahn (nur Kulisse)
+    TestVehicles.server.luau ein Fahrzeug jeder Klasse am Spawn
 src/client/UI/       -> StarterPlayerScripts.UI
   HUD.client.luau          Wallet, Trace-Balken, Prompt, Meldungen
   HackUI.client.luau       das Fake-OS während eines Hacks
@@ -107,6 +111,7 @@ src/client/UI/       -> StarterPlayerScripts.UI
   AdminUI.client.luau      Admin-Panel (F2)
   SoundController.client.luau  spielt den SoundCatalog
   TargetBeacons.client.luau    lässt Ziele auf Distanz pulsieren
+  VehicleController.client.luau  Fahren: Steuerung, Kamera, Klang, Tacho
 ```
 
 ## Neue Objekte in der Welt
@@ -151,6 +156,8 @@ in den Vorbedingungen. Fehler tauchen beim Serverstart als `warn()` auf.
 | `B` / Knopf unten links | Rig-Shop |
 | `P` / Knopf unten links | Robux-Store |
 | `F2` | Admin-Panel (nur wenn autorisiert) |
+| Einsteigen-Prompt | Fahrzeug betreten |
+| `W`/`S`, `A`/`D` | Gas und Bremse, Lenken |
 | `Esc` | Hack abbrechen (kostet halben Trace) / Fenster schließen |
 
 Alles ist auch per Touch bedienbar — keine Funktion hängt nur an der Tastatur.

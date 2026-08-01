@@ -275,6 +275,50 @@ try {
     );
   }
 
+  // --- Fahrzeuge (Open-World Phase 1) ---
+  // Der Client besitzt die Fahrzeugphysik (Netzwerkbesitz). Genau deshalb
+  // darf keine Belohnung an einer gemeldeten Position oder Geschwindigkeit
+  // haengen.
+  for (const [file, src] of sources) {
+    const short = relative(ROOT, file);
+    if (!short.startsWith("src/server/")) continue;
+    const suspicious = [...src.matchAll(/payload[^\n]*\.(Position|Velocity|Speed|CFrame|Distance)\b/g)];
+    check(
+      `${short} liest keine Position aus dem Client-Paket`,
+      suspicious.length === 0,
+      suspicious.map((m) => m[0]).join(", ")
+    );
+  }
+
+  const chassisSrc = sources.get(join(SRC, "server/Systems/VehicleChassis.luau"));
+  if (chassisSrc) {
+    check(
+      "Netzwerkbesitz geht beim Einsteigen an den Fahrer",
+      /SetNetworkOwner\(player\)/.test(chassisSrc),
+      "ohne das faehrt sich das Auto wie durch Sirup"
+    );
+    check(
+      "Netzwerkbesitz geht beim Aussteigen zurueck",
+      /setOwner\(model, nil\)/.test(chassisSrc),
+      "ein weggegangener Client behielte die Kontrolle"
+    );
+    check(
+      "Chassis vergibt selbst keine Belohnung",
+      !/AwardBanked|AwardUnsold|SpendBanked/.test(chassisSrc),
+      "Fahrzeugcode darf kein Geld bewegen"
+    );
+    check(
+      "Federung ueber SpringConstraint",
+      /Instance\.new\("SpringConstraint"\)/.test(chassisSrc),
+      "fehlt"
+    );
+    check(
+      "Antrieb und Lenkung ueber CylindricalConstraint",
+      (chassisSrc.match(/Instance\.new\("CylindricalConstraint"\)/g) ?? []).length >= 2,
+      "es fehlt eine der beiden Achsen"
+    );
+  }
+
   // --- Monetarisierung (Phase F) ---
   const monSrc = sources.get(join(SRC, "server/Systems/MonetizationService.luau"));
   if (monSrc) {
@@ -358,6 +402,20 @@ local Color3 = {
 	fromRGB = function(r, g, b) return { r = r, g = g, b = b, kind = "Color3" } end,
 	new = function(r, g, b) return { r = r, g = g, b = b, kind = "Color3" } end,
 }
+local Vector3 = {
+	new = function(x, y, z) return { X = x or 0, Y = y or 0, Z = z or 0, kind = "Vector3" } end,
+	zero = { X = 0, Y = 0, Z = 0, kind = "Vector3" },
+}
+-- Die Module pruefen mit typeof(v) == "Vector3". In der reinen Luau-VM sind
+-- die Stubs Tabellen, also muss typeof das hier wissen - sonst testen wir
+-- etwas anderes als das, was in Roblox laeuft.
+local rawTypeof = typeof
+local function typeof(value)
+	if type(value) == "table" and rawget(value, "kind") ~= nil then
+		return value.kind
+	end
+	return rawTypeof(value)
+end
 local Random = {
 	new = function(seed)
 		local rng = {}
@@ -379,6 +437,7 @@ local __deps = {}
     ["Config", "shared/Config.luau"],
     ["Missions", "shared/Missions.luau"],
     ["Goods", "shared/Goods.luau"],
+    ["Vehicles", "shared/Vehicles.luau"],
     ["NodeBreach", "server/Systems/Minigames/NodeBreach.luau"],
   ]) {
     body += `\n__deps["${name}"] = (function()\n${loadModule(path)}\nend)()\n`;
@@ -388,6 +447,7 @@ local __deps = {}
 local Config = __deps["Config"]
 local Missions = __deps["Missions"]
 local Goods = __deps["Goods"]
+local Vehicles = __deps["Vehicles"]
 local NodeBreach = __deps["NodeBreach"]
 
 -- Ergebnis geht als eine Zeichenkette zurueck ("OK|name" / "FAIL|name|grund"),
@@ -804,6 +864,110 @@ test("Handelsmengen sind begrenzt", function()
 		"man kann mehr auf einmal kaufen, als je ins Lager passt")
 	expect(Config.Market.BustStashLossPercent > 0, "Bust kostet kein Lager - Handel ohne Risiko")
 	expect(Config.Market.BustStashLossPercent <= 1, "Bust kostet mehr als das ganze Lager")
+end)
+
+--== Fahrzeuge (Open-World Phase 1) ========================================
+
+test("Fahrzeugkatalog ist gueltig", function()
+	local valid, errors = Vehicles.Validate()
+	expect(valid, "Katalog kaputt: " .. table.concat(errors, " | "))
+	expect(Vehicles.Count() >= 5, "zu wenige Klassen")
+end)
+
+test("Keine Klasse macht eine andere ueberfluessig", function()
+	-- Die Leitregel aus dem Bauplan: jede Klasse braucht einen mechanischen
+	-- Grund. Ein Auto, das nur schneller ist, entwertet alle anderen.
+	local good = { Id = "A", Name = "A", Blurb = "", Price = 100, MaxSpeed = 50,
+		Acceleration = 100, BrakeForce = 100, TurnAngle = 30, SuspensionStiffness = 100,
+		Mass = 1, Grip = 1, BodySize = Vector3.new(1, 1, 1), WheelRadius = 1, WheelWidth = 1,
+		Wheels = 4, Colour = nil, StashBonus = 0, HeatFactor = 1 }
+	local better = table.clone(good)
+	better.Id = "B"
+	better.MaxSpeed = 90
+	better.Acceleration = 200
+	-- B ist in allem besser und nicht teurer -> muss auffallen.
+	local valid = Vehicles.Validate({ good, better })
+	expect(not valid, "eine dominante Klasse wurde durchgelassen")
+end)
+
+test("Validate findet kaputte Fahrzeugdaten", function()
+	local base = { Id = "A", Name = "A", Blurb = "", Price = 100, MaxSpeed = 50,
+		Acceleration = 100, BrakeForce = 100, TurnAngle = 30, SuspensionStiffness = 100,
+		Mass = 1, Grip = 1, BodySize = Vector3.new(1, 1, 1), WheelRadius = 1, WheelWidth = 1,
+		Wheels = 4, Colour = nil, StashBonus = 0, HeatFactor = 1 }
+	local function with(overrides)
+		local copy = table.clone(base)
+		for key, value in overrides do
+			copy[key] = value
+		end
+		local valid = Vehicles.Validate({ copy })
+		return not valid
+	end
+	expect(with({ Wheels = 3 }), "drei Raeder durchgelassen")
+	expect(with({ MaxSpeed = 0 }), "MaxSpeed 0 durchgelassen")
+	expect(with({ HeatFactor = 0 }), "HeatFactor 0 durchgelassen")
+	expect(with({ Id = "" }), "leere Id durchgelassen")
+	expect(with({ BodySize = 5 }), "BodySize als Zahl durchgelassen")
+	local valid = Vehicles.Validate({ base })
+	expect(valid, "gueltige Klasse abgelehnt")
+end)
+
+test("Jede Klasse hat genau eine Staerke", function()
+	-- Fuer jede Klasse muss es mindestens EINEN Wert geben, in dem sie
+	-- besser ist als alle anderen. Sonst gibt es keinen Grund, sie zu fahren.
+	for _, class in Vehicles.List do
+		local unique = false
+		local checks = {
+			function(a, b) return a.MaxSpeed > b.MaxSpeed end,
+			function(a, b) return Vehicles.StashBonus(a.Id) > Vehicles.StashBonus(b.Id) end,
+			function(a, b) return a.HeatFactor < b.HeatFactor end,
+			function(a, b) return a.TurnAngle > b.TurnAngle end,
+			function(a, b) return a.Grip > b.Grip end,
+			function(a, b) return a.Price < b.Price end,
+		}
+		for _, better in checks do
+			local bestAtThis = true
+			for _, other in Vehicles.List do
+				if other.Id ~= class.Id and not better(class, other) then
+					bestAtThis = false
+					break
+				end
+			end
+			if bestAtThis then
+				unique = true
+				break
+			end
+		end
+		expect(unique, class.Id .. " ist in nichts die beste Wahl - niemand faehrt sie")
+	end
+end)
+
+test("Motorrad hat kein Lager, Transporter das groesste", function()
+	expect(Vehicles.StashBonus("BIKE") == 0, "Motorrad transportiert Ware")
+	local vanBonus = Vehicles.StashBonus("VAN")
+	for _, class in Vehicles.List do
+		if class.Id ~= "VAN" then
+			expect(vanBonus > Vehicles.StashBonus(class.Id), "Transporter ist nicht der beste Lastesel")
+		end
+	end
+end)
+
+--== Tag und Nacht =========================================================
+
+test("Der Tageszyklus ist eine Mechanik, keine Kulisse", function()
+	expect(Config.World.NightRewardBonus > 0, "Nacht bringt keinen Vorteil")
+	expect(Config.World.NightSightFactor < 1, "NPCs sehen nachts genauso weit")
+	expect(Config.World.DayMarketCalm < 1, "Kurse sind tagsueber nicht ruhiger")
+	expect(Config.World.DayStartHour < Config.World.NightStartHour, "Tag und Nacht ueberschneiden sich")
+	expect(Config.World.DayLengthMinutes > 0, "ein Tag dauert null Minuten")
+	expect(Config.World.StartClock >= 0 and Config.World.StartClock < 24, "Startzeit ausserhalb der Uhr")
+end)
+
+test("Streaming ist an und die Radien sind plausibel", function()
+	expect(Config.World.StreamingEnabled, "ohne Streaming brechen Handys bei einer grossen Karte ein")
+	expect(Config.World.StreamingMinRadius > 0, "MinRadius unbrauchbar")
+	expect(Config.World.StreamingTargetRadius > Config.World.StreamingMinRadius,
+		"TargetRadius muss groesser sein als MinRadius")
 end)
 
 --== Node-Breach ===========================================================

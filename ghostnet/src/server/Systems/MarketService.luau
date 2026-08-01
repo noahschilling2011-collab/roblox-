@@ -25,6 +25,8 @@ local Config = require(ReplicatedStorage.Shared.Config)
 local Goods = require(ReplicatedStorage.Shared.Goods)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 
+local TimeService = require(script.Parent.TimeService)
+
 local MarketService = {}
 
 type Quote = {
@@ -175,8 +177,10 @@ local function tickPrices()
 			continue
 		end
 
-		-- 1. Zufallsschritt im Rahmen der Volatilitaet.
-		local drift = rng:NextNumber(-good.Volatility, good.Volatility)
+		-- 1. Zufallsschritt im Rahmen der Volatilitaet. Tagsueber gedaempft:
+		--    ruhige Kurse am Tag, wilde nachts - passend zum Nachtbonus.
+		local swing = good.Volatility * TimeService.MarketVolatilityFactor()
+		local drift = rng:NextNumber(-swing, swing)
 
 		-- 2. Rueckkehr zum Basispreis (1.0). Das ist der Anker, ohne den
 		--    der Kurs davonlaeuft.

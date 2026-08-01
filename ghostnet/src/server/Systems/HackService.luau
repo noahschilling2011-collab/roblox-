@@ -27,6 +27,7 @@ local HackEffects = require(script.Parent.HackEffects)
 local HackTargets = require(script.Parent.HackTargets)
 local MonetizationService = require(script.Parent.MonetizationService)
 local RateLimiter = require(script.Parent.RateLimiter)
+local TimeService = require(script.Parent.TimeService)
 local SaveService = require(script.Parent.SaveService)
 local TraceService = require(script.Parent.TraceService)
 
@@ -123,7 +124,9 @@ local function resolve(session: Session, success: boolean, reason: string)
 		end
 
 		if success then
-			reward = target.Reward
+			-- Nachts bringt jeder Hack mehr. Das ist der mechanische Grund,
+			-- auf die Uhr zu schauen - sonst waere der Tageszyklus Deko.
+			reward = math.floor(target.Reward * TimeService.RewardMultiplier())
 			cooldown = target.Cooldown
 			EconomyService.AwardUnsold(player, reward)
 			HackTargets.SetCooldown(player, target.Id, cooldown)

@@ -13,6 +13,7 @@ require(ReplicatedStorage.Shared.Remotes)
 
 local Systems = script.Parent:WaitForChild("Systems")
 
+local TimeService = require(Systems.TimeService)
 local SaveService = require(Systems.SaveService)
 local EconomyService = require(Systems.EconomyService)
 local TraceService = require(Systems.TraceService)
@@ -24,10 +25,12 @@ local RaidService = require(Systems.RaidService)
 local MissionService = require(Systems.MissionService)
 local MarketService = require(Systems.MarketService)
 local InventoryService = require(Systems.InventoryService)
+local VehicleChassis = require(Systems.VehicleChassis)
 local MonetizationService = require(Systems.MonetizationService)
 local AdminService = require(Systems.AdminService)
 
-SaveService.Init() -- zuerst: haelt das Profil
+TimeService.Init() -- ganz zuerst: Licht und Uhr, davon haengen Ertraege ab
+SaveService.Init() -- dann das Profil
 EconomyService.Init() -- liest aus dem Profil
 TraceService.Init() -- braucht Economy fuers Wipe beim Bust
 HackTargets.Init() -- braucht das Profil fuer Cooldowns
@@ -40,6 +43,7 @@ RaidService.Init()
 MissionService.Init()
 MarketService.Init() -- Kurse laufen unabhaengig von Spielern
 InventoryService.Init() -- braucht Markt und Missionen (Unlock-Pruefung)
+VehicleChassis.Init()
 MonetizationService.Init()
 AdminService.Init() -- zuletzt: greift auf alle anderen zu
 

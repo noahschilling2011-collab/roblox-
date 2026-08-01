@@ -35,6 +35,7 @@ local EVENT_NAMES = {
 	"AdminReady", -- S->C  { studio }   nur an autorisierte Spieler
 	"StoreSync", -- S->C  { passes, products }
 	"StorePrompt", -- C->S  { kind, key }   bittet um den Kaufdialog
+	"TimeSync", -- S->C  { clock, isNight, rewardBonus }
 }
 
 local FUNCTION_NAMES: { string } = {

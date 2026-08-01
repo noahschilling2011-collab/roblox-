@@ -41,6 +41,12 @@ SoundCatalog.Ids = {
 		Sell = "",
 		PriceAlert = "", -- Markt-Event
 	},
+	Vehicle = {
+		Engine = "", -- Loop, Tonhoehe steigt mit dem Tempo
+		TyreSqueal = "", -- Loop, Lautstaerke steigt mit dem Seitwaertsdrift
+		Crash = "", -- Aufprall
+		DoorClose = "", -- Einsteigen
+	},
 	World = {
 		Ambience = "", -- dunkler Stadt-Loop
 		Rain = "",

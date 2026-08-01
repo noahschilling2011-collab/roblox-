@@ -3,16 +3,64 @@
 > Wird am Ende jeder Session aktualisiert. Erstes, was eine neue Session liest.
 
 ## Aktuelle Phase
-**Phase 0 bis G sind gebaut** (`Config.Version = "1.0.0"`). Story, Überfälle,
-Darknet, Admin-Panel, Store und Optik stehen; der Loop aus Phase 1 läuft
+**Phase 0 bis G plus Open-World-Abschnitt 2 und Phase 1**
+(`Config.Version = "1.1.0"`). Das Spiel hat jetzt einen Tag-/Nachtzyklus, der
+Mechanik ist, und fünf fahrbare Fahrzeugklassen. Alles Bisherige läuft
 unverändert darunter weiter.
 
-**Nächster Schritt ist nicht mehr Code, sondern ein Test mit echten Spielern.**
-Davor muss Noah die IDs eintragen (siehe „Manuelle Schritte" unten) — ohne die
-ist das Spiel stumm und der Store leer. Was danach sinnvoll wäre, steht am Ende
-von `PHASEN.md`.
+**Nächster Schritt: Open-World-Phase 2 (die Stadt).** Erst *ein* Bezirk fertig
+und dicht, dann der nächste — eine große leere Stadt ist schlimmer als ein
+kleiner voller Block.
+
+## ⚠️ Was ich NICHT prüfen konnte
+Der Bauplan verlangt nach jeder Phase eine **gemessene Bildrate**. Das kann ich
+nicht liefern: Ich habe keine Roblox-Laufzeit, nur eine Luau-VM für Syntax und
+Logik. Die 462 Prüfungen sagen nichts über Bildrate, Fahrverhalten oder
+Physikstabilität aus. Beides muss Noah im MicroProfiler messen —
+besonders vor Open-World-Phase 3 (Verkehr), wo genau das entscheidet.
 
 ## Fertig ✅
+
+### Open-World Abschnitt 2 — Tag und Nacht
+- **`TimeService`** (neu) — voller Zyklus in 24 Minuten, Server ist die Uhr.
+  `Lighting.ClockTime`, Nebel, Ambient, Atmosphere und Bloom werden über eine
+  weiche Rampe um Sonnenauf- und -untergang interpoliert, nichts springt.
+- **Der Zyklus ist Mechanik, keine Kulisse:** nachts +35 % auf jeden
+  Hack-Ertrag (`TimeService.RewardMultiplier`) und kürzere NPC-Sichtweite
+  (`SightFactor`, ab OW-Phase 5 genutzt); tagsüber schwanken die Darknet-Kurse
+  nur zu 60 %. Der Testlauf prüft, dass diese drei Unterschiede existieren.
+- `Lighting.Technology` steht in `Config.World` und ist auf `ShadowMap`
+  umstellbar, falls `Future` auf dem Handy einbricht.
+- Tagsüber kühles Blaugrau statt sattem Blau — die Stadt soll auch bei Tag
+  nicht freundlich wirken.
+
+### Open-World Phase 1 — Fahrzeuge
+- **`Shared/Vehicles.luau`** (neu) — fünf Klassen als Daten. Jede hat einen
+  mechanischen Grund: Kompakt am unauffälligsten, Limousine beste Straßenlage,
+  Sportwagen am schnellsten (und mit 1,6× Fahndungszuschlag), Transporter das
+  größte Lager, Motorrad der größte Lenkeinschlag.
+  Der Testlauf prüft, dass **jede Klasse in mindestens einem Wert die beste
+  ist** — genau daran ist die Limousine beim ersten Durchlauf gescheitert, sie
+  war „ausgewogen" und damit in nichts die beste Wahl. Jetzt hat sie den besten
+  Grip, und der Sportwagen ist dafür zickiger geworden.
+- **`VehicleChassis`** (neu) — ein Chassis, viele Karosserien, gebaut aus dem
+  Datensatz. Pro Rad: `SpringConstraint` für die Federung,
+  `CylindricalConstraint` senkrecht für Federweg und Lenkung (Servo),
+  `CylindricalConstraint` seitlich für den Antrieb (Motor). Der Radträger
+  dazwischen ist nötig, weil eine Achse nicht gleichzeitig Federweg und
+  Raddrehung sein kann.
+- **Netzwerkbesitz** geht beim Einsteigen an den Fahrer und beim Aussteigen,
+  Tod oder Rausfliegen zurück an den Server. Ohne das fährt sich das Auto wie
+  durch Sirup.
+- **`VehicleController`** (neu, Client) — die Steuerung läuft beim Fahrer,
+  weil ihm die Physik gehört. Kamera weicht mit Tempo zurück (FOV 70 → 85),
+  Motor-Tonhöhe steigt, Reifen quietschen beim Seitwärtsdrift, Bremsspuren,
+  Rückleuchten, Tacho. Lenkeinschlag sinkt mit dem Tempo, sonst überschlägt
+  sich jedes Auto auf der Geraden.
+- **`World/TestVehicles`** (neu) — ein Fahrzeug jeder Klasse am Spawn.
+- `StreamingEnabled` ist in der Place-Datei und in `Config.World` gesetzt,
+  Radien 128/512 — **noch ungetestet**, siehe oben.
+
 
 ### Phase E — Admin-Panel (F2)
 - `AdminList.luau` liegt in **ServerScriptService**, nie in ReplicatedStorage —
@@ -169,7 +217,7 @@ Testlauf prüft das.
   Hack kostet — auch das wird geprüft.
 
 ## Tests
-`cd ghostnet/tests && npm install && node testlauf.mjs` → **392/392 grün**.
+`cd ghostnet/tests && npm install && node testlauf.mjs` → **462/462 grün**.
 Drei Stufen:
 1. **Syntax** — `luau-compile` über jede `.luau`-Datei.
 2. **Struktur** — `--!strict` überall, keine veralteten APIs, jede Remote

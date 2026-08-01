@@ -1,10 +1,13 @@
 <roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4">
-<Item class="Workspace" referent="GN50">
+<Item class="Workspace" referent="GN55">
 <Properties>
 <string name="Name">Workspace</string>
 <float name="Gravity">196.2</float>
+<bool name="StreamingEnabled">true</bool>
+<int name="StreamingMinRadius">128</int>
+<int name="StreamingTargetRadius">512</int>
 </Properties>
-<Item class="Part" referent="GN45">
+<Item class="Part" referent="GN50">
 <Properties>
 <string name="Name">Baseplate</string>
 <bool name="Anchored">true</bool>
@@ -16,7 +19,7 @@
 <token name="BottomSurface">0</token>
 </Properties>
 </Item>
-<Item class="SpawnLocation" referent="GN46">
+<Item class="SpawnLocation" referent="GN51">
 <Properties>
 <string name="Name">SpawnLocation</string>
 <bool name="Anchored">true</bool>
@@ -29,7 +32,7 @@
 </Properties>
 </Item>
 </Item>
-<Item class="Lighting" referent="GN47">
+<Item class="Lighting" referent="GN52">
 <Properties>
 <string name="Name">Lighting</string>
 <token name="Technology">4</token>
@@ -44,7 +47,7 @@
 <Color3 name="FogColor"><R>0.03</R><G>0.04</G><B>0.07</B></Color3>
 <float name="FogEnd">420</float>
 </Properties>
-<Item class="BloomEffect" referent="GN48">
+<Item class="BloomEffect" referent="GN53">
 <Properties>
 <string name="Name">Bloom</string>
 <bool name="Enabled">true</bool>
@@ -53,7 +56,7 @@
 <float name="Threshold">0.9</float>
 </Properties>
 </Item>
-<Item class="ColorCorrectionEffect" referent="GN49">
+<Item class="ColorCorrectionEffect" referent="GN54">
 <Properties>
 <string name="Name">ColorCorrection</string>
 <bool name="Enabled">true</bool>
@@ -64,11 +67,11 @@
 </Properties>
 </Item>
 </Item>
-<Item class="ReplicatedStorage" referent="GN51">
+<Item class="ReplicatedStorage" referent="GN56">
 <Properties>
 <string name="Name">ReplicatedStorage</string>
 </Properties>
-<Item class="Folder" referent="GN9">
+<Item class="Folder" referent="GN10">
 <Properties>
 <string name="Name">Shared</string>
 </Properties>
@@ -83,7 +86,7 @@
 
 local Config = {}
 
-Config.Version = "1.0.0" -- Phase A-G komplett
+Config.Version = "1.1.0" -- Open-World: Tag/Nacht und Fahrzeuge
 
 -- CollectionService-Tags. Ein Part mit dem Tag ist ein Hack-Ziel, ein Hehler,
 -- ein Missions-Wegpunkt oder ein ansprechbarer Kontakt. Kein Code pro Objekt.
@@ -91,6 +94,8 @@ Config.HackableTag = "GhostNetHackable"
 Config.FenceTag = "GhostNetFence"
 Config.WaypointTag = "GhostNetWaypoint"
 Config.ContactTag = "GhostNetContact"
+Config.VehicleTag = "GhostNetVehicle" -- fahrbares Fahrzeug
+Config.VehicleSpawnTag = "GhostNetVehicleSpawn" -- erlaubter Ausparkplatz
 
 --==========================================================================
 -- 1. REICHWEITE (Netzwerkkarte)
@@ -499,6 +504,41 @@ Config.Monetization = {
 Config.World = {
 	Seed = 20260801, -- feste Zahl: die Stadt sieht auf jedem Server gleich aus
 
+	--== TAG UND NACHT =====================================================
+	-- Ein echter Zyklus, der Spielmechanik ist - keine Kulisse. Dauerhaftes
+	-- Tageslicht wuerde Neon, Bloom und die Terminal-Aesthetik zerstoeren,
+	-- dauerhafte Nacht macht die Stadt eintoenig.
+	DayLengthMinutes = 24, -- voller Zyklus. 24 = eine Minute pro Stunde.
+	StartClock = 21, -- womit ein frischer Server anfaengt (Nacht)
+	TimeTick = 0.25, -- wie oft die Uhr gestellt wird (reine Performance)
+
+	DayStartHour = 6, -- ab hier gilt "Tag"
+	NightStartHour = 20, -- ab hier gilt "Nacht"
+
+	-- DER MECHANISCHE UNTERSCHIED. Ohne den ist der Zyklus nur Deko.
+	-- Hoch = Nachtspiel lohnt deutlich, runter = Tageszeit wird egal.
+	NightRewardBonus = 0.35, -- +35 % auf jeden Hack-Ertrag nachts
+	NightSightFactor = 0.6, -- NPCs sehen nachts kuerzer (Phase 5/6)
+	DayMarketCalm = 0.6, -- tagsuebers schwanken die Kurse nur 60 %
+
+	-- Lighting. Future sieht deutlich besser aus, kostet auf schwachen
+	-- Geraeten aber spuerbar Bildrate. Auf "ShadowMap" stellen, wenn es
+	-- auf dem Handy ruckelt - der Rest des Spiels aendert sich nicht.
+	LightingTechnology = "Future",
+	FogNight = 380,
+	FogDay = 900,
+	AtmosphereDensityNight = 0.42,
+	AtmosphereDensityDay = 0.28,
+	BloomNight = 0.9,
+	BloomDay = 0.35,
+
+	--== STREAMING =========================================================
+	-- Pflicht fuer eine grosse Karte: ohne laedt jeder Spieler die ganze
+	-- Stadt in den Speicher und Handys brechen zusammen.
+	StreamingEnabled = true,
+	StreamingMinRadius = 128, -- was immer geladen ist
+	StreamingTargetRadius = 512, -- was angestrebt wird
+
 	RoadWidth = 46,
 	RoadLength = 320,
 	RoadReflectance = 0.28, -- nasse Fahrbahn. 0 = trocken und matt.
@@ -516,7 +556,63 @@ Config.World = {
 }
 
 --==========================================================================
--- 16. RATE-LIMITS (Token-Bucket pro Spieler und Remote)
+-- 16. FAHRZEUGE
+-- Die Klassen selbst stehen in Shared/Vehicles.luau. Hier steht, was fuer
+-- alle gilt, und die Defaults fuer fehlende Attribute.
+--
+-- WICHTIG ZUR SICHERHEIT: Sobald jemand einsteigt, bekommt der Client den
+-- Netzwerkbesitz ueber das Chassis - sonst faehrt sich das Auto wie durch
+-- Sirup. Damit besitzt der Client die Fahrzeugphysik. Deshalb darf NIE eine
+-- Fahrzeugposition oder -geschwindigkeit als Beweis fuer eine Belohnung
+-- dienen. Ankommen wird ueber serverseitige Trigger-Parts geprueft.
+--==========================================================================
+Config.Vehicle = {
+	MaxSpawned = 1, -- pro Spieler gleichzeitig ausgeparkt. Hoch = Server erstickt.
+	IdleDespawn = 120, -- Sekunden ohne Fahrer, dann verschwindet es
+	SpawnRange = 24, -- so nah muss man an einem Ausparkplatz stehen
+
+	-- Fahrwerk. Diese Zahlen bestimmen das Fahrgefuehl mehr als MaxSpeed.
+	SuspensionLength = 2.2, -- Ruhelaenge der Feder
+	SuspensionTravel = 1.1, -- wie weit sie ein- und ausfedern darf
+	SuspensionDamping = 900, -- zu wenig = Wackelpudding, zu viel = Brett
+	SteerSpeed = 6, -- wie schnell der Lenkeinschlag folgt (Grad/Tick-Faktor)
+	SteerSpeedFalloff = 0.55, -- bei Tempo weniger Einschlag, sonst ueberschlaegt es
+
+	WheelDensity = 0.4,
+	CarrierDensity = 0.05, -- Radtraeger fast masselos, sonst schlingert es
+	WheelFriction = 2.0,
+	WheelElasticity = 0.1,
+
+	-- Antriebsdrehmoment wird mit diesem Faktor auf die Raeder verteilt.
+	TorqueScale = 1.0,
+	BrakeTorqueScale = 1.6,
+
+	--== FAHRGEFUEHL (Client) ==============================================
+	-- Ohne das fuehlt sich kein Auto schnell an, egal wie hoch MaxSpeed steht.
+	CameraFovBase = 70,
+	CameraFovFast = 85,
+	CameraFovLerp = 0.06,
+	CameraDistanceBase = 18,
+	CameraDistanceFast = 26,
+
+	EngineVolume = 0.4,
+	EnginePitchIdle = 0.8,
+	EnginePitchMax = 2.4,
+
+	SkidThreshold = 14, -- Seitwaertstempo, ab dem die Reifen quietschen
+	SkidLifetime = 6, -- wie lange eine Bremsspur liegen bleibt
+	SkidMaxMarks = 60, -- Obergrenze, sonst wachsen die Spuren endlos
+
+	-- Schaden ist rein optisch: sichtbare Verfaerbung, keine Reparatur.
+	-- Kostet fast nichts und wirkt stark.
+	DamageEnabled = true,
+	DamageSpeedThreshold = 55, -- ab diesem Aufpralltempo wird es sichtbar
+	DamageMax = 1.0,
+	DamagePerHit = 0.25,
+}
+
+--==========================================================================
+-- 17. RATE-LIMITS (Token-Bucket pro Spieler und Remote)
 -- Jede neue Remote braucht hier einen Eintrag, sonst wird sie verworfen.
 --==========================================================================
 Config.RateLimits = {
@@ -535,7 +631,7 @@ Config.RateLimits = {
 }
 
 --==========================================================================
--- 17. NODE-BREACH
+-- 18. NODE-BREACH
 --==========================================================================
 Config.NodeBreach = {
 	-- Pro Schwierigkeitsband: Gittergroesse, Anzahl Relays, Anteil sichtbares
@@ -552,7 +648,7 @@ Config.NodeBreach = {
 }
 
 --==========================================================================
--- 18. DEFAULTS FUER HACK-ZIELE
+-- 19. DEFAULTS FUER HACK-ZIELE
 -- Ein Part braucht KEIN einziges Attribut. Alles, was fehlt, kommt von hier.
 --==========================================================================
 Config.TargetDefaults = {
@@ -1283,6 +1379,7 @@ local EVENT_NAMES = {
 	"AdminReady", -- S-&gt;C  { studio }   nur an autorisierte Spieler
 	"StoreSync", -- S-&gt;C  { passes, products }
 	"StorePrompt", -- C-&gt;S  { kind, key }   bittet um den Kaufdialog
+	"TimeSync", -- S-&gt;C  { clock, isNight, rewardBonus }
 }
 
 local FUNCTION_NAMES: { string } = {
@@ -1390,6 +1487,12 @@ SoundCatalog.Ids = {
 		Buy = "",
 		Sell = "",
 		PriceAlert = "", -- Markt-Event
+	},
+	Vehicle = {
+		Engine = "", -- Loop, Tonhoehe steigt mit dem Tempo
+		TyreSqueal = "", -- Loop, Lautstaerke steigt mit dem Seitwaertsdrift
+		Crash = "", -- Aufprall
+		DoorClose = "", -- Einsteigen
 	},
 	World = {
 		Ambience = "", -- dunkler Stadt-Loop
@@ -1790,13 +1893,260 @@ return UITheme
 </ProtectedString>
 </Properties>
 </Item>
+<Item class="ModuleScript" referent="GN9">
+<Properties>
+<string name="Name">Vehicles</string>
+<ProtectedString name="Source">-- ReplicatedStorage/Shared/Vehicles.luau
+--!strict
+-- GHOSTNET :: Fahrzeugklassen als Daten.
+--
+-- LEITREGEL AUS DEM BAUPLAN
+--   Jede Klasse muss einen MECHANISCHEN Grund haben, gefahren zu werden.
+--   Ein Auto, das nur schneller ist, macht alle anderen wertlos. Deshalb hat
+--   hier jede Klasse genau eine Sache, die sie besser kann als alle anderen -
+--   und mindestens eine, die sie schlechter kann.
+--
+--   Kompakt   billig und unauffaellig  -&gt; weniger Polizei-Aufmerksamkeit
+--   Limousine beste Strassenlage       -&gt; bricht als einzige nicht aus
+--   Sportwagen schnell                 -&gt; faellt auf, hoher Fahndungszuschlag
+--   Van       Lager                    -&gt; traege, aber transportiert Ware
+--   Motorrad  wendig                   -&gt; kommt durch Gassen, kein Lager
+--
+-- Ein Fahrzeug ist wie alles andere in diesem Spiel ein Datensatz. Ein neues
+-- Modell = ein Eintrag hier, kein neues Skript.
+
+local Vehicles = {}
+
+export type VehicleClass = {
+	Id: string,
+	Name: string,
+	Blurb: string,
+	Price: number, -- Kaufpreis beim Haendler (Phase 4)
+
+	-- Fahrwerte. Alles, was hier fehlt, kommt aus Config.Vehicle.Defaults.
+	MaxSpeed: number, -- Studs/s
+	Acceleration: number, -- Drehmoment der Antriebsraeder
+	BrakeForce: number,
+	TurnAngle: number, -- maximaler Lenkeinschlag in Grad
+	SuspensionStiffness: number,
+	Mass: number, -- Dichte der Karosserie
+	Grip: number, -- Reibung der Reifen
+
+	-- Karosserie. Nur Maße, keine Modelle - gebaut wird aus Parts.
+	BodySize: Vector3,
+	WheelRadius: number,
+	WheelWidth: number,
+	Wheels: number, -- 2 = Motorrad, 4 = Auto
+	Colour: Color3,
+
+	-- Der mechanische Grund, diese Klasse zu fahren.
+	StashBonus: number, -- zusaetzlicher Darknet-Lagerplatz im Fahrzeug
+	HeatFactor: number, -- 1.0 = normal. Kleiner = unauffaelliger.
+}
+
+Vehicles.List = {
+	{
+		Id = "COMPACT",
+		Name = "Kompakt",
+		Blurb = "Billig, langsam, faellt niemandem auf.",
+		Price = 2500,
+		MaxSpeed = 62,
+		Acceleration = 5200,
+		BrakeForce = 7000,
+		TurnAngle = 32,
+		SuspensionStiffness = 16000,
+		Mass = 0.7,
+		Grip = 1.6,
+		BodySize = Vector3.new(6, 2.6, 11),
+		WheelRadius = 1.5,
+		WheelWidth = 1.2,
+		Wheels = 4,
+		Colour = Color3.fromRGB(96, 104, 118),
+		StashBonus = 0,
+		HeatFactor = 0.7, -- der Grund fuer diese Klasse
+	},
+	{
+		Id = "SEDAN",
+		Name = "Limousine",
+		Blurb = "Klebt auf der Strasse. Kein Tempowunder, aber nichts bricht aus.",
+		Price = 7500,
+		MaxSpeed = 78,
+		Acceleration = 7000,
+		BrakeForce = 9000,
+		TurnAngle = 30,
+		SuspensionStiffness = 19000,
+		Mass = 0.85,
+		Grip = 2.4, -- der Grund fuer diese Klasse: beste Strassenlage
+		BodySize = Vector3.new(6.4, 2.8, 13),
+		WheelRadius = 1.6,
+		WheelWidth = 1.3,
+		Wheels = 4,
+		Colour = Color3.fromRGB(38, 44, 58),
+		StashBonus = 2,
+		HeatFactor = 1.0,
+	},
+	{
+		Id = "SPORT",
+		Name = "Sportwagen",
+		Blurb = "Schnell und laut. Die Polizei liebt dich dafuer.",
+		Price = 34000,
+		MaxSpeed = 118,
+		Acceleration = 11500,
+		BrakeForce = 13000,
+		TurnAngle = 27,
+		SuspensionStiffness = 26000,
+		Mass = 0.8,
+		Grip = 2.05, -- schnell, aber zickiger als die Limousine
+		BodySize = Vector3.new(6.6, 2.1, 13.5),
+		WheelRadius = 1.6,
+		WheelWidth = 1.6,
+		Wheels = 4,
+		Colour = Color3.fromRGB(180, 32, 74),
+		StashBonus = 0,
+		HeatFactor = 1.6, -- der Preis fuer das Tempo
+	},
+	{
+		Id = "VAN",
+		Name = "Transporter",
+		Blurb = "Traege, aber es passt richtig was rein.",
+		Price = 16000,
+		MaxSpeed = 66,
+		Acceleration = 8200,
+		BrakeForce = 10000,
+		TurnAngle = 26,
+		SuspensionStiffness = 22000,
+		Mass = 1.2,
+		Grip = 1.7,
+		BodySize = Vector3.new(7, 5, 15),
+		WheelRadius = 1.8,
+		WheelWidth = 1.4,
+		Wheels = 4,
+		Colour = Color3.fromRGB(70, 74, 80),
+		StashBonus = 10, -- der Grund fuer diese Klasse
+		HeatFactor = 0.9,
+	},
+	{
+		Id = "BIKE",
+		Name = "Motorrad",
+		Blurb = "Passt durch jede Gasse. Platz fuer nichts.",
+		Price = 11000,
+		MaxSpeed = 96,
+		Acceleration = 6800,
+		BrakeForce = 6500,
+		TurnAngle = 38,
+		SuspensionStiffness = 14000,
+		Mass = 0.45,
+		Grip = 1.9,
+		BodySize = Vector3.new(2.2, 2, 8),
+		WheelRadius = 1.5,
+		WheelWidth = 0.7,
+		Wheels = 2,
+		Colour = Color3.fromRGB(28, 30, 36),
+		StashBonus = -99, -- wird auf 0 geklemmt: kein Lager
+		HeatFactor = 0.85,
+	},
+} :: { VehicleClass }
+
+--==========================================================================
+
+function Vehicles.Get(id: string): VehicleClass?
+	for _, class in Vehicles.List do
+		if class.Id == id then
+			return class
+		end
+	end
+	return nil
+end
+
+function Vehicles.Exists(id: any): boolean
+	return typeof(id) == "string" and Vehicles.Get(id) ~= nil
+end
+
+function Vehicles.Count(): number
+	return #Vehicles.List
+end
+
+-- Lagerplatz, den dieses Fahrzeug beisteuert. Nie negativ.
+function Vehicles.StashBonus(id: string): number
+	local class = Vehicles.Get(id)
+	if not class then
+		return 0
+	end
+	return math.max(0, class.StashBonus)
+end
+
+--==========================================================================
+-- Pruefung des Katalogs. Laeuft beim Serverstart und im Testlauf.
+--==========================================================================
+
+function Vehicles.Validate(list: { VehicleClass }?): (boolean, { string })
+	local classes = list or Vehicles.List
+	local errors: { string } = {}
+	local seen: { [string]: boolean } = {}
+
+	for index, class in classes do
+		local label = if typeof(class.Id) == "string" and class.Id ~= "" then class.Id else ("#" .. index)
+
+		if typeof(class.Id) ~= "string" or class.Id == "" then
+			table.insert(errors, ("%s: Id fehlt"):format(label))
+		elseif seen[class.Id] then
+			table.insert(errors, ("%s: Id doppelt vergeben"):format(label))
+		else
+			seen[class.Id] = true
+		end
+
+		if typeof(class.Name) ~= "string" or class.Name == "" then
+			table.insert(errors, ("%s: Name fehlt"):format(label))
+		end
+		for _, field in { "Price", "MaxSpeed", "Acceleration", "BrakeForce", "TurnAngle", "Mass", "Grip" } do
+			local value = (class :: any)[field]
+			if typeof(value) ~= "number" or value &lt;= 0 then
+				table.insert(errors, ("%s: %s muss groesser 0 sein"):format(label, field))
+			end
+		end
+		if class.Wheels ~= 2 and class.Wheels ~= 4 then
+			table.insert(errors, ("%s: Wheels muss 2 oder 4 sein"):format(label))
+		end
+		if typeof(class.HeatFactor) ~= "number" or class.HeatFactor &lt;= 0 then
+			table.insert(errors, ("%s: HeatFactor muss groesser 0 sein"):format(label))
+		end
+		if typeof(class.BodySize) ~= "Vector3" then
+			table.insert(errors, ("%s: BodySize fehlt"):format(label))
+		end
+	end
+
+	-- Die Leitregel als Pruefung: keine Klasse darf eine andere in JEDER
+	-- Hinsicht schlagen, sonst ist die schwaechere tot.
+	for _, a in classes do
+		for _, b in classes do
+			if a.Id == b.Id then
+				continue
+			end
+			local betterEverywhere = a.MaxSpeed &gt;= b.MaxSpeed
+				and a.Acceleration &gt;= b.Acceleration
+				and Vehicles.StashBonus(a.Id) &gt;= Vehicles.StashBonus(b.Id)
+				and a.HeatFactor &lt;= b.HeatFactor
+				and a.Price &lt;= b.Price
+			if betterEverywhere then
+				table.insert(errors, ("%s macht %s vollstaendig ueberfluessig"):format(a.Id, b.Id))
+			end
+		end
+	end
+
+	return #errors == 0, errors
+end
+
+return Vehicles
+</ProtectedString>
+</Properties>
 </Item>
 </Item>
-<Item class="ServerScriptService" referent="GN52">
+</Item>
+<Item class="ServerScriptService" referent="GN57">
 <Properties>
 <string name="Name">ServerScriptService</string>
 </Properties>
-<Item class="ModuleScript" referent="GN10">
+<Item class="ModuleScript" referent="GN11">
 <Properties>
 <string name="Name">AdminList</string>
 <ProtectedString name="Source">-- ServerScriptService/AdminList.luau
@@ -1862,7 +2212,7 @@ return AdminList
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="Script" referent="GN11">
+<Item class="Script" referent="GN12">
 <Properties>
 <string name="Name">GhostNetServer</string>
 <ProtectedString name="Source">-- ServerScriptService/GhostNetServer.server.luau
@@ -1880,6 +2230,7 @@ require(ReplicatedStorage.Shared.Remotes)
 
 local Systems = script.Parent:WaitForChild("Systems")
 
+local TimeService = require(Systems.TimeService)
 local SaveService = require(Systems.SaveService)
 local EconomyService = require(Systems.EconomyService)
 local TraceService = require(Systems.TraceService)
@@ -1891,10 +2242,12 @@ local RaidService = require(Systems.RaidService)
 local MissionService = require(Systems.MissionService)
 local MarketService = require(Systems.MarketService)
 local InventoryService = require(Systems.InventoryService)
+local VehicleChassis = require(Systems.VehicleChassis)
 local MonetizationService = require(Systems.MonetizationService)
 local AdminService = require(Systems.AdminService)
 
-SaveService.Init() -- zuerst: haelt das Profil
+TimeService.Init() -- ganz zuerst: Licht und Uhr, davon haengen Ertraege ab
+SaveService.Init() -- dann das Profil
 EconomyService.Init() -- liest aus dem Profil
 TraceService.Init() -- braucht Economy fuers Wipe beim Bust
 HackTargets.Init() -- braucht das Profil fuer Cooldowns
@@ -1907,6 +2260,7 @@ RaidService.Init()
 MissionService.Init()
 MarketService.Init() -- Kurse laufen unabhaengig von Spielern
 InventoryService.Init() -- braucht Markt und Missionen (Unlock-Pruefung)
+VehicleChassis.Init()
 MonetizationService.Init()
 AdminService.Init() -- zuletzt: greift auf alle anderen zu
 
@@ -1914,11 +2268,11 @@ print(("[GHOSTNET] Server hochgefahren - Version %s"):format(Config.Version))
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="Folder" referent="GN29">
+<Item class="Folder" referent="GN32">
 <Properties>
 <string name="Name">Systems</string>
 </Properties>
-<Item class="ModuleScript" referent="GN12">
+<Item class="ModuleScript" referent="GN13">
 <Properties>
 <string name="Name">AdminService</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/AdminService.luau
@@ -2490,7 +2844,7 @@ return AdminService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN13">
+<Item class="ModuleScript" referent="GN14">
 <Properties>
 <string name="Name">EconomyService</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/EconomyService.luau
@@ -2752,7 +3106,7 @@ return EconomyService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN14">
+<Item class="ModuleScript" referent="GN15">
 <Properties>
 <string name="Name">HackEffects</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/HackEffects.luau
@@ -2941,7 +3295,7 @@ return HackEffects
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN15">
+<Item class="ModuleScript" referent="GN16">
 <Properties>
 <string name="Name">HackService</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/HackService.luau
@@ -2973,6 +3327,7 @@ local HackEffects = require(script.Parent.HackEffects)
 local HackTargets = require(script.Parent.HackTargets)
 local MonetizationService = require(script.Parent.MonetizationService)
 local RateLimiter = require(script.Parent.RateLimiter)
+local TimeService = require(script.Parent.TimeService)
 local SaveService = require(script.Parent.SaveService)
 local TraceService = require(script.Parent.TraceService)
 
@@ -3069,7 +3424,9 @@ local function resolve(session: Session, success: boolean, reason: string)
 		end
 
 		if success then
-			reward = target.Reward
+			-- Nachts bringt jeder Hack mehr. Das ist der mechanische Grund,
+			-- auf die Uhr zu schauen - sonst waere der Tageszyklus Deko.
+			reward = math.floor(target.Reward * TimeService.RewardMultiplier())
 			cooldown = target.Cooldown
 			EconomyService.AwardUnsold(player, reward)
 			HackTargets.SetCooldown(player, target.Id, cooldown)
@@ -3469,7 +3826,7 @@ return HackService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN16">
+<Item class="ModuleScript" referent="GN17">
 <Properties>
 <string name="Name">HackTargets</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/HackTargets.luau
@@ -3719,7 +4076,7 @@ return HackTargets
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN17">
+<Item class="ModuleScript" referent="GN18">
 <Properties>
 <string name="Name">InventoryService</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/InventoryService.luau
@@ -4033,7 +4390,7 @@ return InventoryService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN18">
+<Item class="ModuleScript" referent="GN19">
 <Properties>
 <string name="Name">MarketService</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/MarketService.luau
@@ -4062,6 +4419,8 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Config = require(ReplicatedStorage.Shared.Config)
 local Goods = require(ReplicatedStorage.Shared.Goods)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
+
+local TimeService = require(script.Parent.TimeService)
 
 local MarketService = {}
 
@@ -4213,8 +4572,10 @@ local function tickPrices()
 			continue
 		end
 
-		-- 1. Zufallsschritt im Rahmen der Volatilitaet.
-		local drift = rng:NextNumber(-good.Volatility, good.Volatility)
+		-- 1. Zufallsschritt im Rahmen der Volatilitaet. Tagsueber gedaempft:
+		--    ruhige Kurse am Tag, wilde nachts - passend zum Nachtbonus.
+		local swing = good.Volatility * TimeService.MarketVolatilityFactor()
+		local drift = rng:NextNumber(-swing, swing)
 
 		-- 2. Rueckkehr zum Basispreis (1.0). Das ist der Anker, ohne den
 		--    der Kurs davonlaeuft.
@@ -4319,11 +4680,11 @@ return MarketService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="Folder" referent="GN20">
+<Item class="Folder" referent="GN21">
 <Properties>
 <string name="Name">Minigames</string>
 </Properties>
-<Item class="ModuleScript" referent="GN19">
+<Item class="ModuleScript" referent="GN20">
 <Properties>
 <string name="Name">NodeBreach</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/Minigames/NodeBreach.luau
@@ -4698,7 +5059,7 @@ return NodeBreach
 </Properties>
 </Item>
 </Item>
-<Item class="ModuleScript" referent="GN21">
+<Item class="ModuleScript" referent="GN22">
 <Properties>
 <string name="Name">MissionService</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/MissionService.luau
@@ -5300,7 +5661,7 @@ return MissionService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN22">
+<Item class="ModuleScript" referent="GN23">
 <Properties>
 <string name="Name">MonetizationService</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/MonetizationService.luau
@@ -5719,7 +6080,7 @@ return MonetizationService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN23">
+<Item class="ModuleScript" referent="GN24">
 <Properties>
 <string name="Name">RaidService</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/RaidService.luau
@@ -5982,7 +6343,7 @@ return RaidService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN24">
+<Item class="ModuleScript" referent="GN25">
 <Properties>
 <string name="Name">RateLimiter</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/RateLimiter.luau
@@ -6062,7 +6423,7 @@ return RateLimiter
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN25">
+<Item class="ModuleScript" referent="GN26">
 <Properties>
 <string name="Name">SaveService</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/SaveService.luau
@@ -6660,7 +7021,7 @@ return SaveService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN26">
+<Item class="ModuleScript" referent="GN27">
 <Properties>
 <string name="Name">SellService</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/SellService.luau
@@ -6826,7 +7187,7 @@ return SellService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN27">
+<Item class="ModuleScript" referent="GN28">
 <Properties>
 <string name="Name">ShopService</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/ShopService.luau
@@ -6952,7 +7313,266 @@ return ShopService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN28">
+<Item class="ModuleScript" referent="GN29">
+<Properties>
+<string name="Name">TimeService</string>
+<ProtectedString name="Source">-- ServerScriptService/Systems/TimeService.luau
+--!strict
+-- GHOSTNET :: Tag und Nacht.
+--
+-- WARUM UEBERHAUPT EIN ZYKLUS
+--   Dauerhaftes Tageslicht wuerde den kompletten visuellen Aufbau zerstoeren:
+--   Neon, Bloom und die Terminal-Aesthetik funktionieren nur im Dunkeln.
+--   Dauerhafte Nacht macht die Stadt eintoenig. Also beides - aber als
+--   Mechanik, nicht als Kulisse:
+--
+--     Nachts  +35 % auf jeden Hack-Ertrag, NPCs sehen kuerzer.
+--     Tags    Haendler und Laeden offen, Kurse ruhiger.
+--
+--   Damit hat der Spieler einen Grund, auf die Uhr zu schauen.
+--
+-- DER SERVER IST DIE UHR
+--   Lighting-Eigenschaften werden vom Server gesetzt und replizieren zu
+--   allen Clients. Kein Client rechnet seine eigene Zeit aus - sonst haetten
+--   zwei Spieler unterschiedliche Boni.
+
+local Lighting = game:GetService("Lighting")
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+
+local Config = require(ReplicatedStorage.Shared.Config)
+local Remotes = require(ReplicatedStorage.Shared.Remotes)
+
+local TimeService = {}
+
+local clock = Config.World.StartClock -- 0..24
+local lastPhase = ""
+
+-- Wer auf den Wechsel reagieren will (Haendler auf/zu, Verkehrsdichte).
+local phaseCallbacks: { (string) -&gt; () } = {}
+
+function TimeService.OnPhaseChanged(callback: (string) -&gt; ())
+	table.insert(phaseCallbacks, callback)
+end
+
+--==========================================================================
+-- Lesen
+--==========================================================================
+
+function TimeService.GetClock(): number
+	return clock
+end
+
+function TimeService.IsNight(): boolean
+	return clock &gt;= Config.World.NightStartHour or clock &lt; Config.World.DayStartHour
+end
+
+function TimeService.IsDay(): boolean
+	return not TimeService.IsNight()
+end
+
+function TimeService.GetPhase(): string
+	return if TimeService.IsNight() then "NIGHT" else "DAY"
+end
+
+-- Faktor auf Hack-Ertraege. Wird vom HackService gelesen.
+function TimeService.RewardMultiplier(): number
+	return if TimeService.IsNight() then 1 + Config.World.NightRewardBonus else 1
+end
+
+-- Wie weit NPCs sehen (Phase 5/6 nutzt das).
+function TimeService.SightFactor(): number
+	return if TimeService.IsNight() then Config.World.NightSightFactor else 1
+end
+
+-- Wie stark die Darknet-Kurse schwanken duerfen.
+function TimeService.MarketVolatilityFactor(): number
+	return if TimeService.IsNight() then 1 else Config.World.DayMarketCalm
+end
+
+function TimeService.FormatClock(): string
+	local hours = math.floor(clock)
+	local minutes = math.floor((clock - hours) * 60)
+	return ("%02d:%02d"):format(hours, minutes)
+end
+
+--==========================================================================
+-- Stimmung
+-- Alles wird ueber einen weichen Faktor 0 (tiefe Nacht) bis 1 (heller Tag)
+-- interpoliert, damit nichts springt.
+--==========================================================================
+
+local function daylight(): number
+	-- Weiche Rampe um Sonnenauf- und -untergang statt harter Kante.
+	local dayStart = Config.World.DayStartHour
+	local nightStart = Config.World.NightStartHour
+	local ramp = 2 -- Stunden Uebergang
+
+	if clock &gt;= dayStart + ramp and clock &lt;= nightStart - ramp then
+		return 1
+	elseif clock &gt;= dayStart and clock &lt; dayStart + ramp then
+		return (clock - dayStart) / ramp
+	elseif clock &gt; nightStart - ramp and clock &lt;= nightStart then
+		return (nightStart - clock) / ramp
+	end
+	return 0
+end
+
+local atmosphere: Atmosphere? = nil
+local bloom: BloomEffect? = nil
+local colour: ColorCorrectionEffect? = nil
+
+local function ensureEffects()
+	atmosphere = Lighting:FindFirstChildOfClass("Atmosphere")
+	if not atmosphere then
+		local created = Instance.new("Atmosphere")
+		created.Name = "Atmosphere"
+		created.Haze = 2
+		created.Glare = 0.2
+		created.Color = Color3.fromRGB(150, 160, 175)
+		created.Decay = Color3.fromRGB(60, 70, 90)
+		created.Parent = Lighting
+		atmosphere = created
+	end
+	bloom = Lighting:FindFirstChildOfClass("BloomEffect")
+	colour = Lighting:FindFirstChildOfClass("ColorCorrectionEffect")
+end
+
+local function applyLighting()
+	local t = daylight()
+
+	Lighting.ClockTime = clock
+	Lighting.FogEnd = Config.World.FogNight + (Config.World.FogDay - Config.World.FogNight) * t
+
+	-- Tagsueber kuehles Blaugrau statt sattem Blau: die Stadt soll auch bei
+	-- Tag nicht freundlich wirken.
+	Lighting.OutdoorAmbient = Color3.fromRGB(20, 23, 33):Lerp(Color3.fromRGB(96, 104, 116), t)
+	Lighting.Ambient = Color3.fromRGB(13, 15, 20):Lerp(Color3.fromRGB(58, 63, 72), t)
+	Lighting.Brightness = 1 + t * 1.4
+
+	if atmosphere then
+		atmosphere.Density = Config.World.AtmosphereDensityNight
+			+ (Config.World.AtmosphereDensityDay - Config.World.AtmosphereDensityNight) * t
+	end
+	if bloom then
+		bloom.Intensity = Config.World.BloomNight + (Config.World.BloomDay - Config.World.BloomNight) * t
+	end
+	if colour then
+		colour.Saturation = 0.08 - t * 0.12 -- tagsueber ausgewaschener
+		colour.TintColor = Color3.fromRGB(230, 248, 255):Lerp(Color3.fromRGB(226, 230, 234), t)
+	end
+end
+
+--==========================================================================
+-- Senden
+--==========================================================================
+
+local function payload(): { [string]: any }
+	return {
+		Clock = clock,
+		Text = TimeService.FormatClock(),
+		IsNight = TimeService.IsNight(),
+		RewardBonus = TimeService.RewardMultiplier() - 1,
+		DayLengthMinutes = Config.World.DayLengthMinutes,
+	}
+end
+
+function TimeService.SyncTo(player: Player)
+	if player.Parent then
+		Remotes.TimeSync:FireClient(player, payload())
+	end
+end
+
+local function broadcast()
+	local data = payload()
+	for _, player in Players:GetPlayers() do
+		Remotes.TimeSync:FireClient(player, data)
+	end
+end
+
+--==========================================================================
+
+function TimeService.Init()
+	-- Technology ist umschaltbar, damit man auf schwachen Geraeten von
+	-- Future auf ShadowMap zurueckgehen kann, ohne Code anzufassen.
+	local ok = pcall(function()
+		Lighting.Technology = (Enum.Technology :: any)[Config.World.LightingTechnology]
+	end)
+	if not ok then
+		warn(("[GHOSTNET] Unbekannte Lighting.Technology '%s' - Roblox-Standard bleibt."):format(
+			tostring(Config.World.LightingTechnology)
+		))
+	end
+
+	Lighting.GlobalShadows = true
+	ensureEffects()
+	applyLighting()
+
+	Players.PlayerAdded:Connect(function(player)
+		task.defer(TimeService.SyncTo, player)
+	end)
+	for _, player in Players:GetPlayers() do
+		task.defer(TimeService.SyncTo, player)
+	end
+
+	-- 24 Spielstunden pro DayLengthMinutes Echtzeit.
+	local hoursPerSecond = 24 / (Config.World.DayLengthMinutes * 60)
+	local accumulator = 0
+	local sinceBroadcast = 0
+
+	RunService.Heartbeat:Connect(function(dt)
+		accumulator += dt
+		if accumulator &lt; Config.World.TimeTick then
+			return
+		end
+		local step = accumulator
+		accumulator = 0
+
+		clock = (clock + hoursPerSecond * step) % 24
+		applyLighting()
+
+		local phase = TimeService.GetPhase()
+		if phase ~= lastPhase then
+			lastPhase = phase
+			print(("[GHOSTNET] Es wird %s (%s Uhr)."):format(
+				if phase == "NIGHT" then "Nacht" else "Tag",
+				TimeService.FormatClock()
+			))
+			for _, callback in phaseCallbacks do
+				task.spawn(function()
+					local success, err = pcall(callback, phase)
+					if not success then
+						warn(("[GHOSTNET] Tageszeit-Callback fehlgeschlagen: %s"):format(tostring(err)))
+					end
+				end)
+			end
+			broadcast()
+			sinceBroadcast = 0
+			return
+		end
+
+		-- Zwischendurch nur selten senden: der Client hat die Uhr ohnehin
+		-- ueber Lighting.ClockTime und braucht das Paket nur fuer den Bonus.
+		sinceBroadcast += step
+		if sinceBroadcast &gt;= 5 then
+			sinceBroadcast = 0
+			broadcast()
+		end
+	end)
+
+	lastPhase = TimeService.GetPhase()
+	print(("[GHOSTNET] TimeService bereit. %s Uhr, ein Tag dauert %d Minuten."):format(
+		TimeService.FormatClock(),
+		Config.World.DayLengthMinutes
+	))
+end
+
+return TimeService
+</ProtectedString>
+</Properties>
+</Item>
+<Item class="ModuleScript" referent="GN30">
 <Properties>
 <string name="Name">TraceService</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/TraceService.luau
@@ -7190,12 +7810,418 @@ return TraceService
 </ProtectedString>
 </Properties>
 </Item>
+<Item class="ModuleScript" referent="GN31">
+<Properties>
+<string name="Name">VehicleChassis</string>
+<ProtectedString name="Source">-- ServerScriptService/Systems/VehicleChassis.luau
+--!strict
+-- GHOSTNET :: EIN Chassis, viele Karosserien.
+--
+-- Es gibt kein Skript pro Auto. Dieses Modul baut aus einem Datensatz in
+-- Shared/Vehicles.luau ein fahrbares Fahrzeug. Eine neue Klasse = ein
+-- Tabelleneintrag, keine Zeile Code.
+--
+-- AUFBAU PRO RAD (in dieser Reihenfolge wichtig)
+--   Chassis --SpringConstraint--&gt; Radtraeger      Federung
+--   Chassis --CylindricalConstraint--&gt; Radtraeger senkrechte Achse:
+--                                                 Federweg + LENKUNG (Servo)
+--   Radtraeger --CylindricalConstraint--&gt; Rad     seitliche Achse:
+--                                                 ANTRIEB (Motor)
+--   Der Radtraeger ist noetig, weil eine einzelne Achse nicht gleichzeitig
+--   Federweg (senkrecht) und Raddrehung (seitlich) sein kann.
+--
+-- NETZWERKBESITZ UND SICHERHEIT
+--   Beim Einsteigen bekommt der Client den Besitz ueber alle Fahrzeugteile.
+--   Ohne das faehrt sich das Auto wie durch Sirup, weil jede Eingabe eine
+--   Rundreise zum Server braucht.
+--   FOLGE: Der Client besitzt die Fahrzeugphysik. Er kann also Position und
+--   Tempo faelschen. Deshalb gibt dieses Modul NIEMALS eine Belohnung und
+--   liest NIEMALS eine Position als Beweis. Wer irgendwo ankommen muss, wird
+--   ueber einen serverseitigen Trigger geprueft - genau wie beim Hacken.
+
+local CollectionService = game:GetService("CollectionService")
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Config = require(ReplicatedStorage.Shared.Config)
+local Vehicles = require(ReplicatedStorage.Shared.Vehicles)
+
+local VehicleChassis = {}
+
+type VehicleClass = Vehicles.VehicleClass
+
+local FOLDER_NAME = "GhostNet_Vehicles"
+
+local function container(): Folder
+	local existing = workspace:FindFirstChild(FOLDER_NAME)
+	if existing and existing:IsA("Folder") then
+		return existing
+	end
+	local folder = Instance.new("Folder")
+	folder.Name = FOLDER_NAME
+	folder.Parent = workspace
+	return folder
+end
+
+--==========================================================================
+-- Bauteile
+--==========================================================================
+
+local function physical(density: number, friction: number, elasticity: number): PhysicalProperties
+	return PhysicalProperties.new(density, friction, elasticity, 100, 1)
+end
+
+local function attachment(parent: BasePart, name: string, position: Vector3, axis: Vector3, secondary: Vector3): Attachment
+	local a = Instance.new("Attachment")
+	a.Name = name
+	a.Position = position
+	a.Axis = axis
+	a.SecondaryAxis = secondary
+	a.Parent = parent
+	return a
+end
+
+-- Ein Rad samt Traeger und den drei Verbindungen.
+local function buildWheel(
+	model: Model,
+	body: BasePart,
+	class: VehicleClass,
+	offset: Vector3,
+	steered: boolean,
+	driven: boolean,
+	side: number
+)
+	local V = Config.Vehicle
+
+	--== Radtraeger: fast masselos, sonst schlingert das Auto ==============
+	local carrier = Instance.new("Part")
+	carrier.Name = "Carrier"
+	carrier.Size = Vector3.new(0.4, 0.4, 0.4)
+	carrier.Transparency = 1
+	carrier.CanCollide = false
+	carrier.CanQuery = false
+	carrier.CanTouch = false
+	carrier.CustomPhysicalProperties = physical(V.CarrierDensity, 0.3, 0)
+	carrier.CFrame = body.CFrame * CFrame.new(offset - Vector3.new(0, V.SuspensionLength, 0))
+	carrier.Parent = model
+
+	--== Rad ===============================================================
+	local wheel = Instance.new("Part")
+	wheel.Name = "Wheel"
+	wheel.Shape = Enum.PartType.Cylinder
+	wheel.Size = Vector3.new(class.WheelWidth, class.WheelRadius * 2, class.WheelRadius * 2)
+	wheel.Color = Color3.fromRGB(18, 18, 20)
+	wheel.Material = Enum.Material.Rubber
+	wheel.CanQuery = false
+	wheel.CustomPhysicalProperties = physical(V.WheelDensity, class.Grip * V.WheelFriction, V.WheelElasticity)
+	-- Zylinder liegen in Roblox entlang ihrer X-Achse: um 90 Grad drehen,
+	-- damit die Lauflaeche zum Boden zeigt.
+	wheel.CFrame = carrier.CFrame * CFrame.Angles(0, 0, math.rad(90))
+	wheel.Parent = model
+
+	--== Federung und Lenkung (senkrechte Achse) ===========================
+	-- Achse zeigt nach UNTEN: positiver Abstand = ausgefedert.
+	local bodyAttach = attachment(body, "Susp", offset, Vector3.new(0, -1, 0), Vector3.new(0, 0, 1))
+	local carrierUp = attachment(carrier, "SuspHub", Vector3.zero, Vector3.new(0, -1, 0), Vector3.new(0, 0, 1))
+
+	local spring = Instance.new("SpringConstraint")
+	spring.Name = "Suspension"
+	spring.Attachment0 = bodyAttach
+	spring.Attachment1 = carrierUp
+	spring.FreeLength = V.SuspensionLength
+	spring.Stiffness = class.SuspensionStiffness
+	spring.Damping = V.SuspensionDamping
+	spring.LimitsEnabled = true
+	spring.MinLength = math.max(0.1, V.SuspensionLength - V.SuspensionTravel)
+	spring.MaxLength = V.SuspensionLength + V.SuspensionTravel
+	spring.Parent = model
+
+	-- Fuehrt den Traeger senkrecht und dreht ihn beim Lenken.
+	local steer = Instance.new("CylindricalConstraint")
+	steer.Name = if steered then "Steer" else "Guide"
+	steer.Attachment0 = bodyAttach
+	steer.Attachment1 = carrierUp
+	steer.LimitsEnabled = true
+	steer.LowerLimit = math.max(0.1, V.SuspensionLength - V.SuspensionTravel)
+	steer.UpperLimit = V.SuspensionLength + V.SuspensionTravel
+	steer.ActuatorType = Enum.ActuatorType.None -- die Feder macht die Kraft
+	-- Auch nicht gelenkte Raeder bekommen einen Servo auf 0 Grad: sonst
+	-- flattern sie frei um die Hochachse.
+	steer.AngularActuatorType = Enum.ActuatorType.Servo
+	steer.AngularSpeed = V.SteerSpeed * 10
+	steer.ServoMaxTorque = class.Acceleration * 4
+	steer.TargetAngle = 0
+	steer.Parent = model
+
+	--== Antrieb (seitliche Achse) =========================================
+	local carrierSide = attachment(carrier, "Axle", Vector3.zero, Vector3.new(side, 0, 0), Vector3.new(0, 1, 0))
+	local wheelSide = attachment(wheel, "Hub", Vector3.zero, Vector3.new(side, 0, 0), Vector3.new(0, 1, 0))
+
+	local drive = Instance.new("CylindricalConstraint")
+	drive.Name = if driven then "Drive" else "Roll"
+	drive.Attachment0 = carrierSide
+	drive.Attachment1 = wheelSide
+	drive.LimitsEnabled = true
+	drive.LowerLimit = 0
+	drive.UpperLimit = 0 -- kein seitliches Spiel
+	drive.ActuatorType = Enum.ActuatorType.None
+	drive.AngularActuatorType = Enum.ActuatorType.Motor
+	drive.MotorMaxTorque = 0 -- Leerlauf, der Fahrer setzt das
+	drive.MotorMaxAngularAcceleration = math.huge
+	drive.AngularVelocity = 0
+	drive.Parent = model
+
+	-- Attribute, damit der Client-Controller die Teile findet, ohne dass
+	-- hier Namen doppelt gepflegt werden muessen.
+	drive:SetAttribute("Driven", driven)
+	steer:SetAttribute("Steered", steered)
+	steer:SetAttribute("SideSign", side)
+end
+
+--==========================================================================
+-- Ein komplettes Fahrzeug
+--==========================================================================
+
+function VehicleChassis.Build(classId: string, cframe: CFrame, colour: Color3?): Model?
+	local class = Vehicles.Get(classId)
+	if not class then
+		warn(("[GHOSTNET] Unbekannte Fahrzeugklasse '%s'."):format(tostring(classId)))
+		return nil
+	end
+
+	local V = Config.Vehicle
+	local model = Instance.new("Model")
+	model.Name = ("Vehicle_%s"):format(class.Id)
+
+	--== Karosserie ========================================================
+	local body = Instance.new("Part")
+	body.Name = "Body"
+	body.Size = class.BodySize
+	body.CFrame = cframe
+	body.Color = colour or class.Colour
+	body.Material = Enum.Material.SmoothPlastic
+	body.CustomPhysicalProperties = physical(class.Mass, 0.3, 0.1)
+	body.Parent = model
+	model.PrimaryPart = body
+
+	-- Dach, damit es nicht wie eine Kiste aussieht. Nur Deko.
+	local roof = Instance.new("Part")
+	roof.Name = "Roof"
+	roof.Size = Vector3.new(class.BodySize.X * 0.86, class.BodySize.Y * 0.7, class.BodySize.Z * 0.5)
+	roof.CFrame = cframe * CFrame.new(0, class.BodySize.Y * 0.8, -class.BodySize.Z * 0.06)
+	roof.Color = (colour or class.Colour):Lerp(Color3.new(0, 0, 0), 0.35)
+	roof.Material = Enum.Material.Glass
+	roof.Transparency = 0.35
+	roof.CanQuery = false
+	roof.CustomPhysicalProperties = physical(0.05, 0.3, 0.1)
+	roof.Parent = model
+
+	local roofWeld = Instance.new("WeldConstraint")
+	roofWeld.Part0 = body
+	roofWeld.Part1 = roof
+	roofWeld.Parent = body
+
+	--== Rueckleuchten (der Client schaltet sie beim Bremsen hell) =========
+	for _, side in { -1, 1 } do
+		local light = Instance.new("Part")
+		light.Name = "BrakeLight"
+		light.Size = Vector3.new(class.BodySize.X * 0.22, 0.4, 0.3)
+		light.CFrame = cframe * CFrame.new(side * class.BodySize.X * 0.32, 0.2, class.BodySize.Z * 0.5)
+		light.Color = Color3.fromRGB(120, 20, 30)
+		light.Material = Enum.Material.Neon
+		light.CanQuery = false
+		light.CanTouch = false
+		light.CustomPhysicalProperties = physical(0.01, 0.3, 0)
+		light.Parent = model
+
+		local weld = Instance.new("WeldConstraint")
+		weld.Part0 = body
+		weld.Part1 = light
+		weld.Parent = body
+	end
+
+	--== Sitz ==============================================================
+	local seat = Instance.new("VehicleSeat")
+	seat.Name = "DriverSeat"
+	seat.Size = Vector3.new(2.4, 0.4, 2.4)
+	seat.CFrame = cframe * CFrame.new(0, class.BodySize.Y * 0.5 + 0.2, 0)
+	seat.Transparency = 1
+	seat.CanQuery = false
+	seat.MaxSpeed = class.MaxSpeed
+	seat.Torque = 0 -- der VehicleSeat treibt nichts an, das machen die Raeder
+	seat.TurnSpeed = 0
+	seat.CustomPhysicalProperties = physical(0.01, 0.3, 0)
+	seat.Parent = model
+
+	local seatWeld = Instance.new("WeldConstraint")
+	seatWeld.Part0 = body
+	seatWeld.Part1 = seat
+	seatWeld.Parent = body
+
+	local prompt = Instance.new("ProximityPrompt")
+	prompt.Name = "EnterPrompt"
+	prompt.ActionText = "Einsteigen"
+	prompt.ObjectText = class.Name
+	prompt.HoldDuration = 0
+	prompt.MaxActivationDistance = 12
+	prompt.RequiresLineOfSight = false
+	prompt.Parent = seat
+
+	--== Raeder ============================================================
+	local halfX = class.BodySize.X * 0.5
+	local halfZ = class.BodySize.Z * 0.5
+	local wheelY = -class.BodySize.Y * 0.5 + V.SuspensionLength * 0.2
+
+	if class.Wheels == 2 then
+		-- Motorrad: vorne gelenkt, hinten angetrieben, beide mittig.
+		buildWheel(model, body, class, Vector3.new(0, wheelY, -halfZ * 0.78), true, false, 1)
+		buildWheel(model, body, class, Vector3.new(0, wheelY, halfZ * 0.78), false, true, 1)
+	else
+		for _, side in { -1, 1 } do
+			buildWheel(model, body, class, Vector3.new(side * halfX, wheelY, -halfZ * 0.7), true, false, side)
+			buildWheel(model, body, class, Vector3.new(side * halfX, wheelY, halfZ * 0.7), false, true, side)
+		end
+	end
+
+	--== Attribute: der Client liest daraus seine Fahrwerte ================
+	model:SetAttribute("ClassId", class.Id)
+	model:SetAttribute("MaxSpeed", class.MaxSpeed)
+	model:SetAttribute("Acceleration", class.Acceleration)
+	model:SetAttribute("BrakeForce", class.BrakeForce)
+	model:SetAttribute("TurnAngle", class.TurnAngle)
+	model:SetAttribute("WheelRadius", class.WheelRadius)
+	model:SetAttribute("HeatFactor", class.HeatFactor)
+	model:SetAttribute("Damage", 0)
+
+	-- Streaming: das Fahrzeug muss auch dann existieren, wenn der Besitzer
+	-- kurz aus der Ladezone faehrt.
+	model.ModelStreamingMode = Enum.ModelStreamingMode.Persistent
+
+	CollectionService:AddTag(model, Config.VehicleTag)
+	model.Parent = container()
+	return model
+end
+
+--==========================================================================
+-- Besitz und Lebenszyklus
+--==========================================================================
+
+local emptySince: { [Model]: number } = {}
+
+local function parts(model: Model): { BasePart }
+	local list: { BasePart } = {}
+	for _, descendant in model:GetDescendants() do
+		if descendant:IsA("BasePart") then
+			table.insert(list, descendant)
+		end
+	end
+	return list
+end
+
+-- Ohne Netzwerkbesitz beim Fahrer laeuft die Physik auf dem Server und jede
+-- Eingabe braucht eine Rundreise. Das Auto fuehlt sich dann an wie Sirup.
+local function setOwner(model: Model, player: Player?)
+	for _, part in parts(model) do
+		if part.Anchored then
+			continue
+		end
+		pcall(function()
+			part:SetNetworkOwner(player)
+		end)
+	end
+end
+
+function VehicleChassis.Despawn(model: Model)
+	emptySince[model] = nil
+	if model.Parent then
+		model:Destroy()
+	end
+end
+
+local function watchSeat(model: Model)
+	local seat = model:FindFirstChild("DriverSeat")
+	if not seat or not seat:IsA("VehicleSeat") then
+		return
+	end
+
+	emptySince[model] = os.clock()
+
+	seat:GetPropertyChangedSignal("Occupant"):Connect(function()
+		local occupant = seat.Occupant
+		if occupant then
+			local character = occupant.Parent
+			local player = character and Players:GetPlayerFromCharacter(character)
+			if player then
+				setOwner(model, player)
+				emptySince[model] = nil
+				model:SetAttribute("DriverUserId", player.UserId)
+				return
+			end
+		end
+
+		-- Ausgestiegen, gestorben oder rausgeflogen: Besitz zurueck an den
+		-- Server, sonst behaelt ein weggegangener Client die Kontrolle.
+		setOwner(model, nil)
+		emptySince[model] = os.clock()
+		model:SetAttribute("DriverUserId", 0)
+	end)
+end
+
+--==========================================================================
+
+function VehicleChassis.Init()
+	local valid, errors = Vehicles.Validate()
+	if not valid then
+		for _, message in errors do
+			warn(("[GHOSTNET] Fahrzeugkatalog: %s"):format(message))
+		end
+	end
+
+	for _, model in CollectionService:GetTagged(Config.VehicleTag) do
+		if model:IsA("Model") then
+			watchSeat(model)
+		end
+	end
+	CollectionService:GetInstanceAddedSignal(Config.VehicleTag):Connect(function(inst)
+		if inst:IsA("Model") then
+			watchSeat(inst)
+		end
+	end)
+	CollectionService:GetInstanceRemovedSignal(Config.VehicleTag):Connect(function(inst)
+		if inst:IsA("Model") then
+			emptySince[inst] = nil
+		end
+	end)
+
+	-- Leerstehende Fahrzeuge raeumen. Gestaffelter Takt statt eines
+	-- Heartbeat-Handlers ueber alles.
+	task.spawn(function()
+		while true do
+			task.wait(5)
+			local now = os.clock()
+			for model, since in emptySince do
+				if not model.Parent then
+					emptySince[model] = nil
+				elseif model:GetAttribute("Permanent") ~= true and now - since &gt; Config.Vehicle.IdleDespawn then
+					VehicleChassis.Despawn(model)
+				end
+			end
+		end
+	end)
+
+	print(("[GHOSTNET] VehicleChassis bereit. %d Klassen."):format(Vehicles.Count()))
+end
+
+return VehicleChassis
+</ProtectedString>
+</Properties>
 </Item>
-<Item class="Folder" referent="GN33">
+</Item>
+<Item class="Folder" referent="GN37">
 <Properties>
 <string name="Name">World</string>
 </Properties>
-<Item class="Script" referent="GN30">
+<Item class="Script" referent="GN33">
 <Properties>
 <string name="Name">Cityscape</string>
 <ProtectedString name="Source">-- ServerScriptService/World/Cityscape.server.luau
@@ -7360,7 +8386,7 @@ print("[GHOSTNET] Stadtkulisse gebaut.")
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="Script" referent="GN31">
+<Item class="Script" referent="GN34">
 <Properties>
 <string name="Name">StoryWorld</string>
 <ProtectedString name="Source">-- ServerScriptService/World/StoryWorld.server.luau
@@ -7905,7 +8931,7 @@ print("[GHOSTNET] Story-Welt gebaut: Uebungsterminal, Laden, Apartment, Nakamura
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="Script" referent="GN32">
+<Item class="Script" referent="GN35">
 <Properties>
 <string name="Name">TestTargets</string>
 <ProtectedString name="Source">-- ServerScriptService/World/TestTargets.server.luau
@@ -8204,21 +9230,112 @@ print("[GHOSTNET] Testwelt gebaut: Kamera (D2), Sicherheitstuer (D4), Geldautoma
 </ProtectedString>
 </Properties>
 </Item>
+<Item class="Script" referent="GN36">
+<Properties>
+<string name="Name">TestVehicles</string>
+<ProtectedString name="Source">-- ServerScriptService/World/TestVehicles.server.luau
+--!strict
+-- GHOSTNET :: Ein Fahrzeug jeder Klasse zum Ausprobieren.
+--
+-- Steht bewusst getrennt vom Rest der Welt: Phase 4 baut den Autohaendler
+-- und den Fahrzeugbesitz im Profil. Bis dahin ist das hier der Weg, das
+-- Fahrgefuehl zu testen - und danach bleibt es als Uebungsgelaende stehen.
+--
+-- Attribut "Permanent" verhindert, dass der Leerlauf-Aufraeumer sie
+-- wegraeumt. Bei spaeter gekauften Fahrzeugen ist das genau umgekehrt.
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local ServerScriptService = game:GetService("ServerScriptService")
+
+local Config = require(ReplicatedStorage.Shared.Config)
+local Vehicles = require(ReplicatedStorage.Shared.Vehicles)
+
+local VehicleChassis = require(ServerScriptService:WaitForChild("Systems"):WaitForChild("VehicleChassis"))
+
+local FOLDER_NAME = "GhostNet_TestVehicles"
+
+if workspace:FindFirstChild(FOLDER_NAME) then
+	return
+end
+
+local folder = Instance.new("Folder")
+folder.Name = FOLDER_NAME
+folder.Parent = workspace
+
+-- Kleiner Parkstreifen neben dem Spawn.
+local base = Vector3.new(26, 3, 30)
+
+local pad = Instance.new("Part")
+pad.Name = "Parkstreifen"
+pad.Size = Vector3.new(20, 1, 14 * Vehicles.Count())
+pad.CFrame = CFrame.new(base + Vector3.new(0, -2.5, 14 * Vehicles.Count() * 0.5 - 7))
+pad.Color = Color3.fromRGB(20, 22, 27)
+pad.Material = Enum.Material.Concrete
+pad.Anchored = true
+pad.CanQuery = false
+pad.TopSurface = Enum.SurfaceType.Smooth
+pad.Parent = folder
+
+local built = 0
+for index, class in Vehicles.List do
+	local position = base + Vector3.new(0, 0, (index - 1) * 14)
+	local model = VehicleChassis.Build(class.Id, CFrame.new(position) * CFrame.Angles(0, math.rad(-90), 0))
+	if model then
+		model:SetAttribute("Permanent", true)
+		built += 1
+
+		-- Schild, damit man sieht, welche Klasse man gerade faehrt.
+		local body = model.PrimaryPart
+		if body then
+			local sign = Instance.new("BillboardGui")
+			sign.Name = "Sign"
+			sign.Size = UDim2.fromOffset(220, 40)
+			sign.StudsOffsetWorldSpace = Vector3.new(0, 4, 0)
+			sign.MaxDistance = 90
+
+			local title = Instance.new("TextLabel")
+			title.BackgroundTransparency = 1
+			title.Font = Enum.Font.Code
+			title.Text = class.Name
+			title.TextColor3 = Config.Theme.Cyan
+			title.TextSize = 16
+			title.Size = UDim2.new(1, 0, 0.55, 0)
+			title.Parent = sign
+
+			local blurb = Instance.new("TextLabel")
+			blurb.BackgroundTransparency = 1
+			blurb.Font = Enum.Font.Code
+			blurb.Text = class.Blurb
+			blurb.TextColor3 = Config.Theme.TextDim
+			blurb.TextSize = 11
+			blurb.Position = UDim2.new(0, 0, 0.55, 0)
+			blurb.Size = UDim2.new(1, 0, 0.45, 0)
+			blurb.Parent = sign
+
+			sign.Parent = body
+		end
+	end
+end
+
+print(("[GHOSTNET] %d Testfahrzeuge gebaut."):format(built))
+</ProtectedString>
+</Properties>
 </Item>
 </Item>
-<Item class="StarterPlayer" referent="GN53">
+</Item>
+<Item class="StarterPlayer" referent="GN58">
 <Properties>
 <string name="Name">StarterPlayer</string>
 </Properties>
-<Item class="StarterPlayerScripts" referent="GN54">
+<Item class="StarterPlayerScripts" referent="GN59">
 <Properties>
 <string name="Name">StarterPlayerScripts</string>
 </Properties>
-<Item class="Folder" referent="GN44">
+<Item class="Folder" referent="GN49">
 <Properties>
 <string name="Name">UI</string>
 </Properties>
-<Item class="LocalScript" referent="GN34">
+<Item class="LocalScript" referent="GN38">
 <Properties>
 <string name="Name">AdminUI</string>
 <ProtectedString name="Source">-- StarterPlayer/StarterPlayerScripts/UI/AdminUI.client.luau
@@ -8581,7 +9698,7 @@ end)
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="LocalScript" referent="GN35">
+<Item class="LocalScript" referent="GN39">
 <Properties>
 <string name="Name">DarknetUI</string>
 <ProtectedString name="Source">-- StarterPlayer/StarterPlayerScripts/UI/DarknetUI.client.luau
@@ -9274,7 +10391,7 @@ end)
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="LocalScript" referent="GN36">
+<Item class="LocalScript" referent="GN40">
 <Properties>
 <string name="Name">HUD</string>
 <ProtectedString name="Source">-- StarterPlayer/StarterPlayerScripts/UI/HUD.client.luau
@@ -9972,7 +11089,7 @@ UITheme.Scanlines(walletPanel, 4)
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="LocalScript" referent="GN37">
+<Item class="LocalScript" referent="GN41">
 <Properties>
 <string name="Name">HackUI</string>
 <ProtectedString name="Source">-- StarterPlayer/StarterPlayerScripts/UI/HackUI.client.luau
@@ -10824,7 +11941,7 @@ end)
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="LocalScript" referent="GN38">
+<Item class="LocalScript" referent="GN42">
 <Properties>
 <string name="Name">MissionUI</string>
 <ProtectedString name="Source">-- StarterPlayer/StarterPlayerScripts/UI/MissionUI.client.luau
@@ -11192,7 +12309,7 @@ refresh()
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="LocalScript" referent="GN39">
+<Item class="LocalScript" referent="GN43">
 <Properties>
 <string name="Name">ShopUI</string>
 <ProtectedString name="Source">-- StarterPlayer/StarterPlayerScripts/UI/ShopUI.client.luau
@@ -11668,7 +12785,7 @@ refresh()
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="LocalScript" referent="GN40">
+<Item class="LocalScript" referent="GN44">
 <Properties>
 <string name="Name">SoundController</string>
 <ProtectedString name="Source">-- StarterPlayer/StarterPlayerScripts/UI/SoundController.client.luau
@@ -11979,7 +13096,7 @@ local _ = player
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="LocalScript" referent="GN41">
+<Item class="LocalScript" referent="GN45">
 <Properties>
 <string name="Name">StoreUI</string>
 <ProtectedString name="Source">-- StarterPlayer/StarterPlayerScripts/UI/StoreUI.client.luau
@@ -12305,7 +13422,7 @@ refresh()
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="LocalScript" referent="GN42">
+<Item class="LocalScript" referent="GN46">
 <Properties>
 <string name="Name">TargetBeacons</string>
 <ProtectedString name="Source">-- StarterPlayer/StarterPlayerScripts/UI/TargetBeacons.client.luau
@@ -12407,7 +13524,7 @@ end)
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="LocalScript" referent="GN43">
+<Item class="LocalScript" referent="GN47">
 <Properties>
 <string name="Name">TutorialUI</string>
 <ProtectedString name="Source">-- StarterPlayer/StarterPlayerScripts/UI/TutorialUI.client.luau
@@ -12738,6 +13855,419 @@ RunService.RenderStepped:Connect(function(dt)
 		math.ceil(alarm.Remaining),
 		if alarm.Coop then "   [PARTNER: halbes Tempo]" else ""
 	)
+end)
+</ProtectedString>
+</Properties>
+</Item>
+<Item class="LocalScript" referent="GN48">
+<Properties>
+<string name="Name">VehicleController</string>
+<ProtectedString name="Source">-- StarterPlayer/StarterPlayerScripts/UI/VehicleController.client.luau
+--!strict
+-- GHOSTNET :: Fahren.
+--
+-- WARUM DIE STEUERUNG HIER LIEGT UND NICHT AUF DEM SERVER
+--   Beim Einsteigen gibt der Server dem Client den Netzwerkbesitz ueber das
+--   Fahrzeug. Die Physik laeuft also lokal. Wuerde der Server die Motoren
+--   stellen, braeuchte jeder Gasstoss eine Rundreise - das Auto fuehlt sich
+--   dann an wie Sirup. Deshalb setzt der Fahrer seine Constraints selbst.
+--
+--   Das ist ausdruecklich in Ordnung, weil an Fahrzeugposition und -tempo
+--   NICHTS haengt, was Geld oder Fortschritt bewegt. Ankommen wird ueber
+--   serverseitige Trigger geprueft, nie ueber eine gemeldete Position.
+--
+-- DAS FAHRGEFUEHL
+--   Ein Auto fuehlt sich nicht schnell an, weil eine Zahl hoch ist, sondern
+--   weil die Kamera zurueckweicht, das Sichtfeld aufgeht, der Motor
+--   hochdreht und die Reifen quietschen. Genau das steht unten.
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+
+local Config = require(ReplicatedStorage.Shared.Config)
+local SoundCatalog = require(ReplicatedStorage.Shared.SoundCatalog)
+local UITheme = require(ReplicatedStorage.Shared.UITheme)
+
+local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+local camera = workspace.CurrentCamera
+
+local C = UITheme.Color
+local V = Config.Vehicle
+
+--==========================================================================
+-- Zustand
+--==========================================================================
+
+type Ride = {
+	Model: Model,
+	Body: BasePart,
+	Seat: VehicleSeat,
+	Drives: { CylindricalConstraint },
+	Steers: { CylindricalConstraint },
+	BrakeLights: { BasePart },
+	MaxSpeed: number,
+	Acceleration: number,
+	BrakeForce: number,
+	TurnAngle: number,
+	WheelRadius: number,
+	Steer: number,
+	Engine: Sound?,
+	Squeal: Sound?,
+}
+
+local ride: Ride? = nil
+local skidMarks: { BasePart } = {}
+
+--==========================================================================
+-- Tacho
+--==========================================================================
+
+local gui = UITheme.Screen("GhostNetVehicle", 14)
+gui.Enabled = false
+gui.Parent = playerGui
+
+local panel = UITheme.Frame({
+	Name = "Speedo",
+	AnchorPoint = Vector2.new(1, 1),
+	Position = UDim2.new(1, -18, 1, -46),
+	Size = UDim2.fromOffset(190, 76),
+	BackgroundColor3 = C.Panel,
+	BackgroundTransparency = 0.08,
+	Parent = gui,
+})
+UITheme.Corner(panel, 4)
+UITheme.Stroke(panel, C.CyanDim)
+UITheme.Padding(panel, 10)
+
+local nameLabel = UITheme.Label({
+	Name = "Name",
+	Text = "",
+	TextColor3 = C.TextDim,
+	TextSize = 11,
+	Size = UDim2.new(1, 0, 0, 12),
+	Parent = panel,
+})
+
+local speedLabel = UITheme.Label({
+	Name = "Speed",
+	Text = "0",
+	TextColor3 = C.Cyan,
+	TextSize = 26,
+	Position = UDim2.new(0, 0, 0, 14),
+	Size = UDim2.new(1, 0, 0, 28),
+	Parent = panel,
+})
+
+local barTrack = UITheme.Frame({
+	Name = "Track",
+	Position = UDim2.new(0, 0, 1, -10),
+	Size = UDim2.new(1, 0, 0, 6),
+	BackgroundColor3 = C.PanelLight,
+	Parent = panel,
+})
+UITheme.Corner(barTrack, 3)
+
+local barFill = UITheme.Frame({
+	Name = "Fill",
+	Size = UDim2.fromScale(0, 1),
+	BackgroundColor3 = C.Cyan,
+	Parent = barTrack,
+})
+UITheme.Corner(barFill, 3)
+
+local hintLabel = UITheme.Label({
+	Name = "Hint",
+	Text = "[W][S] Gas/Bremse   [A][D] Lenken",
+	TextColor3 = C.TextDim,
+	TextSize = 10,
+	Position = UDim2.new(0, 0, 1, -22),
+	Size = UDim2.new(1, 0, 0, 11),
+	Parent = panel,
+})
+
+--==========================================================================
+-- Klang
+--==========================================================================
+
+local function makeSound(parent: BasePart, group: string, key: string, volume: number, looped: boolean): Sound?
+	local id = SoundCatalog.Get(group, key)
+	if not id then
+		return nil -- noch keine Id eingetragen: bleibt still, nichts geht kaputt
+	end
+	local sound = Instance.new("Sound")
+	sound.SoundId = id
+	sound.Volume = volume
+	sound.Looped = looped
+	sound.RollOffMaxDistance = 140
+	sound.Parent = parent
+	if looped then
+		sound:Play()
+	end
+	return sound
+end
+
+--==========================================================================
+-- Fahrzeug einsammeln
+--==========================================================================
+
+local function collect(seat: VehicleSeat): Ride?
+	local model = seat.Parent
+	if not model or not model:IsA("Model") then
+		return nil
+	end
+	local body = model:FindFirstChild("Body")
+	if not body or not body:IsA("BasePart") then
+		return nil
+	end
+
+	local drives: { CylindricalConstraint } = {}
+	local steers: { CylindricalConstraint } = {}
+	local brakeLights: { BasePart } = {}
+
+	for _, descendant in model:GetDescendants() do
+		if descendant:IsA("CylindricalConstraint") then
+			if descendant:GetAttribute("Driven") == true then
+				table.insert(drives, descendant)
+			elseif descendant:GetAttribute("Steered") ~= nil then
+				table.insert(steers, descendant)
+			end
+		elseif descendant:IsA("BasePart") and descendant.Name == "BrakeLight" then
+			table.insert(brakeLights, descendant)
+		end
+	end
+
+	return {
+		Model = model,
+		Body = body,
+		Seat = seat,
+		Drives = drives,
+		Steers = steers,
+		BrakeLights = brakeLights,
+		MaxSpeed = tonumber(model:GetAttribute("MaxSpeed")) or 60,
+		Acceleration = tonumber(model:GetAttribute("Acceleration")) or 6000,
+		BrakeForce = tonumber(model:GetAttribute("BrakeForce")) or 8000,
+		TurnAngle = tonumber(model:GetAttribute("TurnAngle")) or 30,
+		WheelRadius = tonumber(model:GetAttribute("WheelRadius")) or 1.5,
+		Steer = 0,
+		Engine = nil,
+		Squeal = nil,
+	}
+end
+
+--==========================================================================
+-- Ein- und Aussteigen
+--==========================================================================
+
+local function stop()
+	local current = ride
+	if not current then
+		return
+	end
+	ride = nil
+
+	-- Motoren aus, sonst faehrt das leere Auto weiter.
+	for _, drive in current.Drives do
+		if drive.Parent then
+			drive.MotorMaxTorque = 0
+			drive.AngularVelocity = 0
+		end
+	end
+	for _, steer in current.Steers do
+		if steer.Parent then
+			steer.TargetAngle = 0
+		end
+	end
+	for _, light in current.BrakeLights do
+		if light.Parent then
+			light.Color = Color3.fromRGB(120, 20, 30)
+		end
+	end
+	if current.Engine then
+		current.Engine:Destroy()
+	end
+	if current.Squeal then
+		current.Squeal:Destroy()
+	end
+
+	gui.Enabled = false
+	TweenService:Create(camera, TweenInfo.new(0.4), { FieldOfView = V.CameraFovBase }):Play()
+end
+
+local function start(seat: VehicleSeat)
+	stop()
+	local collected = collect(seat)
+	if not collected then
+		return
+	end
+
+	-- Motor und Reifenquietschen. Solange im SoundCatalog nichts eingetragen
+	-- ist, liefert makeSound nil und es bleibt einfach still.
+	collected.Engine = makeSound(collected.Body, "Vehicle", "Engine", V.EngineVolume, true)
+	collected.Squeal = makeSound(collected.Body, "Vehicle", "TyreSqueal", 0, true)
+
+	ride = collected
+	nameLabel.Text = tostring(collected.Model:GetAttribute("ClassId") or "FAHRZEUG")
+	gui.Enabled = true
+end
+
+local function watchCharacter(character: Model)
+	local humanoid = character:WaitForChild("Humanoid", 10)
+	if not humanoid or not humanoid:IsA("Humanoid") then
+		return
+	end
+	humanoid.Seated:Connect(function(active, seat)
+		if active and seat and seat:IsA("VehicleSeat") then
+			start(seat)
+		else
+			stop()
+		end
+	end)
+	-- Tod im Auto: sauber aussteigen, sonst haengt die Kamera fest.
+	humanoid.Died:Connect(stop)
+end
+
+if player.Character then
+	task.spawn(watchCharacter, player.Character)
+end
+player.CharacterAdded:Connect(watchCharacter)
+
+--==========================================================================
+-- Bremsspuren
+--==========================================================================
+
+local function leaveSkid(position: Vector3, direction: Vector3)
+	if #skidMarks &gt;= V.SkidMaxMarks then
+		local oldest = table.remove(skidMarks, 1)
+		if oldest then
+			oldest:Destroy()
+		end
+	end
+
+	local mark = Instance.new("Part")
+	mark.Size = Vector3.new(0.6, 0.05, 2.4)
+	mark.CFrame = CFrame.lookAt(position, position + direction) * CFrame.new(0, 0.03, 0)
+	mark.Anchored = true
+	mark.CanCollide = false
+	mark.CanQuery = false
+	mark.CanTouch = false
+	mark.CastShadow = false
+	mark.Color = Color3.fromRGB(12, 12, 14)
+	mark.Material = Enum.Material.SmoothPlastic
+	mark.Transparency = 0.3
+	mark.Parent = workspace
+	table.insert(skidMarks, mark)
+
+	TweenService:Create(mark, TweenInfo.new(V.SkidLifetime), { Transparency = 1 }):Play()
+	task.delay(V.SkidLifetime + 0.2, function()
+		local index = table.find(skidMarks, mark)
+		if index then
+			table.remove(skidMarks, index)
+		end
+		mark:Destroy()
+	end)
+end
+
+--==========================================================================
+-- Der Fahr-Loop
+--==========================================================================
+
+RunService.RenderStepped:Connect(function(dt)
+	local current = ride
+	if not current then
+		return
+	end
+	if not current.Model.Parent or not current.Body.Parent then
+		stop()
+		return
+	end
+
+	local seat = current.Seat
+	local throttle = seat.Throttle -- -1 .. 1, liefert Roblox selbst
+	local steerInput = seat.Steer -- -1 .. 1
+
+	local velocity = current.Body.AssemblyLinearVelocity
+	local speed = velocity.Magnitude
+	local forward = current.Body.CFrame.LookVector
+	local right = current.Body.CFrame.RightVector
+	local forwardSpeed = velocity:Dot(forward)
+	local sideSpeed = math.abs(velocity:Dot(right))
+
+	--== Lenken ============================================================
+	-- Bei Tempo weniger Einschlag: sonst ueberschlaegt sich jedes Auto beim
+	-- ersten Vollausschlag auf der Geraden.
+	local speedFactor = 1 - math.clamp(speed / current.MaxSpeed, 0, 1) * V.SteerSpeedFalloff
+	local wanted = steerInput * current.TurnAngle * speedFactor
+	current.Steer += (wanted - current.Steer) * math.clamp(dt * V.SteerSpeed, 0, 1)
+
+	for _, steerConstraint in current.Steers do
+		if steerConstraint.Parent and steerConstraint:GetAttribute("Steered") == true then
+			steerConstraint.TargetAngle = current.Steer
+		end
+	end
+
+	--== Gas und Bremse ====================================================
+	local braking = (throttle &lt; -0.1 and forwardSpeed &gt; 1) or (throttle &gt; 0.1 and forwardSpeed &lt; -1)
+	local targetAngular = 0
+	local torque = 0
+
+	if braking then
+		targetAngular = 0
+		torque = current.BrakeForce * V.BrakeTorqueScale
+	elseif math.abs(throttle) &gt; 0.05 then
+		-- Winkelgeschwindigkeit aus Wunschtempo und Radradius.
+		targetAngular = (current.MaxSpeed / current.WheelRadius) * throttle
+		torque = current.Acceleration * V.TorqueScale
+	else
+		-- Kein Gas: leichtes Motorbremsen, damit das Auto nicht ewig rollt.
+		targetAngular = 0
+		torque = current.Acceleration * 0.12
+	end
+
+	for _, drive in current.Drives do
+		if drive.Parent then
+			drive.MotorMaxTorque = torque
+			drive.AngularVelocity = targetAngular
+		end
+	end
+
+	--== Rueckleuchten =====================================================
+	for _, light in current.BrakeLights do
+		if light.Parent then
+			light.Color = if braking then Color3.fromRGB(255, 60, 70) else Color3.fromRGB(120, 20, 30)
+		end
+	end
+
+	--== Kamera ============================================================
+	-- Ohne das fuehlt sich kein Auto schnell an, egal wie hoch die Zahl steht.
+	local fraction = math.clamp(speed / current.MaxSpeed, 0, 1)
+	local wantedFov = V.CameraFovBase + (V.CameraFovFast - V.CameraFovBase) * fraction
+	camera.FieldOfView += (wantedFov - camera.FieldOfView) * math.clamp(dt / math.max(V.CameraFovLerp, 0.01), 0, 1)
+
+	--== Klang =============================================================
+	if current.Engine then
+		local load = math.max(fraction, math.abs(throttle) * 0.35)
+		current.Engine.PlaybackSpeed = V.EnginePitchIdle + (V.EnginePitchMax - V.EnginePitchIdle) * load
+	end
+
+	local drifting = sideSpeed &gt; V.SkidThreshold
+	if current.Squeal then
+		current.Squeal.Volume = if drifting then math.clamp((sideSpeed - V.SkidThreshold) / 20, 0, 0.6) else 0
+	end
+
+	--== Bremsspuren =======================================================
+	if (drifting or (braking and speed &gt; 25)) and math.random() &lt; 0.5 then
+		leaveSkid(current.Body.Position - Vector3.new(0, current.Body.Size.Y * 0.5, 0), forward)
+	end
+
+	--== Tacho =============================================================
+	speedLabel.Text = ("%d"):format(math.floor(speed * 1.1)) -- Studs/s grob als km/h
+	speedLabel.TextColor3 = if fraction &gt; 0.85 then C.Magenta elseif fraction &gt; 0.6 then C.Amber else C.Cyan
+	barFill.Size = UDim2.fromScale(fraction, 1)
+	barFill.BackgroundColor3 = speedLabel.TextColor3
+	hintLabel.Text = if drifting then "GRIP VERLOREN" else "[W][S] Gas/Bremse   [A][D] Lenken"
 end)
 </ProtectedString>
 </Properties>
