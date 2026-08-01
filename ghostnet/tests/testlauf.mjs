@@ -207,6 +207,125 @@ try {
     }
   }
 
+  // --- Admin-Sicherheit (Phase E) ---
+  // Diese Regeln sind der Unterschied zwischen einem Admin-Panel und einem
+  // Gratis-Geldautomaten fuer Exploiter.
+  const adminListPath = join(SRC, "server/AdminList.luau");
+  check(
+    "Admin-Liste liegt in ServerScriptService",
+    sources.has(adminListPath),
+    "src/server/AdminList.luau fehlt"
+  );
+  for (const [file] of sources) {
+    const short = relative(ROOT, file);
+    if (!short.startsWith("src/shared/") && !short.startsWith("src/client/")) continue;
+    check(
+      `keine Admin-Liste in ${short}`,
+      !/AdminList/.test(sources.get(file)),
+      "Client oder Shared kennt die Admin-Liste - die kann dann jeder lesen"
+    );
+  }
+
+  const adminSrc = sources.get(join(SRC, "server/Systems/AdminService.luau"));
+  if (adminSrc) {
+    // Die Autorisierung muss VOR Rate-Limit und Typcheck stehen.
+    const handleBody = adminSrc.split("local function handle(")[1] ?? "";
+    const authAt = handleBody.indexOf("AdminList.IsAdmin");
+    const limitAt = handleBody.indexOf("RateLimiter.Check");
+    check("Admin-Handler prueft die UserId", authAt >= 0, "keine IsAdmin-Pruefung");
+    check(
+      "UserId-Pruefung steht vor allem anderen",
+      authAt >= 0 && (limitAt < 0 || authAt < limitAt),
+      "Rate-Limit wird vor der Autorisierung geprueft"
+    );
+    check(
+      "Admin-Befehle werden protokolliert",
+      /warn\(/.test(adminSrc) && /audit\(/.test(adminSrc),
+      "keine Protokollierung"
+    );
+    check(
+      "gefaehrliche Befehle sind auf Studio beschraenkt",
+      /command\.StudioOnly and not AdminList\.IsStudioOnlyAllowed\(\)/.test(adminSrc),
+      "StudioOnly wird nicht durchgesetzt"
+    );
+    // Geld, Trace und Story duerfen live nicht anfassbar sein.
+    for (const name of ["SetCrypto", "SetRig", "SetTrace", "Bust", "ResetStory", "SetMission"]) {
+      const block = adminSrc.split(`COMMANDS.${name} = {`)[1]?.slice(0, 120) ?? "";
+      check(`${name} ist StudioOnly`, /StudioOnly = true/.test(block), "waere live erreichbar");
+    }
+  }
+
+  // Handel: der Server darf nie einen Preis vom Client uebernehmen.
+  const invSrc = sources.get(join(SRC, "server/Systems/InventoryService.luau"));
+  if (invSrc) {
+    check(
+      "InventoryService liest keinen Preis aus dem Client-Paket",
+      !/payload[^\n]*\.(Price|Cost|Unit|Total)/.test(invSrc),
+      "es wird ein Preisfeld aus dem Payload gelesen"
+    );
+    check(
+      "Handelspreise kommen vom MarketService",
+      /MarketService\.GetBuyPrice/.test(invSrc) && /MarketService\.GetSellPrice/.test(invSrc),
+      "Preisquelle fehlt"
+    );
+    check(
+      "Darknet ist serverseitig hinter dem Unlock",
+      /MissionService\.HasUnlock\(player, Config\.Market\.RequiredUnlock\)/.test(invSrc),
+      "Unlock wird nicht geprueft"
+    );
+  }
+
+  // --- Monetarisierung (Phase F) ---
+  const monSrc = sources.get(join(SRC, "server/Systems/MonetizationService.luau"));
+  if (monSrc) {
+    const idBlock = monSrc.split("local IDS = {")[1]?.split("\n}")[0] ?? "";
+    const ids = [...idBlock.matchAll(/^\s*(\w+)\s*=\s*(\d+)/gm)];
+    check("Gamepass- und Produkt-IDs sind vorhanden", ids.length >= 6, `nur ${ids.length} gefunden`);
+    for (const [, name, value] of ids) {
+      check(`${name} ist noch 0 (keine erfundene ID)`, value === "0", `steht auf ${value}`);
+    }
+
+    // ProcessReceipt: erst merken und speichern, dann bestaetigen.
+    const receipt = monSrc.split("local function processReceipt(")[1]?.split("\nend")[0] ?? "";
+    const logAt = receipt.indexOf("table.insert(profile.PurchaseLog");
+    const saveAt = receipt.indexOf("SaveService.SaveNow");
+    const grantAt = receipt.lastIndexOf("ProductPurchaseDecision.PurchaseGranted");
+    check("Beleg wird vor der Bestaetigung protokolliert", logAt >= 0 && logAt < grantAt, "PurchaseLog fehlt");
+    check("Es wird vor der Bestaetigung gespeichert", saveAt >= 0 && saveAt < grantAt, "SaveNow fehlt");
+    check(
+      "Doppelbeleg wird erkannt",
+      /table\.find\(profile\.PurchaseLog, purchaseId\)/.test(receipt),
+      "keine Pruefung auf bereits verarbeitete PurchaseId"
+    );
+    check(
+      "Fehlschlag bestaetigt NICHT",
+      /not saved[\s\S]{0,400}NotProcessedYet/.test(receipt),
+      "ein fehlgeschlagener Save wuerde den Beleg verbrauchen"
+    );
+    check(
+      "Besitzpruefung nimmt bei Fehler nicht 'besitzt nichts' an",
+      /checkFailed\[player\]\[passKey\] = true/.test(monSrc),
+      "ein Fehler wuerde als 'kein Gamepass' durchgehen"
+    );
+  }
+
+  // Es darf nirgends eine erfundene Asset-Id stehen.
+  for (const [file, src] of sources) {
+    const short = relative(ROOT, file);
+    check(`keine erfundene Asset-Id in ${short}`, !/rbxassetid:\/\/\d/.test(src), "enthaelt eine konkrete Asset-Id");
+  }
+
+  // Sound-IDs bleiben leer, bis Noah sie eintraegt.
+  const soundSrc = sources.get(join(SRC, "shared/SoundCatalog.luau"));
+  if (soundSrc) {
+    const idsBlock = soundSrc.split("SoundCatalog.Ids = {")[1]?.split("\n}")[0] ?? "";
+    const entries = [...idsBlock.matchAll(/^\s*(\w+)\s*=\s*"([^"]*)"/gm)];
+    check("SoundCatalog hat Eintraege", entries.length >= 15, `nur ${entries.length}`);
+    for (const [, name, value] of entries) {
+      check(`Sound ${name} ist leer`, value === "", `steht auf "${value}"`);
+    }
+  }
+
   // Jede Schema-Version braucht eine Migration.
   const schemaVersion = Number(/SchemaVersion = (\d+)/.exec(configSrc)?.[1] ?? 0);
   check("Schema-Version ist gesetzt", schemaVersion >= 1, `gelesen: ${schemaVersion}`);

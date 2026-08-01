@@ -1,10 +1,10 @@
 <roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4">
-<Item class="Workspace" referent="GN41">
+<Item class="Workspace" referent="GN50">
 <Properties>
 <string name="Name">Workspace</string>
 <float name="Gravity">196.2</float>
 </Properties>
-<Item class="Part" referent="GN36">
+<Item class="Part" referent="GN45">
 <Properties>
 <string name="Name">Baseplate</string>
 <bool name="Anchored">true</bool>
@@ -16,7 +16,7 @@
 <token name="BottomSurface">0</token>
 </Properties>
 </Item>
-<Item class="SpawnLocation" referent="GN37">
+<Item class="SpawnLocation" referent="GN46">
 <Properties>
 <string name="Name">SpawnLocation</string>
 <bool name="Anchored">true</bool>
@@ -29,7 +29,7 @@
 </Properties>
 </Item>
 </Item>
-<Item class="Lighting" referent="GN38">
+<Item class="Lighting" referent="GN47">
 <Properties>
 <string name="Name">Lighting</string>
 <token name="Technology">4</token>
@@ -44,7 +44,7 @@
 <Color3 name="FogColor"><R>0.03</R><G>0.04</G><B>0.07</B></Color3>
 <float name="FogEnd">420</float>
 </Properties>
-<Item class="BloomEffect" referent="GN39">
+<Item class="BloomEffect" referent="GN48">
 <Properties>
 <string name="Name">Bloom</string>
 <bool name="Enabled">true</bool>
@@ -53,7 +53,7 @@
 <float name="Threshold">0.9</float>
 </Properties>
 </Item>
-<Item class="ColorCorrectionEffect" referent="GN40">
+<Item class="ColorCorrectionEffect" referent="GN49">
 <Properties>
 <string name="Name">ColorCorrection</string>
 <bool name="Enabled">true</bool>
@@ -64,11 +64,11 @@
 </Properties>
 </Item>
 </Item>
-<Item class="ReplicatedStorage" referent="GN42">
+<Item class="ReplicatedStorage" referent="GN51">
 <Properties>
 <string name="Name">ReplicatedStorage</string>
 </Properties>
-<Item class="Folder" referent="GN8">
+<Item class="Folder" referent="GN9">
 <Properties>
 <string name="Name">Shared</string>
 </Properties>
@@ -83,7 +83,7 @@
 
 local Config = {}
 
-Config.Version = "0.4.0" -- Phase A-D: Story, Ueberfaelle, Darknet
+Config.Version = "1.0.0" -- Phase A-G komplett
 
 -- CollectionService-Tags. Ein Part mit dem Tag ist ein Hack-Ziel, ein Hehler,
 -- ein Missions-Wegpunkt oder ein ansprechbarer Kontakt. Kein Code pro Objekt.
@@ -297,7 +297,8 @@ Config.Save = {
 	--   1 = Phase 1 (Bank, Unsold, Rig, Trace, Cooldowns, Stats)
 	--   2 = Phase A (Story-Block)
 	--   3 = Phase C (Darknet-Lager)
-	SchemaVersion = 3,
+	--   4 = Phase F (PurchaseLog gegen Doppelvergabe)
+	SchemaVersion = 4,
 	StoreName = "GhostNetPlayers_v1",
 	KeyFormat = "ghostnet_player_%d",
 
@@ -466,7 +467,56 @@ function Config.GetFakeRisk(baseRisk: number, tier: number): number
 end
 
 --==========================================================================
--- 14. RATE-LIMITS (Token-Bucket pro Spieler und Remote)
+-- 14. MONETARISIERUNG
+-- Die IDs selbst stehen in MonetizationService (und sind alle 0). Hier
+-- stehen nur die Zahlen, die man austarieren will.
+--
+-- Regel fuer alles, was hier dazukommt: Zeitersparnis, Kosmetik, Komfort
+-- oder Kapazitaet - niemals etwas, das ein Raetsel loest.
+--==========================================================================
+Config.Monetization = {
+	ColdRigTrace = 0.25, -- Gamepass: -25% Trace-Anstieg
+	BigStashBonus = 0.5, -- Gamepass: +50% Lagerplatz
+	Crypto1k = 1000, -- Produkt: Betrag direkt auf die Bank
+	Crypto5k = 5000,
+
+	-- Besitzpruefung. UserOwnsGamePassAsync kann fehlschlagen; bei einem
+	-- Fehler wird NICHT angenommen, der Spieler besitze nichts.
+	OwnershipRetries = 3,
+	OwnershipRetryDelay = 2,
+	OwnershipRecheckSeconds = 120,
+
+	-- Verarbeitete Belege im Profil. Gegen Doppelvergabe. Gross genug, dass
+	-- ein Vielkaeufer keine alten Eintraege verliert, klein genug fuers Profil.
+	PurchaseLogLimit = 50,
+}
+
+--==========================================================================
+-- 15. STADTKULISSE
+-- Reine Optik. Wer auf schwachen Geraeten Probleme hat, dreht hier die
+-- Anzahl runter - das kostet Atmosphaere, aber keine Spielmechanik.
+--==========================================================================
+Config.World = {
+	Seed = 20260801, -- feste Zahl: die Stadt sieht auf jedem Server gleich aus
+
+	RoadWidth = 46,
+	RoadLength = 320,
+	RoadReflectance = 0.28, -- nasse Fahrbahn. 0 = trocken und matt.
+
+	MaxBuildingHeight = 78,
+	WindowChance = 0.55, -- Anteil erleuchteter Fensterbaender
+	SignChance = 0.45, -- Anteil Haeuser mit Neonschild
+	SignBrightness = 3,
+	SignRange = 26,
+
+	-- Hack-Ziele sollen auf Distanz erkennbar sein: ihr Akzentlicht pulsiert
+	-- dezent und geht aus, wenn das Ziel offline ist.
+	TargetPulseSpeed = 1.6,
+	TargetPulseDepth = 0.35,
+}
+
+--==========================================================================
+-- 16. RATE-LIMITS (Token-Bucket pro Spieler und Remote)
 -- Jede neue Remote braucht hier einen Eintrag, sonst wird sie verworfen.
 --==========================================================================
 Config.RateLimits = {
@@ -480,10 +530,12 @@ Config.RateLimits = {
 	MissionInteract = { Rate = 2, Burst = 4 },
 	MissionSkip = { Rate = 0.5, Burst = 2 },
 	Trade = { Rate = 2, Burst = 5 },
+	AdminCommand = { Rate = 4, Burst = 8 },
+	StorePrompt = { Rate = 1, Burst = 3 },
 }
 
 --==========================================================================
--- 15. NODE-BREACH
+-- 17. NODE-BREACH
 --==========================================================================
 Config.NodeBreach = {
 	-- Pro Schwierigkeitsband: Gittergroesse, Anzahl Relays, Anteil sichtbares
@@ -500,7 +552,7 @@ Config.NodeBreach = {
 }
 
 --==========================================================================
--- 16. DEFAULTS FUER HACK-ZIELE
+-- 18. DEFAULTS FUER HACK-ZIELE
 -- Ein Part braucht KEIN einziges Attribut. Alles, was fehlt, kommt von hier.
 --==========================================================================
 Config.TargetDefaults = {
@@ -1228,11 +1280,15 @@ local EVENT_NAMES = {
 	"MarketSync", -- S-&gt;C  { goods, event, tickSeconds }   serverweite Kurse
 	"MarketEvent", -- S-&gt;C  { text, group }                Kursereignis
 	"InventorySync", -- S-&gt;C  { stash, used, slots, tier }
+	"AdminReady", -- S-&gt;C  { studio }   nur an autorisierte Spieler
+	"StoreSync", -- S-&gt;C  { passes, products }
+	"StorePrompt", -- C-&gt;S  { kind, key }   bittet um den Kaufdialog
 }
 
 local FUNCTION_NAMES: { string } = {
 	"ShopPurchase", -- C-&gt;S-&gt;C  { component } -&gt; { ok, reason, level, cost, ... }
 	"Trade", -- C-&gt;S-&gt;C  { action, goodId, amount } -&gt; { ok, reason, unit, total, ... }
+	"AdminCommand", -- C-&gt;S-&gt;C  { command, ... } -&gt; { ok, text, ... }
 }
 
 local Remotes = {}
@@ -1291,6 +1347,124 @@ return Remotes
 </Item>
 <Item class="ModuleScript" referent="GN6">
 <Properties>
+<string name="Name">SoundCatalog</string>
+<ProtectedString name="Source">-- ReplicatedStorage/Shared/SoundCatalog.luau
+--!strict
+-- GHOSTNET :: Alle Klaenge an einem Ort.
+--
+-- ACHTUNG: ALLE IDs SIND LEER. Noah traegt sie manuell ein.
+-- Nutze ausschliesslich Assets aus der offiziellen Roblox Creator Marketplace
+-- Audio-Bibliothek oder eigene Uploads. ERFINDE KEINE ASSET-IDS - falsche IDs
+-- fuehren zu stummen Sounds ohne Fehlermeldung und sind schwer zu finden.
+--
+-- So traegt man eine ID ein:
+--   Creator Marketplace -&gt; Audio -&gt; Sound anhoeren -&gt; "Asset ID" kopieren
+--   und hier als "rbxassetid://DEINE_ID" einsetzen, also die Zahl direkt
+--   hinter die beiden Schraegstriche.
+--
+-- Solange ein Eintrag leer ist, spielt der SoundController ihn einfach nicht
+-- ab. Das Spiel laeuft also auch ohne eine einzige ID - es klingt nur nach
+-- nichts.
+
+local SoundCatalog = {}
+
+SoundCatalog.Ids = {
+	UI = {
+		NodeSelect = "", -- kurzer Klick beim Setzen eines Knotens
+		NodeInvalid = "", -- dumpfer Fehlton
+		IceHit = "", -- harter Treffer, verstecktes ICE
+		HackStart = "", -- Terminal faehrt hoch
+		HackSuccess = "", -- aufsteigend, befriedigend
+		HackFail = "", -- absteigend
+		Countdown = "", -- Ticken unter 10 s
+		PanelOpen = "", -- Fenster faehrt auf
+		PanelClose = "",
+		Type = "", -- Tippgeraeusch im Terminal
+	},
+	Trace = {
+		Warn = "", -- ab 70 %
+		Critical = "", -- ab 90 %, Loop
+		Bust = "", -- Alarm
+	},
+	Market = {
+		Buy = "",
+		Sell = "",
+		PriceAlert = "", -- Markt-Event
+	},
+	World = {
+		Ambience = "", -- dunkler Stadt-Loop
+		Rain = "",
+		CameraDown = "",
+		DoorOpen = "",
+		SafeOpen = "",
+		Alarm = "",
+		Upgrade = "",
+	},
+}
+
+--==========================================================================
+-- Lautstaerken und Verhalten. Diese Zahlen darf man anfassen, die IDs nicht.
+--==========================================================================
+
+SoundCatalog.Settings = {
+	UIVolume = 0.45,
+	WorldVolume = 0.5,
+	AmbienceVolume = 0.28,
+
+	-- Waehrend eines Hacks wird die Ambience leiser, damit die UI-Sounds
+	-- tragen. Beim Alarm kehrt sie schlagartig laut zurueck.
+	AmbienceDuckFactor = 0.25,
+	AmbienceDuckTime = 0.4,
+	AmbienceAlarmFactor = 1.4,
+
+	-- Die Tonhoehe der Knoten-Klicks steigt mit der Pfadlaenge: jeder
+	-- gesetzte Knoten einen Halbton hoeher. Aus Klickgeraeuschen wird eine
+	-- aufsteigende Melodie, und ein geloestes Raetsel klingt nach Erfolg
+	-- statt nach Klicken.
+	SemitoneRatio = 1.059463, -- 2^(1/12)
+	MaxSemitones = 14, -- danach wird es schrill
+
+	-- Countdown unter dieser Marke, Frequenz steigt zum Ende hin.
+	CountdownFrom = 10,
+	CountdownMinInterval = 0.25,
+	CountdownMaxInterval = 1.0,
+}
+
+--==========================================================================
+
+-- Liefert die Id oder nil, wenn sie noch nicht eingetragen ist.
+function SoundCatalog.Get(group: string, key: string): string?
+	local bucket = (SoundCatalog.Ids :: any)[group]
+	if typeof(bucket) ~= "table" then
+		return nil
+	end
+	local id = bucket[key]
+	if typeof(id) ~= "string" or id == "" then
+		return nil
+	end
+	return id
+end
+
+-- Wie viele IDs schon eingetragen sind - fuer die Startmeldung.
+function SoundCatalog.Count(): (number, number)
+	local filled, total = 0, 0
+	for _, bucket in SoundCatalog.Ids do
+		for _, id in bucket do
+			total += 1
+			if typeof(id) == "string" and id ~= "" then
+				filled += 1
+			end
+		end
+	end
+	return filled, total
+end
+
+return SoundCatalog
+</ProtectedString>
+</Properties>
+</Item>
+<Item class="ModuleScript" referent="GN7">
+<Properties>
 <string name="Name">Types</string>
 <ProtectedString name="Source">-- ReplicatedStorage/Shared/Types.luau
 --!strict
@@ -1338,6 +1512,7 @@ export type Profile = {
 	Stats: Stats,
 	Story: Story, -- seit SchemaVersion 2
 	Stash: { [string]: number }, -- Darknet-Lager, seit SchemaVersion 3
+	PurchaseLog: { string }, -- verarbeitete PurchaseIds, seit SchemaVersion 4
 	LastSeen: number, -- Unix-Zeit des letzten Speicherns
 	SessionId: string, -- Session-Lock gegen Doppel-Sitzungen
 }
@@ -1413,7 +1588,7 @@ return {}
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN7">
+<Item class="ModuleScript" referent="GN8">
 <Properties>
 <string name="Name">UITheme</string>
 <ProtectedString name="Source">-- ReplicatedStorage/Shared/UITheme.luau
@@ -1617,11 +1792,77 @@ return UITheme
 </Item>
 </Item>
 </Item>
-<Item class="ServerScriptService" referent="GN43">
+<Item class="ServerScriptService" referent="GN52">
 <Properties>
 <string name="Name">ServerScriptService</string>
 </Properties>
-<Item class="Script" referent="GN9">
+<Item class="ModuleScript" referent="GN10">
+<Properties>
+<string name="Name">AdminList</string>
+<ProtectedString name="Source">-- ServerScriptService/AdminList.luau
+--!strict
+-- GHOSTNET :: Wer Admin ist.
+--
+-- ACHTUNG - diese Datei liegt bewusst in ServerScriptService und NICHT in
+-- ReplicatedStorage. Alles unter ReplicatedStorage kann jeder Client lesen.
+-- Eine Admin-Liste dort waere eine oeffentliche Ansage, wen man angreifen
+-- muss.
+--
+-- NOAH TRAEGT SEINE USERID HIER EIN.
+-- Die eigene UserId findet man so: Roblox-Profil im Browser oeffnen, die
+-- Zahl in der Adresszeile hinter /users/ ist es. Nicht der Nutzername -
+-- Nutzernamen kann man aendern, UserIds nicht.
+--
+-- Solange die Liste leer ist, gibt es im Live-Spiel schlicht keine Admins.
+-- Im Studio ist der Testspieler automatisch Admin (siehe unten), damit man
+-- ohne Eintrag entwickeln kann.
+
+local RunService = game:GetService("RunService")
+
+local AdminList = {}
+
+-- Beispiel: { 1234567, 7654321 }
+local USER_IDS: { number } = {}
+
+-- Im Studio ist jeder Admin. Der Pfad ist doppelt abgesichert (IsStudio UND
+-- dieses Flag) und existiert im Live-Spiel nicht.
+local STUDIO_IS_ADMIN = true
+
+function AdminList.IsAdmin(player: Player): boolean
+	if not player or not player.Parent then
+		return false
+	end
+
+	for _, id in USER_IDS do
+		if player.UserId == id then
+			return true
+		end
+	end
+
+	if STUDIO_IS_ADMIN and RunService:IsStudio() then
+		return true
+	end
+
+	return false
+end
+
+-- Die gefaehrlichsten Befehle (Geld geben, Trace setzen, Profil
+-- zuruecksetzen) gibt es NUR im Studio. Selbst ein echter Admin kann sie im
+-- Live-Spiel nicht ausloesen - damit ein gestohlener Account keinen Schaden
+-- an der Wirtschaft anrichten kann.
+function AdminList.IsStudioOnlyAllowed(): boolean
+	return RunService:IsStudio()
+end
+
+function AdminList.Count(): number
+	return #USER_IDS
+end
+
+return AdminList
+</ProtectedString>
+</Properties>
+</Item>
+<Item class="Script" referent="GN11">
 <Properties>
 <string name="Name">GhostNetServer</string>
 <ProtectedString name="Source">-- ServerScriptService/GhostNetServer.server.luau
@@ -1650,6 +1891,8 @@ local RaidService = require(Systems.RaidService)
 local MissionService = require(Systems.MissionService)
 local MarketService = require(Systems.MarketService)
 local InventoryService = require(Systems.InventoryService)
+local MonetizationService = require(Systems.MonetizationService)
+local AdminService = require(Systems.AdminService)
 
 SaveService.Init() -- zuerst: haelt das Profil
 EconomyService.Init() -- liest aus dem Profil
@@ -1664,16 +1907,590 @@ RaidService.Init()
 MissionService.Init()
 MarketService.Init() -- Kurse laufen unabhaengig von Spielern
 InventoryService.Init() -- braucht Markt und Missionen (Unlock-Pruefung)
+MonetizationService.Init()
+AdminService.Init() -- zuletzt: greift auf alle anderen zu
 
 print(("[GHOSTNET] Server hochgefahren - Version %s"):format(Config.Version))
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="Folder" referent="GN25">
+<Item class="Folder" referent="GN29">
 <Properties>
 <string name="Name">Systems</string>
 </Properties>
-<Item class="ModuleScript" referent="GN10">
+<Item class="ModuleScript" referent="GN12">
+<Properties>
+<string name="Name">AdminService</string>
+<ProtectedString name="Source">-- ServerScriptService/Systems/AdminService.luau
+--!strict
+-- GHOSTNET :: Admin-Befehle.
+--
+-- SICHERHEIT ZUERST - das ist kein Nebensatz
+--   Ein schlecht gebautes Admin-Panel ist der haeufigste Weg, auf dem
+--   Roblox-Spiele zerstoert werden. Der Client kann JEDES RemoteEvent
+--   feuern, das er sieht. Ein Admin-Remote, das dem Client glaubt, ist ein
+--   Gratis-Geldautomat.
+--
+--   Deshalb gilt hier:
+--   1. Die UserId-Liste liegt in ServerScriptService, nie in ReplicatedStorage.
+--   2. JEDER Befehl prueft die Autorisierung in der ersten Zeile. Dass der
+--      Knopf nur Admins angezeigt wird, ist voellig irrelevant.
+--   3. Die gefaehrlichsten Befehle brauchen zusaetzlich IsStudio().
+--   4. Jede Aktion wird geloggt: wer, was, wann, an wem.
+--   5. Eigener Rate-Limit-Eintrag.
+
+local Players = game:GetService("Players")
+local HttpService = game:GetService("HttpService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Config = require(ReplicatedStorage.Shared.Config)
+local Goods = require(ReplicatedStorage.Shared.Goods)
+local Missions = require(ReplicatedStorage.Shared.Missions)
+local Remotes = require(ReplicatedStorage.Shared.Remotes)
+
+local AdminList = require(script.Parent.Parent.AdminList)
+
+local EconomyService = require(script.Parent.EconomyService)
+local HackService = require(script.Parent.HackService)
+local HackTargets = require(script.Parent.HackTargets)
+local MarketService = require(script.Parent.MarketService)
+local MissionService = require(script.Parent.MissionService)
+local RateLimiter = require(script.Parent.RateLimiter)
+local SaveService = require(script.Parent.SaveService)
+local TraceService = require(script.Parent.TraceService)
+
+local AdminService = {}
+
+--==========================================================================
+-- Hilfsfunktionen
+--==========================================================================
+
+local function reply(ok: boolean, text: string, extra: { [string]: any }?): { [string]: any }
+	local payload: { [string]: any } = { Ok = ok, Text = text }
+	if extra then
+		for key, value in extra do
+			payload[key] = value
+		end
+	end
+	return payload
+end
+
+local function audit(admin: Player, command: string, detail: string)
+	warn(("[GHOSTNET][ADMIN] %s (%d) -&gt; %s  %s"):format(admin.Name, admin.UserId, command, detail))
+end
+
+-- Zielspieler eines Befehls. Ohne Angabe der Admin selbst.
+local function resolveTarget(admin: Player, name: any): Player?
+	if typeof(name) ~= "string" or name == "" then
+		return admin
+	end
+	for _, player in Players:GetPlayers() do
+		if player.Name == name then
+			return player
+		end
+	end
+	return nil
+end
+
+local function clampNumber(value: any, low: number, high: number): number?
+	if typeof(value) ~= "number" or value ~= value then
+		return nil
+	end
+	return math.clamp(math.floor(value), low, high)
+end
+
+--==========================================================================
+-- Befehle
+--
+-- studioOnly = true  -&gt;  greift live nicht, auch nicht fuer echte Admins.
+--==========================================================================
+
+type Command = {
+	StudioOnly: boolean,
+	Run: (admin: Player, payload: { [string]: any }) -&gt; { [string]: any },
+}
+
+local COMMANDS: { [string]: Command } = {}
+
+--== Wirtschaft ============================================================
+
+COMMANDS.SetCrypto = {
+	StudioOnly = true,
+	Run = function(admin, payload)
+		local target = resolveTarget(admin, payload.Player)
+		if not target then
+			return reply(false, "Spieler nicht gefunden")
+		end
+		local profile = SaveService.Get(target)
+		if not profile then
+			return reply(false, "Profil nicht geladen")
+		end
+
+		local banked = clampNumber(payload.Banked, 0, 1e9)
+		local unsold = clampNumber(payload.Unsold, 0, 1e9)
+		if banked then
+			profile.Banked = banked
+		end
+		if unsold then
+			profile.Unsold = unsold
+		end
+
+		EconomyService.Sync(target)
+		SaveService.RequestSave(target)
+		audit(admin, "SetCrypto", ("%s bank=%s unsold=%s"):format(target.Name, tostring(banked), tostring(unsold)))
+		return reply(true, ("%s: Bank %d, Unverkauft %d"):format(target.Name, profile.Banked, profile.Unsold))
+	end,
+}
+
+COMMANDS.SetRig = {
+	StudioOnly = true,
+	Run = function(admin, payload)
+		local target = resolveTarget(admin, payload.Player)
+		if not target then
+			return reply(false, "Spieler nicht gefunden")
+		end
+		local level = clampNumber(payload.Level, 1, Config.Rig.MaxLevel)
+		if not level then
+			return reply(false, "Level fehlt")
+		end
+
+		local component = payload.Component
+		local applied = {}
+		for _, name in Config.Rig.Components do
+			if component == nil or component == name then
+				EconomyService.SetRigLevel(target, name, level)
+				table.insert(applied, name)
+			end
+		end
+		if #applied == 0 then
+			return reply(false, "Unbekanntes Bauteil")
+		end
+
+		EconomyService.Sync(target)
+		SaveService.RequestSave(target)
+		audit(admin, "SetRig", ("%s %s = %d"):format(target.Name, table.concat(applied, ","), level))
+		return reply(true, ("%s: %s auf Stufe %d"):format(target.Name, table.concat(applied, ", "), level))
+	end,
+}
+
+COMMANDS.SetTrace = {
+	StudioOnly = true,
+	Run = function(admin, payload)
+		local target = resolveTarget(admin, payload.Player)
+		if not target then
+			return reply(false, "Spieler nicht gefunden")
+		end
+		local profile = SaveService.Get(target)
+		if not profile then
+			return reply(false, "Profil nicht geladen")
+		end
+		local value = clampNumber(payload.Value, 0, Config.Trace.Max)
+		if not value then
+			return reply(false, "Wert fehlt")
+		end
+
+		-- Ueber den Service, damit ein Wert von 100 auch wirklich einen Bust
+		-- ausloest statt nur die Zahl zu setzen.
+		profile.Trace = 0
+		TraceService.Add(target, value)
+		audit(admin, "SetTrace", ("%s = %d"):format(target.Name, value))
+		return reply(true, ("%s: Trace auf %d"):format(target.Name, value))
+	end,
+}
+
+COMMANDS.Bust = {
+	StudioOnly = true,
+	Run = function(admin, payload)
+		local target = resolveTarget(admin, payload.Player)
+		if not target then
+			return reply(false, "Spieler nicht gefunden")
+		end
+		local profile = SaveService.Get(target)
+		if not profile then
+			return reply(false, "Profil nicht geladen")
+		end
+		profile.Trace = 0
+		TraceService.Add(target, Config.Trace.Max)
+		audit(admin, "Bust", target.Name)
+		return reply(true, ("%s wurde gebustet"):format(target.Name))
+	end,
+}
+
+--== Missionen =============================================================
+
+COMMANDS.SetMission = {
+	StudioOnly = true,
+	Run = function(admin, payload)
+		local target = resolveTarget(admin, payload.Player)
+		if not target then
+			return reply(false, "Spieler nicht gefunden")
+		end
+		local profile = SaveService.Get(target)
+		if not profile then
+			return reply(false, "Profil nicht geladen")
+		end
+
+		local missionId = payload.MissionId
+		if typeof(missionId) ~= "string" or not Missions.Get(missionId) then
+			return reply(false, "Unbekannte Mission")
+		end
+
+		-- Alle Vorgaenger als erledigt eintragen, sonst waere die Mission
+		-- gar nicht verfuegbar.
+		local story = profile.Story
+		for _, mission in Missions.List do
+			if mission.Id == missionId then
+				break
+			end
+			if not Missions.IsCompleted(story, mission.Id) then
+				table.insert(story.Completed, mission.Id)
+			end
+			local unlock = mission.Reward and mission.Reward.Unlock
+			if typeof(unlock) == "string" and unlock ~= "" and not Missions.HasUnlock(story, unlock) then
+				table.insert(story.Unlocks, unlock)
+			end
+		end
+
+		local index = table.find(story.Completed, missionId)
+		if index then
+			table.remove(story.Completed, index)
+		end
+		story.Active = missionId
+		story.Step = 1
+		story.StepProgress = 0
+		story.StepStartedAt = os.time()
+
+		SaveService.RequestSave(target)
+		MissionService.Sync(target)
+		audit(admin, "SetMission", ("%s -&gt; %s"):format(target.Name, missionId))
+		return reply(true, ("%s startet %s"):format(target.Name, missionId))
+	end,
+}
+
+COMMANDS.ResetStory = {
+	StudioOnly = true,
+	Run = function(admin, payload)
+		local target = resolveTarget(admin, payload.Player)
+		if not target then
+			return reply(false, "Spieler nicht gefunden")
+		end
+		local profile = SaveService.Get(target)
+		if not profile then
+			return reply(false, "Profil nicht geladen")
+		end
+
+		profile.Story.Active = ""
+		profile.Story.Step = 1
+		profile.Story.StepProgress = 0
+		profile.Story.StepStartedAt = 0
+		table.clear(profile.Story.Completed)
+		table.clear(profile.Story.Unlocks)
+
+		SaveService.RequestSave(target)
+		MissionService.Sync(target)
+		audit(admin, "ResetStory", target.Name)
+		return reply(true, ("Story von %s zurueckgesetzt"):format(target.Name))
+	end,
+}
+
+COMMANDS.GrantUnlock = {
+	StudioOnly = true,
+	Run = function(admin, payload)
+		local target = resolveTarget(admin, payload.Player)
+		if not target then
+			return reply(false, "Spieler nicht gefunden")
+		end
+		local profile = SaveService.Get(target)
+		if not profile then
+			return reply(false, "Profil nicht geladen")
+		end
+		local key = payload.Unlock
+		if typeof(key) ~= "string" or key == "" or #key &gt; 48 then
+			return reply(false, "Unlock fehlt")
+		end
+		if not Missions.HasUnlock(profile.Story, key) then
+			table.insert(profile.Story.Unlocks, key)
+		end
+		SaveService.RequestSave(target)
+		MissionService.Sync(target)
+		audit(admin, "GrantUnlock", ("%s -&gt; %s"):format(target.Name, key))
+		return reply(true, ("%s hat jetzt %s"):format(target.Name, key))
+	end,
+}
+
+--== Welt ==================================================================
+
+COMMANDS.ListTargets = {
+	StudioOnly = false,
+	Run = function(admin, _payload)
+		local rows: { { [string]: any } } = {}
+		for id, target in HackTargets.All() do
+			table.insert(rows, {
+				Id = id,
+				Name = target.DisplayName,
+				Difficulty = target.Difficulty,
+				RequiredLevel = target.RequiredLevel,
+				Offline = HackTargets.IsDown(target),
+				Cooldown = math.ceil(HackTargets.CooldownLeft(admin, id)),
+				Position = target.Part.Position,
+			})
+		end
+		table.sort(rows, function(a, b)
+			return (a.Id :: string) &lt; (b.Id :: string)
+		end)
+		return reply(true, ("%d Ziele"):format(#rows), { Targets = rows })
+	end,
+}
+
+COMMANDS.ClearCooldown = {
+	StudioOnly = false,
+	Run = function(admin, payload)
+		local target = resolveTarget(admin, payload.Player)
+		if not target then
+			return reply(false, "Spieler nicht gefunden")
+		end
+		local profile = SaveService.Get(target)
+		if not profile then
+			return reply(false, "Profil nicht geladen")
+		end
+
+		local targetId = payload.TargetId
+		if typeof(targetId) == "string" and targetId ~= "" then
+			profile.Cooldowns[targetId] = nil
+			audit(admin, "ClearCooldown", ("%s / %s"):format(target.Name, targetId))
+		else
+			table.clear(profile.Cooldowns)
+			audit(admin, "ClearCooldown", ("%s / alle"):format(target.Name))
+		end
+
+		EconomyService.Sync(target)
+		SaveService.RequestSave(target)
+		return reply(true, "Cooldowns geloescht")
+	end,
+}
+
+COMMANDS.Teleport = {
+	StudioOnly = false,
+	Run = function(admin, payload)
+		local targetId = payload.TargetId
+		if typeof(targetId) ~= "string" then
+			return reply(false, "TargetId fehlt")
+		end
+		local target = HackTargets.Get(targetId)
+		if not target then
+			return reply(false, "Ziel nicht gefunden")
+		end
+		local character = admin.Character
+		local root = character and character:FindFirstChild("HumanoidRootPart")
+		if not root or not root:IsA("BasePart") then
+			return reply(false, "Kein Character")
+		end
+
+		root.CFrame = CFrame.new(target.Part.Position + Vector3.new(0, 4, 8))
+		audit(admin, "Teleport", targetId)
+		return reply(true, ("Bei %s"):format(target.DisplayName))
+	end,
+}
+
+--== Markt =================================================================
+
+COMMANDS.MarketState = {
+	StudioOnly = false,
+	Run = function(_admin, _payload)
+		local rows: { { [string]: any } } = {}
+		for _, good in Goods.List do
+			table.insert(rows, {
+				Id = good.Id,
+				Name = good.Name,
+				Factor = MarketService.GetFactor(good.Id),
+				Buy = MarketService.GetBuyPrice(good.Id),
+				Sell = MarketService.GetSellPrice(good.Id),
+			})
+		end
+		return reply(true, ("%d Waren"):format(#rows), { Market = rows })
+	end,
+}
+
+COMMANDS.MarketEvent = {
+	StudioOnly = true,
+	Run = function(admin, payload)
+		local group = payload.Group
+		if typeof(group) ~= "string" or group == "" then
+			return reply(false, "Group fehlt")
+		end
+		local strength = payload.Strength
+		if typeof(strength) ~= "number" or strength ~= strength then
+			strength = Config.Market.EventStrengthMax
+		end
+		MarketService.ForceEvent(group, math.clamp(strength, -0.9, 0.9))
+		audit(admin, "MarketEvent", ("%s %.2f"):format(group, strength))
+		return reply(true, ("Event auf %s ausgeloest"):format(group))
+	end,
+}
+
+COMMANDS.SetPrice = {
+	StudioOnly = true,
+	Run = function(admin, payload)
+		local goodId = payload.GoodId
+		if not Goods.Exists(goodId) then
+			return reply(false, "Unbekannte Ware")
+		end
+		local factor = payload.Factor
+		if typeof(factor) ~= "number" or factor ~= factor then
+			return reply(false, "Factor fehlt")
+		end
+		MarketService.SetFactor(goodId, factor)
+		audit(admin, "SetPrice", ("%s = %.2f"):format(goodId, factor))
+		return reply(true, ("%s auf Faktor %.2f"):format(goodId, factor))
+	end,
+}
+
+--== Debug =================================================================
+
+COMMANDS.Sessions = {
+	StudioOnly = false,
+	Run = function(_admin, _payload)
+		local rows: { { [string]: any } } = {}
+		for _, player in Players:GetPlayers() do
+			table.insert(rows, {
+				Name = player.Name,
+				Ready = SaveService.IsReady(player),
+				MemoryOnly = SaveService.IsMemoryOnly(player),
+				Hacking = HackService.IsHacking(player),
+				Trace = math.floor(TraceService.Get(player)),
+				Tier = EconomyService.GetTier(player),
+				Banked = EconomyService.GetBanked(player),
+				Unsold = EconomyService.GetUnsold(player),
+			})
+		end
+		return reply(true, ("%d Spieler"):format(#rows), { Sessions = rows })
+	end,
+}
+
+-- Der wichtigste Befehl im ganzen Panel: ohne "Profil ausgeben" debuggt man
+-- Speicherfehler blind.
+COMMANDS.DumpProfile = {
+	StudioOnly = false,
+	Run = function(admin, payload)
+		local target = resolveTarget(admin, payload.Player)
+		if not target then
+			return reply(false, "Spieler nicht gefunden")
+		end
+		local profile = SaveService.Get(target)
+		if not profile then
+			return reply(false, "Profil nicht geladen")
+		end
+
+		local ok, json = pcall(function()
+			return HttpService:JSONEncode(profile)
+		end)
+		if not ok then
+			return reply(false, "Profil laesst sich nicht als JSON schreiben")
+		end
+
+		-- Auch in die Server-Ausgabe, damit man es kopieren kann.
+		print(("[GHOSTNET][ADMIN] Profil %s:\n%s"):format(target.Name, json))
+		audit(admin, "DumpProfile", target.Name)
+		return reply(true, ("Profil von %s"):format(target.Name), { Json = json })
+	end,
+}
+
+COMMANDS.ForceSave = {
+	StudioOnly = false,
+	Run = function(admin, payload)
+		local target = resolveTarget(admin, payload.Player)
+		if not target then
+			return reply(false, "Spieler nicht gefunden")
+		end
+		local saved = SaveService.SaveNow(target)
+		audit(admin, "ForceSave", ("%s ok=%s"):format(target.Name, tostring(saved)))
+		return reply(saved, if saved then "Gespeichert" else "Speichern fehlgeschlagen (siehe Ausgabe)")
+	end,
+}
+
+--==========================================================================
+-- Eingang
+--==========================================================================
+
+local function handle(player: Player, payload: any): { [string]: any }
+	-- ERSTE ZEILE: Autorisierung. Nicht die zweite, nicht nach dem
+	-- Typcheck - die erste.
+	if not AdminList.IsAdmin(player) then
+		warn(("[GHOSTNET][ADMIN] ABGELEHNT: %s (%d) hat einen Admin-Befehl versucht."):format(
+			player.Name,
+			player.UserId
+		))
+		return reply(false, "Nicht autorisiert")
+	end
+
+	if not RateLimiter.Check(player, "AdminCommand") then
+		return reply(false, "Zu schnell")
+	end
+	if typeof(payload) ~= "table" then
+		return reply(false, "Ungueltige Anfrage")
+	end
+
+	local name = (payload :: any).Command
+	if typeof(name) ~= "string" then
+		return reply(false, "Kein Befehl")
+	end
+
+	local command = COMMANDS[name]
+	if not command then
+		return reply(false, ("Unbekannter Befehl: %s"):format(name))
+	end
+
+	if command.StudioOnly and not AdminList.IsStudioOnlyAllowed() then
+		warn(("[GHOSTNET][ADMIN] '%s' ist nur im Studio erlaubt - %s abgelehnt."):format(name, player.Name))
+		return reply(false, "Dieser Befehl existiert im Live-Spiel nicht")
+	end
+
+	local ok, response = pcall(command.Run, player, payload)
+	if not ok then
+		warn(("[GHOSTNET][ADMIN] Befehl '%s' ist abgestuerzt: %s"):format(name, tostring(response)))
+		return reply(false, "Befehl fehlgeschlagen")
+	end
+	return response
+end
+
+--==========================================================================
+
+function AdminService.Init()
+	Remotes.AdminCommand.OnServerInvoke = function(player: Player, payload: any): { [string]: any }
+		local ok, response = pcall(handle, player, payload)
+		if not ok then
+			warn(("[GHOSTNET][ADMIN] Eingang abgestuerzt: %s"):format(tostring(response)))
+			return reply(false, "Fehler")
+		end
+		return response
+	end
+
+	-- Der Client fragt beim Join, ob er das Panel ueberhaupt zeigen darf.
+	-- Die Antwort ist reine Bequemlichkeit; jeder Befehl prueft nochmal.
+	Players.PlayerAdded:Connect(function(player)
+		task.defer(function()
+			if AdminList.IsAdmin(player) and player.Parent then
+				Remotes.AdminReady:FireClient(player, { Studio = AdminList.IsStudioOnlyAllowed() })
+			end
+		end)
+	end)
+	for _, player in Players:GetPlayers() do
+		if AdminList.IsAdmin(player) then
+			Remotes.AdminReady:FireClient(player, { Studio = AdminList.IsStudioOnlyAllowed() })
+		end
+	end
+
+	print(("[GHOSTNET] AdminService bereit. %d eingetragene Admins%s."):format(
+		AdminList.Count(),
+		if AdminList.IsStudioOnlyAllowed() then " (+ Studio)" else ""
+	))
+end
+
+return AdminService
+</ProtectedString>
+</Properties>
+</Item>
+<Item class="ModuleScript" referent="GN13">
 <Properties>
 <string name="Name">EconomyService</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/EconomyService.luau
@@ -1935,7 +2752,7 @@ return EconomyService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN11">
+<Item class="ModuleScript" referent="GN14">
 <Properties>
 <string name="Name">HackEffects</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/HackEffects.luau
@@ -2124,7 +2941,7 @@ return HackEffects
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN12">
+<Item class="ModuleScript" referent="GN15">
 <Properties>
 <string name="Name">HackService</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/HackService.luau
@@ -2154,6 +2971,7 @@ local Types = require(ReplicatedStorage.Shared.Types)
 local EconomyService = require(script.Parent.EconomyService)
 local HackEffects = require(script.Parent.HackEffects)
 local HackTargets = require(script.Parent.HackTargets)
+local MonetizationService = require(script.Parent.MonetizationService)
 local RateLimiter = require(script.Parent.RateLimiter)
 local SaveService = require(script.Parent.SaveService)
 local TraceService = require(script.Parent.TraceService)
@@ -2236,6 +3054,10 @@ local function resolve(session: Session, success: boolean, reason: string)
 			traceDelta = 0
 		end
 
+		-- Gamepass ColdRig: dauerhaft weniger Trace. Zeitersparnis, kein
+		-- Raetselvorteil - die Aufgabe selbst bleibt gleich schwer.
+		traceDelta *= MonetizationService.TraceFactor(player)
+
 		-- Co-Op: ein zweiter Spieler in Reichweite eines RequiresTwo-Ziels
 		-- halbiert den Trace-Anstieg. Das ist der Grund, einen Freund
 		-- mitzubringen - und er muss spuerbar sein.
@@ -2300,6 +3122,12 @@ local function resolve(session: Session, success: boolean, reason: string)
 			end
 		end)
 	end
+end
+
+-- Nur fuer Diagnose (AdminService). Sagt nichts ueber den Raetselzustand aus.
+function HackService.IsHacking(player: Player): boolean
+	local session = sessions[player]
+	return session ~= nil and not session.Resolved
 end
 
 function HackService.AbortFor(player: Player, reason: string)
@@ -2641,7 +3469,7 @@ return HackService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN13">
+<Item class="ModuleScript" referent="GN16">
 <Properties>
 <string name="Name">HackTargets</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/HackTargets.luau
@@ -2891,7 +3719,7 @@ return HackTargets
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN14">
+<Item class="ModuleScript" referent="GN17">
 <Properties>
 <string name="Name">InventoryService</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/InventoryService.luau
@@ -2923,6 +3751,7 @@ local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local EconomyService = require(script.Parent.EconomyService)
 local MarketService = require(script.Parent.MarketService)
 local MissionService = require(script.Parent.MissionService)
+local MonetizationService = require(script.Parent.MonetizationService)
 local RateLimiter = require(script.Parent.RateLimiter)
 local SaveService = require(script.Parent.SaveService)
 local TraceService = require(script.Parent.TraceService)
@@ -2948,7 +3777,9 @@ function InventoryService.Used(player: Player): number
 end
 
 function InventoryService.Slots(player: Player): number
-	return Config.GetStashSlots(EconomyService.GetTier(player))
+	local base = Config.GetStashSlots(EconomyService.GetTier(player))
+	-- Gamepass BigStash: reine Kapazitaet, kein Spielvorteil beim Raetsel.
+	return math.floor(base * (1 + MonetizationService.StashBonus(player)))
 end
 
 function InventoryService.Snapshot(player: Player): { [string]: any }
@@ -3202,7 +4033,7 @@ return InventoryService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN15">
+<Item class="ModuleScript" referent="GN18">
 <Properties>
 <string name="Name">MarketService</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/MarketService.luau
@@ -3411,6 +4242,40 @@ local function tickPrices()
 end
 
 --==========================================================================
+-- Eingriffe von aussen (nur AdminService)
+--==========================================================================
+
+function MarketService.SetFactor(goodId: string, factor: number)
+	local quote = quotes[goodId]
+	if not quote then
+		return
+	end
+	quote.Factor = math.clamp(factor, Config.Market.MinFactor, Config.Market.MaxFactor)
+	table.insert(quote.History, quote.Factor)
+	while #quote.History &gt; Config.Market.HistoryPoints do
+		table.remove(quote.History, 1)
+	end
+	broadcast()
+end
+
+function MarketService.ForceEvent(group: string, strength: number)
+	local text = if strength &gt;= 0
+		then ("RAZZIA // %s knapp:  +%d%%"):format(group, math.floor(strength * 100 + 0.5))
+		else ("LECK // %s ueberschwemmt:  %d%%"):format(group, math.floor(strength * 100 - 0.5))
+
+	activeEvent = {
+		Group = group,
+		Strength = strength,
+		TicksLeft = Config.Market.EventDurationTicks,
+		Text = text,
+	}
+	for _, player in Players:GetPlayers() do
+		Remotes.MarketEvent:FireClient(player, { Text = text, Group = group })
+	end
+	broadcast()
+end
+
+--==========================================================================
 
 function MarketService.Init()
 	local valid, errors = Goods.Validate()
@@ -3454,11 +4319,11 @@ return MarketService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="Folder" referent="GN17">
+<Item class="Folder" referent="GN20">
 <Properties>
 <string name="Name">Minigames</string>
 </Properties>
-<Item class="ModuleScript" referent="GN16">
+<Item class="ModuleScript" referent="GN19">
 <Properties>
 <string name="Name">NodeBreach</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/Minigames/NodeBreach.luau
@@ -3833,7 +4698,7 @@ return NodeBreach
 </Properties>
 </Item>
 </Item>
-<Item class="ModuleScript" referent="GN18">
+<Item class="ModuleScript" referent="GN21">
 <Properties>
 <string name="Name">MissionService</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/MissionService.luau
@@ -4435,7 +5300,426 @@ return MissionService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN19">
+<Item class="ModuleScript" referent="GN22">
+<Properties>
+<string name="Name">MonetizationService</string>
+<ProtectedString name="Source">-- ServerScriptService/Systems/MonetizationService.luau
+--!strict
+-- GHOSTNET :: Gamepaesse und Entwicklerprodukte.
+--
+-- WAS NICHT VERKAUFT WIRD
+--   Nichts, das ein Raetsel loest. Keine Auto-Solves, keine Loesungshinweise.
+--   Die einzige Faehigkeit, um die es in diesem Spiel geht, darf nicht
+--   kaufbar sein. Nichts, das anderen Spielern schadet.
+--   Erlaubt sind: Zeitersparnis, Kosmetik, Komfort, Kapazitaet.
+--
+-- DOPPELVERGABE
+--   Roblox liefert einen Beleg WIEDERHOLT aus, solange der Server nicht
+--   bestaetigt hat. Deshalb: verarbeitete PurchaseId im Profil merken, erst
+--   gutschreiben UND speichern, dann PurchaseGranted zurueckgeben. Kommt
+--   derselbe Beleg nochmal, wird sofort PurchaseGranted gemeldet, ohne
+--   nochmal zu vergeben.
+
+local MarketplaceService = game:GetService("MarketplaceService")
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Config = require(ReplicatedStorage.Shared.Config)
+local Remotes = require(ReplicatedStorage.Shared.Remotes)
+
+local EconomyService = require(script.Parent.EconomyService)
+local RateLimiter = require(script.Parent.RateLimiter)
+local SaveService = require(script.Parent.SaveService)
+local TraceService = require(script.Parent.TraceService)
+
+local MonetizationService = {}
+
+--==========================================================================
+-- ALLE IDs SIND 0 UND MUESSEN VON NOAH IM CREATOR DASHBOARD ANGELEGT UND
+-- HIER EINGETRAGEN WERDEN. ERFINDE KEINE IDs - eine falsche ID schlaegt
+-- stumm fehl und ist schwer zu finden.
+--
+-- Gamepass anlegen:  Creator Dashboard -&gt; Spiel -&gt; Monetization -&gt; Passes
+-- Produkt anlegen:   Creator Dashboard -&gt; Spiel -&gt; Monetization -&gt; Developer Products
+-- Die Zahl aus der Adresszeile ist die ID.
+--==========================================================================
+
+local IDS = {
+	Gamepass = {
+		ColdRig = 0, -- dauerhaft -25 % Trace-Anstieg
+		BigStash = 0, -- +50 % Lagerplatz im Darknet
+		VIPTerminal = 0, -- kosmetische Terminal-Themes
+		ExtraSlot = 0, -- zweite parallele Mission
+	},
+	Product = {
+		Crypto1k = 0,
+		Crypto5k = 0,
+		TraceReset = 0, -- Trace sofort auf 0
+		CooldownWipe = 0, -- alle Ziel-Cooldowns loeschen
+	},
+}
+
+MonetizationService.IDS = IDS
+
+-- Was ein Pass bzw. Produkt bewirkt und kostet. Die Zahlen stehen in Config,
+-- die Texte hier, weil sie zum Produkt gehoeren und nicht zum Balancing.
+local PASS_INFO: { [string]: { Name: string, Text: string } } = {
+	ColdRig = {
+		Name = "COLD RIG",
+		Text = ("Dauerhaft %d%% weniger Trace pro Hack."):format(math.floor(Config.Monetization.ColdRigTrace * 100)),
+	},
+	BigStash = {
+		Name = "BIG STASH",
+		Text = ("%d%% mehr Lagerplatz im Darknet."):format(math.floor(Config.Monetization.BigStashBonus * 100)),
+	},
+	VIPTerminal = { Name = "VIP TERMINAL", Text = "Kosmetische Terminal-Themes. Kein Spielvorteil." },
+	ExtraSlot = { Name = "ZWEITER AUFTRAG", Text = "Ein zweiter Auftrag parallel." },
+}
+
+local PRODUCT_INFO: { [string]: { Name: string, Text: string } } = {
+	Crypto1k = { Name = "1.000 CRY", Text = "Direkt auf die Bank." },
+	Crypto5k = { Name = "5.000 CRY", Text = "Direkt auf die Bank." },
+	TraceReset = { Name = "SPUR LOESCHEN", Text = "Trace sofort auf 0. Loest kein Raetsel." },
+	CooldownWipe = { Name = "COOLDOWNS LOESCHEN", Text = "Alle Ziele sofort wieder frei." },
+}
+
+--==========================================================================
+-- Besitz von Gamepaessen
+--==========================================================================
+
+-- Cache pro Spieler. UserOwnsGamePassAsync ist teuer und kann fehlschlagen -
+-- bei einem Fehler darf NICHT angenommen werden, der Spieler besitze nichts.
+local owned: { [Player]: { [string]: boolean } } = {}
+local checkFailed: { [Player]: { [string]: boolean } } = {}
+
+function MonetizationService.Owns(player: Player, passKey: string): boolean
+	local perPlayer = owned[player]
+	return perPlayer ~= nil and perPlayer[passKey] == true
+end
+
+local function checkPass(player: Player, passKey: string, id: number)
+	if id == 0 then
+		return -- noch nicht im Dashboard angelegt
+	end
+
+	for attempt = 1, Config.Monetization.OwnershipRetries do
+		local ok, result = pcall(function()
+			return MarketplaceService:UserOwnsGamePassAsync(player.UserId, id)
+		end)
+		if ok then
+			local perPlayer = owned[player]
+			if perPlayer then
+				perPlayer[passKey] = result == true
+			end
+			if checkFailed[player] then
+				checkFailed[player][passKey] = nil
+			end
+			return
+		end
+		warn(("[GHOSTNET] Besitzpruefung '%s' fuer %s fehlgeschlagen (%d/%d): %s"):format(
+			passKey,
+			player.Name,
+			attempt,
+			Config.Monetization.OwnershipRetries,
+			tostring(result)
+		))
+		task.wait(Config.Monetization.OwnershipRetryDelay * attempt)
+	end
+
+	-- Endgueltig gescheitert: gemerkt, damit ein spaeterer Versuch es
+	-- nachholt. NICHT als "besitzt nichts" behandeln.
+	if checkFailed[player] then
+		checkFailed[player][passKey] = true
+	end
+end
+
+local function checkAllPasses(player: Player)
+	owned[player] = owned[player] or {}
+	checkFailed[player] = checkFailed[player] or {}
+	for key, id in IDS.Gamepass do
+		task.spawn(checkPass, player, key, id)
+	end
+end
+
+--==========================================================================
+-- Effekte der Paesse
+-- Alle laufen ueber EconomyService bzw. SaveService, nirgends direkt.
+--==========================================================================
+
+-- Wird vom HackService ueber Config gelesen; hier nur die Abfrage.
+function MonetizationService.TraceFactor(player: Player): number
+	if MonetizationService.Owns(player, "ColdRig") then
+		return 1 - Config.Monetization.ColdRigTrace
+	end
+	return 1
+end
+
+function MonetizationService.StashBonus(player: Player): number
+	if MonetizationService.Owns(player, "BigStash") then
+		return Config.Monetization.BigStashBonus
+	end
+	return 0
+end
+
+--==========================================================================
+-- Produkte
+--==========================================================================
+
+local function grantProduct(player: Player, productKey: string): boolean
+	if productKey == "Crypto1k" then
+		EconomyService.AwardBanked(player, Config.Monetization.Crypto1k)
+		return true
+	elseif productKey == "Crypto5k" then
+		EconomyService.AwardBanked(player, Config.Monetization.Crypto5k)
+		return true
+	elseif productKey == "TraceReset" then
+		local profile = SaveService.Get(player)
+		if not profile then
+			return false
+		end
+		profile.Trace = 0
+		TraceService.Sync(player, true)
+		return true
+	elseif productKey == "CooldownWipe" then
+		local profile = SaveService.Get(player)
+		if not profile then
+			return false
+		end
+		table.clear(profile.Cooldowns)
+		EconomyService.Sync(player)
+		return true
+	end
+	return false
+end
+
+local function productKeyFor(productId: number): string?
+	for key, id in IDS.Product do
+		if id ~= 0 and id == productId then
+			return key
+		end
+	end
+	return nil
+end
+
+--==========================================================================
+-- ProcessReceipt - der Teil, den man nicht falsch machen darf
+--==========================================================================
+
+local function processReceipt(receiptInfo: any): Enum.ProductPurchaseDecision
+	local userId = receiptInfo.PlayerId
+	local purchaseId = tostring(receiptInfo.PurchaseId)
+	local player = Players:GetPlayerByUserId(userId)
+
+	if not player then
+		-- Spieler ist weg. NICHT bestaetigen - Roblox liefert den Beleg beim
+		-- naechsten Join erneut aus, und dann bekommt er seine Ware.
+		return Enum.ProductPurchaseDecision.NotProcessedYet
+	end
+
+	local profile = SaveService.Get(player)
+	if not profile then
+		return Enum.ProductPurchaseDecision.NotProcessedYet
+	end
+
+	-- Schon verarbeitet? Dann sofort bestaetigen, ohne nochmal zu vergeben.
+	if table.find(profile.PurchaseLog, purchaseId) then
+		return Enum.ProductPurchaseDecision.PurchaseGranted
+	end
+
+	local key = productKeyFor(receiptInfo.ProductId)
+	if not key then
+		warn(("[GHOSTNET] Unbekanntes Produkt %s gekauft - Beleg bleibt offen."):format(
+			tostring(receiptInfo.ProductId)
+		))
+		return Enum.ProductPurchaseDecision.NotProcessedYet
+	end
+
+	local ok, granted = pcall(grantProduct, player, key)
+	if not ok or not granted then
+		warn(("[GHOSTNET] Produkt '%s' konnte nicht vergeben werden: %s"):format(key, tostring(granted)))
+		return Enum.ProductPurchaseDecision.NotProcessedYet
+	end
+
+	-- Erst merken, dann speichern, dann bestaetigen.
+	table.insert(profile.PurchaseLog, purchaseId)
+	while #profile.PurchaseLog &gt; Config.Monetization.PurchaseLogLimit do
+		table.remove(profile.PurchaseLog, 1)
+	end
+
+	local saved = SaveService.SaveNow(player)
+	if not saved then
+		-- Nicht bestaetigen: sonst waere die Ware vergeben, aber nicht
+		-- gespeichert - beim naechsten Join waere sie weg und der Beleg
+		-- verbraucht.
+		warn(("[GHOSTNET] Kauf '%s' konnte nicht gespeichert werden - Beleg bleibt offen."):format(key))
+		return Enum.ProductPurchaseDecision.NotProcessedYet
+	end
+
+	print(("[GHOSTNET] Kauf vergeben: %s an %s (Beleg %s)"):format(key, player.Name, purchaseId))
+	return Enum.ProductPurchaseDecision.PurchaseGranted
+end
+
+--==========================================================================
+-- Anzeige
+--==========================================================================
+
+function MonetizationService.Sync(player: Player)
+	if not player.Parent then
+		return
+	end
+
+	local passes: { { [string]: any } } = {}
+	for key, id in IDS.Gamepass do
+		local info = PASS_INFO[key]
+		table.insert(passes, {
+			Key = key,
+			Id = id,
+			Name = if info then info.Name else key,
+			Text = if info then info.Text else "",
+			Owned = MonetizationService.Owns(player, key),
+			Available = id ~= 0,
+		})
+	end
+
+	local products: { { [string]: any } } = {}
+	for key, id in IDS.Product do
+		local info = PRODUCT_INFO[key]
+		table.insert(products, {
+			Key = key,
+			Id = id,
+			Name = if info then info.Name else key,
+			Text = if info then info.Text else "",
+			Available = id ~= 0,
+		})
+	end
+
+	table.sort(passes, function(a, b)
+		return (a.Key :: string) &lt; (b.Key :: string)
+	end)
+	table.sort(products, function(a, b)
+		return (a.Key :: string) &lt; (b.Key :: string)
+	end)
+
+	Remotes.StoreSync:FireClient(player, { Passes = passes, Products = products })
+end
+
+--==========================================================================
+
+-- Der Client bittet nur um den Dialog. Was er kostet und ob er zustande
+-- kommt, entscheidet Roblox; was er bewirkt, entscheidet ProcessReceipt.
+local function onPrompt(player: Player, payload: any)
+	if not RateLimiter.Check(player, "StorePrompt") then
+		return
+	end
+	if typeof(payload) ~= "table" then
+		return
+	end
+	local kind = (payload :: any).Kind
+	local key = (payload :: any).Key
+	if typeof(key) ~= "string" then
+		return
+	end
+
+	if kind == "Gamepass" then
+		local id = (IDS.Gamepass :: any)[key]
+		if typeof(id) == "number" and id ~= 0 then
+			pcall(function()
+				MarketplaceService:PromptGamePassPurchase(player, id)
+			end)
+		end
+	elseif kind == "Product" then
+		local id = (IDS.Product :: any)[key]
+		if typeof(id) == "number" and id ~= 0 then
+			pcall(function()
+				MarketplaceService:PromptProductPurchase(player, id)
+			end)
+		end
+	end
+end
+
+function MonetizationService.Init()
+	Remotes.StorePrompt.OnServerEvent:Connect(onPrompt)
+
+	MarketplaceService.ProcessReceipt = function(receiptInfo)
+		local ok, decision = pcall(processReceipt, receiptInfo)
+		if not ok then
+			warn(("[GHOSTNET] ProcessReceipt ist abgestuerzt: %s"):format(tostring(decision)))
+			return Enum.ProductPurchaseDecision.NotProcessedYet
+		end
+		return decision
+	end
+
+	-- Live-Aktivierung ohne Rejoin.
+	MarketplaceService.PromptGamePassPurchaseFinished:Connect(function(player, gamePassId, wasPurchased)
+		if not wasPurchased then
+			return
+		end
+		for key, id in IDS.Gamepass do
+			if id ~= 0 and id == gamePassId then
+				local perPlayer = owned[player]
+				if perPlayer then
+					perPlayer[key] = true
+				end
+				print(("[GHOSTNET] %s besitzt jetzt %s."):format(player.Name, key))
+				MonetizationService.Sync(player)
+				break
+			end
+		end
+	end)
+
+	SaveService.OnReady(function(player)
+		checkAllPasses(player)
+		task.delay(1, function()
+			if player.Parent then
+				MonetizationService.Sync(player)
+			end
+		end)
+	end)
+
+	Players.PlayerRemoving:Connect(function(player)
+		owned[player] = nil
+		checkFailed[player] = nil
+	end)
+
+	-- Fehlgeschlagene Besitzpruefungen spaeter nachholen.
+	task.spawn(function()
+		while true do
+			task.wait(Config.Monetization.OwnershipRecheckSeconds)
+			for player, failed in checkFailed do
+				for key in failed do
+					local id = (IDS.Gamepass :: any)[key]
+					if typeof(id) == "number" and id ~= 0 then
+						task.spawn(checkPass, player, key, id)
+					end
+				end
+			end
+		end
+	end)
+
+	local configured = 0
+	for _, id in IDS.Gamepass do
+		if id ~= 0 then
+			configured += 1
+		end
+	end
+	for _, id in IDS.Product do
+		if id ~= 0 then
+			configured += 1
+		end
+	end
+
+	if configured == 0 then
+		print("[GHOSTNET] MonetizationService bereit. Keine IDs eingetragen - der Store ist leer.")
+	else
+		print(("[GHOSTNET] MonetizationService bereit. %d IDs eingetragen."):format(configured))
+	end
+end
+
+return MonetizationService
+</ProtectedString>
+</Properties>
+</Item>
+<Item class="ModuleScript" referent="GN23">
 <Properties>
 <string name="Name">RaidService</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/RaidService.luau
@@ -4698,7 +5982,7 @@ return RaidService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN20">
+<Item class="ModuleScript" referent="GN24">
 <Properties>
 <string name="Name">RateLimiter</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/RateLimiter.luau
@@ -4778,7 +6062,7 @@ return RateLimiter
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN21">
+<Item class="ModuleScript" referent="GN25">
 <Properties>
 <string name="Name">SaveService</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/SaveService.luau
@@ -4860,6 +6144,7 @@ function SaveService.DefaultProfile(): Profile
 		Stats = defaultStats(),
 		Story = defaultStory(),
 		Stash = {},
+		PurchaseLog = {},
 		LastSeen = os.time(),
 		SessionId = "",
 	}
@@ -4961,6 +6246,8 @@ local function sanitize(raw: any): (Profile, number)
 		end
 	end
 
+	p.PurchaseLog = cleanIdList(raw.PurchaseLog, Config.Monetization.PurchaseLogLimit)
+
 	p.LastSeen = toCount(raw.LastSeen) or p.LastSeen
 	if typeof(raw.SessionId) == "string" then
 		p.SessionId = raw.SessionId
@@ -4993,6 +6280,12 @@ local MIGRATIONS: { [number]: (Profile) -&gt; () } = {
 	-- Bank, Rig, Trace, Cooldowns und Story bleiben unangetastet.
 	[3] = function(profile: Profile)
 		profile.Stash = {}
+	end,
+
+	-- 3 -&gt; 4: Beleg-Log gegen Doppelvergabe. Alte Profile starten leer; das
+	-- ist unkritisch, weil vor Phase F gar nichts gekauft werden konnte.
+	[4] = function(profile: Profile)
+		profile.PurchaseLog = {}
 	end,
 }
 
@@ -5367,7 +6660,7 @@ return SaveService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN22">
+<Item class="ModuleScript" referent="GN26">
 <Properties>
 <string name="Name">SellService</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/SellService.luau
@@ -5533,7 +6826,7 @@ return SellService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN23">
+<Item class="ModuleScript" referent="GN27">
 <Properties>
 <string name="Name">ShopService</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/ShopService.luau
@@ -5659,7 +6952,7 @@ return ShopService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN24">
+<Item class="ModuleScript" referent="GN28">
 <Properties>
 <string name="Name">TraceService</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/TraceService.luau
@@ -5898,11 +7191,176 @@ return TraceService
 </Properties>
 </Item>
 </Item>
-<Item class="Folder" referent="GN28">
+<Item class="Folder" referent="GN33">
 <Properties>
 <string name="Name">World</string>
 </Properties>
-<Item class="Script" referent="GN26">
+<Item class="Script" referent="GN30">
+<Properties>
+<string name="Name">Cityscape</string>
+<ProtectedString name="Source">-- ServerScriptService/World/Cityscape.server.luau
+--!strict
+-- GHOSTNET :: Die Stadt drumherum.
+--
+-- Ersetzt die nackte Baseplate durch eine naechtliche Strassenzeile: nasse
+-- Fahrbahn, Neonschilder, Haeuserfronten. Reine Kulisse - kein einziges
+-- Objekt hier traegt einen Tag oder eine Spiellogik.
+--
+-- SPARSAM MIT EFFEKTEN
+--   Ein Hacking-Spiel lebt von Ruhe und wenigen scharfen Lichtern, nicht von
+--   Partikeln. Deshalb: viel Dunkel, wenige Neonflaechen, keine Emitter.
+--
+-- LEISTUNG
+--   Alles ist anchored, CanQuery und CanTouch sind aus. Wer auf schwachen
+--   Geraeten Probleme hat, dreht in Config.World die Anzahl runter oder
+--   stellt Lighting.Technology in der Place-Datei auf ShadowMap.
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Config = require(ReplicatedStorage.Shared.Config)
+
+local FOLDER_NAME = "GhostNet_Cityscape"
+
+if workspace:FindFirstChild(FOLDER_NAME) then
+	return
+end
+
+local folder = Instance.new("Folder")
+folder.Name = FOLDER_NAME
+folder.Parent = workspace
+
+local rng = Random.new(Config.World.Seed)
+
+local function decor(name: string, size: Vector3, cframe: CFrame, colour: Color3, material: Enum.Material): Part
+	local p = Instance.new("Part")
+	p.Name = name
+	p.Size = size
+	p.CFrame = cframe
+	p.Color = colour
+	p.Material = material
+	p.Anchored = true
+	p.CanCollide = true
+	p.CanQuery = false
+	p.CanTouch = false
+	p.TopSurface = Enum.SurfaceType.Smooth
+	p.BottomSurface = Enum.SurfaceType.Smooth
+	p.Parent = folder
+	return p
+end
+
+--==========================================================================
+-- Nasse Fahrbahn
+-- Reflexion kommt ueber Material und Reflectance, nicht ueber eine Textur -
+-- es soll keine Asset-Id noetig sein.
+--==========================================================================
+do
+	local road = decor(
+		"Fahrbahn",
+		Vector3.new(Config.World.RoadWidth, 1, Config.World.RoadLength),
+		CFrame.new(0, 0.05, -Config.World.RoadLength * 0.25),
+		Color3.fromRGB(14, 15, 19),
+		Enum.Material.Slate
+	)
+	road.Reflectance = Config.World.RoadReflectance
+
+	-- Mittellinie, matt, damit die Strasse eine Richtung bekommt.
+	for i = -Config.World.RoadLength // 2, Config.World.RoadLength // 2, 18 do
+		decor(
+			"Markierung",
+			Vector3.new(0.6, 0.05, 7),
+			CFrame.new(0, 0.6, -Config.World.RoadLength * 0.25 + i),
+			Color3.fromRGB(90, 88, 74),
+			Enum.Material.SmoothPlastic
+		)
+	end
+
+	-- Gehwege links und rechts.
+	for _, side in { -1, 1 } do
+		decor(
+			"Gehweg",
+			Vector3.new(10, 1.4, Config.World.RoadLength),
+			CFrame.new(side * (Config.World.RoadWidth * 0.5 + 5), 0.7, -Config.World.RoadLength * 0.25),
+			Color3.fromRGB(26, 27, 32),
+			Enum.Material.Concrete
+		)
+	end
+end
+
+--==========================================================================
+-- Haeuserfronten mit Neonschildern
+--==========================================================================
+
+local NEON_COLOURS = { Config.Theme.Cyan, Config.Theme.Magenta, Config.Theme.Amber }
+
+local function building(x: number, z: number, width: number, depth: number, height: number)
+	decor(
+		"Haus",
+		Vector3.new(width, height, depth),
+		CFrame.new(x, height * 0.5, z),
+		Color3.fromRGB(
+			rng:NextInteger(18, 30),
+			rng:NextInteger(19, 31),
+			rng:NextInteger(24, 38)
+		),
+		Enum.Material.Concrete
+	)
+
+	-- Ein paar erleuchtete Fenster. Nur Farbe, kein Licht - hunderte
+	-- PointLights waeren auf dem Handy nicht bezahlbar.
+	local rows = math.floor(height / 9)
+	for row = 1, rows do
+		if rng:NextNumber() &gt; Config.World.WindowChance then
+			continue
+		end
+		local lit = decor(
+			"Fenster",
+			Vector3.new(width * 0.62, 2.2, 0.3),
+			CFrame.new(x, row * 9 - 2, z + depth * 0.5 + 0.2),
+			Color3.fromRGB(rng:NextInteger(40, 90), rng:NextInteger(60, 120), rng:NextInteger(90, 160)),
+			Enum.Material.Neon
+		)
+		lit.Transparency = 0.25
+	end
+
+	-- Genau ein Neonschild je Haus, mit echtem Licht.
+	if rng:NextNumber() &lt; Config.World.SignChance then
+		local colour = NEON_COLOURS[rng:NextInteger(1, #NEON_COLOURS)]
+		local signPart = decor(
+			"Neonschild",
+			Vector3.new(0.6, rng:NextInteger(6, 12), 3.4),
+			CFrame.new(x + width * 0.5 + 0.4, height * 0.55, z + depth * 0.35),
+			colour,
+			Enum.Material.Neon
+		)
+		local light = Instance.new("PointLight")
+		light.Color = colour
+		light.Brightness = Config.World.SignBrightness
+		light.Range = Config.World.SignRange
+		light.Parent = signPart
+	end
+end
+
+do
+	local halfLength = Config.World.RoadLength * 0.5
+	local edge = Config.World.RoadWidth * 0.5 + 10
+
+	for _, side in { -1, 1 } do
+		local z = -halfLength * 0.5
+		while z &lt; halfLength * 0.5 do
+			local width = rng:NextInteger(18, 30)
+			local depth = rng:NextInteger(18, 26)
+			local height = rng:NextInteger(28, Config.World.MaxBuildingHeight)
+			building(side * (edge + depth * 0.5), -Config.World.RoadLength * 0.25 + z, width, depth, height)
+			z += width + rng:NextInteger(6, 14)
+		end
+	end
+end
+
+print("[GHOSTNET] Stadtkulisse gebaut.")
+</ProtectedString>
+</Properties>
+</Item>
+<Item class="Script" referent="GN31">
 <Properties>
 <string name="Name">StoryWorld</string>
 <ProtectedString name="Source">-- ServerScriptService/World/StoryWorld.server.luau
@@ -6447,7 +7905,7 @@ print("[GHOSTNET] Story-Welt gebaut: Uebungsterminal, Laden, Apartment, Nakamura
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="Script" referent="GN27">
+<Item class="Script" referent="GN32">
 <Properties>
 <string name="Name">TestTargets</string>
 <ProtectedString name="Source">-- ServerScriptService/World/TestTargets.server.luau
@@ -6748,19 +8206,382 @@ print("[GHOSTNET] Testwelt gebaut: Kamera (D2), Sicherheitstuer (D4), Geldautoma
 </Item>
 </Item>
 </Item>
-<Item class="StarterPlayer" referent="GN44">
+<Item class="StarterPlayer" referent="GN53">
 <Properties>
 <string name="Name">StarterPlayer</string>
 </Properties>
-<Item class="StarterPlayerScripts" referent="GN45">
+<Item class="StarterPlayerScripts" referent="GN54">
 <Properties>
 <string name="Name">StarterPlayerScripts</string>
 </Properties>
-<Item class="Folder" referent="GN35">
+<Item class="Folder" referent="GN44">
 <Properties>
 <string name="Name">UI</string>
 </Properties>
-<Item class="LocalScript" referent="GN29">
+<Item class="LocalScript" referent="GN34">
+<Properties>
+<string name="Name">AdminUI</string>
+<ProtectedString name="Source">-- StarterPlayer/StarterPlayerScripts/UI/AdminUI.client.luau
+--!strict
+-- GHOSTNET :: Admin-Panel, F2.
+--
+-- WICHTIG: Dieses Skript ist reine Bequemlichkeit. Es entscheidet NICHTS.
+-- Ob ein Befehl ausgefuehrt wird, prueft der AdminService in der ersten
+-- Zeile jedes Handlers anhand der UserId. Wer dieses Skript manipuliert oder
+-- die Remote von Hand feuert, bekommt genau dieselbe Ablehnung.
+--
+-- Das Panel taucht erst auf, wenn der Server AdminReady geschickt hat.
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local UserInputService = game:GetService("UserInputService")
+
+local Remotes = require(ReplicatedStorage.Shared.Remotes)
+local UITheme = require(ReplicatedStorage.Shared.UITheme)
+
+local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+
+local C = UITheme.Color
+
+local authorised = false
+local studio = false
+local busy = false
+
+--==========================================================================
+-- Aufbau
+--==========================================================================
+
+local gui = UITheme.Screen("GhostNetAdmin", 40)
+gui.Enabled = false
+gui.Parent = playerGui
+
+local window = UITheme.Frame({
+	Name = "Window",
+	AnchorPoint = Vector2.new(0.5, 0.5),
+	Position = UDim2.fromScale(0.5, 0.5),
+	Size = UDim2.new(0.9, 0, 0.85, 0),
+	BackgroundColor3 = C.Background,
+	ClipsDescendants = true,
+	Parent = gui,
+})
+UITheme.Corner(window, 5)
+UITheme.Stroke(window, C.Magenta)
+
+local sizeConstraint = Instance.new("UISizeConstraint")
+sizeConstraint.MaxSize = Vector2.new(760, 560)
+sizeConstraint.MinSize = Vector2.new(320, 320)
+sizeConstraint.Parent = window
+
+local titleBar = UITheme.Frame({
+	Name = "TitleBar",
+	Size = UDim2.new(1, 0, 0, 32),
+	BackgroundColor3 = C.Panel,
+	Parent = window,
+})
+
+local titleLabel = UITheme.Label({
+	Name = "Title",
+	Text = "GHOSTNET // ADMIN",
+	TextColor3 = C.Magenta,
+	TextSize = 14,
+	Position = UDim2.new(0, 12, 0, 0),
+	Size = UDim2.new(0.7, 0, 1, 0),
+	Parent = titleBar,
+})
+
+local closeButton = UITheme.Button({
+	Name = "Close",
+	Text = "F2",
+	TextSize = 11,
+	TextColor3 = C.TextDim,
+	BackgroundColor3 = C.PanelLight,
+	AnchorPoint = Vector2.new(1, 0.5),
+	Position = UDim2.new(1, -8, 0.5, 0),
+	Size = UDim2.fromOffset(48, 22),
+	Parent = titleBar,
+})
+UITheme.Corner(closeButton, 3)
+
+--== Eingabefelder =========================================================
+
+local function inputBox(name: string, placeholder: string, x: number, width: number): TextBox
+	local box = Instance.new("TextBox")
+	box.Name = name
+	box.BackgroundColor3 = C.PanelLight
+	box.BorderSizePixel = 0
+	box.Font = UITheme.Font
+	box.TextColor3 = C.Text
+	box.TextSize = 13
+	box.PlaceholderText = placeholder
+	box.PlaceholderColor3 = C.TextDim
+	box.Text = ""
+	box.ClearTextOnFocus = false
+	box.Position = UDim2.new(0, x, 0, 40)
+	box.Size = UDim2.fromOffset(width, 28)
+	box.Parent = window
+	UITheme.Corner(box, 3)
+	UITheme.Stroke(box, C.Line)
+	return box
+end
+
+local playerBox = inputBox("PlayerBox", "Spieler (leer = du)", 12, 170)
+local valueBox = inputBox("ValueBox", "Wert / Id", 190, 150)
+
+--== Ausgabe ===============================================================
+
+local output = Instance.new("ScrollingFrame")
+output.Name = "Output"
+output.BackgroundColor3 = C.Panel
+output.BorderSizePixel = 0
+output.AnchorPoint = Vector2.new(1, 0)
+output.Position = UDim2.new(1, -12, 0, 76)
+output.Size = UDim2.new(0.46, 0, 1, -88)
+output.CanvasSize = UDim2.new()
+output.AutomaticCanvasSize = Enum.AutomaticSize.Y
+output.ScrollBarThickness = 4
+output.ScrollBarImageColor3 = C.Line
+output.Parent = window
+UITheme.Corner(output, 3)
+UITheme.Stroke(output, C.Line)
+UITheme.Padding(output, 8)
+
+local outputLayout = Instance.new("UIListLayout")
+outputLayout.SortOrder = Enum.SortOrder.LayoutOrder
+outputLayout.Padding = UDim.new(0, 2)
+outputLayout.Parent = output
+
+local outputLines: { TextLabel } = {}
+
+local function log(text: string, colour: Color3?)
+	local line = UITheme.Label({
+		Text = text,
+		TextColor3 = colour or C.Text,
+		TextSize = 11,
+		TextWrapped = true,
+		AutomaticSize = Enum.AutomaticSize.Y,
+		Size = UDim2.new(1, 0, 0, 0),
+		LayoutOrder = #outputLines + 1,
+		Parent = output,
+	})
+	table.insert(outputLines, line)
+	while #outputLines &gt; 80 do
+		local old = table.remove(outputLines, 1)
+		if old then
+			old:Destroy()
+		end
+	end
+	output.CanvasPosition = Vector2.new(0, 1e6)
+end
+
+--== Befehlsliste ==========================================================
+
+local buttonArea = Instance.new("ScrollingFrame")
+buttonArea.Name = "Commands"
+buttonArea.BackgroundTransparency = 1
+buttonArea.BorderSizePixel = 0
+buttonArea.Position = UDim2.new(0, 12, 0, 76)
+buttonArea.Size = UDim2.new(0.5, -24, 1, -88)
+buttonArea.CanvasSize = UDim2.new()
+buttonArea.AutomaticCanvasSize = Enum.AutomaticSize.Y
+buttonArea.ScrollBarThickness = 4
+buttonArea.ScrollBarImageColor3 = C.Line
+buttonArea.Parent = window
+
+local buttonLayout = Instance.new("UIListLayout")
+buttonLayout.SortOrder = Enum.SortOrder.LayoutOrder
+buttonLayout.Padding = UDim.new(0, 4)
+buttonLayout.Parent = buttonArea
+
+local order = 0
+
+local function send(payload: { [string]: any })
+	if busy then
+		return
+	end
+	busy = true
+	task.spawn(function()
+		local ok, response = pcall(function()
+			return Remotes.AdminCommand:InvokeServer(payload)
+		end)
+		busy = false
+
+		if not ok or typeof(response) ~= "table" then
+			log("!! Aufruf fehlgeschlagen", C.Magenta)
+			return
+		end
+
+		log(("%s %s"):format(if response.Ok then "&gt;" else "!!", tostring(response.Text)),
+			if response.Ok then C.Cyan else C.Amber)
+
+		-- Tabellenartige Antworten zeilenweise ausgeben.
+		for _, key in { "Targets", "Sessions", "Market" } do
+			local rows = response[key]
+			if typeof(rows) == "table" then
+				for _, row in rows do
+					local parts: { string } = {}
+					for field, value in row do
+						table.insert(parts, ("%s=%s"):format(field, tostring(value)))
+					end
+					table.sort(parts)
+					log("   " .. table.concat(parts, "  "), C.TextDim)
+				end
+			end
+		end
+
+		if typeof(response.Json) == "string" then
+			log(response.Json, C.Text)
+			log("(auch in der Server-Ausgabe zum Kopieren)", C.TextDim)
+		end
+	end)
+end
+
+local function header(text: string)
+	order += 1
+	local label = UITheme.Label({
+		Name = "H",
+		Text = text,
+		TextColor3 = C.TextDim,
+		TextSize = 11,
+		Size = UDim2.new(1, -8, 0, 18),
+		LayoutOrder = order,
+		Parent = buttonArea,
+	})
+	return label
+end
+
+local function command(text: string, build: () -&gt; { [string]: any }, studioOnly: boolean)
+	order += 1
+	local button = UITheme.Button({
+		Name = text,
+		Text = text .. (if studioOnly then "   [Studio]" else ""),
+		TextSize = 12,
+		TextColor3 = if studioOnly then C.Amber else C.Cyan,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		BackgroundColor3 = C.Panel,
+		Size = UDim2.new(1, -8, 0, 30),
+		LayoutOrder = order,
+		Parent = buttonArea,
+	})
+	UITheme.Corner(button, 3)
+	UITheme.Stroke(button, C.Line)
+	UITheme.Padding(button, 8)
+	button.Activated:Connect(function()
+		send(build())
+	end)
+end
+
+local function targetPlayer(): string
+	return playerBox.Text
+end
+
+local function value(): string
+	return valueBox.Text
+end
+
+local function number(default: number): number
+	return tonumber(valueBox.Text) or default
+end
+
+header("WIRTSCHAFT")
+command("Crypto setzen (Wert = Bank)", function()
+	return { Command = "SetCrypto", Player = targetPlayer(), Banked = number(10000) }
+end, true)
+command("Unverkauft setzen (Wert)", function()
+	return { Command = "SetCrypto", Player = targetPlayer(), Unsold = number(500) }
+end, true)
+command("Rig komplett auf Stufe (Wert)", function()
+	return { Command = "SetRig", Player = targetPlayer(), Level = number(5) }
+end, true)
+command("Trace setzen (Wert)", function()
+	return { Command = "SetTrace", Player = targetPlayer(), Value = number(80) }
+end, true)
+command("Bust ausloesen", function()
+	return { Command = "Bust", Player = targetPlayer() }
+end, true)
+
+header("MISSIONEN")
+command("Zu Mission springen (Wert = Id)", function()
+	return { Command = "SetMission", Player = targetPlayer(), MissionId = value() }
+end, true)
+command("Story zuruecksetzen", function()
+	return { Command = "ResetStory", Player = targetPlayer() }
+end, true)
+command("Unlock vergeben (Wert = Key)", function()
+	return { Command = "GrantUnlock", Player = targetPlayer(), Unlock = value() }
+end, true)
+
+header("WELT")
+command("Alle Ziele auflisten", function()
+	return { Command = "ListTargets" }
+end, false)
+command("Cooldowns loeschen (Wert = TargetId, leer = alle)", function()
+	return { Command = "ClearCooldown", Player = targetPlayer(), TargetId = value() }
+end, false)
+command("Zu Ziel teleportieren (Wert = TargetId)", function()
+	return { Command = "Teleport", TargetId = value() }
+end, false)
+
+header("MARKT")
+command("Kurse anzeigen", function()
+	return { Command = "MarketState" }
+end, false)
+command("Event ausloesen (Wert = Gruppe)", function()
+	return { Command = "MarketEvent", Group = value() }
+end, true)
+command("Preis setzen (Wert = GoodId:Faktor)", function()
+	local id, factor = string.match(value(), "^(%w+):([%d%.]+)$")
+	return { Command = "SetPrice", GoodId = id or value(), Factor = tonumber(factor) or 1 }
+end, true)
+
+header("DEBUG")
+command("Aktive Sitzungen", function()
+	return { Command = "Sessions" }
+end, false)
+command("Profil als JSON ausgeben", function()
+	return { Command = "DumpProfile", Player = targetPlayer() }
+end, false)
+command("Speichern erzwingen", function()
+	return { Command = "ForceSave", Player = targetPlayer() }
+end, false)
+
+--==========================================================================
+-- Oeffnen
+--==========================================================================
+
+local function toggle()
+	if not authorised then
+		return
+	end
+	gui.Enabled = not gui.Enabled
+end
+
+closeButton.Activated:Connect(toggle)
+
+UserInputService.InputBegan:Connect(function(input, processed)
+	if processed then
+		return
+	end
+	if input.KeyCode == Enum.KeyCode.F2 then
+		toggle()
+	elseif input.KeyCode == Enum.KeyCode.Escape and gui.Enabled then
+		gui.Enabled = false
+	end
+end)
+
+Remotes.AdminReady.OnClientEvent:Connect(function(data: any)
+	authorised = true
+	studio = typeof(data) == "table" and data.Studio == true
+	titleLabel.Text = if studio then "GHOSTNET // ADMIN  [STUDIO]" else "GHOSTNET // ADMIN  [LIVE]"
+	log("Panel bereit. F2 oeffnet und schliesst.", C.Cyan)
+	if not studio then
+		log("Live-Modus: Wirtschafts- und Missions-Befehle sind gesperrt.", C.Amber)
+	end
+end)
+</ProtectedString>
+</Properties>
+</Item>
+<Item class="LocalScript" referent="GN35">
 <Properties>
 <string name="Name">DarknetUI</string>
 <ProtectedString name="Source">-- StarterPlayer/StarterPlayerScripts/UI/DarknetUI.client.luau
@@ -7453,7 +9274,7 @@ end)
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="LocalScript" referent="GN30">
+<Item class="LocalScript" referent="GN36">
 <Properties>
 <string name="Name">HUD</string>
 <ProtectedString name="Source">-- StarterPlayer/StarterPlayerScripts/UI/HUD.client.luau
@@ -8151,7 +9972,7 @@ UITheme.Scanlines(walletPanel, 4)
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="LocalScript" referent="GN31">
+<Item class="LocalScript" referent="GN37">
 <Properties>
 <string name="Name">HackUI</string>
 <ProtectedString name="Source">-- StarterPlayer/StarterPlayerScripts/UI/HackUI.client.luau
@@ -9003,7 +10824,7 @@ end)
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="LocalScript" referent="GN32">
+<Item class="LocalScript" referent="GN38">
 <Properties>
 <string name="Name">MissionUI</string>
 <ProtectedString name="Source">-- StarterPlayer/StarterPlayerScripts/UI/MissionUI.client.luau
@@ -9371,7 +11192,7 @@ refresh()
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="LocalScript" referent="GN33">
+<Item class="LocalScript" referent="GN39">
 <Properties>
 <string name="Name">ShopUI</string>
 <ProtectedString name="Source">-- StarterPlayer/StarterPlayerScripts/UI/ShopUI.client.luau
@@ -9847,7 +11668,746 @@ refresh()
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="LocalScript" referent="GN34">
+<Item class="LocalScript" referent="GN40">
+<Properties>
+<string name="Name">SoundController</string>
+<ProtectedString name="Source">-- StarterPlayer/StarterPlayerScripts/UI/SoundController.client.luau
+--!strict
+-- GHOSTNET :: Spielt die Klaenge aus dem SoundCatalog.
+--
+-- Der Controller kennt keine einzige Asset-Id. Er fragt den SoundCatalog,
+-- und wenn dort noch nichts eingetragen ist, passiert schlicht nichts -
+-- das Spiel bleibt lauffaehig, es klingt nur nach nichts.
+--
+-- Zwei Dinge machen hier den Unterschied:
+--   1. Die Tonhoehe der Knoten-Klicks steigt mit der Pfadlaenge. Aus
+--      Klickgeraeuschen wird eine aufsteigende Melodie, und ein geloestes
+--      Raetsel klingt nach Erfolg.
+--   2. Die Ambience wird waehrend eines Hacks leiser, damit die UI-Sounds
+--      tragen - und kommt beim Alarm schlagartig laut zurueck.
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+local SoundService = game:GetService("SoundService")
+local TweenService = game:GetService("TweenService")
+
+local Config = require(ReplicatedStorage.Shared.Config)
+local Remotes = require(ReplicatedStorage.Shared.Remotes)
+local SoundCatalog = require(ReplicatedStorage.Shared.SoundCatalog)
+
+local player = Players.LocalPlayer
+local S = SoundCatalog.Settings
+
+--==========================================================================
+-- Abspielen
+--==========================================================================
+
+local holder = Instance.new("Folder")
+holder.Name = "GhostNetSounds"
+holder.Parent = SoundService
+
+-- Ein Sound pro Aufruf. Bei leerer Id passiert nichts.
+local function play(group: string, key: string, volume: number?, pitch: number?): Sound?
+	local id = SoundCatalog.Get(group, key)
+	if not id then
+		return nil
+	end
+
+	local sound = Instance.new("Sound")
+	sound.SoundId = id
+	sound.Volume = volume or S.UIVolume
+	sound.PlaybackSpeed = pitch or 1
+	sound.Parent = holder
+	sound:Play()
+	sound.Ended:Once(function()
+		sound:Destroy()
+	end)
+	-- Notbremse, falls Ended bei einer kaputten Id nie feuert.
+	task.delay(12, function()
+		if sound.Parent then
+			sound:Destroy()
+		end
+	end)
+	return sound
+end
+
+--== Dauerklaenge ==========================================================
+
+local ambience: Sound? = nil
+
+local function startAmbience()
+	local id = SoundCatalog.Get("World", "Ambience")
+	if not id then
+		return
+	end
+	local sound = Instance.new("Sound")
+	sound.Name = "Ambience"
+	sound.SoundId = id
+	sound.Looped = true
+	sound.Volume = S.AmbienceVolume
+	sound.Parent = holder
+	sound:Play()
+	ambience = sound
+end
+
+local function setAmbienceFactor(factor: number)
+	local sound = ambience
+	if not sound then
+		return
+	end
+	TweenService:Create(sound, TweenInfo.new(S.AmbienceDuckTime), {
+		Volume = S.AmbienceVolume * factor,
+	}):Play()
+end
+
+local criticalLoop: Sound? = nil
+
+local function setCriticalLoop(on: boolean)
+	if on and not criticalLoop then
+		local id = SoundCatalog.Get("Trace", "Critical")
+		if not id then
+			return
+		end
+		local sound = Instance.new("Sound")
+		sound.Name = "TraceCritical"
+		sound.SoundId = id
+		sound.Looped = true
+		sound.Volume = S.UIVolume
+		sound.Parent = holder
+		sound:Play()
+		criticalLoop = sound
+	elseif not on and criticalLoop then
+		criticalLoop:Destroy()
+		criticalLoop = nil
+	end
+end
+
+--==========================================================================
+-- Hack: Melodie und Countdown
+--==========================================================================
+
+local hack = {
+	Open = false,
+	PathLength = 0,
+	Deadline = 0,
+	NextTick = 0,
+}
+
+local function nodePitch(): number
+	local steps = math.clamp(hack.PathLength, 0, S.MaxSemitones)
+	return S.SemitoneRatio ^ steps
+end
+
+Remotes.HackSessionStarted.OnClientEvent:Connect(function(data: any)
+	hack.Open = true
+	hack.PathLength = 0
+	hack.Deadline = if typeof(data) == "table" then (tonumber(data.Deadline) or 0) else 0
+	hack.NextTick = 0
+
+	play("UI", "HackStart")
+	setAmbienceFactor(S.AmbienceDuckFactor)
+end)
+
+Remotes.HackFeedback.OnClientEvent:Connect(function(data: any)
+	if typeof(data) ~= "table" then
+		return
+	end
+
+	if data.Reason == "MASKED_ICE" then
+		hack.PathLength = 0 -- die Melodie faengt von vorn an
+		play("UI", "IceHit", S.UIVolume * 1.2)
+		return
+	end
+
+	if data.Ok == true then
+		local feedback = data.Feedback
+		if typeof(feedback) == "table" and typeof(feedback.Path) == "table" then
+			hack.PathLength = math.max(0, #feedback.Path - 1)
+		else
+			hack.PathLength += 1
+		end
+		play("UI", "NodeSelect", S.UIVolume, nodePitch())
+	else
+		play("UI", "NodeInvalid", S.UIVolume * 0.8)
+	end
+end)
+
+Remotes.HackResolved.OnClientEvent:Connect(function(data: any)
+	hack.Open = false
+	setAmbienceFactor(1)
+
+	if typeof(data) ~= "table" then
+		return
+	end
+	if data.Success == true then
+		play("UI", "HackSuccess", S.UIVolume * 1.1)
+	else
+		play("UI", "HackFail", S.UIVolume)
+	end
+end)
+
+--==========================================================================
+-- Trace
+--==========================================================================
+
+local traceState = "RUHIG"
+
+Remotes.TraceSync.OnClientEvent:Connect(function(data: any)
+	if typeof(data) ~= "table" then
+		return
+	end
+
+	if typeof(data.Bust) == "table" then
+		play("Trace", "Bust", S.UIVolume * 1.3)
+		setCriticalLoop(false)
+		traceState = "RUHIG"
+		return
+	end
+
+	local value = tonumber(data.Trace) or 0
+	local next_ = if value &gt;= Config.Trace.CriticalAt
+		then "KRITISCH"
+		elseif value &gt;= Config.Trace.WarnAt then "WARNUNG"
+		else "RUHIG"
+
+	if next_ ~= traceState then
+		if next_ == "WARNUNG" then
+			play("Trace", "Warn")
+			setCriticalLoop(false)
+		elseif next_ == "KRITISCH" then
+			setCriticalLoop(true)
+		else
+			setCriticalLoop(false)
+		end
+		traceState = next_
+	end
+end)
+
+--==========================================================================
+-- Welt, Markt, Alarm
+--==========================================================================
+
+local EFFECT_SOUND: { [string]: string } = {
+	CameraOffline = "CameraDown",
+	DoorOpen = "DoorOpen",
+	AtmPayout = "SafeOpen",
+}
+
+Remotes.HackResolved.OnClientEvent:Connect(function(data: any)
+	if typeof(data) ~= "table" or data.Success ~= true then
+		return
+	end
+	local key = EFFECT_SOUND[tostring(data.Effect)]
+	if key then
+		play("World", key, S.WorldVolume)
+	end
+end)
+
+Remotes.SellResult.OnClientEvent:Connect(function(data: any)
+	if typeof(data) == "table" and data.Ok == true then
+		play("Market", "Sell", S.WorldVolume)
+	end
+end)
+
+Remotes.EconomySync.OnClientEvent:Connect(function() end) -- bewusst still
+
+Remotes.MarketEvent.OnClientEvent:Connect(function()
+	play("Market", "PriceAlert")
+end)
+
+Remotes.InventorySync.OnClientEvent:Connect(function() end) -- bewusst still
+
+local alarmActive = false
+
+Remotes.AlarmSync.OnClientEvent:Connect(function(data: any)
+	if typeof(data) ~= "table" then
+		return
+	end
+	if data.Active == true then
+		if not alarmActive then
+			alarmActive = true
+			play("World", "Alarm", S.WorldVolume)
+			-- Beim Alarm kommt die Ambience schlagartig laut zurueck.
+			setAmbienceFactor(S.AmbienceAlarmFactor)
+		end
+	else
+		alarmActive = false
+		setAmbienceFactor(if hack.Open then S.AmbienceDuckFactor else 1)
+	end
+end)
+
+--==========================================================================
+-- Countdown: Frequenz steigt zum Ende hin
+--==========================================================================
+
+RunService.RenderStepped:Connect(function()
+	if not hack.Open or hack.Deadline &lt;= 0 then
+		return
+	end
+
+	local remaining = hack.Deadline - workspace:GetServerTimeNow()
+	if remaining &lt;= 0 or remaining &gt; S.CountdownFrom then
+		return
+	end
+
+	local now = os.clock()
+	if now &lt; hack.NextTick then
+		return
+	end
+
+	-- Je weniger Zeit, desto kuerzer der Abstand zwischen den Ticks.
+	local fraction = math.clamp(remaining / S.CountdownFrom, 0, 1)
+	local interval = S.CountdownMinInterval + (S.CountdownMaxInterval - S.CountdownMinInterval) * fraction
+	hack.NextTick = now + interval
+
+	play("UI", "Countdown", S.UIVolume * 0.8, 1 + (1 - fraction) * 0.3)
+end)
+
+--==========================================================================
+
+startAmbience()
+
+local filled, total = SoundCatalog.Count()
+if filled == 0 then
+	warn(("[GHOSTNET] Keine Sound-IDs eingetragen (0 von %d). Das Spiel laeuft, ist aber stumm."):format(total))
+else
+	print(("[GHOSTNET] SoundController bereit. %d von %d IDs eingetragen."):format(filled, total))
+end
+
+local _ = player
+</ProtectedString>
+</Properties>
+</Item>
+<Item class="LocalScript" referent="GN41">
+<Properties>
+<string name="Name">StoreUI</string>
+<ProtectedString name="Source">-- StarterPlayer/StarterPlayerScripts/UI/StoreUI.client.luau
+--!strict
+-- GHOSTNET :: Robux-Store, Taste [P].
+--
+-- Zeigt nur an, was der Server geschickt hat. Der Kauf selbst laeuft ueber
+-- Roblox; was er bewirkt, entscheidet ProcessReceipt auf dem Server.
+--
+-- Solange Noah keine IDs im Creator Dashboard eingetragen hat, ist hier
+-- nichts kaufbar - die Eintraege stehen dann als "noch nicht verfuegbar" da,
+-- statt still zu fehlen.
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+
+local Remotes = require(ReplicatedStorage.Shared.Remotes)
+local UITheme = require(ReplicatedStorage.Shared.UITheme)
+
+local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+
+local C = UITheme.Color
+
+local store = { Passes = {}, Products = {} }
+local hackOpen = false
+
+--==========================================================================
+-- Aufbau
+--==========================================================================
+
+local gui = UITheme.Screen("GhostNetStore", 17)
+gui.Parent = playerGui
+
+local openButton = UITheme.Button({
+	Name = "OpenStore",
+	AnchorPoint = Vector2.new(0, 1),
+	Position = UDim2.new(0, 176, 1, -46),
+	Size = UDim2.fromOffset(120, 46),
+	BackgroundColor3 = C.Panel,
+	BackgroundTransparency = 0.06,
+	Text = "",
+	Parent = gui,
+})
+UITheme.Corner(openButton, 4)
+UITheme.Stroke(openButton, C.Amber)
+
+UITheme.Label({
+	Name = "Caption",
+	Text = "[P]  STORE",
+	TextColor3 = C.Amber,
+	TextSize = 14,
+	TextXAlignment = Enum.TextXAlignment.Center,
+	Size = UDim2.fromScale(1, 1),
+	Parent = openButton,
+})
+
+local backdrop = UITheme.Frame({
+	Name = "Backdrop",
+	Size = UDim2.fromScale(1, 1),
+	BackgroundColor3 = Color3.new(0, 0, 0),
+	BackgroundTransparency = 1,
+	Visible = false,
+	Parent = gui,
+})
+
+local window = UITheme.Frame({
+	Name = "Window",
+	AnchorPoint = Vector2.new(0.5, 0.5),
+	Position = UDim2.fromScale(0.5, 0.5),
+	Size = UDim2.new(0.9, 0, 0.85, 0),
+	BackgroundColor3 = C.Background,
+	ClipsDescendants = true,
+	Parent = backdrop,
+})
+UITheme.Corner(window, 5)
+UITheme.Stroke(window, C.Amber)
+
+local sizeConstraint = Instance.new("UISizeConstraint")
+sizeConstraint.MaxSize = Vector2.new(640, 520)
+sizeConstraint.MinSize = Vector2.new(300, 300)
+sizeConstraint.Parent = window
+
+local titleBar = UITheme.Frame({
+	Name = "TitleBar",
+	Size = UDim2.new(1, 0, 0, 34),
+	BackgroundColor3 = C.Panel,
+	Parent = window,
+})
+
+UITheme.Label({
+	Name = "Title",
+	Text = "GHOSTNET // STORE",
+	TextColor3 = C.Amber,
+	TextSize = 14,
+	Position = UDim2.new(0, 12, 0, 0),
+	Size = UDim2.new(0.6, 0, 1, 0),
+	Parent = titleBar,
+})
+
+local closeButton = UITheme.Button({
+	Name = "Close",
+	Text = "SCHLIESSEN",
+	TextSize = 11,
+	TextColor3 = C.Magenta,
+	BackgroundColor3 = C.PanelLight,
+	AnchorPoint = Vector2.new(1, 0.5),
+	Position = UDim2.new(1, -8, 0.5, 0),
+	Size = UDim2.fromOffset(88, 24),
+	Parent = titleBar,
+})
+UITheme.Corner(closeButton, 3)
+UITheme.Stroke(closeButton, C.Magenta)
+
+UITheme.Label({
+	Name = "Fairness",
+	Text = "Nichts hier loest ein Raetsel fuer dich. Zeit, Platz und Aussehen - mehr nicht.",
+	TextColor3 = C.TextDim,
+	TextSize = 12,
+	TextWrapped = true,
+	Position = UDim2.new(0, 14, 0, 40),
+	Size = UDim2.new(1, -28, 0, 30),
+	Parent = window,
+})
+
+local list = Instance.new("ScrollingFrame")
+list.Name = "List"
+list.BackgroundTransparency = 1
+list.BorderSizePixel = 0
+list.Position = UDim2.new(0, 14, 0, 74)
+list.Size = UDim2.new(1, -28, 1, -88)
+list.CanvasSize = UDim2.new()
+list.AutomaticCanvasSize = Enum.AutomaticSize.Y
+list.ScrollBarThickness = 4
+list.ScrollBarImageColor3 = C.Line
+list.Parent = window
+
+local listLayout = Instance.new("UIListLayout")
+listLayout.SortOrder = Enum.SortOrder.LayoutOrder
+listLayout.Padding = UDim.new(0, 8)
+listLayout.Parent = list
+
+--==========================================================================
+-- Anzeige
+--==========================================================================
+
+local order = 0
+
+local function clearList()
+	order = 0
+	for _, child in list:GetChildren() do
+		if child:IsA("GuiObject") then
+			child:Destroy()
+		end
+	end
+end
+
+local function header(text: string)
+	order += 1
+	UITheme.Label({
+		Name = "H",
+		Text = text,
+		TextColor3 = C.TextDim,
+		TextSize = 11,
+		Size = UDim2.new(1, -8, 0, 16),
+		LayoutOrder = order,
+		Parent = list,
+	})
+end
+
+local function entry(kind: string, item: { [string]: any })
+	order += 1
+	local frame = UITheme.Frame({
+		Name = tostring(item.Key),
+		Size = UDim2.new(1, -8, 0, 68),
+		BackgroundColor3 = C.Panel,
+		LayoutOrder = order,
+		Parent = list,
+	})
+	UITheme.Corner(frame, 4)
+	UITheme.Stroke(frame, C.Line)
+	UITheme.Padding(frame, 10)
+
+	UITheme.Label({
+		Name = "Name",
+		Text = tostring(item.Name),
+		TextColor3 = C.Amber,
+		TextSize = 15,
+		Size = UDim2.new(1, -150, 0, 18),
+		Parent = frame,
+	})
+
+	UITheme.Label({
+		Name = "Text",
+		Text = tostring(item.Text),
+		TextColor3 = C.TextDim,
+		TextSize = 12,
+		TextWrapped = true,
+		Position = UDim2.new(0, 0, 0, 20),
+		Size = UDim2.new(1, -150, 0, 28),
+		Parent = frame,
+	})
+
+	local button = UITheme.Button({
+		Name = "Buy",
+		Text = "",
+		AnchorPoint = Vector2.new(1, 0.5),
+		Position = UDim2.new(1, 0, 0.5, 0),
+		Size = UDim2.fromOffset(132, 44), -- Touch-Ziel
+		BackgroundColor3 = C.PanelLight,
+		Parent = frame,
+	})
+	UITheme.Corner(button, 4)
+	local stroke = UITheme.Stroke(button, C.Line)
+
+	local caption = UITheme.Label({
+		Name = "Caption",
+		Text = "",
+		TextColor3 = C.TextDim,
+		TextSize = 13,
+		TextXAlignment = Enum.TextXAlignment.Center,
+		Size = UDim2.fromScale(1, 1),
+		Parent = button,
+	})
+
+	if item.Owned == true then
+		caption.Text = "GEHOERT DIR"
+		caption.TextColor3 = C.Green
+		stroke.Color = C.Green
+	elseif item.Available ~= true then
+		-- Ehrlich anzeigen statt still nichts tun: so sieht Noah sofort,
+		-- welche ID im Dashboard noch fehlt.
+		caption.Text = "NOCH NICHT DA"
+		caption.TextColor3 = C.TextDim
+	else
+		caption.Text = "KAUFEN"
+		caption.TextColor3 = C.Amber
+		stroke.Color = C.Amber
+		button.Activated:Connect(function()
+			Remotes.StorePrompt:FireServer({ Kind = kind, Key = item.Key })
+		end)
+	end
+end
+
+local function refresh()
+	clearList()
+	header("DAUERHAFT (GAMEPASS)")
+	for _, item in store.Passes do
+		entry("Gamepass", item)
+	end
+	header("EINMALIG")
+	for _, item in store.Products do
+		entry("Product", item)
+	end
+end
+
+--==========================================================================
+-- Oeffnen
+--==========================================================================
+
+local function setOpen(open: boolean)
+	if open and hackOpen then
+		return
+	end
+	backdrop.Visible = open
+	openButton.Visible = not open and not hackOpen
+	if open then
+		refresh()
+		backdrop.BackgroundTransparency = 1
+		window.Size = UDim2.new(0.9, 0, 0.3, 0)
+		TweenService:Create(backdrop, UITheme.Tween.Normal, { BackgroundTransparency = 0.45 }):Play()
+		TweenService:Create(window, UITheme.Tween.Slow, { Size = UDim2.new(0.9, 0, 0.85, 0) }):Play()
+	end
+end
+
+openButton.Activated:Connect(function()
+	setOpen(true)
+end)
+closeButton.Activated:Connect(function()
+	setOpen(false)
+end)
+
+UserInputService.InputBegan:Connect(function(input, processed)
+	if processed then
+		return
+	end
+	if input.KeyCode == Enum.KeyCode.P then
+		setOpen(not backdrop.Visible)
+	elseif input.KeyCode == Enum.KeyCode.Escape and backdrop.Visible then
+		setOpen(false)
+	end
+end)
+
+--==========================================================================
+-- Server-Meldungen
+--==========================================================================
+
+Remotes.StoreSync.OnClientEvent:Connect(function(data: any)
+	if typeof(data) ~= "table" then
+		return
+	end
+	store.Passes = if typeof(data.Passes) == "table" then data.Passes else {}
+	store.Products = if typeof(data.Products) == "table" then data.Products else {}
+	if backdrop.Visible then
+		refresh()
+	end
+end)
+
+Remotes.HackSessionStarted.OnClientEvent:Connect(function()
+	hackOpen = true
+	setOpen(false)
+	openButton.Visible = false
+end)
+
+Remotes.HackResolved.OnClientEvent:Connect(function()
+	hackOpen = false
+	openButton.Visible = not backdrop.Visible
+end)
+
+refresh()
+</ProtectedString>
+</Properties>
+</Item>
+<Item class="LocalScript" referent="GN42">
+<Properties>
+<string name="Name">TargetBeacons</string>
+<ProtectedString name="Source">-- StarterPlayer/StarterPlayerScripts/UI/TargetBeacons.client.luau
+--!strict
+-- GHOSTNET :: Hack-Ziele auf Distanz erkennbar machen.
+--
+-- Ohne das laeuft man an einem Ziel vorbei, ohne zu merken, dass es eins ist -
+-- die Objekte sehen aus wie Kulisse, weil sie welche sind. Ein dezent
+-- pulsierendes Akzentlicht loest das, ohne die Ruhe des Spiels zu zerstoeren.
+--
+-- Laeuft rein clientseitig auf vorhandenen Lichtern. Es werden keine neuen
+-- Instanzen erzeugt und nichts an der Welt veraendert, was der Server sieht.
+
+local CollectionService = game:GetService("CollectionService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+
+local Config = require(ReplicatedStorage.Shared.Config)
+
+type Beacon = {
+	Part: BasePart,
+	Light: PointLight,
+	BaseBrightness: number,
+	Phase: number,
+}
+
+local beacons: { [BasePart]: Beacon } = {}
+local nextPhase = 0
+
+local function track(inst: Instance)
+	if not inst:IsA("BasePart") then
+		return
+	end
+	local part = inst :: BasePart
+	if beacons[part] then
+		return
+	end
+	local light = part:FindFirstChildOfClass("PointLight")
+	if not light then
+		return -- kein Akzentlicht, also nichts zu pulsieren
+	end
+
+	-- Versetzte Phase, damit nicht die halbe Stadt im Gleichtakt blinkt.
+	nextPhase += 1.7
+	beacons[part] = {
+		Part = part,
+		Light = light,
+		BaseBrightness = light.Brightness,
+		Phase = nextPhase,
+	}
+end
+
+local function untrack(inst: Instance)
+	if inst:IsA("BasePart") then
+		beacons[inst :: BasePart] = nil
+	end
+end
+
+for _, inst in CollectionService:GetTagged(Config.HackableTag) do
+	track(inst)
+end
+CollectionService:GetInstanceAddedSignal(Config.HackableTag):Connect(track)
+CollectionService:GetInstanceRemovedSignal(Config.HackableTag):Connect(untrack)
+
+-- Hehler bekommen denselben Effekt, damit man den Rueckweg findet.
+for _, inst in CollectionService:GetTagged(Config.FenceTag) do
+	track(inst)
+end
+CollectionService:GetInstanceAddedSignal(Config.FenceTag):Connect(track)
+CollectionService:GetInstanceRemovedSignal(Config.FenceTag):Connect(untrack)
+
+local accumulator = 0
+RunService.RenderStepped:Connect(function(dt)
+	accumulator += dt
+	if accumulator &lt; 0.06 then
+		return
+	end
+	accumulator = 0
+
+	local now = os.clock()
+	for part, beacon in beacons do
+		if not part.Parent then
+			beacons[part] = nil
+			continue
+		end
+
+		-- Offline heisst dunkel. Das ist die einzige Rueckmeldung, die man
+		-- aus der Ferne braucht.
+		if part:GetAttribute("Offline") == true then
+			beacon.Light.Enabled = false
+			continue
+		end
+
+		beacon.Light.Enabled = true
+		local pulse = 0.5 + 0.5 * math.sin(now * Config.World.TargetPulseSpeed + beacon.Phase)
+		beacon.Light.Brightness = beacon.BaseBrightness * (1 - Config.World.TargetPulseDepth + Config.World.TargetPulseDepth * pulse * 2)
+	end
+end)
+</ProtectedString>
+</Properties>
+</Item>
+<Item class="LocalScript" referent="GN43">
 <Properties>
 <string name="Name">TutorialUI</string>
 <ProtectedString name="Source">-- StarterPlayer/StarterPlayerScripts/UI/TutorialUI.client.luau

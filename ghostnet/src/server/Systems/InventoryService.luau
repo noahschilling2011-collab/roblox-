@@ -27,6 +27,7 @@ local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local EconomyService = require(script.Parent.EconomyService)
 local MarketService = require(script.Parent.MarketService)
 local MissionService = require(script.Parent.MissionService)
+local MonetizationService = require(script.Parent.MonetizationService)
 local RateLimiter = require(script.Parent.RateLimiter)
 local SaveService = require(script.Parent.SaveService)
 local TraceService = require(script.Parent.TraceService)
@@ -52,7 +53,9 @@ function InventoryService.Used(player: Player): number
 end
 
 function InventoryService.Slots(player: Player): number
-	return Config.GetStashSlots(EconomyService.GetTier(player))
+	local base = Config.GetStashSlots(EconomyService.GetTier(player))
+	-- Gamepass BigStash: reine Kapazitaet, kein Spielvorteil beim Raetsel.
+	return math.floor(base * (1 + MonetizationService.StashBonus(player)))
 end
 
 function InventoryService.Snapshot(player: Player): { [string]: any }

@@ -6,7 +6,7 @@
 
 local Config = {}
 
-Config.Version = "0.4.0" -- Phase A-D: Story, Ueberfaelle, Darknet
+Config.Version = "1.0.0" -- Phase A-G komplett
 
 -- CollectionService-Tags. Ein Part mit dem Tag ist ein Hack-Ziel, ein Hehler,
 -- ein Missions-Wegpunkt oder ein ansprechbarer Kontakt. Kein Code pro Objekt.
@@ -220,7 +220,8 @@ Config.Save = {
 	--   1 = Phase 1 (Bank, Unsold, Rig, Trace, Cooldowns, Stats)
 	--   2 = Phase A (Story-Block)
 	--   3 = Phase C (Darknet-Lager)
-	SchemaVersion = 3,
+	--   4 = Phase F (PurchaseLog gegen Doppelvergabe)
+	SchemaVersion = 4,
 	StoreName = "GhostNetPlayers_v1",
 	KeyFormat = "ghostnet_player_%d",
 
@@ -389,7 +390,56 @@ function Config.GetFakeRisk(baseRisk: number, tier: number): number
 end
 
 --==========================================================================
--- 14. RATE-LIMITS (Token-Bucket pro Spieler und Remote)
+-- 14. MONETARISIERUNG
+-- Die IDs selbst stehen in MonetizationService (und sind alle 0). Hier
+-- stehen nur die Zahlen, die man austarieren will.
+--
+-- Regel fuer alles, was hier dazukommt: Zeitersparnis, Kosmetik, Komfort
+-- oder Kapazitaet - niemals etwas, das ein Raetsel loest.
+--==========================================================================
+Config.Monetization = {
+	ColdRigTrace = 0.25, -- Gamepass: -25% Trace-Anstieg
+	BigStashBonus = 0.5, -- Gamepass: +50% Lagerplatz
+	Crypto1k = 1000, -- Produkt: Betrag direkt auf die Bank
+	Crypto5k = 5000,
+
+	-- Besitzpruefung. UserOwnsGamePassAsync kann fehlschlagen; bei einem
+	-- Fehler wird NICHT angenommen, der Spieler besitze nichts.
+	OwnershipRetries = 3,
+	OwnershipRetryDelay = 2,
+	OwnershipRecheckSeconds = 120,
+
+	-- Verarbeitete Belege im Profil. Gegen Doppelvergabe. Gross genug, dass
+	-- ein Vielkaeufer keine alten Eintraege verliert, klein genug fuers Profil.
+	PurchaseLogLimit = 50,
+}
+
+--==========================================================================
+-- 15. STADTKULISSE
+-- Reine Optik. Wer auf schwachen Geraeten Probleme hat, dreht hier die
+-- Anzahl runter - das kostet Atmosphaere, aber keine Spielmechanik.
+--==========================================================================
+Config.World = {
+	Seed = 20260801, -- feste Zahl: die Stadt sieht auf jedem Server gleich aus
+
+	RoadWidth = 46,
+	RoadLength = 320,
+	RoadReflectance = 0.28, -- nasse Fahrbahn. 0 = trocken und matt.
+
+	MaxBuildingHeight = 78,
+	WindowChance = 0.55, -- Anteil erleuchteter Fensterbaender
+	SignChance = 0.45, -- Anteil Haeuser mit Neonschild
+	SignBrightness = 3,
+	SignRange = 26,
+
+	-- Hack-Ziele sollen auf Distanz erkennbar sein: ihr Akzentlicht pulsiert
+	-- dezent und geht aus, wenn das Ziel offline ist.
+	TargetPulseSpeed = 1.6,
+	TargetPulseDepth = 0.35,
+}
+
+--==========================================================================
+-- 16. RATE-LIMITS (Token-Bucket pro Spieler und Remote)
 -- Jede neue Remote braucht hier einen Eintrag, sonst wird sie verworfen.
 --==========================================================================
 Config.RateLimits = {
@@ -403,10 +453,12 @@ Config.RateLimits = {
 	MissionInteract = { Rate = 2, Burst = 4 },
 	MissionSkip = { Rate = 0.5, Burst = 2 },
 	Trade = { Rate = 2, Burst = 5 },
+	AdminCommand = { Rate = 4, Burst = 8 },
+	StorePrompt = { Rate = 1, Burst = 3 },
 }
 
 --==========================================================================
--- 15. NODE-BREACH
+-- 17. NODE-BREACH
 --==========================================================================
 Config.NodeBreach = {
 	-- Pro Schwierigkeitsband: Gittergroesse, Anzahl Relays, Anteil sichtbares
@@ -423,7 +475,7 @@ Config.NodeBreach = {
 }
 
 --==========================================================================
--- 16. DEFAULTS FUER HACK-ZIELE
+-- 18. DEFAULTS FUER HACK-ZIELE
 -- Ein Part braucht KEIN einziges Attribut. Alles, was fehlt, kommt von hier.
 --==========================================================================
 Config.TargetDefaults = {

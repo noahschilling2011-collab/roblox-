@@ -24,6 +24,8 @@ local RaidService = require(Systems.RaidService)
 local MissionService = require(Systems.MissionService)
 local MarketService = require(Systems.MarketService)
 local InventoryService = require(Systems.InventoryService)
+local MonetizationService = require(Systems.MonetizationService)
+local AdminService = require(Systems.AdminService)
 
 SaveService.Init() -- zuerst: haelt das Profil
 EconomyService.Init() -- liest aus dem Profil
@@ -38,5 +40,7 @@ RaidService.Init()
 MissionService.Init()
 MarketService.Init() -- Kurse laufen unabhaengig von Spielern
 InventoryService.Init() -- braucht Markt und Missionen (Unlock-Pruefung)
+MonetizationService.Init()
+AdminService.Init() -- zuletzt: greift auf alle anderen zu
 
 print(("[GHOSTNET] Server hochgefahren - Version %s"):format(Config.Version))

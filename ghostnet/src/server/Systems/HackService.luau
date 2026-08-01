@@ -25,6 +25,7 @@ local Types = require(ReplicatedStorage.Shared.Types)
 local EconomyService = require(script.Parent.EconomyService)
 local HackEffects = require(script.Parent.HackEffects)
 local HackTargets = require(script.Parent.HackTargets)
+local MonetizationService = require(script.Parent.MonetizationService)
 local RateLimiter = require(script.Parent.RateLimiter)
 local SaveService = require(script.Parent.SaveService)
 local TraceService = require(script.Parent.TraceService)
@@ -107,6 +108,10 @@ local function resolve(session: Session, success: boolean, reason: string)
 			traceDelta = 0
 		end
 
+		-- Gamepass ColdRig: dauerhaft weniger Trace. Zeitersparnis, kein
+		-- Raetselvorteil - die Aufgabe selbst bleibt gleich schwer.
+		traceDelta *= MonetizationService.TraceFactor(player)
+
 		-- Co-Op: ein zweiter Spieler in Reichweite eines RequiresTwo-Ziels
 		-- halbiert den Trace-Anstieg. Das ist der Grund, einen Freund
 		-- mitzubringen - und er muss spuerbar sein.
@@ -171,6 +176,12 @@ local function resolve(session: Session, success: boolean, reason: string)
 			end
 		end)
 	end
+end
+
+-- Nur fuer Diagnose (AdminService). Sagt nichts ueber den Raetselzustand aus.
+function HackService.IsHacking(player: Player): boolean
+	local session = sessions[player]
+	return session ~= nil and not session.Resolved
 end
 
 function HackService.AbortFor(player: Player, reason: string)

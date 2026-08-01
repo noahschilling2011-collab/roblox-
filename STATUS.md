@@ -59,7 +59,8 @@ Sie haben eigene `CLAUDE.md`/`PHASEN.md`/`STATUS.md` in ihrem Ordner — die gel
 vor dieser Datei.
 - `turmfall/` — TURMFALL, physik-basiertes Rundenspiel, eigene `Turmfall.rbxlx`.
 - `ghostnet/` — GHOSTNET, Hacking-Spiel (dunkles Fake-OS), eigene `GhostNet.rbxlx`.
-  Stand: Phase 1 fertig (Loop geschlossen: Speichern, Trace/Bust, Hehler, Rig-Shop).
+  Stand: v1.0.0 — Loop, 5 Story-Missionen, Darknet-Handel, Admin-Panel, Store,
+  Stadtkulisse. Alle Asset-/Produkt-IDs sind noch Platzhalter.
 
 ## Manuelle Schritte außerhalb des Codes (Noah) 🔑
 - Publishing + Creator Dashboard: Gamepässe/Produkte anlegen, echte IDs in

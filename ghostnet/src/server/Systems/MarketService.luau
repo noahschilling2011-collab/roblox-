@@ -204,6 +204,40 @@ local function tickPrices()
 end
 
 --==========================================================================
+-- Eingriffe von aussen (nur AdminService)
+--==========================================================================
+
+function MarketService.SetFactor(goodId: string, factor: number)
+	local quote = quotes[goodId]
+	if not quote then
+		return
+	end
+	quote.Factor = math.clamp(factor, Config.Market.MinFactor, Config.Market.MaxFactor)
+	table.insert(quote.History, quote.Factor)
+	while #quote.History > Config.Market.HistoryPoints do
+		table.remove(quote.History, 1)
+	end
+	broadcast()
+end
+
+function MarketService.ForceEvent(group: string, strength: number)
+	local text = if strength >= 0
+		then ("RAZZIA // %s knapp:  +%d%%"):format(group, math.floor(strength * 100 + 0.5))
+		else ("LECK // %s ueberschwemmt:  %d%%"):format(group, math.floor(strength * 100 - 0.5))
+
+	activeEvent = {
+		Group = group,
+		Strength = strength,
+		TicksLeft = Config.Market.EventDurationTicks,
+		Text = text,
+	}
+	for _, player in Players:GetPlayers() do
+		Remotes.MarketEvent:FireClient(player, { Text = text, Group = group })
+	end
+	broadcast()
+end
+
+--==========================================================================
 
 function MarketService.Init()
 	local valid, errors = Goods.Validate()

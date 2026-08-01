@@ -77,6 +77,7 @@ function SaveService.DefaultProfile(): Profile
 		Stats = defaultStats(),
 		Story = defaultStory(),
 		Stash = {},
+		PurchaseLog = {},
 		LastSeen = os.time(),
 		SessionId = "",
 	}
@@ -178,6 +179,8 @@ local function sanitize(raw: any): (Profile, number)
 		end
 	end
 
+	p.PurchaseLog = cleanIdList(raw.PurchaseLog, Config.Monetization.PurchaseLogLimit)
+
 	p.LastSeen = toCount(raw.LastSeen) or p.LastSeen
 	if typeof(raw.SessionId) == "string" then
 		p.SessionId = raw.SessionId
@@ -210,6 +213,12 @@ local MIGRATIONS: { [number]: (Profile) -> () } = {
 	-- Bank, Rig, Trace, Cooldowns und Story bleiben unangetastet.
 	[3] = function(profile: Profile)
 		profile.Stash = {}
+	end,
+
+	-- 3 -> 4: Beleg-Log gegen Doppelvergabe. Alte Profile starten leer; das
+	-- ist unkritisch, weil vor Phase F gar nichts gekauft werden konnte.
+	[4] = function(profile: Profile)
+		profile.PurchaseLog = {}
 	end,
 }
 

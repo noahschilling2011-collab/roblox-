@@ -68,25 +68,45 @@ src/shared/          -> ReplicatedStorage.Shared
   Remotes.luau         der einzige Ort, an dem Remotes entstehen
   Types.luau           gemeinsame Typen, inkl. Profil-Schema
   Geometry.luau        die eine Abstandsrechnung für Server und Client
+  Missions.luau        Missionen als Daten + die puren Regeln dazu
+  Goods.luau           Warenkatalog fürs Darknet
+  SoundCatalog.luau    alle Klänge (IDs leer)
   UITheme.luau         Bausteine fürs Fake-OS
 src/server/          -> ServerScriptService
   GhostNetServer.server.luau   Bootstrap, feste Init-Reihenfolge
+  AdminList.luau       UserId-Liste. Bewusst NICHT in Shared.
   Systems/
-    SaveService.luau     Profil + DataStore + Session-Lock (einziger DataStore-Zugriff)
-    EconomyService.luau  Crypto und Rig — einzige Stelle, die beides ändert
-    TraceService.luau    Trace, Abkühlung, Bust
-    HackService.luau     Sessions, Watchdog, Server-Autorität
-    HackTargets.luau     Registry aller Ziele über CollectionService-Tag
-    HackEffects.luau     Welteffekte bei Erfolg (Attribut `OnSuccess`)
-    SellService.luau     Hehler
-    ShopService.luau     Rig-Upgrades
-    RateLimiter.luau     Token-Bucket pro Spieler und Remote
+    SaveService.luau        Profil + DataStore + Session-Lock (einziger DataStore-Zugriff)
+    EconomyService.luau     Crypto und Rig — einzige Stelle, die beides ändert
+    TraceService.luau       Trace, Abkühlung, Bust
+    HackService.luau        Sessions, Watchdog, Server-Autorität
+    HackTargets.luau        Registry aller Ziele über CollectionService-Tag
+    HackEffects.luau        Welteffekte bei Erfolg (Attribut `OnSuccess`)
+    SellService.luau        Hehler
+    ShopService.luau        Rig-Upgrades
+    RaidService.luau        Alarm-Uhr für mehrstufige Ziele, Co-Op
+    MissionService.luau     Story-Fortschritt, serverseitig geprüft
+    MarketService.luau      Darknet-Kurse, serverweit
+    InventoryService.luau   Lager und Handel
+    MonetizationService.luau Gamepässe und Produkte (IDs = 0)
+    AdminService.luau       Admin-Befehle, UserId-Prüfung in Zeile 1
+    RateLimiter.luau        Token-Bucket pro Spieler und Remote
     Minigames/NodeBreach.luau
-  World/TestTargets.server.luau   Kamera (D2), Tür (D4), Automat (D6), Hehler
+  World/
+    TestTargets.server.luau  Kamera (D2), Tür (D4), Automat (D6), Hehler
+    StoryWorld.server.luau   Übungsterminal, Laden, Apartment, Bank
+    Cityscape.server.luau    Straßenzeile, Neon, nasse Fahrbahn (nur Kulisse)
 src/client/UI/       -> StarterPlayerScripts.UI
-  HUD.client.luau      Wallet, Trace-Balken, Prompt, Meldungen
-  HackUI.client.luau   das Fake-OS während eines Hacks
-  ShopUI.client.luau   Rig-Shop
+  HUD.client.luau          Wallet, Trace-Balken, Prompt, Meldungen
+  HackUI.client.luau       das Fake-OS während eines Hacks
+  ShopUI.client.luau       Rig-Shop
+  MissionUI.client.luau    Auftrag und Wegpunkt
+  TutorialUI.client.luau   geführter Einstieg und Alarm-Anzeige
+  DarknetUI.client.luau    Markt, Chart, Lager
+  StoreUI.client.luau      Robux-Store
+  AdminUI.client.luau      Admin-Panel (F2)
+  SoundController.client.luau  spielt den SoundCatalog
+  TargetBeacons.client.luau    lässt Ziele auf Distanz pulsieren
 ```
 
 ## Neue Objekte in der Welt
@@ -125,8 +145,41 @@ in den Vorbedingungen. Fehler tauchen beim Serverstart als `warn()` auf.
 
 ## Steuerung
 
-| Eingabe             | Wirkung                                      |
-| ------------------- | -------------------------------------------- |
-| `E` / Prompt tippen | Ziel hacken bzw. beim Hehler verkaufen        |
-| `B` / Knopf unten links | Rig-Shop öffnen                          |
-| `Esc`               | Hack abbrechen (kostet halben Trace) / Shop schließen |
+| Eingabe | Wirkung |
+| --- | --- |
+| `E` / Prompt tippen | Ziel hacken, beim Hehler verkaufen, Kontakt ansprechen, Darknet öffnen |
+| `B` / Knopf unten links | Rig-Shop |
+| `P` / Knopf unten links | Robux-Store |
+| `F2` | Admin-Panel (nur wenn autorisiert) |
+| `Esc` | Hack abbrechen (kostet halben Trace) / Fenster schließen |
+
+Alles ist auch per Touch bedienbar — keine Funktion hängt nur an der Tastatur.
+
+## Der Spielablauf
+
+1. **M01 – Erstes Gerät.** Übungsterminal am Spawn, kein Trace-Risiko.
+   Danach ist freies Hacken offen.
+2. **M02 – Kalter Anlauf.** Laden an der Kreuzung Nord: Schloss knacken, dann
+   den Tresor, bevor die Alarm-Uhr durchläuft. Danach sind Ladenüberfälle ein
+   wiederholbarer Zieltyp.
+3. **M03 – Nach Hause.** Das Apartment wird zum Hub. Der Rechner öffnet ab hier
+   das Darknet.
+4. **M04 – Erste Ware.** Kaufen, Kurs beobachten, mit Gewinn verkaufen.
+5. **M05 – Die Bank.** Kamera → Sicherheitstür → Tresorraum unter einem Alarm.
+   Ein Fehlschlag am Tresorraum ist sofort ein Bust. Zu zweit halbiert sich
+   der Trace-Anstieg und die Uhr läuft halb so schnell.
+
+Nach M05 gibt es kein „durchgespielt": alle fünf Systeme laufen weiter.
+
+## Was Noah eintragen muss
+
+Alle IDs im Code sind Platzhalter — erfundene IDs schlagen stumm fehl.
+
+| Datei | Was |
+| --- | --- |
+| `src/shared/SoundCatalog.luau` | Asset-IDs als `"rbxassetid://ZAHL"` |
+| `src/server/Systems/MonetizationService.luau` | Gamepass- und Produkt-IDs (stehen auf `0`) |
+| `src/server/AdminList.luau` | die eigene UserId |
+
+Das Spiel läuft auch ohne: es ist dann stumm, der Store leer, und Admin gibt es
+nur im Studio.

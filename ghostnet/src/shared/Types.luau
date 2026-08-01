@@ -44,6 +44,7 @@ export type Profile = {
 	Stats: Stats,
 	Story: Story, -- seit SchemaVersion 2
 	Stash: { [string]: number }, -- Darknet-Lager, seit SchemaVersion 3
+	PurchaseLog: { string }, -- verarbeitete PurchaseIds, seit SchemaVersion 4
 	LastSeen: number, -- Unix-Zeit des letzten Speicherns
 	SessionId: string, -- Session-Lock gegen Doppel-Sitzungen
 }

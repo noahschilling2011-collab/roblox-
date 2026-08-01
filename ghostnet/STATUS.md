@@ -3,14 +3,74 @@
 > Wird am Ende jeder Session aktualisiert. Erstes, was eine neue Session liest.
 
 ## Aktuelle Phase
-**Phase A abgeschlossen** (`Config.Version = "0.3.0"`). Das Missions-Rückgrat
-steht. Der Spielkreislauf aus Phase 1 läuft unverändert weiter.
+**Phase 0 bis G sind gebaut** (`Config.Version = "1.0.0"`). Story, Überfälle,
+Darknet, Admin-Panel, Store und Optik stehen; der Loop aus Phase 1 läuft
+unverändert darunter weiter.
 
-**Nächster Schritt: Phase B (Mission 1 bis 3).** Erst dort entstehen
-Missionsinhalte — die Registry in `Shared/Missions.luau` ist absichtlich leer.
-Vorher nichts aus Phase C–G anfangen.
+**Nächster Schritt ist nicht mehr Code, sondern ein Test mit echten Spielern.**
+Davor muss Noah die IDs eintragen (siehe „Manuelle Schritte" unten) — ohne die
+ist das Spiel stumm und der Store leer. Was danach sinnvoll wäre, steht am Ende
+von `PHASEN.md`.
 
 ## Fertig ✅
+
+### Phase E — Admin-Panel (F2)
+- `AdminList.luau` liegt in **ServerScriptService**, nie in ReplicatedStorage —
+  eine Admin-Liste dort könnte jeder Client lesen. Noah trägt seine UserId dort
+  ein; im Studio ist der Testspieler automatisch Admin.
+- **Jeder** Handler prüft die UserId in der ersten Zeile, vor Rate-Limit und
+  Typcheck. Dass der Knopf nur Admins gezeigt wird, ist irrelevant.
+- Geld, Rig, Trace, Bust, Story und Markt-Eingriffe sind zusätzlich auf
+  `RunService:IsStudio()` beschränkt — im Live-Spiel existieren sie selbst für
+  echte Admins nicht.
+- Jede Aktion wird mit `warn()` protokolliert: wer, was, an wem.
+- Umfang: Wirtschaft, Missionen, Welt (Ziele auflisten, Cooldowns löschen,
+  Teleport), Markt, Debug. Wichtigster Punkt: **Profil als JSON ausgeben** —
+  ohne das debuggt man Speicherfehler blind.
+
+### Phase F — Robux-Store (P)
+- `MonetizationService` mit **allen IDs auf 0**. Der Store zeigt einen noch
+  nicht eingetragenen Eintrag als „NOCH NICHT DA" an, statt still nichts zu tun.
+- `ProcessReceipt`: verarbeitete `PurchaseId` im Profil, erst gutschreiben,
+  **dann speichern**, dann `PurchaseGranted`. Schlägt das Speichern fehl, wird
+  nicht bestätigt — sonst wäre die Ware vergeben, aber nicht gespeichert.
+- `UserOwnsGamePassAsync` mit Retry; bei endgültigem Fehler wird **nicht**
+  angenommen, der Spieler besitze nichts, sondern später erneut geprüft.
+- `PromptGamePassPurchaseFinished` aktiviert Pässe ohne Rejoin.
+- Verkauft werden nur Zeit, Kapazität und Kosmetik. Nichts löst ein Rätsel.
+
+### Phase G — Optik und Sound
+- `Cityscape.server.luau`: nächtliche Straßenzeile statt Baseplate — nasse
+  Fahrbahn über `Reflectance`, Neonschilder mit echtem Licht, erleuchtete
+  Fensterbänder nur als Farbe (hunderte PointLights wären auf dem Handy nicht
+  bezahlbar). Fester Seed, also auf jedem Server dieselbe Stadt.
+- `TargetBeacons.client.luau`: Hack-Ziele und Hehler pulsieren dezent und gehen
+  aus, wenn sie offline sind — sonst läuft man an ihnen vorbei.
+- `SoundCatalog.luau` + `SoundController.client.luau`: **alle IDs leer.** Die
+  Tonhöhe der Knoten-Klicks steigt mit der Pfadlänge (aus Klicks wird eine
+  aufsteigende Melodie), der Countdown tickt unter 10 s immer schneller, die
+  Ambience wird während eines Hacks leiser und kommt beim Alarm laut zurück.
+
+### Phase C — Darknet
+- `Goods.luau`: fünf Waren mit Basispreis, Volatilität und Fälschungsrisiko.
+- `MarketService`: Kurse bewegen sich **serverweit** alle 12 s, mit Mean
+  Reversion gegen Drift. Mini-Chart, Trend, gelegentliche Gruppen-Events.
+- `InventoryService`: Preise kommen **ausschließlich** vom Server. Menge,
+  Lagerplatz und Guthaben werden vor jeder Buchung geprüft. Das Darknet ist
+  serverseitig hinter dem `DARKNET`-Unlock, nicht nur in der UI ausgeblendet.
+- Risiko: begrenztes Lager, Ware ist heiß (Bust kostet die Hälfte davon),
+  Fälschungsquote sinkt mit dem Rig-Tier.
+- Klartext-Fehlermeldungen mit Zahl — überall.
+
+### Phase B/D — die fünf Missionen
+Jede ist Tutorial für ein System **und** schaltet es dauerhaft frei:
+M01 → `FREE_HACKING`, M02 → `STORE_RAIDS`, M03 → `DARKNET`, M04 → `TRADING`,
+M05 → `BANK_RAIDS`. Nichts davon verschwindet nach der Mission.
+- `RaidService`: Alarm-Uhr rein über Attribute (`AlarmGroup`, `AlarmStarts`,
+  `AlarmEnds`, `FailBusts`, `RequiresTwo`). Läuft **pro Spieler**, sonst würde
+  ein zweiter Spieler den Alarm des ersten erben und Co-Op wäre eine Strafe.
+- `TutorialUI`: genau ein Hinweisfeld, jeder Schritt durch eine Handlung
+  ausgelöst, Skip-Button vergibt den Unlock ohne Crypto.
 
 ### Phase A — Missions-Rückgrat
 - **`Shared/Missions.luau`** (neu) — eine Mission ist ein Tabelleneintrag, kein
@@ -39,12 +99,17 @@ Vorher nichts aus Phase C–G anfangen.
   Story-Geld ist heiß und muss erst zum Hehler, damit der Verkaufs-Loop
   relevant bleibt.
 
-### ⚠️ Schema-Migration 1 → 2
-Das Profil hat einen `Story`-Block bekommen (`Config.Save.SchemaVersion = 2`).
-`SaveService.MIGRATIONS` zieht Altprofile beim Laden nach, **bevor** geschrieben
-wird. Bank, Rig, Trace, Cooldowns und Statistik bleiben erhalten; nur die Story
-startet bei null. Ein Altprofil wird nie verworfen. Jede weitere Schema-Version
-braucht einen eigenen Eintrag in `MIGRATIONS` — der Testlauf prüft das.
+### ⚠️ Schema-Migrationen 1 → 4
+`Config.Save.SchemaVersion = 4`. `SaveService.MIGRATIONS` zieht Altprofile beim
+Laden nach, **bevor** geschrieben wird — ein Altprofil wird nie verworfen.
+| Version | Neu | Für Altprofile |
+|---|---|---|
+| 2 | `Story` (Missionsfortschritt) | Story startet bei null |
+| 3 | `Stash` (Darknet-Lager) | Lager startet leer |
+| 4 | `PurchaseLog` (gegen Doppelvergabe) | Log startet leer |
+Bank, Rig, Trace, Cooldowns und Statistik bleiben in allen Fällen erhalten.
+Jede weitere Version braucht einen eigenen Eintrag in `MIGRATIONS` — der
+Testlauf prüft das.
 
 ### Phase 1 — Loop geschlossen
 
@@ -104,34 +169,39 @@ braucht einen eigenen Eintrag in `MIGRATIONS` — der Testlauf prüft das.
   Hack kostet — auch das wird geprüft.
 
 ## Tests
-`cd ghostnet/tests && npm install && node testlauf.mjs` → **160/160 grün**.
+`cd ghostnet/tests && npm install && node testlauf.mjs` → **392/392 grün**.
 Drei Stufen:
 1. **Syntax** — `luau-compile` über jede `.luau`-Datei.
 2. **Struktur** — `--!strict` überall, keine veralteten APIs, jede Remote
    angemeldet, jedes Rate-Limit konfiguriert, nur SaveService am DataStore,
    Cooldowns auf `os.time()`, **kein Require-Kreis zwischen den Services**,
    zu jeder Schema-Version eine Migration.
+   Dazu die Sicherheitsregeln, die man mechanisch prüfen kann: Admin-Liste
+   nicht in Shared/Client, UserId-Prüfung vor allem anderen, gefährliche
+   Befehle StudioOnly, kein Preis aus dem Client-Paket, alle Gamepass- und
+   Produkt-IDs auf 0, alle Sound-IDs leer, nirgends eine erfundene Asset-Id,
+   `ProcessReceipt` speichert vor dem Bestätigen.
 3. **Logik** — echte Module in der Luau-VM: Config-Formeln, Balancing-Vorgaben,
    das komplette Missions-Regelwerk (Validierung inkl. Kreiserkennung,
-   Verfügbarkeit, jeder Schritt-Typ, eine ganze Mission durchgespielt) und das
-   Node-Breach-Minispiel (lösbar auf jeder Schwierigkeit, Lösung leckt nie).
+   Verfügbarkeit, jeder Schritt-Typ, eine ganze Mission durchgespielt), der
+   Markt (Kauf immer über Verkauf, Mean Reversion holt einen entgleisten Kurs
+   zurück, Lager wächst und Risiko sinkt mit dem Rig) und das Node-Breach-
+   Minispiel (lösbar auf jeder Schwierigkeit, Lösung leckt nie).
 
 ## Build
 `node ghostnet/tools/build-rbxlx.mjs` → `ghostnet/GhostNet.rbxlx`,
 direkt in Studio öffenbar. Alternativ Rojo mit `ghostnet/default.project.json`.
 
 ## Offen / bewusst nicht gebaut ➡️
-- **Missionsinhalte.** Die Registry ist leer, das ist die Definition of Done
-  von Phase A („MissionService läuft, ohne dass eine einzige Mission
-  existiert"). M01–M03 sind Phase B, M04–M05 Phase D.
-- **Phase C** (Darknet, Markt, Lager) — `MissionService.NotifyBuy` steht als
-  Haken bereit und wird bis dahin von niemandem aufgerufen.
-- **Phase E–G** (Admin-Panel, Robux-Store, Optik und Sound).
-- Der HUD zeigt Ablehnungen noch in Kurzform. Die ausführlichen Sätze mit
-  konkreten Zahlen („Braucht Tier 3 — dein schwächstes Bauteil ist RAM 1")
-  gehören zu Phase C.
-- Es gibt **keine Sounds**. Bewusst: `SoundCatalog` ist Phase G, und Asset-IDs
-  werden nicht erfunden.
+Der Bauplan aus dem Prompt ist abgearbeitet. Was fehlt, fehlt mit Absicht:
+- **Alle IDs sind Platzhalter** (Sounds `""`, Gamepässe und Produkte `0`,
+  Admin-Liste leer). Erfundene IDs schlagen stumm fehl — deshalb keine.
+  Das Spiel läuft ohne sie, es ist nur stumm und der Store leer.
+- **Zwei weitere Minispiele**, **prozeduraler Weltgenerator**, **Tagesziele**
+  und **Ranglisten** — Details am Ende von `PHASEN.md`.
+- **Kein echter Spielertest.** Alles unten in „So testest du das" ist im Code
+  umgesetzt und durch 392 automatische Prüfungen abgesichert, aber noch nicht
+  von einem Menschen in Studio durchgespielt.
 
 ## Bekannte Einschränkungen ⚠️
 - **Studio-Notbetrieb:** Ist „Studio Access to API Services" aus, kann kein
@@ -144,9 +214,16 @@ direkt in Studio öffenbar. Alternativ Rojo mit `ghostnet/default.project.json`.
   sehr schnell den Server, können bis zu 60 Sekunden (ein Autosave-Takt) fehlen.
 
 ## Manuelle Schritte außerhalb des Codes (Noah) 🔑
-- In Studio: **Game Settings → Security → Enable Studio Access to API Services**
-  einschalten, sonst wird nichts gespeichert.
-- Publishing, Gamepässe und Produkt-IDs: erst in Phase 5 relevant.
+1. **Studio:** Game Settings → Security → *Enable Studio Access to API Services*
+   einschalten, sonst wird nichts gespeichert.
+2. **Sounds:** `src/shared/SoundCatalog.luau` — Asset-IDs aus der Roblox-
+   Audiobibliothek als `"rbxassetid://ZAHL"` eintragen. Jeder leere Eintrag
+   bleibt einfach stumm, es geht nichts kaputt.
+3. **Store:** Creator Dashboard → Monetization → Passes bzw. Developer Products
+   anlegen, dann die IDs in `src/server/Systems/MonetizationService.luau`
+   eintragen (läuft über das Konto des Vaters).
+4. **Admin:** die eigene UserId in `src/server/AdminList.luau` eintragen. Ohne
+   Eintrag gibt es live keine Admins; im Studio bist du automatisch einer.
 
 ## Entscheidungen / Notizen 📌
 - GhostNet liegt als eigenständiges Spiel unter `ghostnet/`, unabhängig von

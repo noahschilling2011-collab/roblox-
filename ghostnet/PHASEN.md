@@ -1,7 +1,10 @@
 # GHOSTNET — Bauplan
 
-Reihenfolge ist bindend. Eine Phase wird komplett fertig, bevor die nächste
-anfängt. Neue Minispiele ohne funktionierenden Loop sind wertlos — der Spieler
+**Stand: Phase 0 bis G sind gebaut** (`Config.Version = "1.0.0"`).
+Was jetzt ansteht, steht ganz unten unter „Offen".
+
+Reihenfolge war bindend. Eine Phase wurde komplett fertig, bevor die nächste
+anfing. Neue Minispiele ohne funktionierenden Loop sind wertlos — der Spieler
 hätte dann mehr Rätsel, die zu nichts führen.
 
 ---
@@ -45,11 +48,11 @@ Zuerst das System, dann die Missionen.
   `WaypointSync`.
 - `MissionUI` — Auftragsanzeige und Wegpunkt-Marker.
 
-Die Registry ist absichtlich **leer**: Missionsinhalte gehören in Phase B und D.
+Registry gefüllt in Phase B (M01–M03) und D (M04–M05).
 
 ---
 
-## Phase B — Mission 1 bis 3: der Einstieg
+## Phase B — Mission 1 bis 3: der Einstieg ✅
 Leitregel für jede Mission: *sie ist gleichzeitig das Tutorial für ein System
 UND schaltet dieses System dauerhaft frei.* Nie eine Mission bauen, deren
 Inhalt danach verschwindet.
@@ -69,7 +72,7 @@ Inhalt danach verschwindet.
 
 ---
 
-## Phase C — Das Darknet: der eigentliche Loop
+## Phase C — Das Darknet: der eigentliche Loop ✅
 - `MarketService` — Preise bewegen sich **serverweit** je
   `Config.Market.TickSeconds`, mit Mean Reversion (ohne die driften Preise nach
   Stunden ins Absurde). Preisverlauf als Mini-Chart, sonst ist jeder Kauf ein
@@ -85,7 +88,7 @@ Inhalt danach verschwindet.
 
 ---
 
-## Phase D — Mission 4 und 5
+## Phase D — Mission 4 und 5 ✅
 - **M04 „Erste Ware"** — geführter erster Handel: kaufen, Preis beobachten,
   mit Gewinn verkaufen. Danach freier Handel.
 - **M05 „Die Bank"** — Außenkamera → Sicherheitstür → Tresorraum, steigender
@@ -95,7 +98,7 @@ Inhalt danach verschwindet.
 
 ---
 
-## Phase E — Admin-Panel
+## Phase E — Admin-Panel ✅
 Sicherheit zuerst: UserId-Liste in einem ModuleScript in `ServerScriptService`
 (**nie** in `ReplicatedStorage`), Prüfung als **erste Zeile** jedes Handlers,
 zusätzlich `RunService:IsStudio()` für Geld/Trace/Profil-Reset, jede Aktion mit
@@ -105,7 +108,7 @@ Umfang: Wirtschaft, Missionen, Welt, Markt, Debug — wichtigster Punkt ist
 
 ---
 
-## Phase F — Robux-Store
+## Phase F — Robux-Store ✅
 Erst wenn A bis D laufen. `MonetizationService` mit **allen IDs auf 0**.
 `UserOwnsGamePassAsync` beim Join, Ergebnis cachen; bei Fehler **nicht**
 annehmen, der Spieler besitze nichts. `PromptGamePassPurchaseFinished` für
@@ -115,7 +118,7 @@ Nichts verkaufen, das ein Rätsel löst oder anderen schadet.
 
 ---
 
-## Phase G — Optik
+## Phase G — Optik ✅
 Ein Stil überall über `UITheme`, Monospace für alles Technische, dezente
 Scanlines, Bewegung mit Bedeutung (0,15–0,3 s, `Quart`), Touch-Ziele ≥ 44 px.
 Welt: nächtliche Straßenzeile statt Baseplate, nasse Fahrbahn, Neonschilder,
@@ -187,3 +190,24 @@ Erst bauen, wenn Phase 1–3 laufen. Monetarisierung vor Retention verdient nich
 - `ProcessReceipt` idempotent: verarbeitete `PurchaseId` im Profil merken,
   erst gutschreiben und speichern, dann `PurchaseGranted`.
 - Kauf-Effekte laufen ausschließlich über `EconomyService`.
+
+
+---
+
+## Offen — was als Nächstes sinnvoll ist
+
+Der Bauplan aus dem Prompt ist abgearbeitet. Nichts davon ist mehr blockiert,
+also gilt jetzt: **erst mit echten Spielern testen, dann weiterbauen.**
+
+1. **IDs eintragen** (manuell, außerhalb des Codes): Sound-Assets in
+   `SoundCatalog.luau`, Gamepässe und Produkte in `MonetizationService.luau`,
+   die eigene UserId in `AdminList.luau`.
+2. **Zwei weitere Minispiele** — SignalMatch (Wellenform angleichen) und
+   CodeCrack (Mastermind). Das Register in `HackService` steht bereits;
+   Zuweisung über das vorhandene `HackType`-Attribut.
+3. **Prozeduraler Weltgenerator** — 25+ Ziele in vier Schwierigkeitszonen
+   statt der handgesetzten Objekte. Die Attribut-Logik bleibt gleich.
+4. **Tagesziele** (`ContractService`) — drei Aufträge pro Tag, Reset über
+   `os.time()`, im Profil gespeichert. Stärkster Hebel für Wiederkehr.
+5. **Ranglisten** — `leaderstats` (Banked, Tier), `OrderedDataStore`-Top-100
+   und eine „Ruhigste Hand"-Tafel (Hacks ohne einen einzigen Fehlversuch).
