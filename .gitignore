@@ -5,6 +5,8 @@
 *.rbxmx
 # Ausnahme: die fertige Spieldatei zum Direkt-Öffnen (aus src/ generiert)
 !/PlanetForge.rbxlx
+# Ausnahme: die fertige GhostNet-Spieldatei (aus ghostnet/src/ generiert)
+!/ghostnet/GhostNet.rbxlx
 *.rbxl.lock
 *.rbxlx.lock
 

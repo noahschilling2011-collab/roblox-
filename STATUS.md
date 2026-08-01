@@ -53,10 +53,13 @@ lassen (Scope offiziell erweitern) oder für den ersten Launch deaktivieren.
 ## Bekannte Bugs 🐞
 - (keine offen erfasst; letzter Testlauf 24/24 grün)
 
-## Nebenprojekt im selben Repo 📦
-- Unter `turmfall/` liegt ein zweites, eigenständiges Spiel (TURMFALL, physik-basiertes
-  Rundenspiel) mit eigener `Turmfall.rbxlx`. Es ist von PlanetForge unabhängig und wird
-  von diesem Bauplan NICHT abgedeckt.
+## Nebenprojekte im selben Repo 📦
+Beide sind von PlanetForge unabhängig und werden von diesem Bauplan NICHT abgedeckt.
+Sie haben eigene `CLAUDE.md`/`PHASEN.md`/`STATUS.md` in ihrem Ordner — die gelten dort
+vor dieser Datei.
+- `turmfall/` — TURMFALL, physik-basiertes Rundenspiel, eigene `Turmfall.rbxlx`.
+- `ghostnet/` — GHOSTNET, Hacking-Spiel (dunkles Fake-OS), eigene `GhostNet.rbxlx`.
+  Stand: Phase 1 fertig (Loop geschlossen: Speichern, Trace/Bust, Hehler, Rig-Shop).
 
 ## Manuelle Schritte außerhalb des Codes (Noah) 🔑
 - Publishing + Creator Dashboard: Gamepässe/Produkte anlegen, echte IDs in

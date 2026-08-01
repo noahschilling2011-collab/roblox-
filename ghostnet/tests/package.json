@@ -1,0 +1,12 @@
+{
+  "name": "ghostnet-tests",
+  "private": true,
+  "type": "module",
+  "description": "Syntax- und Logikpruefung fuer GhostNet in einer echten Luau-VM (WASM)",
+  "scripts": {
+    "test": "node testlauf.mjs"
+  },
+  "dependencies": {
+    "luau-web": "^1.4.0"
+  }
+}

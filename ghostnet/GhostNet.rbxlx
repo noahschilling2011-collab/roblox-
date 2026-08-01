@@ -1,0 +1,5696 @@
+<roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4">
+<Item class="Workspace" referent="GN31">
+<Properties>
+<string name="Name">Workspace</string>
+<float name="Gravity">196.2</float>
+</Properties>
+<Item class="Part" referent="GN26">
+<Properties>
+<string name="Name">Baseplate</string>
+<bool name="Anchored">true</bool>
+<bool name="CanCollide">true</bool>
+<CoordinateFrame name="CFrame"><X>0</X><Y>-8</Y><Z>0</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
+<Vector3 name="size"><X>512</X><Y>16</Y><Z>512</Z></Vector3>
+<Color3uint8 name="Color3uint8">4279374874</Color3uint8>
+<token name="TopSurface">0</token>
+<token name="BottomSurface">0</token>
+</Properties>
+</Item>
+<Item class="SpawnLocation" referent="GN27">
+<Properties>
+<string name="Name">SpawnLocation</string>
+<bool name="Anchored">true</bool>
+<bool name="CanCollide">true</bool>
+<CoordinateFrame name="CFrame"><X>0</X><Y>0.5</Y><Z>10</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
+<Vector3 name="size"><X>16</X><Y>1</Y><Z>16</Z></Vector3>
+<Color3uint8 name="Color3uint8">4278213225</Color3uint8>
+<token name="TopSurface">0</token>
+<token name="BottomSurface">0</token>
+</Properties>
+</Item>
+</Item>
+<Item class="Lighting" referent="GN28">
+<Properties>
+<string name="Name">Lighting</string>
+<token name="Technology">4</token>
+<string name="TimeOfDay">00:00:00</string>
+<bool name="GlobalShadows">true</bool>
+<float name="Brightness">1</float>
+<float name="EnvironmentDiffuseScale">0.35</float>
+<float name="EnvironmentSpecularScale">0.6</float>
+<float name="ShadowSoftness">0.3</float>
+<Color3 name="Ambient"><R>0.05</R><G>0.06</G><B>0.08</B></Color3>
+<Color3 name="OutdoorAmbient"><R>0.08</R><G>0.09</G><B>0.13</B></Color3>
+<Color3 name="FogColor"><R>0.03</R><G>0.04</G><B>0.07</B></Color3>
+<float name="FogEnd">420</float>
+</Properties>
+<Item class="BloomEffect" referent="GN29">
+<Properties>
+<string name="Name">Bloom</string>
+<bool name="Enabled">true</bool>
+<float name="Intensity">0.6</float>
+<float name="Size">28</float>
+<float name="Threshold">0.9</float>
+</Properties>
+</Item>
+<Item class="ColorCorrectionEffect" referent="GN30">
+<Properties>
+<string name="Name">ColorCorrection</string>
+<bool name="Enabled">true</bool>
+<float name="Brightness">0</float>
+<float name="Contrast">0.12</float>
+<float name="Saturation">0.08</float>
+<Color3 name="TintColor"><R>0.9</R><G>0.97</G><B>1</B></Color3>
+</Properties>
+</Item>
+</Item>
+<Item class="ReplicatedStorage" referent="GN32">
+<Properties>
+<string name="Name">ReplicatedStorage</string>
+</Properties>
+<Item class="Folder" referent="GN6">
+<Properties>
+<string name="Name">Shared</string>
+</Properties>
+<Item class="ModuleScript" referent="GN1">
+<Properties>
+<string name="Name">Config</string>
+<ProtectedString name="Source">-- ReplicatedStorage/Shared/Config.luau
+--!strict
+-- GHOSTNET :: Zentrale Balancing-Datei.
+-- Regel: Jede Zahl, die man zum Austarieren anfassen will, steht HIER und
+-- nirgendwo sonst. Server und Client lesen dieselbe Datei.
+
+local Config = {}
+
+Config.Version = "0.2.0" -- Phase 1: Loop geschlossen (Save, Trace, Verkauf, Shop)
+
+-- CollectionService-Tags. Ein Part mit dem Tag ist ein Hack-Ziel bzw. ein Hehler.
+Config.HackableTag = "GhostNetHackable"
+Config.FenceTag = "GhostNetFence"
+
+--==========================================================================
+-- 1. REICHWEITE (Netzwerkkarte)
+--==========================================================================
+Config.Range = {
+	Base = 18, -- Studs auf NetCard 1
+	PerNetCard = 6, -- pro weiterer Stufe
+	Tolerance = 4, -- Lag-Puffer bei der Serverpruefung
+}
+
+function Config.GetRange(netCardLevel: number): number
+	return Config.Range.Base + Config.Range.PerNetCard * (netCardLevel - 1)
+end
+
+--==========================================================================
+-- 2. ZEIT (CPU)
+--==========================================================================
+Config.Time = {
+	Base = 25, -- Sekunden auf CPU 1
+	PerCPU = 4, -- pro weiterer Stufe
+	PerDifficulty = 3, -- Zuschlag pro Schwierigkeitsgrad
+}
+
+function Config.GetTimeLimit(cpuLevel: number, difficulty: number): number
+	return Config.Time.Base + Config.Time.PerCPU * (cpuLevel - 1) + Config.Time.PerDifficulty * difficulty
+end
+
+--==========================================================================
+-- 3. VERSUCHE (RAM)
+--==========================================================================
+Config.Attempts = {
+	Base = 3, -- auf RAM 1
+	PerRAM = 1,
+	Cap = 7,
+}
+
+function Config.GetAttempts(ramLevel: number): number
+	return math.min(Config.Attempts.Cap, Config.Attempts.Base + Config.Attempts.PerRAM * (ramLevel - 1))
+end
+
+--==========================================================================
+-- 4. TRACE (Kuehlung)
+-- Die einzige Spannungsquelle des Spiels. Steigt bei jedem Hack, faellt im
+-- Leerlauf und beim Verkauf. Bei 100 ist alles Unverkaufte weg.
+--==========================================================================
+Config.Trace = {
+	Max = 100,
+	GainPerDifficulty = 4.0, -- Default, wenn der Part kein TraceGain-Attribut hat
+	CoolingReduction = 0.08, -- -8% Trace-Gewinn pro Kuehlungsstufe
+	AbortFactor = 0.5, -- Abbruch kostet halben Trace, damit er kein Free-Retry ist
+	FailFactor = 0.75, -- Fehlschlag kostet 75% Trace
+
+	-- Abkuehlung. Hoeher = entspannter, niedriger = man muss oefter verkaufen.
+	-- 0.25/s heisst: ein voller Balken braucht rund 6,5 Minuten Nichtstun.
+	DecayPerSecond = 0.25, -- Grundabkuehlung auf Kuehlung 1
+	DecayPerCooling = 0.15, -- zusaetzlich je Stufe darueber (Kuehlung 5 = 0.85/s)
+	DecayDelay = 3.0, -- so viele Sekunden Ruhe, bevor die Abkuehlung einsetzt
+	DecayTick = 0.25, -- Rechen-Takt des Abkuehl-Loops (reine Performance-Zahl)
+
+	-- Bust bei 100.
+	AfterBust = 25, -- hoeher = der naechste Bust kommt schneller
+	BustLockSeconds = 15, -- so lange sind neue Hacks danach gesperrt
+
+	-- Anzeige-Schwellen im HUD.
+	WarnAt = 70, -- ab hier pulsiert der Balken
+	CriticalAt = 90, -- ab hier rot und schneller
+
+	-- Wie oft der Server den Balken zum Client schickt.
+	SyncInterval = 0.4,
+	SyncEpsilon = 0.4, -- kleinere Aenderungen werden gesammelt statt gesendet
+}
+
+function Config.GetTraceGain(baseGain: number, coolingLevel: number): number
+	local reduction = 1 - Config.Trace.CoolingReduction * (coolingLevel - 1)
+	return baseGain * math.max(0.2, reduction)
+end
+
+-- Abkuehlung pro Sekunde. Wird auch fuer die Offline-Zeit benutzt.
+function Config.GetTraceDecay(coolingLevel: number): number
+	return Config.Trace.DecayPerSecond + Config.Trace.DecayPerCooling * (coolingLevel - 1)
+end
+
+--==========================================================================
+-- 5. BELOHNUNG
+--==========================================================================
+Config.Reward = {
+	Base = 40,
+	Exponent = 1.35,
+}
+
+function Config.GetReward(difficulty: number): number
+	return math.floor(Config.Reward.Base * difficulty ^ Config.Reward.Exponent)
+end
+
+--==========================================================================
+-- 6. COOLDOWN
+--==========================================================================
+Config.Cooldown = {
+	Default = 90, -- Sekunden, pro Spieler und Ziel
+	AfterFail = 20, -- kuerzer nach einem Fehlschlag, damit man es nochmal darf
+	-- Cooldowns liegen seit Phase 1 im Profil. Alles, was laenger als das
+	-- abgelaufen ist, fliegt beim Speichern raus, damit das Profil nicht waechst.
+	KeepSeconds = 86400,
+}
+
+--==========================================================================
+-- 7. RIG
+--==========================================================================
+Config.Rig = {
+	MaxLevel = 5,
+	Components = { "CPU", "RAM", "Cooling", "NetCard" },
+	StartLevels = { CPU = 1, RAM = 1, Cooling = 1, NetCard = 1 },
+
+	-- Anzeigetexte fuer den Shop. Stehen hier, damit die UI keine eigenen
+	-- Strings erfindet.
+	Labels = {
+		CPU = "CPU",
+		RAM = "RAM",
+		Cooling = "KUEHLUNG",
+		NetCard = "NETZKARTE",
+	},
+	Blurbs = {
+		CPU = "mehr Zeit pro Einbruch",
+		RAM = "mehr Versuche, bevor das Rig abstuerzt",
+		Cooling = "weniger Trace, schnellere Abkuehlung",
+		NetCard = "groessere Reichweite zum Ziel",
+	},
+}
+
+-- Was eine Stufe konkret bringt - nur fuer die Shop-Anzeige.
+function Config.GetRigEffect(component: string, level: number): string
+	if component == "CPU" then
+		return ("%d s Grundzeit"):format(Config.Time.Base + Config.Time.PerCPU * (level - 1))
+	elseif component == "RAM" then
+		return ("%d Versuche"):format(Config.GetAttempts(level))
+	elseif component == "Cooling" then
+		local reduction = math.floor((1 - Config.GetTraceGain(1, level)) * 100 + 0.5)
+		return ("-%d%% Trace  //  %.2f/s Abkuehlung"):format(reduction, Config.GetTraceDecay(level))
+	elseif component == "NetCard" then
+		return ("%d m Reichweite"):format(Config.GetRange(level))
+	end
+	return "-"
+end
+
+--==========================================================================
+-- 8. RIG-UPGRADES (Shop)
+-- Vorgabe: das erste Upgrade soll nach 2-3 erfolgreichen Hacks drin sein.
+-- Die Kamera (D2) bringt 101 CRY, nach 12% Hehler-Gebuehr 89 auf die Bank -
+-- 220 CRY sind also rund 2,5 Kamera-Hacks.
+-- Base runter = schnellerer Einstieg. Growth runter = flachere Kurve spaet.
+--==========================================================================
+Config.Upgrade = {
+	Base = 220, -- Preis fuer die zweite Stufe bei Faktor 1.0
+	Growth = 2.4, -- Preis mal diesem Wert je weiterer Stufe
+	-- Feintuning je Bauteil. Kuehlung ist billig, weil sie sich nicht sofort
+	-- belohnend anfuehlt und sonst nie gekauft wuerde.
+	ComponentFactor = {
+		CPU = 1.0,
+		RAM = 1.15,
+		Cooling = 0.9,
+		NetCard = 1.05,
+	},
+}
+
+-- Preis fuer den Sprung AUF targetLevel. Der Server rechnet das selbst aus,
+-- der Client zeigt es nur an.
+function Config.GetUpgradeCost(component: string, targetLevel: number): number
+	local factor = (Config.Upgrade.ComponentFactor :: any)[component]
+	if typeof(factor) ~= "number" then
+		return math.huge
+	end
+	if targetLevel &lt;= 1 or targetLevel &gt; Config.Rig.MaxLevel then
+		return math.huge
+	end
+	return math.floor(Config.Upgrade.Base * factor * Config.Upgrade.Growth ^ (targetLevel - 2))
+end
+
+--==========================================================================
+-- 9. VERKAUF (Hehler)
+-- Unsold ist heiss, Banked ist sicher. Der Weg zum Hehler kostet Zeit, der
+-- Trace laeuft weiter - daraus entsteht "noch ein Ziel oder jetzt abliefern?".
+--==========================================================================
+Config.Sell = {
+	Range = 12, -- Studs bis zur Oberflaeche des Hehler-Parts
+	Tolerance = 4, -- gleicher Lag-Puffer wie beim Hacken
+	FeePercent = 0.12, -- Hehler-Gebuehr. Hoch = Verkaufen tut weh, niedrig = egal.
+	TraceRelief = 18, -- so viel Trace nimmt ein Verkauf weg
+	MinAmount = 1, -- darunter lohnt der Klick nicht
+}
+
+-- Liefert (brutto, gebuehr, netto).
+function Config.GetSellPayout(unsold: number): (number, number, number)
+	local gross = math.max(0, math.floor(unsold))
+	local fee = math.floor(gross * Config.Sell.FeePercent)
+	return gross, fee, gross - fee
+end
+
+--==========================================================================
+-- 10. SPEICHERN
+--==========================================================================
+Config.Save = {
+	SchemaVersion = 1, -- hochzaehlen, wenn sich das Profil-Schema aendert
+	StoreName = "GhostNetPlayers_v1",
+	KeyFormat = "ghostnet_player_%d",
+
+	Interval = 60, -- Autosave-Takt in Sekunden
+	MinInterval = 8, -- Mindestabstand zwischen zwei Speicherungen desselben Profils
+	MaxRetries = 4, -- danach gilt der Zugriff als gescheitert
+	StudioRetries = 2, -- im Studio kuerzer: ohne API-Zugriff scheitert es sowieso
+	RetryBase = 1.0, -- erste Wartezeit
+	RetryFactor = 2.0, -- Verdopplung je Versuch (1s, 2s, 4s)
+	BindToCloseSeconds = 20, -- so lange haelt der Server beim Herunterfahren an
+	LeaveSaveWait = 6, -- so lange wartet der Abschluss-Save auf einen laufenden
+
+	-- Wenn das Laden endgueltig scheitert, wird gekickt statt mit leerem Profil
+	-- weitergespielt - sonst ueberschreibt der Save beim Verlassen echten
+	-- Fortschritt mit Nullen.
+	KickMessage = "GHOSTNET: Dein Profil konnte nicht geladen werden.\nBitte in ein paar Sekunden neu beitreten - so geht nichts verloren.",
+	LockKickMessage = "GHOSTNET: Du spielst gerade auf einem anderen Server.\nDiese aeltere Sitzung wurde beendet, damit dein Fortschritt nicht doppelt laeuft.",
+
+	-- NUR im Studio: sind DataStores nicht erreichbar (API-Zugriff aus), laeuft
+	-- das Spiel mit einem Profil im Arbeitsspeicher weiter, damit man ueberhaupt
+	-- testen kann. Live ist dieser Pfad durch RunService:IsStudio() gesperrt.
+	StudioMemoryFallback = true,
+}
+
+--==========================================================================
+-- 11. RATE-LIMITS (Token-Bucket pro Spieler und Remote)
+-- Jede neue Remote braucht hier einen Eintrag, sonst wird sie verworfen.
+--==========================================================================
+Config.RateLimits = {
+	HackRequestStart = { Rate = 2, Burst = 3 },
+	HackInput = { Rate = 12, Burst = 20 },
+	HackAbort = { Rate = 4, Burst = 6 },
+	SellRequest = { Rate = 1, Burst = 3 },
+	ShopPurchase = { Rate = 2, Burst = 4 },
+}
+
+--==========================================================================
+-- 12. NODE-BREACH
+--==========================================================================
+Config.NodeBreach = {
+	-- Pro Schwierigkeitsband: Gittergroesse, Anzahl Relays, Anteil sichtbares
+	-- ICE und Anteil verstecktes ICE (nur DAS kostet Versuche).
+	Tiers = {
+		{ MaxDifficulty = 2, Width = 5, Height = 5, Relays = 1, Ice = 0.15, MaskedIce = 0.06 },
+		{ MaxDifficulty = 4, Width = 6, Height = 6, Relays = 2, Ice = 0.20, MaskedIce = 0.09 },
+		{ MaxDifficulty = 6, Width = 6, Height = 6, Relays = 3, Ice = 0.25, MaskedIce = 0.12 },
+		{ MaxDifficulty = 8, Width = 7, Height = 7, Relays = 3, Ice = 0.30, MaskedIce = 0.15 },
+		{ MaxDifficulty = 10, Width = 8, Height = 8, Relays = 4, Ice = 0.32, MaskedIce = 0.18 },
+	},
+	PathSearchTries = 12, -- so viele Pfade werden erzeugt, der passendste gewinnt
+	PathLengthBonus = 2, -- Wunschlaenge = Width + Height + Bonus
+}
+
+--==========================================================================
+-- 13. DEFAULTS FUER HACK-ZIELE
+-- Ein Part braucht KEIN einziges Attribut. Alles, was fehlt, kommt von hier.
+--==========================================================================
+Config.TargetDefaults = {
+	Difficulty = 1,
+	HackType = "NodeBreach",
+	Reward = -1, -- -1 = aus Difficulty berechnen
+	TraceGain = -1, -- -1 = aus Difficulty berechnen
+	Cooldown = -1, -- -1 = Config.Cooldown.Default
+	RequiredLevel = 1,
+	OnSuccess = "Offline",
+	DisplayName = "", -- "" = Instanzname benutzen
+	DownTime = 30, -- wie lange der Welteffekt haelt
+}
+
+--==========================================================================
+-- SESSION / LAUFZEIT
+--==========================================================================
+Config.Session = {
+	TickRate = 0.25, -- Sekunden zwischen Ablauf- und Distanzpruefung
+	GraceAfterStart = 0.5, -- kurze Schonfrist, bevor die Distanz geprueft wird
+}
+
+--==========================================================================
+-- UI-FARBEN (Fake-OS)
+--==========================================================================
+Config.Theme = {
+	Background = Color3.fromRGB(6, 8, 11),
+	Panel = Color3.fromRGB(13, 17, 23),
+	PanelLight = Color3.fromRGB(22, 28, 37),
+	Line = Color3.fromRGB(38, 48, 62),
+	Cyan = Color3.fromRGB(0, 229, 255),
+	CyanDim = Color3.fromRGB(0, 120, 140),
+	Magenta = Color3.fromRGB(255, 45, 149),
+	Amber = Color3.fromRGB(255, 176, 0),
+	Text = Color3.fromRGB(198, 214, 226),
+	TextDim = Color3.fromRGB(96, 116, 134),
+	Ice = Color3.fromRGB(64, 78, 96),
+	Green = Color3.fromRGB(0, 230, 118), -- Verkauf und Bank
+}
+
+table.freeze(Config.Theme)
+
+return Config
+</ProtectedString>
+</Properties>
+</Item>
+<Item class="ModuleScript" referent="GN2">
+<Properties>
+<string name="Name">Geometry</string>
+<ProtectedString name="Source">-- ReplicatedStorage/Shared/Geometry.luau
+--!strict
+-- GHOSTNET :: Die eine Abstandsrechnung, die Server und Client benutzen.
+--
+-- Warum geteilt: Der HUD zeigt "3 m" an und der Server entscheidet "zu weit".
+-- Rechnen beide unterschiedlich, sieht das im Spiel nach einem Bug aus.
+-- Deshalb liegt die Formel genau einmal hier.
+
+local Geometry = {}
+
+-- Abstand zur OBERFLAECHE des Parts, nicht zum Mittelpunkt. Sonst waeren
+-- grosse Objekte (Tueren, Werbetafeln, Tresen) unfair weit weg.
+function Geometry.SurfaceDistance(part: BasePart, position: Vector3): number
+	if not part.Parent then
+		return math.huge
+	end
+	local rel = part.CFrame:PointToObjectSpace(position)
+	local half = part.Size * 0.5
+	local clamped = Vector3.new(
+		math.clamp(rel.X, -half.X, half.X),
+		math.clamp(rel.Y, -half.Y, half.Y),
+		math.clamp(rel.Z, -half.Z, half.Z)
+	)
+	return (rel - clamped).Magnitude
+end
+
+-- Position des Spielers, aber nur wenn er wirklich lebendig in der Welt steht.
+-- nil heisst: gerade kein gueltiger Character (respawnt, tot, noch nicht geladen).
+function Geometry.AlivePosition(player: Player): Vector3?
+	local character = player.Character
+	if not character then
+		return nil
+	end
+	local root = character:FindFirstChild("HumanoidRootPart")
+	if not root or not root:IsA("BasePart") then
+		return nil
+	end
+	local humanoid = character:FindFirstChildOfClass("Humanoid")
+	if not humanoid or humanoid.Health &lt;= 0 then
+		return nil
+	end
+	return root.Position
+end
+
+return Geometry
+</ProtectedString>
+</Properties>
+</Item>
+<Item class="ModuleScript" referent="GN3">
+<Properties>
+<string name="Name">Remotes</string>
+<ProtectedString name="Source">-- ReplicatedStorage/Shared/Remotes.luau
+--!strict
+-- GHOSTNET :: Erzeugt (Server) bzw. wartet auf (Client) alle Netzwerkobjekte.
+-- Neue Remotes werden ausschliesslich in den Listen unten eingetragen.
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+
+local FOLDER_NAME = "GhostNetRemotes"
+
+-- C-&gt;S : Client schickt ausschliesslich Eingaben, niemals Ergebnisse.
+-- S-&gt;C : Server schickt Zustand und Ergebnisse.
+local EVENT_NAMES = {
+	"HackRequestStart", -- C-&gt;S  { targetId }
+	"HackInput", -- C-&gt;S  { sessionId, step, payload }
+	"HackAbort", -- C-&gt;S  { sessionId }
+	"HackSessionStarted", -- S-&gt;C  { sessionId, hackType, public, deadline, attempts, ... }
+	"HackDenied", -- S-&gt;C  { targetId, reason, seconds }  Start abgelehnt
+	"HackFeedback", -- S-&gt;C  { sessionId, step, ok, reason, ... }
+	"HackResolved", -- S-&gt;C  { sessionId, success, reason, reward, traceDelta, effect }
+	"EconomySync", -- S-&gt;C  { banked, unsold, rig, tier }
+	"SellRequest", -- C-&gt;S  { }            Verkauf beim Hehler
+	"SellResult", -- S-&gt;C  { ok, reason, gross, fee, net, seconds }
+	"TraceSync", -- S-&gt;C  { trace, max, locked, lockSeconds, bust? }
+}
+
+local FUNCTION_NAMES: { string } = {
+	"ShopPurchase", -- C-&gt;S-&gt;C  { component } -&gt; { ok, reason, level, cost, ... }
+}
+
+local Remotes = {}
+
+local folder: Folder
+if RunService:IsServer() then
+	local existing = ReplicatedStorage:FindFirstChild(FOLDER_NAME)
+	if existing then
+		folder = existing :: Folder
+	else
+		folder = Instance.new("Folder")
+		folder.Name = FOLDER_NAME
+		folder.Parent = ReplicatedStorage
+	end
+
+	for _, name in EVENT_NAMES do
+		if not folder:FindFirstChild(name) then
+			local ev = Instance.new("RemoteEvent")
+			ev.Name = name
+			ev.Parent = folder
+		end
+	end
+	for _, name in FUNCTION_NAMES do
+		if not folder:FindFirstChild(name) then
+			local fn = Instance.new("RemoteFunction")
+			fn.Name = name
+			fn.Parent = folder
+		end
+	end
+else
+	folder = ReplicatedStorage:WaitForChild(FOLDER_NAME, 30) :: Folder
+	if not folder then
+		error("[GHOSTNET] Remotes-Ordner nicht gefunden - laeuft der Server-Bootstrap?")
+	end
+end
+
+-- Zugriff: Remotes.HackInput usw.
+setmetatable(Remotes, {
+	__index = function(_, key: string): any
+		local inst = folder:FindFirstChild(key)
+		if not inst then
+			if RunService:IsClient() then
+				inst = folder:WaitForChild(key, 15)
+			end
+		end
+		if not inst then
+			error(("[GHOSTNET] Unbekanntes Remote '%s'"):format(key), 2)
+		end
+		return inst
+	end,
+})
+
+return Remotes
+</ProtectedString>
+</Properties>
+</Item>
+<Item class="ModuleScript" referent="GN4">
+<Properties>
+<string name="Name">Types</string>
+<ProtectedString name="Source">-- ReplicatedStorage/Shared/Types.luau
+--!strict
+-- GHOSTNET :: Gemeinsame Luau-Typen fuer Server und Client.
+
+export type RigLevels = {
+	CPU: number,
+	RAM: number,
+	Cooling: number,
+	NetCard: number,
+}
+
+-- Zaehler fuers Profil. Phase 3 haengt hier Tagesziele und Ranglisten dran.
+export type Stats = {
+	Hacks: number, -- erfolgreiche Einbrueche
+	Fails: number, -- gescheiterte oder abgebrochene Einbrueche
+	Busts: number, -- wie oft der Trace 100 erreicht hat
+	Sales: number, -- Verkaeufe beim Hehler
+	Earned: number, -- gesamte netto Einnahmen
+	Upgrades: number, -- gekaufte Rig-Stufen
+}
+
+-- Das gespeicherte Spielerprofil. Einzige Wahrheit fuer alles, was einen
+-- Serverwechsel ueberleben muss. Alle Zeitstempel sind os.time() (Unix-Zeit).
+export type Profile = {
+	SchemaVersion: number,
+	Banked: number, -- sicher
+	Unsold: number, -- heiss, geht beim Bust verloren
+	Rig: RigLevels,
+	Trace: number, -- 0 .. Config.Trace.Max
+	Cooldowns: { [string]: number }, -- [targetId] = Unix-Zeit, ab der wieder erlaubt
+	Stats: Stats,
+	LastSeen: number, -- Unix-Zeit des letzten Speicherns
+	SessionId: string, -- Session-Lock gegen Doppel-Sitzungen
+}
+
+-- Ein registriertes Hack-Ziel in der Welt.
+export type HackTarget = {
+	Id: string,
+	Part: BasePart,
+	DisplayName: string,
+	Difficulty: number,
+	HackType: string,
+	Reward: number,
+	TraceGain: number,
+	Cooldown: number,
+	RequiredLevel: number,
+	OnSuccess: string,
+	DownTime: number,
+	DownUntil: number, -- 0 = einsatzbereit (os.clock, rein serverintern)
+}
+
+-- Was der Client ueber ein Node-Breach-Gitter erfahren darf.
+-- Verstecktes ICE ist hier als OPEN (0) getarnt.
+export type NodeBreachPublic = {
+	Width: number,
+	Height: number,
+	Cells: { number }, -- 0 Open, 1 Ice, 2 Relay, 3 Start, 4 Exit
+	Start: number,
+	Exit: number,
+	Relays: number,
+}
+
+-- Serverseitiger Rätselzustand. Verlaesst den Server NIE.
+export type NodeBreachState = {
+	Width: number,
+	Height: number,
+	Cells: { number }, -- inkl. 5 = MaskedIce
+	Start: number,
+	Exit: number,
+	RelayTotal: number,
+	RelaysVisited: number,
+	Path: { number },
+	InPath: { [number]: boolean },
+	Revealed: { [number]: boolean },
+	Solution: { number }, -- fuer den Auto-Solver in Phase 3
+}
+
+-- Ergebnis einer einzelnen Spielereingabe, vom Minispiel zurueckgegeben.
+export type InputResult = {
+	Ok: boolean,
+	Reason: string,
+	CostsAttempt: boolean,
+	Solved: boolean,
+	Feedback: { [string]: any },
+}
+
+-- Eine laufende Hack-Session auf dem Server.
+export type Session = {
+	Id: string,
+	Player: Player,
+	TargetId: string,
+	HackType: string,
+	Difficulty: number,
+	Range: number,
+	ExpectedStep: number,
+	AttemptsLeft: number,
+	Deadline: number, -- workspace:GetServerTimeNow()
+	StartedAt: number,
+	State: any, -- minispielspezifisch
+	Resolved: boolean,
+}
+
+return {}
+</ProtectedString>
+</Properties>
+</Item>
+<Item class="ModuleScript" referent="GN5">
+<Properties>
+<string name="Name">UITheme</string>
+<ProtectedString name="Source">-- ReplicatedStorage/Shared/UITheme.luau
+--!strict
+-- GHOSTNET :: Bausteine fuer das Fake-OS-Aussehen.
+-- Damit HackUI und HUD nicht dreimal dieselben Farben und Rahmen bauen.
+
+local TweenService = game:GetService("TweenService")
+local Config = require(script.Parent.Config)
+
+local UITheme = {}
+
+UITheme.Color = Config.Theme
+UITheme.Font = Enum.Font.Code
+
+UITheme.Tween = {
+	Fast = TweenInfo.new(0.12, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+	Normal = TweenInfo.new(0.25, Enum.EasingStyle.Quart, Enum.EasingDirection.Out),
+	Slow = TweenInfo.new(0.45, Enum.EasingStyle.Quint, Enum.EasingDirection.Out),
+}
+
+--== Grundbausteine ========================================================
+
+function UITheme.Frame(props: { [string]: any }): Frame
+	local f = Instance.new("Frame")
+	f.BackgroundColor3 = UITheme.Color.Panel
+	f.BorderSizePixel = 0
+	for k, v in props do
+		(f :: any)[k] = v
+	end
+	return f
+end
+
+function UITheme.Label(props: { [string]: any }): TextLabel
+	local l = Instance.new("TextLabel")
+	l.BackgroundTransparency = 1
+	l.Font = UITheme.Font
+	l.TextColor3 = UITheme.Color.Text
+	l.TextSize = 14
+	l.TextXAlignment = Enum.TextXAlignment.Left
+	l.RichText = true
+	for k, v in props do
+		(l :: any)[k] = v
+	end
+	return l
+end
+
+function UITheme.Button(props: { [string]: any }): TextButton
+	local b = Instance.new("TextButton")
+	b.BackgroundColor3 = UITheme.Color.PanelLight
+	b.BorderSizePixel = 0
+	b.AutoButtonColor = false
+	b.Font = UITheme.Font
+	b.TextColor3 = UITheme.Color.Text
+	b.TextSize = 14
+	b.Text = ""
+	for k, v in props do
+		(b :: any)[k] = v
+	end
+	return b
+end
+
+-- 1px-Rahmen im Terminal-Look.
+function UITheme.Stroke(parent: GuiObject, color: Color3?, thickness: number?): UIStroke
+	local s = Instance.new("UIStroke")
+	s.Color = color or UITheme.Color.Line
+	s.Thickness = thickness or 1
+	s.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	s.Parent = parent
+	return s
+end
+
+function UITheme.Corner(parent: GuiObject, radius: number?): UICorner
+	local c = Instance.new("UICorner")
+	c.CornerRadius = UDim.new(0, radius or 3)
+	c.Parent = parent
+	return c
+end
+
+function UITheme.Padding(parent: GuiObject, px: number): UIPadding
+	local p = Instance.new("UIPadding")
+	p.PaddingTop = UDim.new(0, px)
+	p.PaddingBottom = UDim.new(0, px)
+	p.PaddingLeft = UDim.new(0, px)
+	p.PaddingRight = UDim.new(0, px)
+	p.Parent = parent
+	return p
+end
+
+--== Scanlines =============================================================
+-- Prozedural aus duennen Frames gebaut, weil hier keine Textur-Asset-ID
+-- hochgeladen werden kann. Optisch identisch, kostet ein paar Instanzen.
+-- Liegt oben drauf und schluckt keine Klicks.
+
+function UITheme.Scanlines(parent: GuiObject, spacing: number?): Frame
+	local gap = spacing or 4
+	local holder = UITheme.Frame({
+		Name = "Scanlines",
+		BackgroundTransparency = 1,
+		Size = UDim2.fromScale(1, 1),
+		ZIndex = 50,
+		ClipsDescendants = true,
+	})
+
+	local lines = math.clamp(math.floor(parent.AbsoluteSize.Y / gap), 20, 220)
+	for i = 0, lines do
+		local line = UITheme.Frame({
+			Name = "L",
+			BackgroundColor3 = Color3.new(0, 0, 0),
+			BackgroundTransparency = 0.88,
+			BorderSizePixel = 0,
+			Size = UDim2.new(1, 0, 0, 1),
+			Position = UDim2.new(0, 0, 0, i * gap),
+			ZIndex = 50,
+		})
+		line.Parent = holder
+	end
+
+	-- langsam wandernder Helligkeitsstreifen
+	local sweep = UITheme.Frame({
+		Name = "Sweep",
+		BackgroundColor3 = UITheme.Color.Cyan,
+		BackgroundTransparency = 0.96,
+		Size = UDim2.new(1, 0, 0, 90),
+		Position = UDim2.new(0, 0, 0, -90),
+		ZIndex = 51,
+	})
+	local grad = Instance.new("UIGradient")
+	grad.Rotation = 90
+	grad.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 1),
+		NumberSequenceKeypoint.new(0.5, 0),
+		NumberSequenceKeypoint.new(1, 1),
+	})
+	grad.Parent = sweep
+	sweep.Parent = holder
+
+	task.spawn(function()
+		while sweep.Parent do
+			sweep.Position = UDim2.new(0, 0, 0, -90)
+			local t = TweenService:Create(sweep, TweenInfo.new(3.2, Enum.EasingStyle.Linear), {
+				Position = UDim2.new(0, 0, 1, 0),
+			})
+			t:Play()
+			t.Completed:Wait()
+			task.wait(2.4)
+		end
+	end)
+
+	holder.Parent = parent
+	return holder
+end
+
+--== Terminal-Tippanimation ================================================
+-- Gibt eine Funktion zurueck, die eine Zeile Text zeichenweise ausgibt.
+-- cancelled() darf true liefern, dann bricht die Ausgabe sofort ab.
+
+function UITheme.TypeInto(label: TextLabel, text: string, cps: number?, cancelled: (() -&gt; boolean)?)
+	local speed = cps or 90
+	local total = #text
+	label.Text = ""
+	local shown = 0
+	local acc = 0
+	while shown &lt; total do
+		if cancelled and cancelled() then
+			label.Text = text
+			return
+		end
+		acc += task.wait() * speed
+		local step = math.floor(acc)
+		if step &gt;= 1 then
+			acc -= step
+			shown = math.min(total, shown + step)
+			label.Text = string.sub(text, 1, shown)
+		end
+	end
+	label.Text = text
+end
+
+--== Kleine Helfer =========================================================
+
+function UITheme.Flash(obj: GuiObject, color: Color3)
+	local original = obj.BackgroundColor3
+	obj.BackgroundColor3 = color
+	TweenService:Create(obj, UITheme.Tween.Slow, { BackgroundColor3 = original }):Play()
+end
+
+function UITheme.Screen(name: string, displayOrder: number): ScreenGui
+	local gui = Instance.new("ScreenGui")
+	gui.Name = name
+	gui.ResetOnSpawn = false
+	gui.IgnoreGuiInset = true
+	gui.DisplayOrder = displayOrder
+	gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+	return gui
+end
+
+return UITheme
+</ProtectedString>
+</Properties>
+</Item>
+</Item>
+</Item>
+<Item class="ServerScriptService" referent="GN33">
+<Properties>
+<string name="Name">ServerScriptService</string>
+</Properties>
+<Item class="Script" referent="GN7">
+<Properties>
+<string name="Name">GhostNetServer</string>
+<ProtectedString name="Source">-- ServerScriptService/GhostNetServer.server.luau
+--!strict
+-- GHOSTNET :: Server-Bootstrap. Startet die Systeme in fester Reihenfolge.
+--
+-- Die Reihenfolge ist kein Zufall: der SaveService haelt das Profil, aus dem
+-- alle anderen lesen. Er muss stehen, bevor der erste Spieler etwas tun kann.
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Config = require(ReplicatedStorage.Shared.Config)
+-- Das Requiren legt die Remote-Objekte an, bevor irgendein Client sie sucht.
+require(ReplicatedStorage.Shared.Remotes)
+
+local Systems = script.Parent:WaitForChild("Systems")
+
+local SaveService = require(Systems.SaveService)
+local EconomyService = require(Systems.EconomyService)
+local TraceService = require(Systems.TraceService)
+local HackTargets = require(Systems.HackTargets)
+local HackService = require(Systems.HackService)
+local SellService = require(Systems.SellService)
+local ShopService = require(Systems.ShopService)
+
+SaveService.Init() -- zuerst: haelt das Profil
+EconomyService.Init() -- liest aus dem Profil
+TraceService.Init() -- braucht Economy fuers Wipe beim Bust
+HackTargets.Init() -- braucht das Profil fuer Cooldowns
+HackService.Init() -- meldet sich beim TraceService fuer den Bust an
+SellService.Init()
+ShopService.Init()
+
+print(("[GHOSTNET] Server hochgefahren - Version %s"):format(Config.Version))
+</ProtectedString>
+</Properties>
+</Item>
+<Item class="Folder" referent="GN19">
+<Properties>
+<string name="Name">Systems</string>
+</Properties>
+<Item class="ModuleScript" referent="GN8">
+<Properties>
+<string name="Name">EconomyService</string>
+<ProtectedString name="Source">-- ServerScriptService/Systems/EconomyService.luau
+--!strict
+-- GHOSTNET :: Einzige Stelle, an der sich Crypto und Rig-Werte aendern.
+--
+-- Seit Phase 1 liegt der Zustand im Profil des SaveService statt in einem
+-- eigenen Wallet im Arbeitsspeicher. Die Schnittstelle nach aussen ist
+-- unveraendert geblieben: GetRig, GetTier, Snapshot, AwardUnsold, WipeUnsold,
+-- Sync. Dazu kamen nur die Schreibwege, die Verkauf und Shop brauchen.
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Config = require(ReplicatedStorage.Shared.Config)
+local Remotes = require(ReplicatedStorage.Shared.Remotes)
+local Types = require(ReplicatedStorage.Shared.Types)
+
+local SaveService = require(script.Parent.SaveService)
+
+type RigLevels = Types.RigLevels
+type Profile = Types.Profile
+
+local EconomyService = {}
+
+-- Solange das Profil laedt, gibt es Startwerte zurueck statt zu crashen.
+-- Geschrieben wird in dieser Zeit nichts - jeder Schreibweg prueft auf nil.
+local function fallbackRig(): RigLevels
+	local start = Config.Rig.StartLevels
+	return { CPU = start.CPU, RAM = start.RAM, Cooling = start.Cooling, NetCard = start.NetCard }
+end
+
+--==========================================================================
+-- Lesen
+--==========================================================================
+
+function EconomyService.GetRig(player: Player): RigLevels
+	local profile = SaveService.Get(player)
+	if not profile then
+		return fallbackRig()
+	end
+	return table.clone(profile.Rig)
+end
+
+-- Tier ist abgeleitet, nicht gekauft: das SCHWAECHSTE Bauteil zaehlt.
+-- Man kann sich also nicht mit einer einzelnen Komponente in eine hoehere
+-- Zone schummeln.
+function EconomyService.GetTier(player: Player): number
+	local profile = SaveService.Get(player)
+	if not profile then
+		return 1
+	end
+	local rig = profile.Rig
+	return math.min(rig.CPU, rig.RAM, rig.Cooling, rig.NetCard)
+end
+
+function EconomyService.GetRange(player: Player): number
+	local profile = SaveService.Get(player)
+	return Config.GetRange(if profile then profile.Rig.NetCard else Config.Rig.StartLevels.NetCard)
+end
+
+function EconomyService.GetBanked(player: Player): number
+	local profile = SaveService.Get(player)
+	return if profile then profile.Banked else 0
+end
+
+function EconomyService.GetUnsold(player: Player): number
+	local profile = SaveService.Get(player)
+	return if profile then profile.Unsold else 0
+end
+
+function EconomyService.Snapshot(player: Player): { [string]: any }
+	local profile = SaveService.Get(player)
+	if not profile then
+		return { Banked = 0, Unsold = 0, Rig = fallbackRig(), Tier = 1, Ready = false }
+	end
+	-- Cooldowns als RESTSEKUNDEN, nicht als Zeitstempel: die Uhr des Clients
+	-- kann anders gehen als die des Servers. Ohne das zeigt der HUD nach einem
+	-- Rejoin "[E] BREACH" an, obwohl das Ziel noch gesperrt ist.
+	local remaining: { [string]: number } = {}
+	local now = os.time()
+	for id, until_ in profile.Cooldowns do
+		local left = until_ - now
+		if left &gt; 0 then
+			remaining[id] = left
+		end
+	end
+
+	return {
+		Banked = profile.Banked,
+		Unsold = profile.Unsold,
+		Rig = table.clone(profile.Rig),
+		Tier = EconomyService.GetTier(player),
+		Stats = table.clone(profile.Stats),
+		Cooldowns = remaining,
+		Ready = true,
+	}
+end
+
+--==========================================================================
+-- Schreiben
+--==========================================================================
+
+function EconomyService.Sync(player: Player)
+	if not player.Parent then
+		return
+	end
+	Remotes.EconomySync:FireClient(player, EconomyService.Snapshot(player))
+end
+
+-- Belohnung aus einem Hack landet im heissen Wallet, nicht auf der Bank.
+function EconomyService.AwardUnsold(player: Player, amount: number)
+	if amount &lt;= 0 then
+		return
+	end
+	local profile = SaveService.Get(player)
+	if not profile then
+		return
+	end
+	profile.Unsold += math.floor(amount)
+	EconomyService.Sync(player)
+end
+
+-- Wird beim Bust gebraucht. Liefert, wie viel verloren ging.
+function EconomyService.WipeUnsold(player: Player): number
+	local profile = SaveService.Get(player)
+	if not profile then
+		return 0
+	end
+	local lost = profile.Unsold
+	profile.Unsold = 0
+	EconomyService.Sync(player)
+	return lost
+end
+
+-- Verkauf beim Hehler: alles Unverkaufte abzueglich Gebuehr auf die Bank.
+-- Liefert (brutto, gebuehr, netto). Der Aufrufer prueft Distanz und Zustand,
+-- gerechnet und gebucht wird ausschliesslich hier.
+function EconomyService.SellUnsold(player: Player, feePercent: number): (number, number, number)
+	local profile = SaveService.Get(player)
+	if not profile or profile.Unsold &lt;= 0 then
+		return 0, 0, 0
+	end
+
+	local gross = math.floor(profile.Unsold)
+	local fee = math.floor(gross * feePercent)
+	local net = gross - fee
+
+	profile.Unsold = 0
+	profile.Banked += net
+	profile.Stats.Sales += 1
+	profile.Stats.Earned += net
+
+	EconomyService.Sync(player)
+	return gross, fee, net
+end
+
+-- Abbuchen von der Bank. false = zu wenig Guthaben, es wurde nichts gebucht.
+function EconomyService.SpendBanked(player: Player, amount: number): boolean
+	local profile = SaveService.Get(player)
+	if not profile then
+		return false
+	end
+	local cost = math.floor(amount)
+	if cost &lt;= 0 or profile.Banked &lt; cost then
+		return false
+	end
+	profile.Banked -= cost
+	return true
+end
+
+-- Rueckbuchung, wenn ein Kauf nach dem Abbuchen doch nicht klappt. Damit
+-- laeuft auch der Fehlerfall ueber den EconomyService und nicht am Profil vorbei.
+function EconomyService.RefundBanked(player: Player, amount: number)
+	local profile = SaveService.Get(player)
+	if not profile or amount &lt;= 0 then
+		return
+	end
+	profile.Banked += math.floor(amount)
+end
+
+-- Rig-Stufe setzen. Prueft Bauteil und Grenzen selbst, damit sich hier kein
+-- Aufrufer vertun kann.
+function EconomyService.SetRigLevel(player: Player, component: string, level: number): boolean
+	local profile = SaveService.Get(player)
+	if not profile then
+		return false
+	end
+	if typeof((profile.Rig :: any)[component]) ~= "number" then
+		return false
+	end
+	local clamped = math.clamp(math.floor(level), 1, Config.Rig.MaxLevel)
+	;(profile.Rig :: any)[component] = clamped
+	profile.Stats.Upgrades += 1
+	return true
+end
+
+-- Zaehler fuers Profil. Liegt hier, damit die Services nicht selbst im
+-- Profil herumschreiben.
+function EconomyService.CountHack(player: Player, success: boolean)
+	local profile = SaveService.Get(player)
+	if not profile then
+		return
+	end
+	if success then
+		profile.Stats.Hacks += 1
+	else
+		profile.Stats.Fails += 1
+	end
+end
+
+function EconomyService.CountBust(player: Player)
+	local profile = SaveService.Get(player)
+	if profile then
+		profile.Stats.Busts += 1
+	end
+end
+
+function EconomyService.Init()
+	-- Sobald das Profil steht, bekommt der Client seinen ersten Kontostand.
+	SaveService.OnReady(function(player)
+		EconomyService.Sync(player)
+	end)
+
+	-- Respawn: der Client baut sein HUD neu auf, also nochmal schicken.
+	local function watchRespawn(player: Player)
+		player.CharacterAdded:Connect(function()
+			task.wait(0.5)
+			if SaveService.IsReady(player) then
+				EconomyService.Sync(player)
+			end
+		end)
+	end
+
+	Players.PlayerAdded:Connect(watchRespawn)
+	for _, player in Players:GetPlayers() do
+		watchRespawn(player)
+	end
+
+	print("[GHOSTNET] EconomyService bereit.")
+end
+
+return EconomyService
+</ProtectedString>
+</Properties>
+</Item>
+<Item class="ModuleScript" referent="GN9">
+<Properties>
+<string name="Name">HackEffects</string>
+<ProtectedString name="Source">-- ServerScriptService/Systems/HackEffects.luau
+--!strict
+-- GHOSTNET :: Was in der Welt passiert, wenn ein Hack klappt.
+--
+-- Das Attribut "OnSuccess" am Part ist ein Schluessel in diese Tabelle.
+-- Ein neues Verhalten = ein neuer Eintrag hier. Der HackService kennt
+-- keinen einzigen Objekttyp.
+
+local TweenService = game:GetService("TweenService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Config = require(ReplicatedStorage.Shared.Config)
+local Types = require(ReplicatedStorage.Shared.Types)
+
+type HackTarget = Types.HackTarget
+
+local HackEffects = {}
+
+--==========================================================================
+-- Hilfsfunktionen
+--==========================================================================
+
+local function setLights(part: BasePart, enabled: boolean)
+	for _, d in part:GetDescendants() do
+		if d:IsA("Light") then
+			d.Enabled = enabled
+		end
+	end
+end
+
+local function pulseLight(part: BasePart, color: Color3, duration: number)
+	local existing = part:FindFirstChildOfClass("PointLight")
+	local created = existing == nil
+
+	local l: PointLight
+	if existing then
+		l = existing
+	else
+		l = Instance.new("PointLight")
+		l.Parent = part
+	end
+	local oldColor, oldBright, oldRange = l.Color, l.Brightness, l.Range
+	l.Color = color
+	l.Brightness = 6
+	l.Range = 18
+	l.Enabled = true
+
+	TweenService:Create(l, TweenInfo.new(duration, Enum.EasingStyle.Quad), { Brightness = 0 }):Play()
+	task.delay(duration, function()
+		if created then
+			l:Destroy()
+		else
+			l.Color, l.Brightness, l.Range = oldColor, oldBright, oldRange
+		end
+	end)
+end
+
+-- Faerbt einen Part fuer die Dauer der Stoerung um und stellt danach
+-- den Originalzustand wieder her.
+local function recolorFor(part: BasePart, color: Color3, duration: number)
+	local originalColor = part.Color
+	TweenService:Create(part, TweenInfo.new(0.3), { Color = color }):Play()
+	task.delay(duration, function()
+		if part.Parent then
+			TweenService:Create(part, TweenInfo.new(0.6), { Color = originalColor }):Play()
+		end
+	end)
+end
+
+--==========================================================================
+-- Effekte
+--==========================================================================
+
+type EffectFn = (target: HackTarget, player: Player, duration: number) -&gt; ()
+
+local Effects: { [string]: EffectFn } = {}
+
+-- Standard, wenn ein Part keinen bekannten OnSuccess-Wert hat.
+Effects.Offline = function(target, _player, duration)
+	local part = target.Part
+	setLights(part, false)
+	recolorFor(part, Config.Theme.Ice, duration)
+	task.delay(duration, function()
+		if part.Parent then
+			setLights(part, true)
+		end
+	end)
+end
+
+Effects.CameraOffline = function(target, _player, duration)
+	local part = target.Part
+	setLights(part, false)
+	recolorFor(part, Config.Theme.Ice, duration)
+
+	-- Kamera senkt den Kopf, solange sie tot ist.
+	local original = part.CFrame
+	TweenService:Create(part, TweenInfo.new(0.8, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+		CFrame = original * CFrame.Angles(math.rad(-55), 0, 0),
+	}):Play()
+
+	task.delay(duration, function()
+		if part.Parent then
+			setLights(part, true)
+			TweenService:Create(part, TweenInfo.new(1.0, Enum.EasingStyle.Quad), { CFrame = original }):Play()
+		end
+	end)
+end
+
+Effects.DoorOpen = function(target, _player, duration)
+	local part = target.Part
+	local original = part.CFrame
+	local drop = part.Size.Y + 0.4
+
+	part.CanCollide = false
+	pulseLight(part, Config.Theme.Cyan, 0.8)
+	TweenService:Create(part, TweenInfo.new(0.7, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
+		CFrame = original * CFrame.new(0, -drop, 0),
+	}):Play()
+
+	task.delay(duration, function()
+		if not part.Parent then
+			return
+		end
+		local close = TweenService:Create(part, TweenInfo.new(0.9, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
+			CFrame = original,
+		})
+		close:Play()
+		close.Completed:Connect(function()
+			if part.Parent then
+				part.CanCollide = true
+			end
+		end)
+	end)
+end
+
+Effects.AtmPayout = function(target, _player, duration)
+	local part = target.Part
+	pulseLight(part, Config.Theme.Amber, 1.2)
+	recolorFor(part, Config.Theme.Amber, math.min(duration, 3))
+
+	local sparks = Instance.new("ParticleEmitter")
+	sparks.Color = ColorSequence.new(Config.Theme.Amber)
+	sparks.Lifetime = NumberRange.new(0.4, 0.9)
+	sparks.Rate = 90
+	sparks.Speed = NumberRange.new(6, 12)
+	sparks.SpreadAngle = Vector2.new(35, 35)
+	sparks.Size = NumberSequence.new(0.18)
+	sparks.Parent = part
+
+	task.delay(1.1, function()
+		sparks.Enabled = false
+		task.delay(1.2, function()
+			sparks:Destroy()
+		end)
+	end)
+end
+
+--==========================================================================
+-- Aufruf durch den HackService
+--==========================================================================
+
+function HackEffects.Apply(target: HackTarget, player: Player)
+	local fn = Effects[target.OnSuccess]
+	if not fn then
+		warn(("[GHOSTNET] Unbekannter OnSuccess-Effekt '%s' an %s - benutze 'Offline'."):format(
+			target.OnSuccess,
+			target.Part:GetFullName()
+		))
+		fn = Effects.Offline
+	end
+
+	local duration = math.max(1, target.DownTime)
+	local call = table.pack(pcall(fn, target, player, duration))
+	if not call[1] then
+		warn(("[GHOSTNET] Effekt '%s' ist fehlgeschlagen: %s"):format(target.OnSuccess, tostring(call[2])))
+	end
+end
+
+function HackEffects.Has(name: string): boolean
+	return Effects[name] ~= nil
+end
+
+return HackEffects
+</ProtectedString>
+</Properties>
+</Item>
+<Item class="ModuleScript" referent="GN10">
+<Properties>
+<string name="Name">HackService</string>
+<ProtectedString name="Source">-- ServerScriptService/Systems/HackService.luau
+--!strict
+-- GHOSTNET :: Das eine Hack-Modul.
+--
+-- Hier laufen alle Hack-Sessions zusammen. Der Service kennt KEINEN
+-- einzelnen Objekttyp - er liest nur Attribute und ruft ein Minispiel auf.
+-- Ein neues Ziel in der Welt braucht deshalb keine Zeile Code.
+--
+-- SERVER-AUTORITAET
+--   Der Client schickt ausschliesslich "ich habe X angeklickt". Der Server
+--   fuehrt den Raetselzustand, die Uhr, die Versuche, die Distanz und den
+--   Cooldown. Kein Remote nimmt jemals ein Ergebnis, eine Zeit oder einen
+--   Betrag vom Client entgegen.
+
+local HttpService = game:GetService("HttpService")
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+
+local Config = require(ReplicatedStorage.Shared.Config)
+local Remotes = require(ReplicatedStorage.Shared.Remotes)
+local Types = require(ReplicatedStorage.Shared.Types)
+
+local EconomyService = require(script.Parent.EconomyService)
+local HackEffects = require(script.Parent.HackEffects)
+local HackTargets = require(script.Parent.HackTargets)
+local RateLimiter = require(script.Parent.RateLimiter)
+local SaveService = require(script.Parent.SaveService)
+local TraceService = require(script.Parent.TraceService)
+
+type Session = Types.Session
+
+local HackService = {}
+
+-- Minispiel-Register. Phase 3 traegt SignalMatch / CodeCrack hier ein -
+-- sonst aendert sich nichts.
+local Minigames = {
+	NodeBreach = require(script.Parent.Minigames.NodeBreach),
+}
+
+local sessions: { [Player]: Session } = {}
+
+--==========================================================================
+-- Hilfsfunktionen
+--==========================================================================
+
+local function now(): number
+	return workspace:GetServerTimeNow()
+end
+
+local function isTable(v: any): boolean
+	return typeof(v) == "table"
+end
+
+local function isCleanString(v: any, maxLen: number): boolean
+	return typeof(v) == "string" and #v &gt; 0 and #v &lt;= maxLen
+end
+
+local function isInteger(v: any): boolean
+	return typeof(v) == "number" and v == v and v % 1 == 0 and math.abs(v) &lt; 1e9
+end
+
+--==========================================================================
+-- Abschluss einer Session
+--==========================================================================
+
+-- reason: SOLVED | TIMEOUT | NO_ATTEMPTS | OUT_OF_RANGE | ABORTED | TARGET_GONE | BUSTED
+local function resolve(session: Session, success: boolean, reason: string)
+	if session.Resolved then
+		return
+	end
+	session.Resolved = true
+
+	local player = session.Player
+	if sessions[player] == session then
+		sessions[player] = nil
+	end
+
+	local target = HackTargets.Get(session.TargetId)
+	local reward = 0
+	local traceDelta = 0
+	local cooldown = 0
+
+	if target then
+		-- Trace faellt immer an, nur unterschiedlich stark. Weglaufen oder
+		-- abbrechen ist also billiger, aber nie gratis.
+		local factor = 1.0
+		if not success then
+			factor = if reason == "ABORTED" then Config.Trace.AbortFactor else Config.Trace.FailFactor
+		end
+		local cooling = EconomyService.GetRig(player).Cooling
+		traceDelta = Config.GetTraceGain(target.TraceGain * factor, cooling)
+
+		if success then
+			reward = target.Reward
+			cooldown = target.Cooldown
+			EconomyService.AwardUnsold(player, reward)
+			HackTargets.SetCooldown(player, target.Id, cooldown)
+			HackTargets.MarkDown(target, target.DownTime)
+			HackEffects.Apply(target, player)
+		else
+			cooldown = Config.Cooldown.AfterFail
+			HackTargets.SetCooldown(player, target.Id, cooldown)
+		end
+
+		EconomyService.CountHack(player, success)
+	end
+
+	-- Erst gutschreiben, dann den Trace anwenden: wer sich mit dem letzten
+	-- Hack in den Bust treibt, verliert genau diese Beute auch wieder. Das
+	-- ist der Moment, um den es geht.
+	if traceDelta &gt; 0 then
+		TraceService.Add(player, traceDelta)
+	end
+
+	if player.Parent then
+		Remotes.HackResolved:FireClient(player, {
+			SessionId = session.Id,
+			Success = success,
+			Reason = reason,
+			Reward = reward,
+			TraceDelta = traceDelta,
+			Cooldown = cooldown,
+			TargetId = session.TargetId,
+			Effect = target and target.OnSuccess or "",
+		})
+	end
+
+	if target then
+		SaveService.RequestSave(player)
+	end
+end
+
+function HackService.AbortFor(player: Player, reason: string)
+	local session = sessions[player]
+	if session then
+		resolve(session, false, reason)
+	end
+end
+
+--==========================================================================
+-- Start
+--==========================================================================
+
+-- Sagt dem Spieler, WARUM ein Start nicht geklappt hat. Ohne das klickt man
+-- im Spiel ins Leere und haelt es fuer einen Bug.
+local function deny(player: Player, targetId: string, reason: string, seconds: number?)
+	if player.Parent then
+		Remotes.HackDenied:FireClient(player, {
+			TargetId = targetId,
+			Reason = reason,
+			Seconds = seconds or 0,
+		})
+	end
+end
+
+local function onRequestStart(player: Player, payload: any)
+	if not RateLimiter.Check(player, "HackRequestStart") then
+		return
+	end
+	if not isTable(payload) then
+		return
+	end
+
+	local targetId = (payload :: any).TargetId
+	if not isCleanString(targetId, 32) then
+		return
+	end
+
+	if sessions[player] then
+		return -- laeuft schon eine Session
+	end
+
+	-- Ohne geladenes Profil gibt es keinen Cooldown und kein Rig - dann wird
+	-- gar nicht erst gestartet, statt mit Startwerten zu spielen.
+	if not SaveService.IsReady(player) then
+		deny(player, targetId, "LOADING")
+		return
+	end
+
+	-- Nach einem Bust ist erstmal Ruhe.
+	local lockLeft = TraceService.LockSecondsLeft(player)
+	if lockLeft &gt; 0 then
+		deny(player, targetId, "BUSTED", math.ceil(lockLeft))
+		return
+	end
+
+	local target = HackTargets.Get(targetId)
+	if not target or not target.Part.Parent then
+		deny(player, targetId, "UNKNOWN_TARGET")
+		return
+	end
+
+	if HackTargets.IsDown(target) then
+		deny(player, target.Id, "OFFLINE")
+		return
+	end
+
+	local cooldownLeft = HackTargets.CooldownLeft(player, target.Id)
+	if cooldownLeft &gt; 0 then
+		deny(player, target.Id, "COOLDOWN", math.ceil(cooldownLeft))
+		return
+	end
+
+	if EconomyService.GetTier(player) &lt; target.RequiredLevel then
+		deny(player, target.Id, "LEVEL", target.RequiredLevel)
+		return
+	end
+
+	local minigame = (Minigames :: any)[target.HackType]
+	if not minigame then
+		warn(("[GHOSTNET] %s verlangt HackType '%s', den es nicht gibt."):format(
+			target.Part:GetFullName(),
+			target.HackType
+		))
+		deny(player, target.Id, "INTERNAL")
+		return
+	end
+
+	-- Distanz IMMER serverseitig. Der Client bekommt hier kein Wort.
+	local range = EconomyService.GetRange(player) + Config.Range.Tolerance
+	local distance = HackTargets.DistanceFromPlayer(target, player)
+	if not distance or distance &gt; range then
+		deny(player, target.Id, "RANGE")
+		return
+	end
+
+	local rig = EconomyService.GetRig(player)
+	local timeLimit = Config.GetTimeLimit(rig.CPU, target.Difficulty)
+	local attempts = Config.GetAttempts(rig.RAM)
+
+	local rng = Random.new()
+	local public, state = minigame.Generate(target.Difficulty, rng)
+
+	local session: Session = {
+		Id = HttpService:GenerateGUID(false),
+		Player = player,
+		TargetId = target.Id,
+		HackType = target.HackType,
+		Difficulty = target.Difficulty,
+		Range = range,
+		ExpectedStep = 1,
+		AttemptsLeft = attempts,
+		Deadline = now() + timeLimit,
+		StartedAt = now(),
+		State = state,
+		Resolved = false,
+	}
+	sessions[player] = session
+
+	Remotes.HackSessionStarted:FireClient(player, {
+		SessionId = session.Id,
+		HackType = session.HackType,
+		Label = minigame.Label(),
+		Public = public,
+		Deadline = session.Deadline,
+		TimeLimit = timeLimit,
+		Attempts = attempts,
+		Target = {
+			Id = target.Id,
+			Name = target.DisplayName,
+			Difficulty = target.Difficulty,
+			Reward = target.Reward,
+		},
+	})
+end
+
+--==========================================================================
+-- Eingabe
+--==========================================================================
+
+local function onInput(player: Player, payload: any)
+	if not RateLimiter.Check(player, "HackInput") then
+		return
+	end
+	if not isTable(payload) then
+		return
+	end
+
+	local session = sessions[player]
+	if not session or session.Resolved then
+		return
+	end
+
+	local p = payload :: any
+	if not isCleanString(p.SessionId, 64) or p.SessionId ~= session.Id then
+		return
+	end
+	if not isInteger(p.Step) or p.Step ~= session.ExpectedStep then
+		return -- Wiederholung oder Luecke: verwerfen
+	end
+	if not isTable(p.Payload) then
+		return
+	end
+
+	if now() &gt; session.Deadline then
+		resolve(session, false, "TIMEOUT")
+		return
+	end
+
+	local target = HackTargets.Get(session.TargetId)
+	if not target or not target.Part.Parent then
+		resolve(session, false, "TARGET_GONE")
+		return
+	end
+
+	local distance = HackTargets.DistanceFromPlayer(target, player)
+	if not distance or distance &gt; session.Range then
+		resolve(session, false, "OUT_OF_RANGE")
+		return
+	end
+
+	local minigame = (Minigames :: any)[session.HackType]
+	local ok, result = pcall(minigame.Input, session.State, p.Payload)
+	if not ok then
+		warn(("[GHOSTNET] Minispiel '%s' ist abgestuerzt: %s"):format(session.HackType, tostring(result)))
+		resolve(session, false, "ABORTED")
+		return
+	end
+
+	-- Jede verarbeitete Eingabe zaehlt hoch, auch eine ungueltige.
+	-- Damit kann derselbe Step nie zweimal wirken.
+	session.ExpectedStep += 1
+
+	if result.CostsAttempt then
+		session.AttemptsLeft -= 1
+	end
+
+	Remotes.HackFeedback:FireClient(player, {
+		SessionId = session.Id,
+		Step = p.Step,
+		Ok = result.Ok,
+		Reason = result.Reason,
+		AttemptsLeft = session.AttemptsLeft,
+		Feedback = result.Feedback,
+	})
+
+	if result.Solved then
+		resolve(session, true, "SOLVED")
+	elseif session.AttemptsLeft &lt;= 0 then
+		resolve(session, false, "NO_ATTEMPTS")
+	end
+end
+
+--==========================================================================
+-- Abbruch durch den Spieler
+--==========================================================================
+
+local function onAbort(player: Player, payload: any)
+	if not RateLimiter.Check(player, "HackAbort") then
+		return
+	end
+	if not isTable(payload) then
+		return
+	end
+	local session = sessions[player]
+	if not session then
+		return
+	end
+	if (payload :: any).SessionId ~= session.Id then
+		return
+	end
+	resolve(session, false, "ABORTED")
+end
+
+--==========================================================================
+-- Wachhund: Zeit und Distanz, unabhaengig davon, ob der Client etwas sendet
+--==========================================================================
+
+local function watchdog()
+	local accumulator = 0
+	RunService.Heartbeat:Connect(function(dt)
+		accumulator += dt
+		if accumulator &lt; Config.Session.TickRate then
+			return
+		end
+		accumulator = 0
+
+		local t = now()
+		for player, session in sessions do
+			if session.Resolved then
+				continue
+			end
+
+			if not player.Parent then
+				session.Resolved = true
+				sessions[player] = nil
+				continue
+			end
+
+			if t &gt; session.Deadline then
+				resolve(session, false, "TIMEOUT")
+				continue
+			end
+
+			if t - session.StartedAt &lt; Config.Session.GraceAfterStart then
+				continue
+			end
+
+			local target = HackTargets.Get(session.TargetId)
+			if not target or not target.Part.Parent then
+				resolve(session, false, "TARGET_GONE")
+				continue
+			end
+
+			local distance = HackTargets.DistanceFromPlayer(target, player)
+			if not distance or distance &gt; session.Range then
+				resolve(session, false, "OUT_OF_RANGE")
+			end
+		end
+	end)
+end
+
+--==========================================================================
+
+function HackService.Init()
+	Remotes.HackRequestStart.OnServerEvent:Connect(onRequestStart)
+	Remotes.HackInput.OnServerEvent:Connect(onInput)
+	Remotes.HackAbort.OnServerEvent:Connect(onAbort)
+
+	-- Beim Bust fliegt eine laufende Session sofort raus. Die Anmeldung laeuft
+	-- ueber den Callback, damit der TraceService den HackService nicht kennen
+	-- muss (sonst haetten wir einen Require-Kreis).
+	TraceService.OnBust(function(player: Player)
+		HackService.AbortFor(player, "BUSTED")
+	end)
+
+	Players.PlayerRemoving:Connect(function(player)
+		local session = sessions[player]
+		if session then
+			session.Resolved = true
+			sessions[player] = nil
+		end
+	end)
+
+	watchdog()
+
+	local types = {}
+	for name in Minigames do
+		table.insert(types, name)
+	end
+	print(("[GHOSTNET] HackService bereit. Minispiele: %s"):format(table.concat(types, ", ")))
+end
+
+return HackService
+</ProtectedString>
+</Properties>
+</Item>
+<Item class="ModuleScript" referent="GN11">
+<Properties>
+<string name="Name">HackTargets</string>
+<ProtectedString name="Source">-- ServerScriptService/Systems/HackTargets.luau
+--!strict
+-- GHOSTNET :: Registry aller hackbaren Objekte.
+--
+-- Ein Hack-Ziel ist NUR ein BasePart mit dem Tag "GhostNetHackable".
+-- Alle Eigenschaften kommen aus Attributen, fehlende aus Config.TargetDefaults.
+-- Ein neues Ziel = neuer Part + Tag. Kein Code.
+--
+-- ZEITEN
+--   Cooldowns liegen im Profil und benutzen os.time() (Unix-Zeit), damit sie
+--   einen Serverwechsel ueberleben. Nur DownUntil - "die Kamera ist noch 30
+--   Sekunden aus" - bleibt bei os.clock(): das ist ein reiner Kurzzeit-Timer
+--   dieses Serverlaufs und gilt fuer alle Spieler gleichzeitig.
+
+local CollectionService = game:GetService("CollectionService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Config = require(ReplicatedStorage.Shared.Config)
+local Geometry = require(ReplicatedStorage.Shared.Geometry)
+local Types = require(ReplicatedStorage.Shared.Types)
+
+local SaveService = require(script.Parent.SaveService)
+
+type HackTarget = Types.HackTarget
+
+local HackTargets = {}
+
+local registry: { [string]: HackTarget } = {}
+local byPart: { [BasePart]: HackTarget } = {}
+local idCounter = 0
+
+--==========================================================================
+-- Attribute lesen
+--==========================================================================
+
+local function attrNumber(part: BasePart, name: string, default: number): number
+	local v = part:GetAttribute(name)
+	if typeof(v) == "number" then
+		return v
+	end
+	return default
+end
+
+local function attrString(part: BasePart, name: string, default: string): string
+	local v = part:GetAttribute(name)
+	if typeof(v) == "string" and v ~= "" then
+		return v
+	end
+	return default
+end
+
+local function readTarget(part: BasePart, id: string): HackTarget
+	local d = Config.TargetDefaults
+
+	local difficulty = math.clamp(math.floor(attrNumber(part, "Difficulty", d.Difficulty)), 1, 10)
+
+	local reward = attrNumber(part, "Reward", d.Reward)
+	if reward &lt; 0 then
+		reward = Config.GetReward(difficulty)
+	end
+
+	local traceGain = attrNumber(part, "TraceGain", d.TraceGain)
+	if traceGain &lt; 0 then
+		traceGain = difficulty * Config.Trace.GainPerDifficulty
+	end
+
+	local cooldown = attrNumber(part, "Cooldown", d.Cooldown)
+	if cooldown &lt; 0 then
+		cooldown = Config.Cooldown.Default
+	end
+
+	local displayName = attrString(part, "DisplayName", d.DisplayName)
+	if displayName == "" then
+		displayName = part.Name
+	end
+
+	local existing = registry[id]
+	return {
+		Id = id,
+		Part = part,
+		DisplayName = displayName,
+		Difficulty = difficulty,
+		HackType = attrString(part, "HackType", d.HackType),
+		Reward = math.floor(reward),
+		TraceGain = traceGain,
+		Cooldown = cooldown,
+		RequiredLevel = math.max(1, math.floor(attrNumber(part, "RequiredLevel", d.RequiredLevel))),
+		OnSuccess = attrString(part, "OnSuccess", d.OnSuccess),
+		DownTime = attrNumber(part, "DownTime", d.DownTime),
+		DownUntil = existing and existing.DownUntil or 0,
+	}
+end
+
+--==========================================================================
+-- Registrierung
+--==========================================================================
+
+-- Zaehlt hoch, bis eine Id wirklich frei ist. Frueher wurde nur einmal
+-- generiert - ein Part mit gespeichertem Attribut "T0001" und ein Part ohne
+-- Attribut bekamen dann dieselbe Id, und das erste Ziel war nicht mehr
+-- erreichbar.
+local function nextFreeId(): string
+	repeat
+		idCounter += 1
+	until registry[("T%04d"):format(idCounter)] == nil
+	return ("T%04d"):format(idCounter)
+end
+
+local function register(inst: Instance)
+	if not inst:IsA("BasePart") then
+		warn(("[GHOSTNET] '%s' hat den Hackable-Tag, ist aber kein BasePart."):format(inst:GetFullName()))
+		return
+	end
+	local part = inst :: BasePart
+	if byPart[part] then
+		return
+	end
+
+	-- Stabile Id: bereits vergebene wiederverwenden, sonst eine freie neue.
+	local id = part:GetAttribute("TargetId")
+	if typeof(id) ~= "string" or id == "" or registry[id :: string] then
+		id = nextFreeId()
+		part:SetAttribute("TargetId", id)
+	end
+
+	local target = readTarget(part, id :: string)
+	registry[id :: string] = target
+	byPart[part] = target
+
+	-- Live-Tuning im Studio: Attribut aendern -&gt; sofort uebernommen.
+	part.AttributeChanged:Connect(function(attribute: string)
+		if attribute == "TargetId" then
+			return
+		end
+		local current = byPart[part]
+		if current then
+			local refreshed = readTarget(part, current.Id)
+			registry[current.Id] = refreshed
+			byPart[part] = refreshed
+		end
+	end)
+end
+
+local function unregister(inst: Instance)
+	if not inst:IsA("BasePart") then
+		return
+	end
+	local part = inst :: BasePart
+	local target = byPart[part]
+	if target then
+		registry[target.Id] = nil
+		byPart[part] = nil
+	end
+end
+
+function HackTargets.Init()
+	for _, inst in CollectionService:GetTagged(Config.HackableTag) do
+		register(inst)
+	end
+	CollectionService:GetInstanceAddedSignal(Config.HackableTag):Connect(register)
+	CollectionService:GetInstanceRemovedSignal(Config.HackableTag):Connect(unregister)
+
+	print(("[GHOSTNET] HackTargets: %d Ziele registriert."):format(HackTargets.Count()))
+end
+
+function HackTargets.Count(): number
+	local n = 0
+	for _ in registry do
+		n += 1
+	end
+	return n
+end
+
+function HackTargets.Get(id: string): HackTarget?
+	return registry[id]
+end
+
+function HackTargets.All(): { [string]: HackTarget }
+	return registry
+end
+
+--==========================================================================
+-- Distanz
+--==========================================================================
+
+function HackTargets.DistanceTo(target: HackTarget, position: Vector3): number
+	return Geometry.SurfaceDistance(target.Part, position)
+end
+
+-- Liefert Distanz oder nil, wenn der Spieler gerade keinen lebenden Character hat.
+function HackTargets.DistanceFromPlayer(target: HackTarget, player: Player): number?
+	local position = Geometry.AlivePosition(player)
+	if not position then
+		return nil
+	end
+	return Geometry.SurfaceDistance(target.Part, position)
+end
+
+--==========================================================================
+-- Cooldowns (im Profil, damit ein Rejoin sie nicht loescht)
+--==========================================================================
+
+function HackTargets.CooldownLeft(player: Player, id: string): number
+	local profile = SaveService.Get(player)
+	if not profile then
+		return 0
+	end
+	local until_ = profile.Cooldowns[id]
+	if typeof(until_) ~= "number" then
+		return 0
+	end
+	return math.max(0, until_ - os.time())
+end
+
+function HackTargets.SetCooldown(player: Player, id: string, seconds: number)
+	local profile = SaveService.Get(player)
+	if not profile then
+		return
+	end
+	profile.Cooldowns[id] = os.time() + math.floor(seconds)
+	SaveService.RequestSave(player)
+end
+
+--==========================================================================
+-- "Down"-Zustand (Kamera aus, Tuer offen, ...)
+-- Gilt fuer alle Spieler gleichzeitig und nur fuer diesen Serverlauf -
+-- deshalb bewusst os.clock() statt os.time().
+--==========================================================================
+
+function HackTargets.IsDown(target: HackTarget): boolean
+	return target.DownUntil &gt; os.clock()
+end
+
+function HackTargets.MarkDown(target: HackTarget, seconds: number)
+	target.DownUntil = os.clock() + seconds
+	target.Part:SetAttribute("Offline", true)
+	task.delay(seconds, function()
+		if target.DownUntil &lt;= os.clock() and target.Part.Parent then
+			target.Part:SetAttribute("Offline", false)
+		end
+	end)
+end
+
+return HackTargets
+</ProtectedString>
+</Properties>
+</Item>
+<Item class="Folder" referent="GN13">
+<Properties>
+<string name="Name">Minigames</string>
+</Properties>
+<Item class="ModuleScript" referent="GN12">
+<Properties>
+<string name="Name">NodeBreach</string>
+<ProtectedString name="Source">-- ServerScriptService/Systems/Minigames/NodeBreach.luau
+--!strict
+-- GHOSTNET :: Minispiel A - NODE-BREACH
+--
+-- SCHNITTSTELLE, an die sich JEDES Minispiel haelt (SignalMatch, CodeCrack,
+-- IceBreaker kommen spaeter mit exakt diesen drei Funktionen):
+--
+--   Generate(difficulty, rng) -&gt; publicState, serverState
+--       publicState  geht an den Client, enthaelt NIE etwas Geheimes.
+--       serverState  bleibt auf dem Server.
+--
+--   Input(serverState, payload) -&gt; InputResult
+--       Prueft eine einzelne Spielereingabe. Der Server entscheidet, ob sie
+--       gilt, ob sie einen Versuch kostet und ob das Raetsel geloest ist.
+--
+--   Label() -&gt; string   (Anzeigename im Fake-OS)
+--
+-- SPIELREGELN
+--   Vom START-Knoten einen zusammenhaengenden Pfad zum EXIT legen. Unterwegs
+--   muessen ALLE Relay-Knoten mitgenommen werden. Sichtbares ICE ist
+--   unpassierbar. Zusaetzlich steckt verstecktes ICE im Gitter - das sieht
+--   aus wie ein freier Knoten und kostet beim Reintappen einen Versuch.
+--   Genau dafuer ist das RAM-Upgrade da.
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Config = require(ReplicatedStorage.Shared.Config)
+local Types = require(ReplicatedStorage.Shared.Types)
+
+type InputResult = Types.InputResult
+type State = Types.NodeBreachState
+
+local NodeBreach = {}
+
+-- Zelltypen
+local OPEN = 0
+local ICE = 1
+local RELAY = 2
+local START = 3
+local EXIT = 4
+local MASKED = 5 -- nur serverseitig; der Client sieht hier OPEN
+
+function NodeBreach.Label(): string
+	return "NODE-BREACH"
+end
+
+--==========================================================================
+-- Gitter-Helfer
+--==========================================================================
+
+local function toXY(idx: number, w: number): (number, number)
+	local x = (idx - 1) % w + 1
+	local y = math.floor((idx - 1) / w) + 1
+	return x, y
+end
+
+local function toIdx(x: number, y: number, w: number): number
+	return (y - 1) * w + x
+end
+
+local function neighbours(idx: number, w: number, h: number): { number }
+	local x, y = toXY(idx, w)
+	local out = {}
+	if x &gt; 1 then
+		table.insert(out, toIdx(x - 1, y, w))
+	end
+	if x &lt; w then
+		table.insert(out, toIdx(x + 1, y, w))
+	end
+	if y &gt; 1 then
+		table.insert(out, toIdx(x, y - 1, w))
+	end
+	if y &lt; h then
+		table.insert(out, toIdx(x, y + 1, w))
+	end
+	return out
+end
+
+local function isAdjacent(a: number, b: number, w: number, h: number): boolean
+	for _, n in neighbours(a, w, h) do
+		if n == b then
+			return true
+		end
+	end
+	return false
+end
+
+local function manhattan(a: number, b: number, w: number): number
+	local ax, ay = toXY(a, w)
+	local bx, by = toXY(b, w)
+	return math.abs(ax - bx) + math.abs(ay - by)
+end
+
+--==========================================================================
+-- Pfadsuche
+-- Zufaellige Tiefensuche mit Drang Richtung Exit. Findet immer einen Weg,
+-- weil zu diesem Zeitpunkt noch jede Zelle frei ist.
+--==========================================================================
+
+local function shuffle(t: { number }, rng: Random)
+	for i = #t, 2, -1 do
+		local j = rng:NextInteger(1, i)
+		t[i], t[j] = t[j], t[i]
+	end
+end
+
+local function findPath(rng: Random, w: number, h: number, startIdx: number, exitIdx: number): { number }
+	local visited: { [number]: boolean } = { [startIdx] = true }
+	local stack: { number } = { startIdx }
+
+	while #stack &gt; 0 do
+		local cur = stack[#stack]
+		if cur == exitIdx then
+			return table.clone(stack)
+		end
+
+		local options = neighbours(cur, w, h)
+		shuffle(options, rng)
+
+		-- Meistens zuerst den Nachbarn probieren, der naeher am Exit liegt.
+		-- Das haelt die Pfade brauchbar kurz, ohne sie berechenbar zu machen.
+		if rng:NextNumber() &lt; 0.65 then
+			table.sort(options, function(a, b)
+				return manhattan(a, exitIdx, w) &lt; manhattan(b, exitIdx, w)
+			end)
+		end
+
+		local moved = false
+		for _, n in options do
+			if not visited[n] then
+				visited[n] = true
+				table.insert(stack, n)
+				moved = true
+				break
+			end
+		end
+
+		if not moved then
+			table.remove(stack)
+		end
+	end
+
+	return {}
+end
+
+local function tierFor(difficulty: number)
+	for _, tier in Config.NodeBreach.Tiers do
+		if difficulty &lt;= tier.MaxDifficulty then
+			return tier
+		end
+	end
+	return Config.NodeBreach.Tiers[#Config.NodeBreach.Tiers]
+end
+
+--==========================================================================
+-- Generierung
+--==========================================================================
+
+function NodeBreach.Generate(difficulty: number, rng: Random): (Types.NodeBreachPublic, State)
+	local tier = tierFor(difficulty)
+	local w, h = tier.Width, tier.Height
+
+	local startIdx = toIdx(1, h, w) -- unten links
+	local exitIdx = toIdx(w, 1, w) -- oben rechts
+
+	-- Mehrere Pfade erzeugen, den mit der angenehmsten Laenge behalten.
+	local wanted = w + h + Config.NodeBreach.PathLengthBonus
+	local best: { number } = {}
+	local bestScore = math.huge
+	for _ = 1, Config.NodeBreach.PathSearchTries do
+		local candidate = findPath(rng, w, h, startIdx, exitIdx)
+		if #candidate &gt; 0 then
+			local score = math.abs(#candidate - wanted)
+			if score &lt; bestScore then
+				best, bestScore = candidate, score
+			end
+		end
+	end
+
+	-- Notnagel: gerade Treppe. Kann eigentlich nicht eintreten, aber ein
+	-- leeres Gitter waere ein unloesbares Raetsel - das lassen wir nicht zu.
+	if #best == 0 then
+		best = { startIdx }
+		local x, y = 1, h
+		while x &lt; w do
+			x += 1
+			table.insert(best, toIdx(x, y, w))
+		end
+		while y &gt; 1 do
+			y -= 1
+			table.insert(best, toIdx(x, y, w))
+		end
+	end
+
+	local inPath: { [number]: boolean } = {}
+	for _, idx in best do
+		inPath[idx] = true
+	end
+
+	-- Zellen anlegen
+	local cells: { number } = table.create(w * h, OPEN)
+	for i = 1, w * h do
+		cells[i] = OPEN
+	end
+
+	-- Relays gleichmaessig auf dem Loesungspfad verteilen (ohne Start/Exit).
+	local interior = #best - 2
+	local relayCount = math.clamp(tier.Relays, 0, math.max(0, interior))
+	for r = 1, relayCount do
+		local pos = math.floor(r * (interior + 1) / (relayCount + 1)) + 1
+		pos = math.clamp(pos, 2, #best - 1)
+		local idx = best[pos]
+		if cells[idx] == RELAY then
+			-- Kollision: naechsten freien Pfadknoten nehmen.
+			for k = pos + 1, #best - 1 do
+				if cells[best[k]] ~= RELAY then
+					idx = best[k]
+					break
+				end
+			end
+		end
+		cells[idx] = RELAY
+	end
+	-- tatsaechlich gesetzte Relays zaehlen
+	local relayTotal = 0
+	for _, v in cells do
+		if v == RELAY then
+			relayTotal += 1
+		end
+	end
+
+	-- ICE neben dem Pfad streuen.
+	for i = 1, w * h do
+		if not inPath[i] then
+			local roll = rng:NextNumber()
+			if roll &lt; tier.Ice then
+				cells[i] = ICE
+			elseif roll &lt; tier.Ice + tier.MaskedIce then
+				cells[i] = MASKED
+			end
+		end
+	end
+
+	cells[startIdx] = START
+	cells[exitIdx] = EXIT
+
+	local state: State = {
+		Width = w,
+		Height = h,
+		Cells = cells,
+		Start = startIdx,
+		Exit = exitIdx,
+		RelayTotal = relayTotal,
+		RelaysVisited = 0,
+		Path = { startIdx },
+		InPath = { [startIdx] = true },
+		Revealed = {},
+		Solution = best,
+	}
+
+	-- Oeffentliche Sicht: verstecktes ICE als freier Knoten getarnt.
+	local publicCells = table.create(w * h, OPEN)
+	for i = 1, w * h do
+		publicCells[i] = if cells[i] == MASKED then OPEN else cells[i]
+	end
+
+	local public: Types.NodeBreachPublic = {
+		Width = w,
+		Height = h,
+		Cells = publicCells,
+		Start = startIdx,
+		Exit = exitIdx,
+		Relays = relayTotal,
+	}
+
+	return public, state
+end
+
+--==========================================================================
+-- Eingabe
+--==========================================================================
+
+local function result(ok: boolean, reason: string, costs: boolean, solved: boolean, feedback: { [string]: any }): InputResult
+	return { Ok = ok, Reason = reason, CostsAttempt = costs, Solved = solved, Feedback = feedback }
+end
+
+function NodeBreach.Input(state: State, payload: any): InputResult
+	-- Payload-Form pruefen. Alles, was nicht exakt passt, fliegt raus.
+	if typeof(payload) ~= "table" then
+		return result(false, "BAD_PAYLOAD", false, false, {})
+	end
+	local node = (payload :: any).Node
+	if typeof(node) ~= "number" or node ~= node or node % 1 ~= 0 then
+		return result(false, "BAD_PAYLOAD", false, false, {})
+	end
+	local total = state.Width * state.Height
+	if node &lt; 1 or node &gt; total then
+		return result(false, "BAD_PAYLOAD", false, false, {})
+	end
+
+	local head = state.Path[#state.Path]
+
+	local function pack(extra: { [string]: any }?): { [string]: any }
+		local f: { [string]: any } = {
+			Path = table.clone(state.Path),
+			RelaysLeft = state.RelayTotal - state.RelaysVisited,
+		}
+		if extra then
+			for k, v in extra do
+				f[k] = v
+			end
+		end
+		return f
+	end
+
+	-- Zurueckgehen: auf den vorletzten Knoten klicken nimmt den letzten weg.
+	if #state.Path &gt;= 2 and node == state.Path[#state.Path - 1] then
+		local removed = table.remove(state.Path) :: number
+		state.InPath[removed] = nil
+		if state.Cells[removed] == RELAY then
+			state.RelaysVisited -= 1
+		end
+		return result(true, "BACKTRACK", false, false, pack())
+	end
+
+	if node == head then
+		return result(false, "ALREADY_HERE", false, false, pack())
+	end
+
+	if not isAdjacent(head, node, state.Width, state.Height) then
+		return result(false, "NOT_ADJACENT", false, false, pack())
+	end
+
+	if state.InPath[node] then
+		return result(false, "REVISIT", false, false, pack())
+	end
+
+	local cell = state.Cells[node]
+
+	if cell == ICE then
+		return result(false, "ICE", false, false, pack())
+	end
+
+	-- Verstecktes ICE: der einzige Fall, der einen Versuch kostet.
+	if cell == MASKED then
+		state.Cells[node] = ICE
+		state.Revealed[node] = true
+		return result(false, "MASKED_ICE", true, false, pack({ Reveal = node }))
+	end
+
+	if cell == EXIT then
+		if state.RelaysVisited &lt; state.RelayTotal then
+			return result(false, "RELAYS_MISSING", false, false, pack())
+		end
+		table.insert(state.Path, node)
+		state.InPath[node] = true
+		return result(true, "SOLVED", false, true, pack())
+	end
+
+	table.insert(state.Path, node)
+	state.InPath[node] = true
+	if cell == RELAY then
+		state.RelaysVisited += 1
+	end
+
+	return result(true, "OK", false, false, pack({ Relay = cell == RELAY }))
+end
+
+return NodeBreach
+</ProtectedString>
+</Properties>
+</Item>
+</Item>
+<Item class="ModuleScript" referent="GN14">
+<Properties>
+<string name="Name">RateLimiter</string>
+<ProtectedString name="Source">-- ServerScriptService/Systems/RateLimiter.luau
+--!strict
+-- GHOSTNET :: Token-Bucket pro Spieler und Remote.
+-- Jeder Remote-Handler fragt als ALLERERSTES hier nach.
+
+local Players = game:GetService("Players")
+local Config = require(game:GetService("ReplicatedStorage").Shared.Config)
+
+type Bucket = { Tokens: number, Last: number, Rate: number, Burst: number }
+
+local RateLimiter = {}
+
+local buckets: { [Player]: { [string]: Bucket } } = {}
+-- Wer dauerhaft gegen Limits laeuft, wird geloggt statt still verschluckt.
+local offences: { [Player]: number } = {}
+
+local function getBucket(player: Player, key: string): Bucket?
+	local limit = (Config.RateLimits :: any)[key]
+	if not limit then
+		warn(("[GHOSTNET] Kein Rate-Limit fuer '%s' konfiguriert - Aufruf wird verworfen."):format(key))
+		return nil
+	end
+
+	local perPlayer = buckets[player]
+	if not perPlayer then
+		perPlayer = {}
+		buckets[player] = perPlayer
+	end
+
+	local b = perPlayer[key]
+	if not b then
+		b = { Tokens = limit.Burst, Last = os.clock(), Rate = limit.Rate, Burst = limit.Burst }
+		perPlayer[key] = b
+	end
+	return b
+end
+
+-- true  = Aufruf darf verarbeitet werden
+-- false = Aufruf wird verworfen
+function RateLimiter.Check(player: Player, key: string): boolean
+	if not player.Parent then
+		return false
+	end
+
+	local b = getBucket(player, key)
+	if not b then
+		return false
+	end
+
+	local now = os.clock()
+	b.Tokens = math.min(b.Burst, b.Tokens + (now - b.Last) * b.Rate)
+	b.Last = now
+
+	if b.Tokens &lt; 1 then
+		local n = (offences[player] or 0) + 1
+		offences[player] = n
+		if n == 25 or n % 250 == 0 then
+			warn(("[GHOSTNET] %s ueberschreitet Rate-Limit '%s' (%d Verstoesse)"):format(player.Name, key, n))
+		end
+		return false
+	end
+
+	b.Tokens -= 1
+	return true
+end
+
+function RateLimiter.Clear(player: Player)
+	buckets[player] = nil
+	offences[player] = nil
+end
+
+Players.PlayerRemoving:Connect(RateLimiter.Clear)
+
+return RateLimiter
+</ProtectedString>
+</Properties>
+</Item>
+<Item class="ModuleScript" referent="GN15">
+<Properties>
+<string name="Name">SaveService</string>
+<ProtectedString name="Source">-- ServerScriptService/Systems/SaveService.luau
+--!strict
+-- GHOSTNET :: Das Profil. Einzige Stelle im ganzen Projekt, die einen
+-- DataStore anfasst.
+--
+-- WAS HIER DRINSTEHT
+--   Alles, was einen Serverwechsel ueberleben muss: Bank, Unverkauftes, Rig,
+--   Trace, Ziel-Cooldowns, Statistik. Alle Zeitstempel sind os.time()
+--   (Unix-Zeit) - os.clock() ist die Laufzeit DIESES Serverprozesses und
+--   damit nach einem Rejoin wertlos.
+--
+-- SESSION-LOCK
+--   Beim Laden schreibt der Server eine frische SessionId ins Profil. Taucht
+--   derselbe Spieler auf einem zweiten Server auf, ueberschreibt der neue die
+--   Id - der aeltere Server merkt das beim naechsten Speichern, schreibt NICHT
+--   mehr und beendet seine Sitzung. Ohne das ueberschreiben sich zwei Server
+--   gegenseitig und man kann sich per Server-Hopping Sachen duplizieren.
+--
+-- WENN DAS LADEN SCHEITERT
+--   Wird gekickt. Mit einem leeren Profil weiterspielen zu lassen waere
+--   schlimmer: der Save beim Verlassen wuerde echten Fortschritt mit Nullen
+--   ueberschreiben.
+
+local DataStoreService = game:GetService("DataStoreService")
+local HttpService = game:GetService("HttpService")
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+
+local Config = require(ReplicatedStorage.Shared.Config)
+local Types = require(ReplicatedStorage.Shared.Types)
+
+type Profile = Types.Profile
+
+local SaveService = {}
+
+local store: DataStore? = nil
+
+local profiles: { [Player]: Profile } = {}
+local sessionIds: { [Player]: string } = {}
+local memoryOnly: { [Player]: boolean } = {} -- Studio-Notbetrieb ohne DataStore
+local lastSaveAt: { [Player]: number } = {} -- os.clock()
+local savePending: { [Player]: boolean } = {}
+local saving: { [Player]: boolean } = {}
+local finished: { [Player]: boolean } = {} -- Sitzung beendet, nicht mehr schreiben
+
+local readyCallbacks: { (Player, Profile) -&gt; () } = {}
+
+--==========================================================================
+-- Profil-Schema
+--==========================================================================
+
+local function defaultStats(): Types.Stats
+	return { Hacks = 0, Fails = 0, Busts = 0, Sales = 0, Earned = 0, Upgrades = 0 }
+end
+
+function SaveService.DefaultProfile(): Profile
+	local start = Config.Rig.StartLevels
+	return {
+		SchemaVersion = Config.Save.SchemaVersion,
+		Banked = 0,
+		Unsold = 0,
+		Rig = { CPU = start.CPU, RAM = start.RAM, Cooling = start.Cooling, NetCard = start.NetCard },
+		Trace = 0,
+		Cooldowns = {},
+		Stats = defaultStats(),
+		LastSeen = os.time(),
+		SessionId = "",
+	}
+end
+
+local function toCount(value: any): number?
+	if typeof(value) ~= "number" or value ~= value or value == math.huge or value == -math.huge then
+		return nil
+	end
+	return math.max(0, math.floor(value))
+end
+
+-- Migration und Missbrauchsschutz in einem: alles, was fehlt, kommt aus dem
+-- Default, alles was da ist, wird auf Typ und Wertebereich geprueft. Neue
+-- Felder in kuenftigen Schema-Versionen brauchen deshalb nur hier eine Zeile.
+local function sanitize(raw: any): Profile
+	local p = SaveService.DefaultProfile()
+	if typeof(raw) ~= "table" then
+		return p
+	end
+
+	p.Banked = toCount(raw.Banked) or p.Banked
+	p.Unsold = toCount(raw.Unsold) or p.Unsold
+
+	if typeof(raw.Rig) == "table" then
+		for _, component in Config.Rig.Components do
+			local level = (raw.Rig :: any)[component]
+			if typeof(level) == "number" and level == level then
+				(p.Rig :: any)[component] = math.clamp(math.floor(level), 1, Config.Rig.MaxLevel)
+			end
+		end
+	end
+
+	if typeof(raw.Trace) == "number" and raw.Trace == raw.Trace then
+		p.Trace = math.clamp(raw.Trace, 0, Config.Trace.Max)
+	end
+
+	if typeof(raw.Cooldowns) == "table" then
+		local now = os.time()
+		for id, until_ in raw.Cooldowns do
+			-- Abgelaufenes gar nicht erst uebernehmen: haelt das Profil klein.
+			if typeof(id) == "string" and #id &lt;= 32 and typeof(until_) == "number" and until_ &gt; now then
+				p.Cooldowns[id] = math.floor(until_)
+			end
+		end
+	end
+
+	if typeof(raw.Stats) == "table" then
+		for key in defaultStats() do
+			local value = toCount((raw.Stats :: any)[key])
+			if value then
+				(p.Stats :: any)[key] = value
+			end
+		end
+	end
+
+	p.LastSeen = toCount(raw.LastSeen) or p.LastSeen
+	if typeof(raw.SessionId) == "string" then
+		p.SessionId = raw.SessionId
+	end
+
+	p.SchemaVersion = Config.Save.SchemaVersion
+	return p
+end
+
+-- Alte Cooldowns wegwerfen, bevor gespeichert wird.
+local function pruneCooldowns(profile: Profile)
+	local cutoff = os.time() - Config.Cooldown.KeepSeconds
+	for id, until_ in profile.Cooldowns do
+		if until_ &lt; cutoff then
+			profile.Cooldowns[id] = nil
+		end
+	end
+end
+
+-- Flache Kopie fuer den Store, damit ein laufender Save nicht mit dem
+-- Live-Profil kollidiert, das der Spieler gerade weiter veraendert.
+local function snapshotOf(profile: Profile): Profile
+	local copy = table.clone(profile) :: Profile
+	copy.Rig = table.clone(profile.Rig)
+	copy.Stats = table.clone(profile.Stats)
+	copy.Cooldowns = table.clone(profile.Cooldowns)
+	return copy
+end
+
+--==========================================================================
+-- DataStore-Zugriff (immer pcall + Backoff)
+--==========================================================================
+
+local function getStore(): DataStore?
+	if store then
+		return store
+	end
+	local ok, result = pcall(function()
+		return DataStoreService:GetDataStore(Config.Save.StoreName)
+	end)
+	if ok and result then
+		store = result
+		return store
+	end
+	return nil
+end
+
+local function studioFallbackAllowed(): boolean
+	return Config.Save.StudioMemoryFallback and RunService:IsStudio()
+end
+
+-- Fuehrt fn mit Wiederholungen aus. Liefert (erfolgreich, Ergebnis).
+-- Im Studio wird kuerzer probiert: ist "Studio Access to API Services" aus,
+-- scheitert jeder Versuch, und niemand will 7 Sekunden auf den Notbetrieb warten.
+local function withRetry(label: string, playerName: string, fn: () -&gt; any): (boolean, any)
+	local maxRetries = if studioFallbackAllowed() then Config.Save.StudioRetries else Config.Save.MaxRetries
+	local waitTime = Config.Save.RetryBase
+	local lastError: any = nil
+
+	for attempt = 1, maxRetries do
+		local ok, result = pcall(fn)
+		if ok then
+			return true, result
+		end
+		lastError = result
+		warn(("[GHOSTNET] %s fuer %s fehlgeschlagen (Versuch %d/%d): %s"):format(
+			label,
+			playerName,
+			attempt,
+			maxRetries,
+			tostring(result)
+		))
+		if attempt &lt; maxRetries then
+			task.wait(waitTime)
+			waitTime *= Config.Save.RetryFactor
+		end
+	end
+
+	warn(("[GHOSTNET] %s fuer %s endgueltig gescheitert: %s"):format(label, playerName, tostring(lastError)))
+	return false, nil
+end
+
+--==========================================================================
+-- Laden
+--==========================================================================
+
+local function fireReady(player: Player, profile: Profile)
+	for _, callback in readyCallbacks do
+		local ok, err = pcall(callback, player, profile)
+		if not ok then
+			warn(("[GHOSTNET] Profil-Callback fehlgeschlagen: %s"):format(tostring(err)))
+		end
+	end
+end
+
+local function loadProfile(player: Player)
+	local sessionId = HttpService:GenerateGUID(false)
+	sessionIds[player] = sessionId
+
+	local dataStore = getStore()
+	if not dataStore then
+		if studioFallbackAllowed() then
+			warn("[GHOSTNET] Kein DataStore erreichbar - Studio-Notbetrieb, es wird NICHTS gespeichert.")
+			memoryOnly[player] = true
+			local fallback = SaveService.DefaultProfile()
+			profiles[player] = fallback
+			fireReady(player, fallback)
+			return
+		end
+		player:Kick(Config.Save.KickMessage)
+		return
+	end
+
+	local key = Config.Save.KeyFormat:format(player.UserId)
+
+	local ok, loaded = withRetry("Profil laden", player.Name, function()
+		return dataStore:UpdateAsync(key, function(raw: any): Profile
+			local profile = sanitize(raw)
+
+			-- Abkuehlung fuer die Zeit, in der der Spieler offline war. Der
+			-- Trace laeuft also nicht "eingefroren" weiter - wer eine Woche
+			-- weg war, faengt sauber an.
+			local elapsed = math.max(0, os.time() - profile.LastSeen)
+			if elapsed &gt; 0 and profile.Trace &gt; 0 then
+				profile.Trace = math.max(0, profile.Trace - Config.GetTraceDecay(profile.Rig.Cooling) * elapsed)
+			end
+
+			-- Die juengere Sitzung uebernimmt das Schloss.
+			profile.SessionId = sessionId
+			profile.LastSeen = os.time()
+			return profile
+		end)
+	end)
+
+	if not player.Parent then
+		return -- waehrend des Ladens rausgegangen
+	end
+
+	if not ok or typeof(loaded) ~= "table" then
+		if studioFallbackAllowed() then
+			warn(("[GHOSTNET] Laden fuer %s gescheitert - Studio-Notbetrieb ohne Speichern."):format(player.Name))
+			memoryOnly[player] = true
+			local fallback = SaveService.DefaultProfile()
+			profiles[player] = fallback
+			fireReady(player, fallback)
+			return
+		end
+		player:Kick(Config.Save.KickMessage)
+		return
+	end
+
+	local profile = sanitize(loaded)
+	profile.SessionId = sessionId
+	profiles[player] = profile
+	lastSaveAt[player] = os.clock()
+
+	print(("[GHOSTNET] Profil geladen: %s (Bank %d, Unverkauft %d, Trace %.0f)"):format(
+		player.Name,
+		profile.Banked,
+		profile.Unsold,
+		profile.Trace
+	))
+
+	fireReady(player, profile)
+end
+
+--==========================================================================
+-- Speichern
+--==========================================================================
+
+local function endSession(player: Player, reason: string)
+	if finished[player] then
+		return
+	end
+	finished[player] = true
+	profiles[player] = nil
+	savePending[player] = nil
+	if player.Parent then
+		warn(("[GHOSTNET] Sitzung von %s beendet: %s"):format(player.Name, reason))
+		player:Kick(Config.Save.LockKickMessage)
+	end
+end
+
+-- final = letzter Save dieser Sitzung, danach wird das Schloss freigegeben.
+local function saveProfile(player: Player, final: boolean): boolean
+	if memoryOnly[player] then
+		return false
+	end
+	local profile = profiles[player]
+	if not profile then
+		return false -- nie ein Profil schreiben, das nie geladen wurde
+	end
+	if saving[player] then
+		return false
+	end
+	saving[player] = true
+
+	profile.LastSeen = os.time()
+	pruneCooldowns(profile)
+
+	local snapshot = snapshotOf(profile)
+	local mySession = sessionIds[player] or ""
+	snapshot.SessionId = if final then "" else mySession
+
+	local dataStore = getStore()
+	local lostLock = false
+
+	local ok = false
+	if dataStore then
+		local key = Config.Save.KeyFormat:format(player.UserId)
+		ok = (withRetry("Profil speichern", player.Name, function()
+			dataStore:UpdateAsync(key, function(raw: any)
+				if
+					typeof(raw) == "table"
+					and typeof(raw.SessionId) == "string"
+					and raw.SessionId ~= ""
+					and raw.SessionId ~= mySession
+				then
+					-- Ein juengerer Server hat uebernommen. nil bricht den
+					-- Schreibvorgang ab, statt fremden Fortschritt zu ueberbuegeln.
+					lostLock = true
+					return nil
+				end
+				return snapshot
+			end)
+			return true
+		end))
+	end
+
+	saving[player] = nil
+	lastSaveAt[player] = os.clock()
+	savePending[player] = nil
+
+	if lostLock then
+		endSession(player, "Session-Lock von einem anderen Server uebernommen")
+		return false
+	end
+
+	return ok
+end
+
+--==========================================================================
+-- Oeffentliche Schnittstelle
+--==========================================================================
+
+-- Das Live-Profil. nil solange geladen wird oder wenn das Laden gescheitert
+-- ist. Jeder Aufrufer muss mit nil umgehen koennen.
+function SaveService.Get(player: Player): Profile?
+	return profiles[player]
+end
+
+function SaveService.IsReady(player: Player): boolean
+	return profiles[player] ~= nil
+end
+
+-- Nur zur Anzeige/Diagnose: im Studio-Notbetrieb wird nichts gespeichert.
+function SaveService.IsMemoryOnly(player: Player): boolean
+	return memoryOnly[player] == true
+end
+
+-- Wird fuer jeden Spieler genau einmal aufgerufen, sobald sein Profil steht -
+-- auch fuer Spieler, die schon da waren, als der Callback registriert wurde.
+function SaveService.OnReady(callback: (Player, Profile) -&gt; ())
+	table.insert(readyCallbacks, callback)
+	for player, profile in profiles do
+		task.spawn(callback, player, profile)
+	end
+end
+
+-- Nach wichtigen Ereignissen (Verkauf, Kauf, Bust). Gedrosselt, damit ein
+-- Spieler nicht durch schnelles Klicken das Schreib-Budget leert.
+function SaveService.RequestSave(player: Player)
+	if profiles[player] then
+		savePending[player] = true
+	end
+end
+
+function SaveService.SaveNow(player: Player): boolean
+	return saveProfile(player, false)
+end
+
+--==========================================================================
+
+function SaveService.Init()
+	Players.PlayerAdded:Connect(function(player)
+		task.spawn(loadProfile, player)
+	end)
+	for _, player in Players:GetPlayers() do
+		task.spawn(loadProfile, player)
+	end
+
+	Players.PlayerRemoving:Connect(function(player)
+		-- Laeuft gerade ein Autosave, warten wir kurz darauf. Sonst wuerde der
+		-- Abschluss-Save wegen saving[player] wortlos aussteigen und die
+		-- letzten Sekunden Fortschritt waeren weg.
+		local deadline = os.clock() + Config.Save.LeaveSaveWait
+		while saving[player] and os.clock() &lt; deadline do
+			task.wait(0.1)
+		end
+
+		saveProfile(player, true)
+		profiles[player] = nil
+		sessionIds[player] = nil
+		memoryOnly[player] = nil
+		lastSaveAt[player] = nil
+		savePending[player] = nil
+		saving[player] = nil
+		finished[player] = nil
+	end)
+
+	-- Ein Takt fuer Autosave und angeforderte Zwischenspeicherungen.
+	task.spawn(function()
+		while true do
+			task.wait(1)
+			local now = os.clock()
+			for _, player in Players:GetPlayers() do
+				if not profiles[player] or saving[player] then
+					continue
+				end
+				local age = now - (lastSaveAt[player] or now)
+				local due = age &gt;= Config.Save.Interval
+					or (savePending[player] == true and age &gt;= Config.Save.MinInterval)
+				if due then
+					saveProfile(player, false)
+				end
+			end
+		end
+	end)
+
+	game:BindToClose(function()
+		local open = 0
+		for _, player in Players:GetPlayers() do
+			if profiles[player] then
+				open += 1
+				task.spawn(function()
+					saveProfile(player, true)
+					open -= 1
+				end)
+			end
+		end
+		local deadline = os.clock() + Config.Save.BindToCloseSeconds
+		while open &gt; 0 and os.clock() &lt; deadline do
+			task.wait(0.1)
+		end
+	end)
+
+	print("[GHOSTNET] SaveService bereit.")
+end
+
+return SaveService
+</ProtectedString>
+</Properties>
+</Item>
+<Item class="ModuleScript" referent="GN16">
+<Properties>
+<string name="Name">SellService</string>
+<ProtectedString name="Source">-- ServerScriptService/Systems/SellService.luau
+--!strict
+-- GHOSTNET :: Der Hehler. Der Moment, der aus Zahlen eine Entscheidung macht.
+--
+-- Unverkauftes ist heiss und beim Bust weg. Gebankt ist sicher. Der Weg zum
+-- Hehler kostet Zeit, und der Trace laeuft waehrenddessen weiter. Genau
+-- deshalb ist "noch ein Ziel mitnehmen oder jetzt abliefern?" die zentrale
+-- Frage jeder Runde - und nicht bloss ein Knopf.
+--
+-- Ein Hehler ist genau wie ein Hack-Ziel nur ein BasePart mit einem Tag
+-- ("GhostNetFence"). Kein Code noetig, um einen zweiten aufzustellen.
+
+local CollectionService = game:GetService("CollectionService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Config = require(ReplicatedStorage.Shared.Config)
+local Geometry = require(ReplicatedStorage.Shared.Geometry)
+local Remotes = require(ReplicatedStorage.Shared.Remotes)
+
+local EconomyService = require(script.Parent.EconomyService)
+local RateLimiter = require(script.Parent.RateLimiter)
+local SaveService = require(script.Parent.SaveService)
+local TraceService = require(script.Parent.TraceService)
+
+local SellService = {}
+
+--==========================================================================
+-- Hehler finden
+--==========================================================================
+
+-- Naechster Hehler zum Spieler. Liefert (part, distanz) oder (nil, math.huge).
+function SellService.NearestFence(player: Player): (BasePart?, number)
+	local position = Geometry.AlivePosition(player)
+	if not position then
+		return nil, math.huge
+	end
+
+	local best: BasePart? = nil
+	local bestDistance = math.huge
+
+	for _, inst in CollectionService:GetTagged(Config.FenceTag) do
+		if inst:IsA("BasePart") and inst:IsDescendantOf(workspace) then
+			local distance = Geometry.SurfaceDistance(inst, position)
+			if distance &lt; bestDistance then
+				best, bestDistance = inst, distance
+			end
+		end
+	end
+
+	return best, bestDistance
+end
+
+--==========================================================================
+-- Verkauf
+--==========================================================================
+
+local function reply(player: Player, ok: boolean, reason: string, extra: { [string]: any }?)
+	if not player.Parent then
+		return
+	end
+	local payload: { [string]: any } = { Ok = ok, Reason = reason }
+	if extra then
+		for key, value in extra do
+			payload[key] = value
+		end
+	end
+	Remotes.SellResult:FireClient(player, payload)
+end
+
+local function onSellRequest(player: Player, payload: any)
+	if not RateLimiter.Check(player, "SellRequest") then
+		return
+	end
+	-- Der Client schickt hier bewusst nichts Inhaltliches. Kommt trotzdem
+	-- etwas anderes als eine Tabelle an, ist das kein gueltiger Aufruf.
+	if payload ~= nil and typeof(payload) ~= "table" then
+		return
+	end
+
+	if not SaveService.IsReady(player) then
+		reply(player, false, "LOADING")
+		return
+	end
+
+	local fence, distance = SellService.NearestFence(player)
+	if not fence then
+		reply(player, false, "NO_FENCE")
+		return
+	end
+
+	-- Distanz wird serverseitig geprueft, exakt wie beim Hacken.
+	local range = Config.Sell.Range + Config.Sell.Tolerance
+	if distance &gt; range then
+		reply(player, false, "RANGE", { Distance = math.floor(distance), Range = Config.Sell.Range })
+		return
+	end
+
+	local unsold = EconomyService.GetUnsold(player)
+	if unsold &lt; Config.Sell.MinAmount then
+		reply(player, false, "EMPTY")
+		return
+	end
+
+	-- Gerechnet und gebucht wird ausschliesslich im EconomyService.
+	local gross, fee, net = EconomyService.SellUnsold(player, Config.Sell.FeePercent)
+	if net &lt;= 0 and gross &lt;= 0 then
+		reply(player, false, "EMPTY")
+		return
+	end
+
+	-- Der Hehler ist nicht nur eine Bank, sondern der sichere Hafen.
+	TraceService.Relieve(player, Config.Sell.TraceRelief)
+	SaveService.RequestSave(player)
+
+	reply(player, true, "OK", {
+		Gross = gross,
+		Fee = fee,
+		Net = net,
+		Relief = Config.Sell.TraceRelief,
+		FenceName = fence:GetAttribute("DisplayName") or fence.Name,
+	})
+end
+
+--==========================================================================
+
+function SellService.Init()
+	Remotes.SellRequest.OnServerEvent:Connect(onSellRequest)
+
+	local count = 0
+	for _, inst in CollectionService:GetTagged(Config.FenceTag) do
+		if inst:IsA("BasePart") then
+			count += 1
+		end
+	end
+
+	print(("[GHOSTNET] SellService bereit. %d Hehler, Gebuehr %d%%, Trace -%d."):format(
+		count,
+		math.floor(Config.Sell.FeePercent * 100),
+		Config.Sell.TraceRelief
+	))
+end
+
+return SellService
+</ProtectedString>
+</Properties>
+</Item>
+<Item class="ModuleScript" referent="GN17">
+<Properties>
+<string name="Name">ShopService</string>
+<ProtectedString name="Source">-- ServerScriptService/Systems/ShopService.luau
+--!strict
+-- GHOSTNET :: Rig-Upgrades. Der Grund, warum Crypto etwas wert ist.
+--
+-- Der Client schickt ausschliesslich, WAS er kaufen will. Den Preis rechnet
+-- der Server selbst aus Config.GetUpgradeCost - ein manipuliertes "Cost"-Feld
+-- aus dem Client gibt es nicht, weil keins gelesen wird.
+--
+-- Bezahlt wird aus Banked. Unverkauftes zaehlt nicht: wer aufruesten will,
+-- muss vorher zum Hehler.
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Config = require(ReplicatedStorage.Shared.Config)
+local Remotes = require(ReplicatedStorage.Shared.Remotes)
+
+local EconomyService = require(script.Parent.EconomyService)
+local RateLimiter = require(script.Parent.RateLimiter)
+local SaveService = require(script.Parent.SaveService)
+
+local ShopService = {}
+
+local function isComponent(name: any): boolean
+	if typeof(name) ~= "string" then
+		return false
+	end
+	for _, component in Config.Rig.Components do
+		if component == name then
+			return true
+		end
+	end
+	return false
+end
+
+--==========================================================================
+-- Kauf
+--==========================================================================
+
+-- Antwortet IMMER mit einer Tabelle { Ok, Reason, ... }. Ein RemoteFunction-
+-- Handler darf nicht durchfallen, sonst haengt der Client im Invoke.
+local function purchase(player: Player, payload: any): { [string]: any }
+	if not RateLimiter.Check(player, "ShopPurchase") then
+		return { Ok = false, Reason = "RATE" }
+	end
+	if typeof(payload) ~= "table" then
+		return { Ok = false, Reason = "BAD_PAYLOAD" }
+	end
+
+	local component = (payload :: any).Component
+	if not isComponent(component) then
+		return { Ok = false, Reason = "BAD_PAYLOAD" }
+	end
+
+	local profile = SaveService.Get(player)
+	if not profile then
+		return { Ok = false, Reason = "LOADING" }
+	end
+
+	local current = (profile.Rig :: any)[component] :: number
+	if current &gt;= Config.Rig.MaxLevel then
+		return { Ok = false, Reason = "MAX", Level = current, MaxLevel = Config.Rig.MaxLevel }
+	end
+
+	local targetLevel = current + 1
+	local cost = Config.GetUpgradeCost(component, targetLevel)
+	if cost == math.huge then
+		return { Ok = false, Reason = "BAD_PAYLOAD" }
+	end
+
+	if profile.Banked &lt; cost then
+		return {
+			Ok = false,
+			Reason = "FUNDS",
+			Cost = cost,
+			Missing = cost - profile.Banked,
+			Level = current,
+		}
+	end
+
+	if not EconomyService.SpendBanked(player, cost) then
+		return { Ok = false, Reason = "FUNDS", Cost = cost, Level = current }
+	end
+	if not EconomyService.SetRigLevel(player, component, targetLevel) then
+		-- Kann eigentlich nicht passieren; wenn doch, Geld zurueck statt weg.
+		EconomyService.RefundBanked(player, cost)
+		EconomyService.Sync(player)
+		return { Ok = false, Reason = "INTERNAL" }
+	end
+
+	EconomyService.Sync(player)
+	SaveService.RequestSave(player)
+
+	print(("[GHOSTNET] %s kauft %s auf Stufe %d fuer %d CRY."):format(player.Name, component, targetLevel, cost))
+
+	return {
+		Ok = true,
+		Reason = "OK",
+		Component = component,
+		Level = targetLevel,
+		Cost = cost,
+		Snapshot = EconomyService.Snapshot(player),
+	}
+end
+
+--==========================================================================
+
+function ShopService.Init()
+	Remotes.ShopPurchase.OnServerInvoke = function(player: Player, payload: any): { [string]: any }
+		local ok, result = pcall(purchase, player, payload)
+		if not ok then
+			warn(("[GHOSTNET] ShopPurchase ist abgestuerzt: %s"):format(tostring(result)))
+			return { Ok = false, Reason = "INTERNAL" }
+		end
+		return result
+	end
+
+	print(("[GHOSTNET] ShopService bereit. Erstes Upgrade ab %d CRY."):format(Config.GetUpgradeCost("Cooling", 2)))
+end
+
+return ShopService
+</ProtectedString>
+</Properties>
+</Item>
+<Item class="ModuleScript" referent="GN18">
+<Properties>
+<string name="Name">TraceService</string>
+<ProtectedString name="Source">-- ServerScriptService/Systems/TraceService.luau
+--!strict
+-- GHOSTNET :: Der Trace. Ohne Risiko ist Hacken nur Klicken.
+--
+-- SO FUNKTIONIERT ER
+--   Jeder Spieler hat einen Wert von 0 bis Config.Trace.Max. Jeder Hack
+--   treibt ihn hoch - ein Fehlschlag billiger als ein Erfolg, ein Abbruch am
+--   billigsten, aber nie gratis. Im Leerlauf faellt er wieder, schneller mit
+--   besserer Kuehlung. Ein Verkauf beim Hehler nimmt ein grosses Stueck weg.
+--
+--   Bei Max ist alles Unverkaufte weg, der Trace faellt auf Config.Trace.AfterBust
+--   zurueck und Hacks sind kurz gesperrt. Genau diese Drohung macht die Frage
+--   "noch ein Ziel oder jetzt abliefern?" zu einer echten Entscheidung.
+--
+-- ABHAENGIGKEITEN
+--   Der Service kennt den HackService NICHT. Wer beim Bust etwas abbrechen
+--   will, meldet sich per TraceService.OnBust an - so bleibt die Richtung
+--   HackService -&gt; TraceService und es entsteht kein Require-Kreis.
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+
+local Config = require(ReplicatedStorage.Shared.Config)
+local Remotes = require(ReplicatedStorage.Shared.Remotes)
+local Types = require(ReplicatedStorage.Shared.Types)
+
+local EconomyService = require(script.Parent.EconomyService)
+local SaveService = require(script.Parent.SaveService)
+
+type Profile = Types.Profile
+
+local TraceService = {}
+
+-- Alle Zeiten hier sind os.clock(): reine Kurzzeit-Timer innerhalb dieses
+-- Serverlaufs. Der Trace-WERT selbst liegt im Profil und wird gespeichert.
+local lastActivity: { [Player]: number } = {}
+local lockedUntil: { [Player]: number } = {}
+local lastSyncAt: { [Player]: number } = {}
+local lastSyncValue: { [Player]: number } = {}
+
+local bustCallbacks: { (Player, number) -&gt; () } = {}
+
+--==========================================================================
+-- Anzeige
+--==========================================================================
+
+local function lockSecondsLeft(player: Player): number
+	local until_ = lockedUntil[player]
+	if not until_ then
+		return 0
+	end
+	return math.max(0, until_ - os.clock())
+end
+
+-- force = sofort schicken (Hack, Verkauf, Bust). Ohne force wird nur
+-- geschickt, wenn sich sichtbar etwas geaendert hat - der Abkuehl-Loop
+-- laeuft sonst mit 4 Paketen pro Sekunde und Spieler.
+function TraceService.Sync(player: Player, force: boolean?, bustInfo: { [string]: any }?)
+	if not player.Parent then
+		return
+	end
+	local profile = SaveService.Get(player)
+	if not profile then
+		return
+	end
+
+	local now = os.clock()
+	if not force then
+		local sinceSync = now - (lastSyncAt[player] or 0)
+		local delta = math.abs(profile.Trace - (lastSyncValue[player] or -1))
+		if sinceSync &lt; Config.Trace.SyncInterval or delta &lt; Config.Trace.SyncEpsilon then
+			return
+		end
+	end
+
+	lastSyncAt[player] = now
+	lastSyncValue[player] = profile.Trace
+
+	Remotes.TraceSync:FireClient(player, {
+		Trace = profile.Trace,
+		Max = Config.Trace.Max,
+		Locked = lockSecondsLeft(player) &gt; 0,
+		LockSeconds = lockSecondsLeft(player),
+		Bust = bustInfo,
+	})
+end
+
+--==========================================================================
+-- Lesen
+--==========================================================================
+
+function TraceService.Get(player: Player): number
+	local profile = SaveService.Get(player)
+	return if profile then profile.Trace else 0
+end
+
+function TraceService.IsLocked(player: Player): boolean
+	return lockSecondsLeft(player) &gt; 0
+end
+
+function TraceService.LockSecondsLeft(player: Player): number
+	return lockSecondsLeft(player)
+end
+
+-- Wird beim Bust aufgerufen: (spieler, verlorene Crypto).
+function TraceService.OnBust(callback: (Player, number) -&gt; ())
+	table.insert(bustCallbacks, callback)
+end
+
+--==========================================================================
+-- Schreiben
+--==========================================================================
+
+local function bust(player: Player, profile: Profile)
+	local lost = EconomyService.WipeUnsold(player)
+	EconomyService.CountBust(player)
+
+	profile.Trace = Config.Trace.AfterBust
+	lockedUntil[player] = os.clock() + Config.Trace.BustLockSeconds
+	lastActivity[player] = os.clock()
+
+	warn(("[GHOSTNET] BUST: %s verliert %d CRY."):format(player.Name, lost))
+
+	for _, callback in bustCallbacks do
+		task.spawn(callback, player, lost)
+	end
+
+	TraceService.Sync(player, true, { Lost = lost, LockSeconds = Config.Trace.BustLockSeconds })
+	SaveService.RequestSave(player)
+end
+
+-- Der einzige Weg, den Trace zu erhoehen. Wird vom HackService mit dem dort
+-- bereits berechneten traceDelta aufgerufen.
+function TraceService.Add(player: Player, amount: number)
+	if amount &lt;= 0 then
+		return
+	end
+	local profile = SaveService.Get(player)
+	if not profile then
+		return
+	end
+
+	lastActivity[player] = os.clock()
+	profile.Trace = math.min(Config.Trace.Max, profile.Trace + amount)
+
+	if profile.Trace &gt;= Config.Trace.Max then
+		bust(player, profile)
+	else
+		TraceService.Sync(player, true)
+	end
+end
+
+-- Verkauf beim Hehler. Der Hehler ist damit nicht nur eine Bank, sondern der
+-- sichere Hafen.
+function TraceService.Relieve(player: Player, amount: number)
+	if amount &lt;= 0 then
+		return
+	end
+	local profile = SaveService.Get(player)
+	if not profile then
+		return
+	end
+	profile.Trace = math.max(0, profile.Trace - amount)
+	TraceService.Sync(player, true)
+end
+
+--==========================================================================
+-- Abkuehlung
+--==========================================================================
+
+local function decayLoop()
+	local accumulator = 0
+	RunService.Heartbeat:Connect(function(dt)
+		accumulator += dt
+		if accumulator &lt; Config.Trace.DecayTick then
+			return
+		end
+		local step = accumulator
+		accumulator = 0
+
+		local now = os.clock()
+		for _, player in Players:GetPlayers() do
+			local profile = SaveService.Get(player)
+			if not profile then
+				continue
+			end
+
+			-- Sperre gerade abgelaufen: einmal melden, damit der HUD aufmacht.
+			local until_ = lockedUntil[player]
+			if until_ and now &gt;= until_ then
+				lockedUntil[player] = nil
+				TraceService.Sync(player, true)
+			end
+
+			if profile.Trace &lt;= 0 then
+				continue
+			end
+			if now - (lastActivity[player] or 0) &lt; Config.Trace.DecayDelay then
+				continue
+			end
+
+			profile.Trace = math.max(0, profile.Trace - Config.GetTraceDecay(profile.Rig.Cooling) * step)
+			TraceService.Sync(player, false)
+		end
+	end)
+end
+
+--==========================================================================
+
+function TraceService.Init()
+	SaveService.OnReady(function(player)
+		lastActivity[player] = os.clock()
+		TraceService.Sync(player, true)
+	end)
+
+	Players.PlayerRemoving:Connect(function(player)
+		lastActivity[player] = nil
+		lockedUntil[player] = nil
+		lastSyncAt[player] = nil
+		lastSyncValue[player] = nil
+	end)
+
+	decayLoop()
+
+	print(("[GHOSTNET] TraceService bereit. Bust bei %d, Abkuehlung %.2f/s."):format(
+		Config.Trace.Max,
+		Config.Trace.DecayPerSecond
+	))
+end
+
+return TraceService
+</ProtectedString>
+</Properties>
+</Item>
+</Item>
+<Item class="Folder" referent="GN21">
+<Properties>
+<string name="Name">World</string>
+</Properties>
+<Item class="Script" referent="GN20">
+<Properties>
+<string name="Name">TestTargets</string>
+<ProtectedString name="Source">-- ServerScriptService/World/TestTargets.server.luau
+--!strict
+-- GHOSTNET :: Drei Testobjekte und ein Hehler fuer Phase 1.
+--
+-- Wichtig fuer das Gesamtbild: In diesem Skript steht KEINE Hack-Logik.
+-- Es baut Parts und setzt Attribute. Genau so entstehen spaeter auch alle
+-- echten Ziele in der Stadt - per Hand im Studio oder per Generator.
+--
+-- Der Hehler steht bewusst am Spawn und damit ein Stueck von den Zielen weg:
+-- Der Rueckweg kostet Zeit, waehrend der Trace weiterlaeuft. Ohne diese
+-- Distanz waere Verkaufen keine Entscheidung, sondern nur ein Knopf.
+
+local CollectionService = game:GetService("CollectionService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Config = require(ReplicatedStorage.Shared.Config)
+
+local FOLDER_NAME = "GhostNet_TestTargets"
+
+if workspace:FindFirstChild(FOLDER_NAME) then
+	return -- schon gebaut (z.B. nach einem Studio-Reload)
+end
+
+local folder = Instance.new("Folder")
+folder.Name = FOLDER_NAME
+folder.Parent = workspace
+
+type PartProps = {
+	Name: string,
+	Size: Vector3,
+	CFrame: CFrame,
+	Color: Color3,
+	Material: Enum.Material?,
+	Transparency: number?,
+	CanCollide: boolean?,
+	Parent: Instance?,
+}
+
+local function makePart(props: PartProps): Part
+	local p = Instance.new("Part")
+	p.Name = props.Name
+	p.Size = props.Size
+	p.CFrame = props.CFrame
+	p.Color = props.Color
+	p.Material = props.Material or Enum.Material.SmoothPlastic
+	p.Transparency = props.Transparency or 0
+	p.CanCollide = if props.CanCollide == nil then true else props.CanCollide
+	p.Anchored = true
+	p.TopSurface = Enum.SurfaceType.Smooth
+	p.BottomSurface = Enum.SurfaceType.Smooth
+	p.Parent = props.Parent or folder
+	return p
+end
+
+-- Macht aus einem beliebigen Part ein Hack-Ziel. Nur Attribute, sonst nichts.
+local function makeHackable(part: BasePart, attributes: { [string]: any })
+	for key, value in attributes do
+		part:SetAttribute(key, value)
+	end
+	part:SetAttribute("Offline", false)
+	CollectionService:AddTag(part, Config.HackableTag)
+end
+
+local function accentLight(part: BasePart, color: Color3, range: number)
+	local light = Instance.new("PointLight")
+	light.Color = color
+	light.Brightness = 2
+	light.Range = range
+	light.Parent = part
+end
+
+-- Schwebender Text ueber einem Part. Nur Deko und Orientierung.
+local function signboard(part: BasePart, title: string, subtitle: string, color: Color3, height: number)
+	local gui = Instance.new("BillboardGui")
+	gui.Name = "Sign"
+	gui.Size = UDim2.fromOffset(220, 46)
+	gui.StudsOffsetWorldSpace = Vector3.new(0, height, 0)
+	gui.AlwaysOnTop = false
+	gui.MaxDistance = 140
+
+	local head = Instance.new("TextLabel")
+	head.BackgroundTransparency = 1
+	head.Font = Enum.Font.Code
+	head.Text = title
+	head.TextColor3 = color
+	head.TextSize = 18
+	head.Size = UDim2.new(1, 0, 0.6, 0)
+	head.Parent = gui
+
+	local sub = Instance.new("TextLabel")
+	sub.BackgroundTransparency = 1
+	sub.Font = Enum.Font.Code
+	sub.Text = subtitle
+	sub.TextColor3 = Config.Theme.TextDim
+	sub.TextSize = 13
+	sub.Position = UDim2.new(0, 0, 0.6, 0)
+	sub.Size = UDim2.new(1, 0, 0.4, 0)
+	sub.Parent = gui
+
+	gui.Parent = part
+end
+
+--==========================================================================
+-- 1) UEBERWACHUNGSKAMERA  -  Schwierigkeit 2
+--==========================================================================
+do
+	local base = Vector3.new(-24, 0, -26)
+
+	makePart({
+		Name = "KameraMast",
+		Size = Vector3.new(0.8, 12, 0.8),
+		CFrame = CFrame.new(base + Vector3.new(0, 6, 0)),
+		Color = Color3.fromRGB(38, 44, 54),
+		Material = Enum.Material.Metal,
+	})
+
+	makePart({
+		Name = "KameraArm",
+		Size = Vector3.new(3.4, 0.5, 0.5),
+		CFrame = CFrame.new(base + Vector3.new(1.7, 11.6, 0)),
+		Color = Color3.fromRGB(38, 44, 54),
+		Material = Enum.Material.Metal,
+	})
+
+	local head = makePart({
+		Name = "Ueberwachungskamera",
+		Size = Vector3.new(1.6, 1.6, 3.2),
+		CFrame = CFrame.new(base + Vector3.new(3.4, 11.2, 0)) * CFrame.Angles(math.rad(-15), 0, 0),
+		Color = Color3.fromRGB(24, 30, 38),
+		Material = Enum.Material.Metal,
+	})
+	accentLight(head, Config.Theme.Magenta, 14)
+
+	makeHackable(head, {
+		DisplayName = "CAM-07 // Kreuzung Nord",
+		Difficulty = 2,
+		HackType = "NodeBreach",
+		RequiredLevel = 1,
+		OnSuccess = "CameraOffline",
+		DownTime = 30,
+	})
+end
+
+--==========================================================================
+-- 2) SICHERHEITSTUER  -  Schwierigkeit 4
+--==========================================================================
+do
+	local base = Vector3.new(0, 0, -38)
+
+	makePart({
+		Name = "WandLinks",
+		Size = Vector3.new(10, 12, 1.2),
+		CFrame = CFrame.new(base + Vector3.new(-8, 6, 0)),
+		Color = Color3.fromRGB(30, 34, 42),
+		Material = Enum.Material.Concrete,
+	})
+	makePart({
+		Name = "WandRechts",
+		Size = Vector3.new(10, 12, 1.2),
+		CFrame = CFrame.new(base + Vector3.new(8, 6, 0)),
+		Color = Color3.fromRGB(30, 34, 42),
+		Material = Enum.Material.Concrete,
+	})
+	makePart({
+		Name = "Sturz",
+		Size = Vector3.new(6, 2, 1.2),
+		CFrame = CFrame.new(base + Vector3.new(0, 11, 0)),
+		Color = Color3.fromRGB(30, 34, 42),
+		Material = Enum.Material.Concrete,
+	})
+
+	local door = makePart({
+		Name = "Sicherheitstuer",
+		Size = Vector3.new(6, 10, 0.8),
+		CFrame = CFrame.new(base + Vector3.new(0, 5, 0)),
+		Color = Color3.fromRGB(20, 26, 34),
+		Material = Enum.Material.Metal,
+	})
+	accentLight(door, Config.Theme.Cyan, 12)
+
+	makeHackable(door, {
+		DisplayName = "SEC-DOOR // Lagerhalle B",
+		Difficulty = 4,
+		HackType = "NodeBreach",
+		RequiredLevel = 1,
+		OnSuccess = "DoorOpen",
+		DownTime = 12,
+	})
+end
+
+--==========================================================================
+-- 3) GELDAUTOMAT  -  Schwierigkeit 6
+--==========================================================================
+do
+	local base = Vector3.new(24, 0, -26)
+
+	makePart({
+		Name = "AutomatSockel",
+		Size = Vector3.new(5, 1, 3),
+		CFrame = CFrame.new(base + Vector3.new(0, 0.5, 0)),
+		Color = Color3.fromRGB(26, 30, 38),
+		Material = Enum.Material.Concrete,
+	})
+
+	local atm = makePart({
+		Name = "Geldautomat",
+		Size = Vector3.new(4.4, 7, 2.4),
+		CFrame = CFrame.new(base + Vector3.new(0, 4.5, 0)),
+		Color = Color3.fromRGB(34, 40, 50),
+		Material = Enum.Material.Metal,
+	})
+
+	makePart({
+		Name = "AutomatDisplay",
+		Size = Vector3.new(3, 2.2, 0.2),
+		CFrame = CFrame.new(base + Vector3.new(0, 5.6, 1.25)),
+		Color = Config.Theme.Cyan,
+		Material = Enum.Material.Neon,
+		CanCollide = false,
+	})
+	accentLight(atm, Config.Theme.Cyan, 16)
+
+	makeHackable(atm, {
+		DisplayName = "ATM // Nakamura Bank",
+		Difficulty = 6,
+		HackType = "NodeBreach",
+		RequiredLevel = 1,
+		OnSuccess = "AtmPayout",
+		Cooldown = 300,
+		DownTime = 20,
+	})
+end
+
+--==========================================================================
+-- 4) HEHLER  -  hier wird Unverkauftes zu sicherem Guthaben
+-- Wie bei den Hack-Zielen gilt: nur ein Part plus Tag. Ein zweiter Hehler
+-- irgendwo in der Stadt braucht keine Zeile Code.
+--==========================================================================
+do
+	local base = Vector3.new(0, 0, 20)
+
+	makePart({
+		Name = "HehlerRueckwand",
+		Size = Vector3.new(12, 9, 1),
+		CFrame = CFrame.new(base + Vector3.new(0, 4.5, 2.5)),
+		Color = Color3.fromRGB(24, 28, 36),
+		Material = Enum.Material.Concrete,
+	})
+
+	makePart({
+		Name = "HehlerDach",
+		Size = Vector3.new(13, 0.6, 6),
+		CFrame = CFrame.new(base + Vector3.new(0, 9, 0)),
+		Color = Color3.fromRGB(18, 22, 28),
+		Material = Enum.Material.Metal,
+	})
+
+	local counter = makePart({
+		Name = "Hehler",
+		Size = Vector3.new(10, 4, 2.4),
+		CFrame = CFrame.new(base + Vector3.new(0, 2, 0)),
+		Color = Color3.fromRGB(30, 36, 46),
+		Material = Enum.Material.Metal,
+	})
+
+	makePart({
+		Name = "HehlerLeuchtband",
+		Size = Vector3.new(10.2, 0.35, 2.6),
+		CFrame = CFrame.new(base + Vector3.new(0, 4.1, 0)),
+		Color = Config.Theme.Green,
+		Material = Enum.Material.Neon,
+		CanCollide = false,
+	})
+
+	local light = Instance.new("PointLight")
+	light.Color = Config.Theme.Green
+	light.Brightness = 3
+	light.Range = 22
+	light.Parent = counter
+
+	counter:SetAttribute("DisplayName", "HEHLER // Kanalgasse")
+	CollectionService:AddTag(counter, Config.FenceTag)
+
+	signboard(
+		counter,
+		"HEHLER",
+		("Gebuehr %d%%  //  Trace -%d"):format(math.floor(Config.Sell.FeePercent * 100), Config.Sell.TraceRelief),
+		Config.Theme.Green,
+		4.6
+	)
+end
+
+print("[GHOSTNET] Testwelt gebaut: Kamera (D2), Sicherheitstuer (D4), Geldautomat (D6), Hehler am Spawn.")
+</ProtectedString>
+</Properties>
+</Item>
+</Item>
+</Item>
+<Item class="StarterPlayer" referent="GN34">
+<Properties>
+<string name="Name">StarterPlayer</string>
+</Properties>
+<Item class="StarterPlayerScripts" referent="GN35">
+<Properties>
+<string name="Name">StarterPlayerScripts</string>
+</Properties>
+<Item class="Folder" referent="GN25">
+<Properties>
+<string name="Name">UI</string>
+</Properties>
+<Item class="LocalScript" referent="GN22">
+<Properties>
+<string name="Name">HUD</string>
+<ProtectedString name="Source">-- StarterPlayer/StarterPlayerScripts/UI/HUD.client.luau
+--!strict
+-- GHOSTNET :: Dauerhaftes HUD - Wallet, Trace, Ziel-Prompt, Meldungen.
+--
+-- Der HUD trifft KEINE Entscheidungen. Er zeigt an, was der Server sagt,
+-- und schickt beim Druck auf [E] eine Bitte los. Ob sie erlaubt ist,
+-- entscheidet ausschliesslich der Server.
+--
+-- Der Trace-Balken ist das wichtigste Element auf dem Schirm: er muss immer
+-- sichtbar sein und ab Config.Trace.WarnAt anfangen zu pulsieren. Die Frage
+-- "noch ein Hack oder erst verkaufen?" soll man fuehlen, nicht ausrechnen.
+
+local CollectionService = game:GetService("CollectionService")
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+
+local Config = require(ReplicatedStorage.Shared.Config)
+local Geometry = require(ReplicatedStorage.Shared.Geometry)
+local Remotes = require(ReplicatedStorage.Shared.Remotes)
+local UITheme = require(ReplicatedStorage.Shared.UITheme)
+
+local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+
+local C = UITheme.Color
+
+--==========================================================================
+-- Zustand
+--==========================================================================
+
+local wallet = { Banked = 0, Unsold = 0, Tier = 1 }
+local rig = table.clone(Config.Rig.StartLevels)
+local trace = { Value = 0, Max = Config.Trace.Max, Locked = false, LockUntil = 0 }
+local hackOpen = false
+local cooldownUntil: { [string]: number } = {} -- [targetId] = os.clock()
+
+-- Worauf der Prompt gerade zeigt: entweder ein Hack-Ziel oder der Hehler.
+local currentKind: string? = nil -- "HACK" | "FENCE"
+local currentTargetId: string? = nil
+
+--==========================================================================
+-- Aufbau
+--==========================================================================
+
+local gui = UITheme.Screen("GhostNetHUD", 10)
+gui.Parent = playerGui
+
+--== Wallet oben rechts ====================================================
+
+local walletPanel = UITheme.Frame({
+	Name = "Wallet",
+	AnchorPoint = Vector2.new(1, 0),
+	Position = UDim2.new(1, -18, 0, 18),
+	Size = UDim2.fromOffset(240, 62),
+	BackgroundColor3 = C.Panel,
+	BackgroundTransparency = 0.08,
+	Parent = gui,
+})
+UITheme.Corner(walletPanel, 4)
+UITheme.Stroke(walletPanel, C.Line)
+UITheme.Padding(walletPanel, 10)
+
+UITheme.Label({
+	Name = "Title",
+	Text = "UNVERKAUFT",
+	TextColor3 = C.TextDim,
+	TextSize = 11,
+	Size = UDim2.new(1, 0, 0, 12),
+	Parent = walletPanel,
+})
+
+local walletValue = UITheme.Label({
+	Name = "Value",
+	Text = "0 CRY",
+	TextColor3 = C.Cyan,
+	TextSize = 22,
+	Position = UDim2.new(0, 0, 0, 14),
+	Size = UDim2.new(1, 0, 0, 26),
+	Parent = walletPanel,
+})
+
+local walletSub = UITheme.Label({
+	Name = "Sub",
+	Text = "BANK 0   //   TIER 1",
+	TextColor3 = C.TextDim,
+	TextSize = 12,
+	Position = UDim2.new(0, 0, 1, -13),
+	Size = UDim2.new(1, 0, 0, 13),
+	Parent = walletPanel,
+})
+
+--== Trace direkt darunter =================================================
+
+local tracePanel = UITheme.Frame({
+	Name = "Trace",
+	AnchorPoint = Vector2.new(1, 0),
+	Position = UDim2.new(1, -18, 0, 88),
+	Size = UDim2.fromOffset(240, 54),
+	BackgroundColor3 = C.Panel,
+	BackgroundTransparency = 0.08,
+	Parent = gui,
+})
+UITheme.Corner(tracePanel, 4)
+local traceStroke = UITheme.Stroke(tracePanel, C.Line)
+UITheme.Padding(tracePanel, 10)
+
+local traceTitle = UITheme.Label({
+	Name = "Title",
+	Text = "TRACE",
+	TextColor3 = C.TextDim,
+	TextSize = 11,
+	Size = UDim2.new(0.5, 0, 0, 12),
+	Parent = tracePanel,
+})
+
+local traceValue = UITheme.Label({
+	Name = "Value",
+	Text = "0%",
+	TextColor3 = C.Cyan,
+	TextSize = 12,
+	TextXAlignment = Enum.TextXAlignment.Right,
+	Position = UDim2.new(0.5, 0, 0, 0),
+	Size = UDim2.new(0.5, 0, 0, 12),
+	Parent = tracePanel,
+})
+
+local traceTrack = UITheme.Frame({
+	Name = "Track",
+	Position = UDim2.new(0, 0, 0, 18),
+	Size = UDim2.new(1, 0, 0, 12),
+	BackgroundColor3 = C.PanelLight,
+	Parent = tracePanel,
+})
+UITheme.Corner(traceTrack, 3)
+
+local traceFill = UITheme.Frame({
+	Name = "Fill",
+	Size = UDim2.fromScale(0, 1),
+	BackgroundColor3 = C.Cyan,
+	Parent = traceTrack,
+})
+UITheme.Corner(traceFill, 3)
+
+local traceHint = UITheme.Label({
+	Name = "Hint",
+	Text = "ruhig",
+	TextColor3 = C.TextDim,
+	TextSize = 11,
+	Position = UDim2.new(0, 0, 1, -12),
+	Size = UDim2.new(1, 0, 0, 12),
+	Parent = tracePanel,
+})
+
+--== Ziel-Prompt unten Mitte ===============================================
+
+local prompt = UITheme.Button({
+	Name = "TargetPrompt",
+	AnchorPoint = Vector2.new(0.5, 1),
+	Position = UDim2.new(0.5, 0, 1, -46),
+	Size = UDim2.fromOffset(380, 82),
+	BackgroundColor3 = C.Panel,
+	BackgroundTransparency = 0.06,
+	Visible = false,
+	Parent = gui,
+})
+UITheme.Corner(prompt, 4)
+local promptStroke = UITheme.Stroke(prompt, C.CyanDim)
+UITheme.Padding(prompt, 12)
+
+local promptName = UITheme.Label({
+	Name = "Name",
+	Text = "",
+	TextColor3 = C.Cyan,
+	TextSize = 16,
+	Size = UDim2.new(1, 0, 0, 18),
+	Parent = prompt,
+})
+
+local promptInfo = UITheme.Label({
+	Name = "Info",
+	Text = "",
+	TextColor3 = C.TextDim,
+	TextSize = 12,
+	Position = UDim2.new(0, 0, 0, 22),
+	Size = UDim2.new(1, 0, 0, 14),
+	Parent = prompt,
+})
+
+local promptAction = UITheme.Label({
+	Name = "Action",
+	Text = "[E]  BREACH",
+	TextColor3 = C.Text,
+	TextSize = 15,
+	Position = UDim2.new(0, 0, 1, -18),
+	Size = UDim2.new(1, 0, 0, 16),
+	Parent = prompt,
+})
+
+--== Meldungen =============================================================
+
+local toastHolder = UITheme.Frame({
+	Name = "Toasts",
+	AnchorPoint = Vector2.new(0.5, 1),
+	Position = UDim2.new(0.5, 0, 1, -138),
+	Size = UDim2.fromOffset(440, 130),
+	BackgroundTransparency = 1,
+	Parent = gui,
+})
+local toastLayout = Instance.new("UIListLayout")
+toastLayout.SortOrder = Enum.SortOrder.LayoutOrder
+toastLayout.VerticalAlignment = Enum.VerticalAlignment.Bottom
+toastLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+toastLayout.Padding = UDim.new(0, 4)
+toastLayout.Parent = toastHolder
+
+local toastOrder = 0
+
+local function toast(text: string, color: Color3)
+	toastOrder += 1
+	local item = UITheme.Frame({
+		Name = "Toast",
+		Size = UDim2.fromOffset(440, 26),
+		BackgroundColor3 = C.Panel,
+		BackgroundTransparency = 0.15,
+		LayoutOrder = toastOrder,
+		Parent = toastHolder,
+	})
+	UITheme.Corner(item, 3)
+	UITheme.Stroke(item, color)
+
+	local label = UITheme.Label({
+		Text = text,
+		TextColor3 = color,
+		TextSize = 13,
+		TextXAlignment = Enum.TextXAlignment.Center,
+		Size = UDim2.fromScale(1, 1),
+		Parent = item,
+	})
+
+	task.delay(3.2, function()
+		if not item.Parent then
+			return
+		end
+		TweenService:Create(item, UITheme.Tween.Normal, { BackgroundTransparency = 1 }):Play()
+		TweenService:Create(label, UITheme.Tween.Normal, { TextTransparency = 1 }):Play()
+		task.wait(0.3)
+		item:Destroy()
+	end)
+end
+
+--== Bust-Blitz ============================================================
+
+local bustFlash = UITheme.Frame({
+	Name = "BustFlash",
+	Size = UDim2.fromScale(1, 1),
+	BackgroundColor3 = C.Magenta,
+	BackgroundTransparency = 1,
+	Visible = false,
+	ZIndex = 80,
+	Parent = gui,
+})
+
+local bustBanner = UITheme.Label({
+	Name = "BustBanner",
+	Text = "",
+	TextColor3 = C.Magenta,
+	TextSize = 40,
+	TextXAlignment = Enum.TextXAlignment.Center,
+	AnchorPoint = Vector2.new(0.5, 0.5),
+	Position = UDim2.fromScale(0.5, 0.36),
+	Size = UDim2.new(1, 0, 0, 48),
+	TextTransparency = 1,
+	ZIndex = 81,
+	Parent = gui,
+})
+
+local function playBust(lost: number)
+	bustFlash.Visible = true
+	bustFlash.BackgroundTransparency = 0.35
+	bustBanner.Text = ("GESCHNAPPT  //  -%d CRY"):format(lost)
+	bustBanner.TextTransparency = 0
+
+	TweenService:Create(bustFlash, TweenInfo.new(0.9, Enum.EasingStyle.Quad), { BackgroundTransparency = 1 }):Play()
+	TweenService:Create(bustBanner, TweenInfo.new(2.0, Enum.EasingStyle.Quad), { TextTransparency = 1 }):Play()
+	task.delay(2.1, function()
+		bustFlash.Visible = false
+	end)
+
+	toast(("TRACE 100 - ALLES UNVERKAUFTE VERLOREN (-%d CRY)"):format(lost), C.Magenta)
+end
+
+--== Weltmarkierung des naechsten Ziels ====================================
+
+local highlight = Instance.new("Highlight")
+highlight.FillColor = C.Cyan
+highlight.FillTransparency = 0.86
+highlight.OutlineColor = C.Cyan
+highlight.OutlineTransparency = 0.15
+highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+highlight.Enabled = false
+highlight.Parent = gui
+
+--==========================================================================
+-- Anzeige aktualisieren
+--==========================================================================
+
+local function refreshWallet()
+	walletValue.Text = ("%d CRY"):format(wallet.Unsold)
+	walletValue.TextColor3 = if wallet.Unsold &gt; 0 then C.Cyan else C.TextDim
+	walletSub.Text = ("BANK %d   //   TIER %d"):format(wallet.Banked, wallet.Tier)
+end
+
+local function refreshTrace()
+	local fraction = math.clamp(trace.Value / math.max(1, trace.Max), 0, 1)
+	traceFill.Size = UDim2.fromScale(fraction, 1)
+	traceValue.Text = ("%d%%"):format(math.floor(trace.Value + 0.5))
+
+	if trace.Locked then
+		traceHint.Text = ("gesperrt // %ds"):format(math.ceil(math.max(0, trace.LockUntil - os.clock())))
+		traceHint.TextColor3 = C.Magenta
+	elseif trace.Value &gt;= Config.Trace.CriticalAt then
+		traceHint.Text = "KRITISCH - sofort verkaufen"
+		traceHint.TextColor3 = C.Magenta
+	elseif trace.Value &gt;= Config.Trace.WarnAt then
+		traceHint.Text = "heiss - besser abliefern"
+		traceHint.TextColor3 = C.Amber
+	elseif trace.Value &gt; 0 then
+		traceHint.Text = "kuehlt ab"
+		traceHint.TextColor3 = C.TextDim
+	else
+		traceHint.Text = "ruhig"
+		traceHint.TextColor3 = C.TextDim
+	end
+end
+
+local function cooldownLeft(id: string): number
+	local until_ = cooldownUntil[id]
+	if not until_ then
+		return 0
+	end
+	return math.max(0, until_ - os.clock())
+end
+
+local function hidePrompt()
+	if prompt.Visible then
+		prompt.Visible = false
+	end
+	currentKind = nil
+	currentTargetId = nil
+	highlight.Enabled = false
+	highlight.Adornee = nil
+end
+
+local function showFencePrompt(fence: BasePart, distance: number)
+	currentKind = "FENCE"
+	currentTargetId = nil
+	prompt.Visible = true
+	highlight.Adornee = fence
+	highlight.Enabled = true
+	highlight.OutlineColor = C.Green
+
+	local name = fence:GetAttribute("DisplayName")
+	promptName.Text = if typeof(name) == "string" and name ~= "" then name else fence.Name
+	promptName.TextColor3 = C.Green
+	promptStroke.Color = C.Green
+
+	local _, fee, net = Config.GetSellPayout(wallet.Unsold)
+	promptInfo.Text = ("%d CRY UNVERKAUFT   //   GEBUEHR %d   //   %.0fm"):format(wallet.Unsold, fee, distance)
+
+	if wallet.Unsold &lt; Config.Sell.MinAmount then
+		promptAction.Text = "NICHTS ZU VERKAUFEN"
+		promptAction.TextColor3 = C.TextDim
+	else
+		promptAction.Text = ("[E]  VERKAUFEN  -&gt;  +%d BANK,  TRACE -%d"):format(net, Config.Sell.TraceRelief)
+		promptAction.TextColor3 = C.Green
+	end
+end
+
+local function showHackPrompt(target: BasePart, distance: number, id: string)
+	currentKind = "HACK"
+	currentTargetId = id
+	prompt.Visible = true
+	highlight.Adornee = target
+	highlight.Enabled = true
+
+	local name = target:GetAttribute("DisplayName")
+	promptName.Text = if typeof(name) == "string" and name ~= "" then name else target.Name
+	promptName.TextColor3 = C.Cyan
+
+	local difficulty = target:GetAttribute("Difficulty")
+	local reward = target:GetAttribute("Reward")
+	local diffNum = if typeof(difficulty) == "number" then difficulty else 1
+	local rewardNum = if typeof(reward) == "number" and reward &gt;= 0 then reward else Config.GetReward(diffNum)
+
+	promptInfo.Text = ("SCHWIERIGKEIT %d/10   //   %d CRY   //   %.0fm"):format(diffNum, rewardNum, distance)
+
+	local offline = target:GetAttribute("Offline") == true
+	local cd = cooldownLeft(id)
+
+	if trace.Locked then
+		promptAction.Text = ("AUFGEFLOGEN // %ds RUHE"):format(math.ceil(math.max(0, trace.LockUntil - os.clock())))
+		promptAction.TextColor3 = C.Magenta
+		highlight.OutlineColor = C.Magenta
+		promptStroke.Color = C.Magenta
+	elseif offline then
+		promptAction.Text = "ZIEL BEREITS OFFLINE"
+		promptAction.TextColor3 = C.TextDim
+		highlight.OutlineColor = C.Line
+		promptStroke.Color = C.Line
+	elseif cd &gt; 0 then
+		promptAction.Text = ("GESPERRT // %ds"):format(math.ceil(cd))
+		promptAction.TextColor3 = C.Amber
+		highlight.OutlineColor = C.Amber
+		promptStroke.Color = C.Amber
+	else
+		promptAction.Text = "[E]  BREACH"
+		promptAction.TextColor3 = C.Text
+		highlight.OutlineColor = C.Cyan
+		promptStroke.Color = C.CyanDim
+	end
+end
+
+-- Sucht das naechste bedienbare Objekt. Hehler und Hack-Ziel konkurrieren:
+-- was naeher dran ist, gewinnt den Prompt. Deshalb gibt es nur EINE Taste.
+local function scan()
+	if hackOpen then
+		hidePrompt()
+		return
+	end
+
+	local position = Geometry.AlivePosition(player)
+	if not position then
+		hidePrompt()
+		return
+	end
+
+	local hackRange = Config.GetRange(rig.NetCard)
+	local bestHack: BasePart? = nil
+	local bestHackDistance = math.huge
+
+	for _, inst in CollectionService:GetTagged(Config.HackableTag) do
+		if inst:IsA("BasePart") and inst:IsDescendantOf(workspace) then
+			local d = Geometry.SurfaceDistance(inst, position)
+			if d &lt;= hackRange and d &lt; bestHackDistance then
+				bestHack, bestHackDistance = inst, d
+			end
+		end
+	end
+
+	local bestFence: BasePart? = nil
+	local bestFenceDistance = math.huge
+
+	for _, inst in CollectionService:GetTagged(Config.FenceTag) do
+		if inst:IsA("BasePart") and inst:IsDescendantOf(workspace) then
+			local d = Geometry.SurfaceDistance(inst, position)
+			if d &lt;= Config.Sell.Range and d &lt; bestFenceDistance then
+				bestFence, bestFenceDistance = inst, d
+			end
+		end
+	end
+
+	if bestFence and bestFenceDistance &lt;= bestHackDistance then
+		showFencePrompt(bestFence, bestFenceDistance)
+		return
+	end
+
+	if bestHack then
+		local id = bestHack:GetAttribute("TargetId")
+		if typeof(id) ~= "string" then
+			hidePrompt() -- Server hat den Part noch nicht registriert
+			return
+		end
+		showHackPrompt(bestHack, bestHackDistance, id)
+		return
+	end
+
+	hidePrompt()
+end
+
+--==========================================================================
+-- Eingabe
+--==========================================================================
+
+local function activate()
+	if hackOpen then
+		return
+	end
+	if currentKind == "FENCE" then
+		Remotes.SellRequest:FireServer({})
+	elseif currentKind == "HACK" and currentTargetId then
+		Remotes.HackRequestStart:FireServer({ TargetId = currentTargetId })
+	end
+end
+
+UserInputService.InputBegan:Connect(function(input, processed)
+	if processed then
+		return
+	end
+	if input.KeyCode == Enum.KeyCode.E then
+		activate()
+	end
+end)
+
+prompt.Activated:Connect(activate) -- Touch/Klick
+
+--==========================================================================
+-- Server-Meldungen
+--==========================================================================
+
+Remotes.EconomySync.OnClientEvent:Connect(function(snapshot: any)
+	if typeof(snapshot) ~= "table" then
+		return
+	end
+	wallet.Banked = snapshot.Banked or 0
+	wallet.Unsold = snapshot.Unsold or 0
+	wallet.Tier = snapshot.Tier or 1
+	if typeof(snapshot.Rig) == "table" then
+		rig = snapshot.Rig
+	end
+	-- Der Server schickt Restsekunden, keine Zeitstempel - nur so stimmt die
+	-- Anzeige auch, wenn die Uhr des Clients anders geht.
+	if typeof(snapshot.Cooldowns) == "table" then
+		for id, seconds in snapshot.Cooldowns do
+			if typeof(id) == "string" and typeof(seconds) == "number" and seconds &gt; 0 then
+				cooldownUntil[id] = os.clock() + seconds
+			end
+		end
+	end
+	refreshWallet()
+end)
+
+Remotes.TraceSync.OnClientEvent:Connect(function(data: any)
+	if typeof(data) ~= "table" then
+		return
+	end
+	trace.Value = tonumber(data.Trace) or trace.Value
+	trace.Max = tonumber(data.Max) or trace.Max
+	trace.Locked = data.Locked == true
+	trace.LockUntil = os.clock() + (tonumber(data.LockSeconds) or 0)
+
+	if typeof(data.Bust) == "table" then
+		playBust(math.floor(tonumber(data.Bust.Lost) or 0))
+	end
+
+	refreshTrace()
+end)
+
+Remotes.SellResult.OnClientEvent:Connect(function(data: any)
+	if typeof(data) ~= "table" then
+		return
+	end
+	if data.Ok then
+		toast(
+			("VERKAUFT   %d CRY  -  %d GEBUEHR  =  +%d BANK   //   TRACE -%d"):format(
+				data.Gross or 0,
+				data.Fee or 0,
+				data.Net or 0,
+				data.Relief or 0
+			),
+			C.Green
+		)
+		return
+	end
+
+	local reasons: { [string]: string } = {
+		EMPTY = "NICHTS ZU VERKAUFEN",
+		RANGE = "ZU WEIT VOM HEHLER WEG",
+		NO_FENCE = "KEIN HEHLER IN DER NAEHE",
+		LOADING = "PROFIL LAEDT NOCH - GLEICH NOCHMAL",
+	}
+	toast(reasons[data.Reason] or "VERKAUF ABGELEHNT", C.Amber)
+end)
+
+Remotes.HackSessionStarted.OnClientEvent:Connect(function()
+	hackOpen = true
+	hidePrompt()
+end)
+
+Remotes.HackResolved.OnClientEvent:Connect(function(data: any)
+	hackOpen = false
+	if typeof(data) ~= "table" then
+		return
+	end
+
+	if typeof(data.TargetId) == "string" and typeof(data.Cooldown) == "number" and data.Cooldown &gt; 0 then
+		cooldownUntil[data.TargetId] = os.clock() + data.Cooldown
+	end
+
+	if data.Success then
+		toast(("BREACH ERFOLGREICH   +%d CRY   TRACE +%.0f"):format(data.Reward or 0, data.TraceDelta or 0), C.Cyan)
+	else
+		local reasons: { [string]: string } = {
+			TIMEOUT = "ZEIT ABGELAUFEN",
+			NO_ATTEMPTS = "RIG UEBERLASTET - KEINE VERSUCHE MEHR",
+			OUT_OF_RANGE = "VERBINDUNG ABGERISSEN - ZU WEIT WEG",
+			ABORTED = "ABGEBROCHEN",
+			TARGET_GONE = "ZIEL VERSCHWUNDEN",
+			BUSTED = "AUFGEFLOGEN - VERBINDUNG GEKAPPT",
+		}
+		local text = reasons[data.Reason] or "BREACH FEHLGESCHLAGEN"
+		toast(("%s   TRACE +%.0f"):format(text, data.TraceDelta or 0), C.Magenta)
+	end
+end)
+
+Remotes.HackDenied.OnClientEvent:Connect(function(data: any)
+	if typeof(data) ~= "table" then
+		return
+	end
+	local seconds = tonumber(data.Seconds) or 0
+
+	if data.Reason == "COOLDOWN" then
+		if typeof(data.TargetId) == "string" then
+			cooldownUntil[data.TargetId] = os.clock() + seconds
+		end
+		toast(("ZIEL NOCH GESPERRT // %ds"):format(math.ceil(seconds)), C.Amber)
+	elseif data.Reason == "LEVEL" then
+		toast(("RIG ZU SCHWACH // TIER %d NOETIG"):format(seconds), C.Amber)
+	elseif data.Reason == "RANGE" then
+		toast("AUSSER REICHWEITE - NAEHER RAN", C.Amber)
+	elseif data.Reason == "OFFLINE" then
+		toast("ZIEL IST BEREITS OFFLINE", C.TextDim)
+	elseif data.Reason == "BUSTED" then
+		toast(("AUFGEFLOGEN - NOCH %ds RUHE"):format(math.ceil(seconds)), C.Magenta)
+	elseif data.Reason == "LOADING" then
+		toast("PROFIL LAEDT NOCH - GLEICH NOCHMAL", C.TextDim)
+	else
+		toast("ZUGRIFF VERWEIGERT", C.Magenta)
+	end
+end)
+
+--==========================================================================
+-- Schleife
+--==========================================================================
+
+refreshWallet()
+refreshTrace()
+
+local scanAccumulator = 0
+RunService.RenderStepped:Connect(function(dt)
+	scanAccumulator += dt
+	if scanAccumulator &gt;= 0.15 then
+		scanAccumulator = 0
+		scan()
+		refreshTrace()
+	end
+
+	-- Puls ab WarnAt. Je heisser, desto schneller und roter - das ist der
+	-- eigentliche Spannungsmesser des Spiels.
+	if trace.Value &gt;= Config.Trace.WarnAt then
+		local critical = trace.Value &gt;= Config.Trace.CriticalAt
+		local speed = if critical then 11 else 6
+		local pulse = 0.5 + 0.5 * math.sin(os.clock() * speed)
+		local hot = if critical then C.Magenta else C.Amber
+		traceFill.BackgroundColor3 = hot:Lerp(C.Text, pulse * 0.35)
+		traceStroke.Color = hot
+		traceStroke.Thickness = 1 + pulse
+		traceTitle.TextColor3 = hot
+	else
+		traceFill.BackgroundColor3 = C.Cyan
+		traceStroke.Color = C.Line
+		traceStroke.Thickness = 1
+		traceTitle.TextColor3 = C.TextDim
+	end
+end)
+
+UITheme.Scanlines(walletPanel, 4)
+</ProtectedString>
+</Properties>
+</Item>
+<Item class="LocalScript" referent="GN23">
+<Properties>
+<string name="Name">HackUI</string>
+<ProtectedString name="Source">-- StarterPlayer/StarterPlayerScripts/UI/HackUI.client.luau
+--!strict
+-- GHOSTNET :: Das Fake-Betriebssystem waehrend eines Hacks.
+--
+-- Dieses Skript kennt die Loesung nicht und rechnet nichts aus. Es zeigt,
+-- was der Server geschickt hat, und meldet Klicks zurueck. Der komplette
+-- Raetselzustand liegt auf dem Server.
+--
+-- Alles hier ist Fiktion: ein stilisiertes Minispiel, keine Darstellung
+-- realer Technik.
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+
+local Remotes = require(ReplicatedStorage.Shared.Remotes)
+local UITheme = require(ReplicatedStorage.Shared.UITheme)
+
+local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+
+local C = UITheme.Color
+
+-- Zelltypen, identisch zu NodeBreach.lua
+local OPEN, ICE, RELAY, START, EXIT = 0, 1, 2, 3, 4
+
+local GLYPH = { [OPEN] = "\u{00B7}", [ICE] = "#", [RELAY] = "R", [START] = "S", [EXIT] = "E" }
+
+--==========================================================================
+-- Sitzungszustand (nur Anzeige)
+--==========================================================================
+
+local session: {
+	Id: string,
+	Deadline: number,
+	TimeLimit: number,
+	Width: number,
+	Height: number,
+	Cells: { number },
+	Path: { number },
+	RelaysLeft: number,
+	AttemptsLeft: number,
+	Attempts: number,
+	NextStep: number,
+	LastAck: number,
+	LastSend: number,
+	Closing: boolean,
+}? = nil
+
+local cellButtons: { [number]: TextButton } = {}
+local connectors: { Frame } = {}
+local logLines: { TextLabel } = {}
+local typingToken = 0
+
+--==========================================================================
+-- Aufbau
+--==========================================================================
+
+local gui = UITheme.Screen("GhostNetHackUI", 20)
+gui.Enabled = false
+gui.Parent = playerGui
+
+local backdrop = UITheme.Frame({
+	Name = "Backdrop",
+	Size = UDim2.fromScale(1, 1),
+	BackgroundColor3 = Color3.new(0, 0, 0),
+	BackgroundTransparency = 1,
+	Parent = gui,
+})
+
+local window = UITheme.Frame({
+	Name = "Window",
+	AnchorPoint = Vector2.new(0.5, 0.5),
+	Position = UDim2.fromScale(0.5, 0.5),
+	Size = UDim2.new(0.92, 0, 0.86, 0),
+	BackgroundColor3 = C.Background,
+	ClipsDescendants = true,
+	Parent = backdrop,
+})
+UITheme.Corner(window, 5)
+UITheme.Stroke(window, C.CyanDim)
+
+local sizeConstraint = Instance.new("UISizeConstraint")
+sizeConstraint.MaxSize = Vector2.new(820, 580)
+sizeConstraint.MinSize = Vector2.new(320, 300)
+sizeConstraint.Parent = window
+
+--== Titelleiste ===========================================================
+
+local titleBar = UITheme.Frame({
+	Name = "TitleBar",
+	Size = UDim2.new(1, 0, 0, 30),
+	BackgroundColor3 = C.Panel,
+	Parent = window,
+})
+
+local titleText = UITheme.Label({
+	Name = "Title",
+	Text = "GHOSTNET // NODE-BREACH",
+	TextColor3 = C.Cyan,
+	TextSize = 14,
+	Position = UDim2.new(0, 12, 0, 0),
+	Size = UDim2.new(0.5, 0, 1, 0),
+	Parent = titleBar,
+})
+
+local targetText = UITheme.Label({
+	Name = "Target",
+	Text = "",
+	TextColor3 = C.TextDim,
+	TextSize = 12,
+	TextXAlignment = Enum.TextXAlignment.Right,
+	Position = UDim2.new(0.5, 0, 0, 0),
+	Size = UDim2.new(0.5, -96, 1, 0),
+	Parent = titleBar,
+})
+
+local abortButton = UITheme.Button({
+	Name = "Abort",
+	Text = "ABBRUCH [ESC]",
+	TextSize = 11,
+	TextColor3 = C.Magenta,
+	BackgroundColor3 = C.PanelLight,
+	AnchorPoint = Vector2.new(1, 0.5),
+	Position = UDim2.new(1, -8, 0.5, 0),
+	Size = UDim2.fromOffset(86, 20),
+	Parent = titleBar,
+})
+UITheme.Corner(abortButton, 3)
+UITheme.Stroke(abortButton, C.Magenta)
+
+--== Linke Spalte: Terminal + Status =======================================
+
+local sidebar = UITheme.Frame({
+	Name = "Sidebar",
+	Position = UDim2.new(0, 0, 0, 30),
+	Size = UDim2.new(0, 220, 1, -38),
+	BackgroundColor3 = C.Background,
+	Parent = window,
+})
+UITheme.Padding(sidebar, 12)
+
+local statusBox = UITheme.Frame({
+	Name = "Status",
+	Size = UDim2.new(1, 0, 0, 74),
+	BackgroundColor3 = C.Panel,
+	Parent = sidebar,
+})
+UITheme.Corner(statusBox, 3)
+UITheme.Stroke(statusBox, C.Line)
+UITheme.Padding(statusBox, 8)
+
+local relayLabel = UITheme.Label({
+	Name = "Relays",
+	Text = "RELAYS   -",
+	TextSize = 12,
+	Size = UDim2.new(1, 0, 0, 16),
+	Parent = statusBox,
+})
+
+local attemptsLabel = UITheme.Label({
+	Name = "AttemptsText",
+	Text = "RAM",
+	TextSize = 12,
+	TextColor3 = C.TextDim,
+	Position = UDim2.new(0, 0, 0, 20),
+	Size = UDim2.new(1, 0, 0, 14),
+	Parent = statusBox,
+})
+
+local chipHolder = UITheme.Frame({
+	Name = "Chips",
+	BackgroundTransparency = 1,
+	Position = UDim2.new(0, 0, 0, 38),
+	Size = UDim2.new(1, 0, 0, 12),
+	Parent = statusBox,
+})
+local chipLayout = Instance.new("UIListLayout")
+chipLayout.FillDirection = Enum.FillDirection.Horizontal
+chipLayout.Padding = UDim.new(0, 4)
+chipLayout.Parent = chipHolder
+
+local terminal = UITheme.Frame({
+	Name = "Terminal",
+	Position = UDim2.new(0, 0, 0, 84),
+	Size = UDim2.new(1, 0, 1, -84),
+	BackgroundColor3 = C.Panel,
+	ClipsDescendants = true,
+	Parent = sidebar,
+})
+UITheme.Corner(terminal, 3)
+UITheme.Stroke(terminal, C.Line)
+UITheme.Padding(terminal, 8)
+
+local termLayout = Instance.new("UIListLayout")
+termLayout.SortOrder = Enum.SortOrder.LayoutOrder
+termLayout.Padding = UDim.new(0, 2)
+termLayout.Parent = terminal
+
+--== Rechte Spalte: Gitter =================================================
+
+local gridArea = UITheme.Frame({
+	Name = "GridArea",
+	Position = UDim2.new(0, 220, 0, 30),
+	Size = UDim2.new(1, -220, 1, -38),
+	BackgroundTransparency = 1,
+	Parent = window,
+})
+
+local grid = UITheme.Frame({
+	Name = "Grid",
+	AnchorPoint = Vector2.new(0.5, 0.5),
+	Position = UDim2.fromScale(0.5, 0.5),
+	Size = UDim2.fromScale(0.86, 0.86),
+	BackgroundTransparency = 1,
+	Parent = gridArea,
+})
+local gridAspect = Instance.new("UIAspectRatioConstraint")
+gridAspect.AspectRatio = 1
+gridAspect.Parent = grid
+
+--== Timer-Balken ==========================================================
+
+local timerTrack = UITheme.Frame({
+	Name = "TimerTrack",
+	AnchorPoint = Vector2.new(0, 1),
+	Position = UDim2.new(0, 0, 1, 0),
+	Size = UDim2.new(1, 0, 0, 8),
+	BackgroundColor3 = C.PanelLight,
+	Parent = window,
+})
+
+local timerFill = UITheme.Frame({
+	Name = "TimerFill",
+	Size = UDim2.fromScale(1, 1),
+	BackgroundColor3 = C.Cyan,
+	Parent = timerTrack,
+})
+
+local timerText = UITheme.Label({
+	Name = "TimerText",
+	Text = "",
+	TextSize = 11,
+	TextColor3 = C.Background,
+	TextXAlignment = Enum.TextXAlignment.Center,
+	Size = UDim2.fromScale(1, 1),
+	ZIndex = 3,
+	Parent = timerTrack,
+})
+
+--== Ergebnis-Overlay ======================================================
+
+local resultOverlay = UITheme.Frame({
+	Name = "Result",
+	Size = UDim2.fromScale(1, 1),
+	BackgroundColor3 = C.Background,
+	BackgroundTransparency = 1,
+	Visible = false,
+	ZIndex = 60,
+	Parent = window,
+})
+
+local resultTitle = UITheme.Label({
+	Name = "ResultTitle",
+	Text = "",
+	TextSize = 34,
+	TextXAlignment = Enum.TextXAlignment.Center,
+	AnchorPoint = Vector2.new(0.5, 0.5),
+	Position = UDim2.fromScale(0.5, 0.46),
+	Size = UDim2.new(1, 0, 0, 40),
+	ZIndex = 61,
+	Parent = resultOverlay,
+})
+
+local resultSub = UITheme.Label({
+	Name = "ResultSub",
+	Text = "",
+	TextSize = 14,
+	TextColor3 = C.TextDim,
+	TextXAlignment = Enum.TextXAlignment.Center,
+	AnchorPoint = Vector2.new(0.5, 0.5),
+	Position = UDim2.fromScale(0.5, 0.56),
+	Size = UDim2.new(1, 0, 0, 20),
+	ZIndex = 61,
+	Parent = resultOverlay,
+})
+
+UITheme.Scanlines(window, 4)
+
+--==========================================================================
+-- Terminal
+--==========================================================================
+
+local function pushLog(text: string, color: Color3?, instant: boolean?)
+	local line = UITheme.Label({
+		Text = "",
+		TextSize = 11,
+		TextColor3 = color or C.TextDim,
+		TextWrapped = true,
+		Size = UDim2.new(1, 0, 0, 13),
+		LayoutOrder = #logLines + 1,
+		Parent = terminal,
+	})
+	table.insert(logLines, line)
+
+	while #logLines &gt; 16 do
+		local old = table.remove(logLines, 1)
+		if old then
+			old:Destroy()
+		end
+	end
+
+	if instant then
+		line.Text = text
+	else
+		local token = typingToken
+		task.spawn(function()
+			UITheme.TypeInto(line, text, 130, function()
+				return typingToken ~= token or line.Parent == nil
+			end)
+		end)
+	end
+end
+
+local function clearLog()
+	typingToken += 1
+	for _, line in logLines do
+		line:Destroy()
+	end
+	table.clear(logLines)
+end
+
+--==========================================================================
+-- Gitter zeichnen
+--==========================================================================
+
+local function clearGrid()
+	for _, b in cellButtons do
+		b:Destroy()
+	end
+	table.clear(cellButtons)
+	for _, c in connectors do
+		c:Destroy()
+	end
+	table.clear(connectors)
+end
+
+local function cellCenter(idx: number, w: number, h: number): (number, number)
+	local x = (idx - 1) % w + 1
+	local y = math.floor((idx - 1) / w) + 1
+	return (x - 0.5) / w, (y - 0.5) / h
+end
+
+local sendInput: (number) -&gt; ()
+
+local function buildGrid()
+	local s = session
+	if not s then
+		return
+	end
+	clearGrid()
+
+	local w, h = s.Width, s.Height
+	for idx = 1, w * h do
+		local cx, cy = cellCenter(idx, w, h)
+		local btn = UITheme.Button({
+			Name = ("N%d"):format(idx),
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.fromScale(cx, cy),
+			Size = UDim2.fromScale(0.78 / w, 0.78 / h),
+			BackgroundColor3 = C.PanelLight,
+			Text = "",
+			TextSize = 13,
+			ZIndex = 2,
+			Parent = grid,
+		})
+		UITheme.Corner(btn, 3)
+		UITheme.Stroke(btn, C.Line)
+		btn.Activated:Connect(function()
+			sendInput(idx)
+		end)
+		cellButtons[idx] = btn
+	end
+end
+
+local function redrawGrid()
+	local s = session
+	if not s then
+		return
+	end
+
+	local inPath: { [number]: boolean } = {}
+	for _, idx in s.Path do
+		inPath[idx] = true
+	end
+	local head = s.Path[#s.Path]
+
+	for idx, btn in cellButtons do
+		local cell = s.Cells[idx]
+		local stroke = btn:FindFirstChildOfClass("UIStroke")
+
+		btn.Text = GLYPH[cell] or ""
+		btn.TextColor3 = C.TextDim
+		btn.BackgroundColor3 = C.PanelLight
+		btn.BackgroundTransparency = 0
+		if stroke then
+			stroke.Color = C.Line
+			stroke.Thickness = 1
+		end
+
+		if cell == ICE then
+			btn.BackgroundColor3 = C.Background
+			btn.TextColor3 = C.Ice
+			if stroke then
+				stroke.Color = C.Ice
+			end
+		elseif cell == RELAY then
+			btn.TextColor3 = C.Amber
+			if stroke then
+				stroke.Color = C.Amber
+			end
+		elseif cell == EXIT then
+			btn.TextColor3 = C.Magenta
+			if stroke then
+				stroke.Color = C.Magenta
+			end
+		elseif cell == START then
+			btn.TextColor3 = C.Cyan
+		end
+
+		if inPath[idx] then
+			btn.BackgroundColor3 = C.CyanDim
+			btn.TextColor3 = C.Background
+			if stroke then
+				stroke.Color = C.Cyan
+			end
+		end
+
+		if idx == head then
+			btn.BackgroundColor3 = C.Cyan
+			btn.TextColor3 = C.Background
+			if stroke then
+				stroke.Color = C.Cyan
+				stroke.Thickness = 2
+			end
+		end
+	end
+
+	-- Verbindungslinien zwischen den Pfadknoten
+	for _, c in connectors do
+		c:Destroy()
+	end
+	table.clear(connectors)
+
+	for i = 1, #s.Path - 1 do
+		local ax, ay = cellCenter(s.Path[i], s.Width, s.Height)
+		local bx, by = cellCenter(s.Path[i + 1], s.Width, s.Height)
+		local horizontal = math.abs(ax - bx) &gt; math.abs(ay - by)
+		local link = UITheme.Frame({
+			Name = "Link",
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.fromScale((ax + bx) * 0.5, (ay + by) * 0.5),
+			Size = if horizontal
+				then UDim2.new(0.34 / s.Width, 0, 0, 3)
+				else UDim2.new(0, 3, 0.34 / s.Height, 0),
+			BackgroundColor3 = C.Cyan,
+			ZIndex = 1,
+			Parent = grid,
+		})
+		table.insert(connectors, link)
+	end
+end
+
+local function redrawChips()
+	local s = session
+	if not s then
+		return
+	end
+	for _, child in chipHolder:GetChildren() do
+		if child:IsA("Frame") then
+			child:Destroy()
+		end
+	end
+	for i = 1, s.Attempts do
+		local chip = UITheme.Frame({
+			Name = "Chip",
+			Size = UDim2.fromOffset(16, 8),
+			BackgroundColor3 = if i &lt;= s.AttemptsLeft then C.Cyan else C.Line,
+			LayoutOrder = i,
+			Parent = chipHolder,
+		})
+		UITheme.Corner(chip, 2)
+	end
+	attemptsLabel.Text = ("RAM   %d / %d VERSUCHE"):format(s.AttemptsLeft, s.Attempts)
+	relayLabel.Text = ("RELAYS   %d OFFEN"):format(s.RelaysLeft)
+	relayLabel.TextColor3 = if s.RelaysLeft &gt; 0 then C.Amber else C.Cyan
+end
+
+--==========================================================================
+-- Eingabe an den Server
+--==========================================================================
+
+-- Eigene Drossel knapp unter dem Server-Limit. Damit kann der Client sein
+-- eigenes Rate-Limit gar nicht erst reissen und aus dem Takt geraten.
+local MIN_SEND_INTERVAL = 0.09
+
+sendInput = function(node: number)
+	local s = session
+	if not s or s.Closing then
+		return
+	end
+	local now = os.clock()
+	if now - s.LastSend &lt; MIN_SEND_INTERVAL then
+		return
+	end
+	s.LastSend = now
+
+	local btn = cellButtons[node]
+	if btn then
+		UITheme.Flash(btn, C.Text)
+	end
+
+	Remotes.HackInput:FireServer({
+		SessionId = s.Id,
+		Step = s.NextStep,
+		Payload = { Node = node },
+	})
+	s.NextStep += 1
+end
+
+--==========================================================================
+-- Oeffnen / Schliessen
+--==========================================================================
+
+local function open()
+	gui.Enabled = true
+	backdrop.BackgroundTransparency = 1
+	window.Size = UDim2.new(0.92, 0, 0.3, 0)
+	resultOverlay.Visible = false
+	resultOverlay.BackgroundTransparency = 1
+
+	TweenService:Create(backdrop, UITheme.Tween.Normal, { BackgroundTransparency = 0.35 }):Play()
+	TweenService:Create(window, UITheme.Tween.Slow, { Size = UDim2.new(0.92, 0, 0.86, 0) }):Play()
+end
+
+local function close()
+	local s = session
+	if s then
+		s.Closing = true
+	end
+	TweenService:Create(backdrop, UITheme.Tween.Normal, { BackgroundTransparency = 1 }):Play()
+	local shrink = TweenService:Create(window, UITheme.Tween.Normal, { Size = UDim2.new(0.92, 0, 0.3, 0) })
+	shrink:Play()
+	shrink.Completed:Connect(function()
+		gui.Enabled = false
+		clearGrid()
+		clearLog()
+		session = nil
+	end)
+end
+
+local function abort()
+	local s = session
+	if not s or s.Closing then
+		return
+	end
+	Remotes.HackAbort:FireServer({ SessionId = s.Id })
+end
+
+abortButton.Activated:Connect(abort)
+
+UserInputService.InputBegan:Connect(function(input, processed)
+	if processed then
+		return
+	end
+	if input.KeyCode == Enum.KeyCode.Escape and gui.Enabled then
+		abort()
+	end
+end)
+
+--==========================================================================
+-- Server-Meldungen
+--==========================================================================
+
+Remotes.HackSessionStarted.OnClientEvent:Connect(function(data: any)
+	if typeof(data) ~= "table" or typeof(data.Public) ~= "table" then
+		return
+	end
+	local public = data.Public
+
+	session = {
+		Id = data.SessionId,
+		Deadline = data.Deadline,
+		TimeLimit = data.TimeLimit,
+		Width = public.Width,
+		Height = public.Height,
+		Cells = public.Cells,
+		Path = { public.Start },
+		RelaysLeft = public.Relays,
+		AttemptsLeft = data.Attempts,
+		Attempts = data.Attempts,
+		NextStep = 1,
+		LastAck = 0,
+		LastSend = 0,
+		Closing = false,
+	}
+
+	titleText.Text = ("GHOSTNET // %s"):format(data.Label or "BREACH")
+	targetText.Text = ("%s   [D%d]"):format(data.Target and data.Target.Name or "?", data.Target and data.Target.Difficulty or 0)
+
+	clearLog()
+	buildGrid()
+	redrawGrid()
+	redrawChips()
+	open()
+
+	pushLog("&gt; uplink hergestellt", C.Cyan)
+	task.delay(0.35, function()
+		if session and session.Id == data.SessionId then
+			pushLog(("&gt; ziel: %s"):format(string.lower(data.Target and data.Target.Name or "unbekannt")))
+		end
+	end)
+	task.delay(0.8, function()
+		if session and session.Id == data.SessionId then
+			pushLog("&gt; route vom start zum exit legen", C.Text)
+		end
+	end)
+	task.delay(1.2, function()
+		if session and session.Id == data.SessionId then
+			pushLog("&gt; alle relays (R) mitnehmen", C.Amber)
+		end
+	end)
+	task.delay(1.6, function()
+		if session and session.Id == data.SessionId then
+			pushLog("&gt; warnung: getarntes ice im gitter", C.Magenta)
+		end
+	end)
+end)
+
+local REASON_TEXT: { [string]: { Text: string, Color: Color3 } } = {
+	OK = { Text = "&gt; knoten uebernommen", Color = C.Cyan },
+	SOLVED = { Text = "&gt; exit erreicht", Color = C.Cyan },
+	BACKTRACK = { Text = "&gt; route zurueckgenommen", Color = C.TextDim },
+	NOT_ADJACENT = { Text = "&gt; kein direkter link", Color = C.TextDim },
+	REVISIT = { Text = "&gt; knoten bereits im pfad", Color = C.TextDim },
+	ALREADY_HERE = { Text = "&gt; du bist hier", Color = C.TextDim },
+	ICE = { Text = "&gt; ice blockiert", Color = C.Ice },
+	RELAYS_MISSING = { Text = "&gt; exit gesperrt - relays fehlen", Color = C.Amber },
+	MASKED_ICE = { Text = "&gt; GETARNTES ICE - rig ueberlastet", Color = C.Magenta },
+	BAD_PAYLOAD = { Text = "&gt; eingabe verworfen", Color = C.Magenta },
+}
+
+Remotes.HackFeedback.OnClientEvent:Connect(function(data: any)
+	local s = session
+	if not s or typeof(data) ~= "table" or data.SessionId ~= s.Id then
+		return
+	end
+
+	-- Schritt-Zaehler am Server ausrichten, falls er je auseinanderlaufen sollte.
+	if typeof(data.Step) == "number" then
+		s.LastAck = data.Step
+		s.NextStep = math.max(s.NextStep, data.Step + 1)
+	end
+
+	if typeof(data.AttemptsLeft) == "number" then
+		s.AttemptsLeft = data.AttemptsLeft
+	end
+
+	local fb = data.Feedback
+	if typeof(fb) == "table" then
+		if typeof(fb.Path) == "table" then
+			s.Path = fb.Path
+		end
+		if typeof(fb.RelaysLeft) == "number" then
+			s.RelaysLeft = fb.RelaysLeft
+		end
+		-- Getarntes ICE, das gerade aufgeflogen ist.
+		if typeof(fb.Reveal) == "number" then
+			s.Cells[fb.Reveal] = ICE
+			local btn = cellButtons[fb.Reveal]
+			if btn then
+				UITheme.Flash(btn, C.Magenta)
+			end
+		end
+	end
+
+	local info = REASON_TEXT[data.Reason]
+	if info then
+		pushLog(info.Text, info.Color, true)
+	end
+
+	redrawGrid()
+	redrawChips()
+end)
+
+local RESOLVE_TEXT: { [string]: string } = {
+	SOLVED = "zugriff gewaehrt",
+	TIMEOUT = "verbindung zeitueberschreitung",
+	NO_ATTEMPTS = "rig ueberlastet",
+	OUT_OF_RANGE = "signal verloren",
+	ABORTED = "abbruch durch benutzer",
+	TARGET_GONE = "ziel nicht mehr erreichbar",
+}
+
+Remotes.HackResolved.OnClientEvent:Connect(function(data: any)
+	local s = session
+	if not s or typeof(data) ~= "table" or data.SessionId ~= s.Id then
+		return
+	end
+	s.Closing = true
+
+	resultOverlay.Visible = true
+	TweenService:Create(resultOverlay, UITheme.Tween.Normal, { BackgroundTransparency = 0.12 }):Play()
+
+	if data.Success then
+		resultTitle.Text = "BREACH OK"
+		resultTitle.TextColor3 = C.Cyan
+		resultSub.Text = ("+%d CRY   //   TRACE +%.0f"):format(data.Reward or 0, data.TraceDelta or 0)
+		resultSub.TextColor3 = C.Text
+	else
+		resultTitle.Text = "BREACH FEHLGESCHLAGEN"
+		resultTitle.TextColor3 = C.Magenta
+		resultSub.Text = ("%s   //   TRACE +%.0f"):format(RESOLVE_TEXT[data.Reason] or "abbruch", data.TraceDelta or 0)
+		resultSub.TextColor3 = C.TextDim
+	end
+
+	task.delay(1.7, close)
+end)
+
+--==========================================================================
+-- Timer
+--==========================================================================
+
+RunService.RenderStepped:Connect(function()
+	local s = session
+	if not s or not gui.Enabled then
+		return
+	end
+
+	local remaining = math.max(0, s.Deadline - workspace:GetServerTimeNow())
+	local fraction = if s.TimeLimit &gt; 0 then math.clamp(remaining / s.TimeLimit, 0, 1) else 0
+
+	timerFill.Size = UDim2.fromScale(fraction, 1)
+	timerText.Text = ("%.1fs"):format(remaining)
+
+	if s.Closing then
+		timerFill.BackgroundColor3 = C.Line
+	elseif fraction &lt; 0.25 then
+		-- letzte Sekunden: pulsierendes Warnmagenta
+		local pulse = 0.5 + 0.5 * math.sin(os.clock() * 12)
+		timerFill.BackgroundColor3 = C.Magenta:Lerp(C.Amber, pulse)
+	else
+		timerFill.BackgroundColor3 = C.Cyan
+	end
+end)
+
+--==========================================================================
+-- Notbremse: Sollte eine Eingabe nie beantwortet werden, setzen wir den
+-- Schrittzaehler zurueck, damit die Session nicht stumm haengen bleibt.
+--==========================================================================
+
+task.spawn(function()
+	while true do
+		task.wait(2.5)
+		local s = session
+		if s and not s.Closing and s.NextStep &gt; s.LastAck + 1 and os.clock() - s.LastSend &gt; 2.5 then
+			s.NextStep = s.LastAck + 1
+			pushLog("&gt; resync", C.TextDim, true)
+		end
+	end
+end)
+</ProtectedString>
+</Properties>
+</Item>
+<Item class="LocalScript" referent="GN24">
+<Properties>
+<string name="Name">ShopUI</string>
+<ProtectedString name="Source">-- StarterPlayer/StarterPlayerScripts/UI/ShopUI.client.luau
+--!strict
+-- GHOSTNET :: Der Rig-Shop. Hier wird Guthaben zu Fortschritt.
+--
+-- Das Fenster rechnet NICHTS aus, was zaehlt: Preise stehen in Config und
+-- werden vom Server unabhaengig nochmal berechnet. Der Client schickt beim
+-- Kauf nur, WELCHES Bauteil gemeint ist.
+--
+-- Bedienung: Knopf unten links oder Taste [B]. Bewusst von ueberall aus
+-- erreichbar - das Rig ist die eigene Ausruestung, kein Ladenregal.
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+
+local Config = require(ReplicatedStorage.Shared.Config)
+local Remotes = require(ReplicatedStorage.Shared.Remotes)
+local UITheme = require(ReplicatedStorage.Shared.UITheme)
+
+local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+
+local C = UITheme.Color
+
+--==========================================================================
+-- Zustand (reine Anzeige)
+--==========================================================================
+
+local banked = 0
+local rig = table.clone(Config.Rig.StartLevels)
+local busy = false
+local hackOpen = false
+
+type Row = {
+	Frame: Frame,
+	Level: TextLabel,
+	Effect: TextLabel,
+	Button: TextButton,
+	Price: TextLabel,
+}
+
+local rows: { [string]: Row } = {}
+
+--==========================================================================
+-- Aufbau
+--==========================================================================
+
+local gui = UITheme.Screen("GhostNetShop", 15)
+gui.Parent = playerGui
+
+--== Oeffnen-Knopf unten links ============================================
+
+local openButton = UITheme.Button({
+	Name = "OpenShop",
+	AnchorPoint = Vector2.new(0, 1),
+	Position = UDim2.new(0, 18, 1, -46),
+	Size = UDim2.fromOffset(150, 46), -- gross genug fuer Touch
+	BackgroundColor3 = C.Panel,
+	BackgroundTransparency = 0.06,
+	Text = "",
+	Parent = gui,
+})
+UITheme.Corner(openButton, 4)
+UITheme.Stroke(openButton, C.CyanDim)
+
+UITheme.Label({
+	Name = "Caption",
+	Text = "[B]  RIG-SHOP",
+	TextColor3 = C.Cyan,
+	TextSize = 14,
+	TextXAlignment = Enum.TextXAlignment.Center,
+	Size = UDim2.fromScale(1, 1),
+	Parent = openButton,
+})
+
+--== Fenster ===============================================================
+
+local backdrop = UITheme.Frame({
+	Name = "Backdrop",
+	Size = UDim2.fromScale(1, 1),
+	BackgroundColor3 = Color3.new(0, 0, 0),
+	BackgroundTransparency = 1,
+	Visible = false,
+	Parent = gui,
+})
+
+local window = UITheme.Frame({
+	Name = "Window",
+	AnchorPoint = Vector2.new(0.5, 0.5),
+	Position = UDim2.fromScale(0.5, 0.5),
+	Size = UDim2.new(0.9, 0, 0.8, 0),
+	BackgroundColor3 = C.Background,
+	ClipsDescendants = true,
+	Parent = backdrop,
+})
+UITheme.Corner(window, 5)
+UITheme.Stroke(window, C.CyanDim)
+
+local windowSize = Instance.new("UISizeConstraint")
+windowSize.MaxSize = Vector2.new(660, 470)
+windowSize.MinSize = Vector2.new(300, 300)
+windowSize.Parent = window
+
+local titleBar = UITheme.Frame({
+	Name = "TitleBar",
+	Size = UDim2.new(1, 0, 0, 34),
+	BackgroundColor3 = C.Panel,
+	Parent = window,
+})
+
+UITheme.Label({
+	Name = "Title",
+	Text = "GHOSTNET // RIG-SHOP",
+	TextColor3 = C.Cyan,
+	TextSize = 14,
+	Position = UDim2.new(0, 12, 0, 0),
+	Size = UDim2.new(0.6, 0, 1, 0),
+	Parent = titleBar,
+})
+
+local bankLabel = UITheme.Label({
+	Name = "Bank",
+	Text = "BANK 0 CRY",
+	TextColor3 = C.Green,
+	TextSize = 13,
+	TextXAlignment = Enum.TextXAlignment.Right,
+	AnchorPoint = Vector2.new(1, 0),
+	Position = UDim2.new(1, -104, 0, 0),
+	Size = UDim2.new(0.4, 0, 1, 0),
+	Parent = titleBar,
+})
+
+local closeButton = UITheme.Button({
+	Name = "Close",
+	Text = "SCHLIESSEN",
+	TextSize = 11,
+	TextColor3 = C.Magenta,
+	BackgroundColor3 = C.PanelLight,
+	AnchorPoint = Vector2.new(1, 0.5),
+	Position = UDim2.new(1, -8, 0.5, 0),
+	Size = UDim2.fromOffset(88, 24),
+	Parent = titleBar,
+})
+UITheme.Corner(closeButton, 3)
+UITheme.Stroke(closeButton, C.Magenta)
+
+local hintLabel = UITheme.Label({
+	Name = "Hint",
+	Text = "Bezahlt wird von der BANK. Unverkauftes zaehlt nicht - erst zum Hehler.",
+	TextColor3 = C.TextDim,
+	TextSize = 12,
+	Position = UDim2.new(0, 14, 0, 40),
+	Size = UDim2.new(1, -28, 0, 16),
+	Parent = window,
+})
+
+local list = UITheme.Frame({
+	Name = "List",
+	Position = UDim2.new(0, 14, 0, 62),
+	Size = UDim2.new(1, -28, 1, -76),
+	BackgroundTransparency = 1,
+	Parent = window,
+})
+local listLayout = Instance.new("UIListLayout")
+listLayout.SortOrder = Enum.SortOrder.LayoutOrder
+listLayout.Padding = UDim.new(0, 8)
+listLayout.Parent = list
+
+--== Eine Zeile je Bauteil =================================================
+
+local buy: (string) -&gt; ()
+
+local function buildRow(component: string, order: number): Row
+	local frame = UITheme.Frame({
+		Name = component,
+		Size = UDim2.new(1, 0, 0, 74),
+		BackgroundColor3 = C.Panel,
+		LayoutOrder = order,
+		Parent = list,
+	})
+	UITheme.Corner(frame, 4)
+	UITheme.Stroke(frame, C.Line)
+	UITheme.Padding(frame, 10)
+
+	UITheme.Label({
+		Name = "Name",
+		Text = (Config.Rig.Labels :: any)[component] or component,
+		TextColor3 = C.Cyan,
+		TextSize = 16,
+		Size = UDim2.new(0.55, 0, 0, 18),
+		Parent = frame,
+	})
+
+	UITheme.Label({
+		Name = "Blurb",
+		Text = (Config.Rig.Blurbs :: any)[component] or "",
+		TextColor3 = C.TextDim,
+		TextSize = 12,
+		Position = UDim2.new(0, 0, 0, 20),
+		Size = UDim2.new(0.55, 0, 0, 14),
+		Parent = frame,
+	})
+
+	local level = UITheme.Label({
+		Name = "Level",
+		Text = "",
+		TextColor3 = C.Text,
+		TextSize = 13,
+		Position = UDim2.new(0, 0, 0, 38),
+		Size = UDim2.new(0.55, 0, 0, 15),
+		Parent = frame,
+	})
+
+	local effect = UITheme.Label({
+		Name = "Effect",
+		Text = "",
+		TextColor3 = C.Amber,
+		TextSize = 12,
+		Position = UDim2.new(0, 0, 1, -14),
+		Size = UDim2.new(1, 0, 0, 14),
+		Parent = frame,
+	})
+
+	local button = UITheme.Button({
+		Name = "Buy",
+		Text = "",
+		AnchorPoint = Vector2.new(1, 0),
+		Position = UDim2.new(1, 0, 0, 4),
+		Size = UDim2.fromOffset(132, 44), -- Touch-Ziel
+		BackgroundColor3 = C.PanelLight,
+		Parent = frame,
+	})
+	UITheme.Corner(button, 4)
+	UITheme.Stroke(button, C.CyanDim)
+
+	local price = UITheme.Label({
+		Name = "Price",
+		Text = "",
+		TextColor3 = C.Text,
+		TextSize = 14,
+		TextXAlignment = Enum.TextXAlignment.Center,
+		Size = UDim2.fromScale(1, 1),
+		Parent = button,
+	})
+
+	button.Activated:Connect(function()
+		buy(component)
+	end)
+
+	return { Frame = frame, Level = level, Effect = effect, Button = button, Price = price }
+end
+
+for index, component in Config.Rig.Components do
+	rows[component] = buildRow(component, index)
+end
+
+--==========================================================================
+-- Anzeige
+--==========================================================================
+
+local function refresh()
+	bankLabel.Text = ("BANK %d CRY"):format(banked)
+
+	for _, component in Config.Rig.Components do
+		local row = rows[component]
+		local current = (rig :: any)[component] or 1
+		local stroke = row.Frame:FindFirstChildOfClass("UIStroke")
+
+		if current &gt;= Config.Rig.MaxLevel then
+			row.Level.Text = ("STUFE %d  //  MAXIMUM"):format(current)
+			row.Effect.Text = Config.GetRigEffect(component, current)
+			row.Price.Text = "AUSGEBAUT"
+			row.Price.TextColor3 = C.TextDim
+			row.Button.BackgroundColor3 = C.Panel
+			row.Button.AutoButtonColor = false
+			if stroke then
+				stroke.Color = C.Line
+			end
+			continue
+		end
+
+		local targetLevel = current + 1
+		local cost = Config.GetUpgradeCost(component, targetLevel)
+		local affordable = banked &gt;= cost and not busy
+
+		row.Level.Text = ("STUFE %d  -&gt;  %d"):format(current, targetLevel)
+		row.Effect.Text = ("%s   -&gt;   %s"):format(
+			Config.GetRigEffect(component, current),
+			Config.GetRigEffect(component, targetLevel)
+		)
+		row.Price.Text = ("%d CRY"):format(cost)
+		row.Price.TextColor3 = if affordable then C.Text else C.TextDim
+		row.Button.BackgroundColor3 = if affordable then C.PanelLight else C.Panel
+		if stroke then
+			stroke.Color = if affordable then C.Cyan else C.Line
+		end
+	end
+end
+
+local function flashRow(component: string, color: Color3, text: string)
+	local row = rows[component]
+	if not row then
+		return
+	end
+	local original = row.Price.Text
+	row.Price.Text = text
+	row.Price.TextColor3 = color
+	UITheme.Flash(row.Frame, color)
+	task.delay(1.2, function()
+		if row.Price.Text == text then
+			row.Price.Text = original
+		end
+		refresh()
+	end)
+end
+
+--==========================================================================
+-- Kaufen
+--==========================================================================
+
+buy = function(component: string)
+	if busy then
+		return
+	end
+	local current = (rig :: any)[component] or 1
+	if current &gt;= Config.Rig.MaxLevel then
+		return
+	end
+
+	busy = true
+	refresh()
+
+	task.spawn(function()
+		local ok, response = pcall(function()
+			return Remotes.ShopPurchase:InvokeServer({ Component = component })
+		end)
+
+		busy = false
+
+		if not ok or typeof(response) ~= "table" then
+			flashRow(component, C.Magenta, "FEHLER")
+			refresh()
+			return
+		end
+
+		if response.Ok then
+			-- Der Server schickt die neuen Werte mit; wir raten nichts.
+			if typeof(response.Snapshot) == "table" then
+				banked = response.Snapshot.Banked or banked
+				if typeof(response.Snapshot.Rig) == "table" then
+					rig = response.Snapshot.Rig
+				end
+			end
+			flashRow(component, C.Green, "EINGEBAUT")
+			return
+		end
+
+		local reasons: { [string]: string } = {
+			FUNDS = "ZU TEUER",
+			MAX = "MAXIMUM",
+			LOADING = "LAEDT NOCH",
+			RATE = "ZU SCHNELL",
+			BAD_PAYLOAD = "UNGUELTIG",
+			INTERNAL = "FEHLER",
+		}
+		flashRow(component, C.Amber, reasons[response.Reason] or "ABGELEHNT")
+	end)
+end
+
+--==========================================================================
+-- Oeffnen / Schliessen
+--==========================================================================
+
+local function setOpen(open: boolean)
+	if open and hackOpen then
+		return -- waehrend eines Hacks kein zweites Fenster
+	end
+	backdrop.Visible = open
+	openButton.Visible = not open
+
+	if open then
+		refresh()
+		backdrop.BackgroundTransparency = 1
+		window.Size = UDim2.new(0.9, 0, 0.3, 0)
+		TweenService:Create(backdrop, UITheme.Tween.Normal, { BackgroundTransparency = 0.4 }):Play()
+		TweenService:Create(window, UITheme.Tween.Slow, { Size = UDim2.new(0.9, 0, 0.8, 0) }):Play()
+	end
+end
+
+openButton.Activated:Connect(function()
+	setOpen(true)
+end)
+closeButton.Activated:Connect(function()
+	setOpen(false)
+end)
+
+UserInputService.InputBegan:Connect(function(input, processed)
+	if processed then
+		return
+	end
+	if input.KeyCode == Enum.KeyCode.B then
+		setOpen(not backdrop.Visible)
+	elseif input.KeyCode == Enum.KeyCode.Escape and backdrop.Visible then
+		setOpen(false)
+	end
+end)
+
+--==========================================================================
+-- Server-Meldungen
+--==========================================================================
+
+Remotes.EconomySync.OnClientEvent:Connect(function(snapshot: any)
+	if typeof(snapshot) ~= "table" then
+		return
+	end
+	banked = snapshot.Banked or 0
+	if typeof(snapshot.Rig) == "table" then
+		rig = snapshot.Rig
+	end
+	refresh()
+end)
+
+-- Waehrend eines Hacks ist der Shop tabu, sonst klickt man sich aus dem
+-- laufenden Raetsel heraus.
+Remotes.HackSessionStarted.OnClientEvent:Connect(function()
+	hackOpen = true
+	setOpen(false)
+	openButton.Visible = false
+end)
+
+Remotes.HackResolved.OnClientEvent:Connect(function()
+	hackOpen = false
+	openButton.Visible = not backdrop.Visible
+end)
+
+refresh()
+</ProtectedString>
+</Properties>
+</Item>
+</Item>
+</Item>
+</Item>
+</roblox>
