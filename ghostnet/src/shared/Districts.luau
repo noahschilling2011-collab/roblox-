@@ -38,7 +38,11 @@ Districts.List = {
 		Character = "Enge Gassen, Putzfassaden, Marktstaende.",
 		GridX = 0,
 		GridZ = 0,
-		Radius = 1,
+		-- Radius 2 statt 1: der ausgebaute Bezirk waechst mit der Stadt mit.
+		-- Waere er bei 1 geblieben, waere die Altstadt in einer groesseren
+		-- Stadt zu einem kleinen Fleck im Rohbau geworden - und "eine grosse
+		-- leere Stadt ist schlimmer als ein kleiner voller Block".
+		Radius = 2,
 		MinDifficulty = 1,
 		MaxDifficulty = 3,
 		Tint = Color3.fromRGB(214, 196, 168), -- warmer Altbau-Putz

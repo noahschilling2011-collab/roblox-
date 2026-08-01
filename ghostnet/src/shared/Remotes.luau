@@ -40,6 +40,7 @@ local EVENT_NAMES = {
 	"StealVehicle", -- C->S  { }            Verkehrsauto kurzschliessen
 	"PursuitSync", -- S->C  { level, escaping, seconds }
 	"EndgameChoice", -- C->S  { choice }    Kassieren oder Verbrennen
+	"MapSync", -- S->C  { nodes, edges, pois }   Kartendaten, siehe MapService
 }
 
 local FUNCTION_NAMES: { string } = {

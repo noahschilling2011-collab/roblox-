@@ -32,6 +32,7 @@ local VehicleService = require(Systems.VehicleService)
 local PursuitService = require(Systems.PursuitService)
 local TrafficService = require(Systems.TrafficService)
 local GuardService = require(Systems.GuardService)
+local MapService = require(Systems.MapService)
 local MonetizationService = require(Systems.MonetizationService)
 local AdminService = require(Systems.AdminService)
 
@@ -55,6 +56,7 @@ VehicleService.Init() -- Besitz und Haendler
 PursuitService.Init() -- vor dem Verkehr: der meldet Diebstaehle dorthin
 TrafficService.Init()
 GuardService.Init() -- meldet Alarme an den RaidService
+MapService.Init() -- nach der Welt: sammelt ein, was gebaut wurde
 MonetizationService.Init()
 AdminService.Init() -- zuletzt: greift auf alle anderen zu
 

@@ -1,8 +1,8 @@
 # GHOSTNET — Bauplan
 
 **Stand: alles abgearbeitet** — Phase 0 bis G, Open-World-Abschnitt 2 und
-Phase 1 bis 7, v2.1.0 „Vantorra bei Tag" und v2.2.0 „Rework"
-(`Config.Version = "2.2.0"`).
+Phase 1 bis 7, v2.1.0 „Vantorra bei Tag", v2.2.0 „Rework" und v2.3.0 „Karte"
+(`Config.Version = "2.3.0"`).
 Was jetzt ansteht, steht ganz unten unter „Offen".
 
 Reihenfolge war bindend. Eine Phase wurde komplett fertig, bevor die nächste
@@ -411,6 +411,46 @@ leer. Bis Noah Modelle einträgt, ist die Stadt magenta. Das ist die Regel aus
 dem Auftrag, nicht ein Versehen: ein Platzhalter, den man übersehen kann, ist
 kein Platzhalter. Das Spiel bleibt dabei vollständig **fahrbar und testbar** —
 die Klötze haben die richtigen Maße, Kollisionen und Attribute.
+
+---
+
+# v2.3.0 — Karte und größere Stadt
+
+## Karte
+Zwei Ansichten, **eine** Datenquelle (`Remotes.MapSync`) — es kann keine
+zweite Karte geben, die von der Welt abweicht.
+
+- **Minikarte** unten rechts, folgt dem Spieler, Nordung fest (bei einem
+  Straßenraster liest sich das besser als eine mitdrehende Karte).
+- **Große Karte** auf `M`, Tippen auf die Minikarte oder den Knopf: ganze
+  Stadt, Bezirksnamen, **Legende** — das ist die Antwort auf „wo ist was".
+- Darauf: Hehler, Autohaus, Garage, Kontakte, Hack-Ziele (offene Ziele in
+  eigener Farbe, weil dort mehr Geld und mehr Risiko liegt) und der aktive
+  Auftrags-Wegpunkt.
+
+**Warum der Server die Daten schickt:** mit `StreamingEnabled` hat der Client
+entfernte Teile gar nicht geladen. Eine Karte, die selbst im Workspace
+nachschaut, würde genau das zeigen, was ohnehin zu sehen ist — also nichts
+nützen. `MapService` sammelt einmal und sendet gebündelt.
+
+**Keine Bild-Assets.** Straßen sind gedrehte Frames, Symbole kleine Quadrate.
+Die Karte funktioniert sofort, ohne dass Noah irgendeine ID einträgt.
+
+**Leistung:** der Inhalt wird einmal gebaut. Pro Bild ändern sich genau zwei
+Dinge — die Position des Inhalts-Containers und der Winkel des Spielersymbols.
+Nicht hundert Straßen einzeln.
+
+## Größer
+- `Config.City.Grid` 5 → **7**: 480 → **720 Studs** Kantenlänge, 16 → 36 Blöcke.
+- Altstadt `Radius` 1 → **2**: der ausgebaute Bezirk wächst mit. Wäre er bei 1
+  geblieben, wäre er in der größeren Stadt zu einem Fleck im Rohbau geworden —
+  und „eine große leere Stadt ist schlimmer als ein kleiner voller Block".
+
+⚠️ **`Config.City.Grid` ist der größte Bildraten-Hebel im Projekt.** Die
+Blockzahl wächst quadratisch, an jedem Block hängen vier Häuser aus mehreren
+Modulen. Von 5 auf 7 sind das rund 2,25× so viele Gebäude. Erst messen, dann
+weiter hochdrehen — und wenn es ruckelt, ist das die erste Zahl, die wieder
+runtergeht.
 
 ---
 

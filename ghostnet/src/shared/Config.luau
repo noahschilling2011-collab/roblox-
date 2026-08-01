@@ -6,7 +6,7 @@
 
 local Config = {}
 
-Config.Version = "2.2.0" -- Rework: Verkehrsbugs behoben, Geometrie kommt aus Assets
+Config.Version = "2.3.0" -- Karte (Mini + gross), groessere Stadt
 
 -- CollectionService-Tags. Ein Part mit dem Tag ist ein Hack-Ziel, ein Hehler,
 -- ein Missions-Wegpunkt oder ein ansprechbarer Kontakt. Kein Code pro Objekt.
@@ -581,7 +581,14 @@ Config.Vehicle = {
 --==========================================================================
 Config.City = {
 	BlockSize = 120, -- Abstand zwischen zwei Strassenkreuzungen
-	Grid = 5, -- Kreuzungen je Achse. 5 = 4x4 Bloecke. Hoch = riesige leere Stadt.
+	-- Kreuzungen je Achse. 7 = 6x6 Bloecke = 720 Studs Kantenlaenge.
+	--
+	-- DAS IST DER GROESSTE BILDRATEN-HEBEL IM GANZEN PROJEKT: die Blockzahl
+	-- waechst quadratisch, und an jedem Block haengen vier Haeuser aus je
+	-- mehreren Modulen. Von 5 auf 7 sind das rund 2,25x so viele Gebaeude.
+	-- Erst messen, dann weiter hochdrehen - und wenn es ruckelt, ist das
+	-- hier die erste Zahl, die wieder runtergeht.
+	Grid = 7,
 	RoadWidth = 34,
 	LaneOffset = 8, -- Abstand der Fahrspur von der Strassenmitte
 	SidewalkWidth = 8,
@@ -1001,5 +1008,67 @@ Config.Theme = {
 }
 
 table.freeze(Config.Theme)
+
+--==========================================================================
+-- KARTE
+--
+-- Zwei Ansichten aus denselben Daten:
+--   Minikarte   klein, oben rechts, folgt dem Spieler, zeigt die Umgebung
+--   Grosse Karte  [M], die ganze Stadt mit Legende - "wo ist was"
+--
+-- Steht bewusst NACH Config.Theme: die Symbolfarben sind dieselben wie im
+-- Rest des Fake-OS und werden nicht ein zweites Mal gepflegt.
+--
+-- Die Daten kommen vom SERVER (Remote MapSync), nicht aus dem Workspace.
+-- Grund: mit StreamingEnabled hat der Client entfernte Teile gar nicht
+-- geladen. Eine Karte, die nur zeigt, was ohnehin schon zu sehen ist,
+-- waere nutzlos.
+--==========================================================================
+Config.Map = {
+	--== Minikarte =========================================================
+	MiniSize = 190, -- Kantenlaenge in Pixeln
+	MiniMargin = 14, -- Abstand zum Bildschirmrand
+	-- Wie viele Studs vom Mittelpunkt bis zum Rand sichtbar sind.
+	-- Runter = mehr Details, hoch = mehr Uebersicht.
+	MiniRange = 300,
+	MiniIcon = 9,
+	MiniRoadWidth = 5, -- Strassenbreite in Pixeln
+
+	--== Grosse Karte ======================================================
+	BigPadding = 70, -- Rand um die Stadt herum
+	BigIcon = 13,
+	BigRoadWidth = 3,
+	BigLabelDistance = 0, -- 0 = Namen immer zeigen
+
+	PlayerIcon = 13,
+
+	-- Obergrenze fuer Hack-Ziele auf der Karte. Bei sehr vielen Zielen
+	-- wuerde die Karte sonst zur Punktwolke - und jedes Symbol ist ein Frame.
+	MaxTargets = 80,
+	-- So lange wird gewartet, bevor nach einer Aenderung neu gesendet wird.
+	-- Ohne das feuert der Aufbau der Welt hunderte Sync-Pakete.
+	SyncDebounce = 2,
+
+	--== Was auf der Karte auftaucht =======================================
+	-- Reihenfolge = Reihenfolge in der Legende.
+	-- Order steuert, was oben liegt: Ziele unten, Wegpunkt ganz oben.
+	Kinds = {
+		{ Id = "TARGET", Label = "Hack-Ziel", Colour = Config.Theme.Cyan, Order = 2 },
+		{ Id = "EXPOSED", Label = "Ziel auf offener Strasse", Colour = Config.Theme.Amber, Order = 3 },
+		{ Id = "FENCE", Label = "Hehler", Colour = Config.Theme.Green, Order = 5 },
+		{ Id = "DEALER", Label = "Autohaus", Colour = Config.Theme.Amber, Order = 5 },
+		{ Id = "GARAGE", Label = "Garage", Colour = Config.Theme.Cyan, Order = 5 },
+		{ Id = "CONTACT", Label = "Kontakt", Colour = Config.Theme.Magenta, Order = 5 },
+		{ Id = "WAYPOINT", Label = "Auftrag", Colour = Config.Theme.Text, Order = 9 },
+	},
+
+	-- Bezirke werden als getoente Flaeche mit Namen gezeichnet. Das ist der
+	-- eigentliche "wo bin ich hier"-Teil.
+	DistrictTransparency = 0.82,
+	DistrictLabelSize = 13,
+	RoadTransparency = 0.35,
+	Background = Config.Theme.Background,
+}
+
 
 return Config

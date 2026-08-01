@@ -328,6 +328,43 @@ try {
     );
   }
 
+  // --- Karte ---
+  {
+    const map = sources.get(join(SRC, "server/Systems/MapService.luau"));
+    if (map) {
+      const code = codeOnly(map);
+      check(
+        "Die Karte kommt vom Server, nicht aus dem Workspace des Clients",
+        /Remotes\.MapSync:FireClient/.test(code),
+        "mit StreamingEnabled saehe der Client nur, was ohnehin geladen ist"
+      );
+      check(
+        "Die Karte verraet keine Raetseldaten",
+        !/Difficulty|solution|Solution|serverState/.test(code),
+        "die Karte sagt WO etwas steht, nicht WIE man es knackt"
+      );
+      check(
+        "Kartendaten werden gebuendelt gesendet",
+        /SyncDebounce/.test(code),
+        "der Weltaufbau wuerde hunderte Pakete feuern"
+      );
+    }
+    const ui = sources.get(join(SRC, "client/UI/MapUI.client.luau"));
+    if (ui) {
+      const code = codeOnly(ui);
+      check(
+        "Die Karte braucht keine Bild-Assets",
+        !/rbxassetid|Image\s*=/.test(code),
+        "eine Karte, die auf eine hochgeladene Textur wartet, funktioniert nicht"
+      );
+      check(
+        "Die Minikarte verschiebt einen Container statt hundert Frames",
+        /miniWorld\.Position = /.test(code),
+        "jede Strasse einzeln pro Bild zu setzen kostet unnoetig Bildrate"
+      );
+    }
+  }
+
   // --- Asset-Pipeline: Code platziert Geometrie, Code baut keine ---
   // Sichtbares kommt als Vorlage aus ReplicatedStorage/Assets. Instance.new
   // fuer Parts ist nur noch erlaubt, wo es niemand ansieht: Kollisionsboxen,
@@ -1243,6 +1280,38 @@ test("Vantorra ist hell", function()
 	expect(luminance(Config.Theme.Background) < 0.15, "das Fake-OS ist nicht mehr dunkel")
 	expect(luminance(Config.Palette.Gehweg) - luminance(Config.Theme.Panel) > 0.4,
 		"Stadt und Terminal unterscheiden sich kaum noch")
+end)
+
+test("Die Karte ist vollstaendig und lesbar", function()
+	local M = Config.Map
+	expect(#M.Kinds >= 5, "zu wenige Kartenarten - dann sagt die Legende nichts")
+
+	local seen = {}
+	for _, kind in M.Kinds do
+		expect(typeof(kind.Id) == "string" and kind.Id ~= "", "Kartenart ohne Id")
+		expect(not seen[kind.Id], "Kartenart " .. tostring(kind.Id) .. " doppelt")
+		seen[kind.Id] = true
+		expect(typeof(kind.Label) == "string" and kind.Label ~= "",
+			kind.Id .. ": kein Text fuer die Legende")
+	end
+
+	-- Ohne diese vier Arten kann die Karte die Frage "wo ist was" nicht
+	-- beantworten - der Hehler ist der wichtigste Ort im ganzen Spiel.
+	for _, needed in { "FENCE", "DEALER", "GARAGE", "TARGET" } do
+		expect(seen[needed], "Kartenart " .. needed .. " fehlt")
+	end
+
+	expect(M.MiniRange > 0, "die Minikarte zeigt nichts")
+	expect(M.MaxTargets > 0, "keine Ziele auf der Karte")
+	expect(M.SyncDebounce > 0, "Kartendaten wuerden ungebuendelt gesendet")
+end)
+
+test("Die Karte passt zur Stadt", function()
+	-- Der Ausschnitt der Minikarte darf nicht groesser sein als die Stadt,
+	-- sonst zeigt sie mehr Rand als Inhalt.
+	local half = (Config.City.Grid - 1) * 0.5 * Config.City.BlockSize
+	expect(Config.Map.MiniRange <= half,
+		("Minikarte zeigt %d Studs, die Stadt reicht nur %d weit"):format(Config.Map.MiniRange, half))
 end)
 
 test("Streaming ist an und die Radien sind plausibel", function()

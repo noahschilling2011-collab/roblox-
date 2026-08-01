@@ -118,6 +118,7 @@ src/server/          -> ServerScriptService
     TrafficService.luau     Verkehr und Fussgaenger, gepoolt und begrenzt
     PursuitService.luau     Fahndungsstufe, Streifen, Sperren, Hubschrauber
     GuardService.luau       Wachen mit Sichtkegel - melden, greifen nie an
+    MapService.luau         sammelt, was wo steht (Karte)
     MarketService.luau      Darknet-Kurse, serverweit
     InventoryService.luau   Lager und Handel
     MonetizationService.luau Gamepässe und Produkte (IDs = 0)
@@ -146,6 +147,7 @@ src/client/UI/       -> StarterPlayerScripts.UI
   TargetBeacons.client.luau    lässt Ziele auf Distanz pulsieren
   VehicleController.client.luau  Fahren: Steuerung, Kamera, Klang, Tacho
   CityUI.client.luau       Fahndungssterne, Garage, Endgame-Entscheidung
+  MapUI.client.luau        Minikarte unten rechts + grosse Karte [M]
 ```
 
 ## Wo die Modelle liegen
@@ -236,6 +238,7 @@ in den Vorbedingungen. Fehler tauchen beim Serverstart als `warn()` auf.
 | `W`/`S`, `A`/`D` | Gas und Bremse, Lenken |
 | `E` halten am Verkehrsauto | kurzschließen — kostet Trace und Fahndung |
 | `G` | Garage: eigenes Fahrzeug ausparken (nur auf dem Ausparkplatz) |
+| `M` / Tippen auf die Minikarte | grosse Karte mit Legende |
 | `Esc` | Hack abbrechen (kostet halben Trace) / Fenster schließen |
 
 Alles ist auch per Touch bedienbar — keine Funktion hängt nur an der Tastatur.

@@ -1,5 +1,5 @@
 <roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4">
-<Item class="Workspace" referent="GN73">
+<Item class="Workspace" referent="GN75">
 <Properties>
 <string name="Name">Workspace</string>
 <float name="Gravity">196.2</float>
@@ -7,7 +7,7 @@
 <int name="StreamingMinRadius">128</int>
 <int name="StreamingTargetRadius">512</int>
 </Properties>
-<Item class="Part" referent="GN62">
+<Item class="Part" referent="GN64">
 <Properties>
 <string name="Name">Baseplate</string>
 <bool name="Anchored">true</bool>
@@ -21,7 +21,7 @@
 <token name="BottomSurface">0</token>
 </Properties>
 </Item>
-<Item class="SpawnLocation" referent="GN63">
+<Item class="SpawnLocation" referent="GN65">
 <Properties>
 <string name="Name">SpawnLocation</string>
 <bool name="Anchored">true</bool>
@@ -34,7 +34,7 @@
 </Properties>
 </Item>
 </Item>
-<Item class="Lighting" referent="GN64">
+<Item class="Lighting" referent="GN66">
 <Properties>
 <string name="Name">Lighting</string>
 <token name="Technology">4</token>
@@ -50,7 +50,7 @@
 <Color3 name="FogColor"><R>0.78</R><G>0.83</G><B>0.89</B></Color3>
 <float name="FogEnd">2200</float>
 </Properties>
-<Item class="Atmosphere" referent="GN65">
+<Item class="Atmosphere" referent="GN67">
 <Properties>
 <string name="Name">Atmosphere</string>
 <float name="Density">0.12</float>
@@ -60,7 +60,7 @@
 <Color3 name="Decay"><R>0.588</R><G>0.659</G><B>0.745</B></Color3>
 </Properties>
 </Item>
-<Item class="BloomEffect" referent="GN66">
+<Item class="BloomEffect" referent="GN68">
 <Properties>
 <string name="Name">Bloom</string>
 <bool name="Enabled">true</bool>
@@ -69,7 +69,7 @@
 <float name="Threshold">0.95</float>
 </Properties>
 </Item>
-<Item class="ColorCorrectionEffect" referent="GN67">
+<Item class="ColorCorrectionEffect" referent="GN69">
 <Properties>
 <string name="Name">ColorCorrection</string>
 <bool name="Enabled">true</bool>
@@ -80,7 +80,7 @@
 </Properties>
 </Item>
 </Item>
-<Item class="ReplicatedStorage" referent="GN74">
+<Item class="ReplicatedStorage" referent="GN76">
 <Properties>
 <string name="Name">ReplicatedStorage</string>
 </Properties>
@@ -323,7 +323,7 @@ return AssetLibrary
 
 local Config = {}
 
-Config.Version = "2.2.0" -- Rework: Verkehrsbugs behoben, Geometrie kommt aus Assets
+Config.Version = "2.3.0" -- Karte (Mini + gross), groessere Stadt
 
 -- CollectionService-Tags. Ein Part mit dem Tag ist ein Hack-Ziel, ein Hehler,
 -- ein Missions-Wegpunkt oder ein ansprechbarer Kontakt. Kein Code pro Objekt.
@@ -898,7 +898,14 @@ Config.Vehicle = {
 --==========================================================================
 Config.City = {
 	BlockSize = 120, -- Abstand zwischen zwei Strassenkreuzungen
-	Grid = 5, -- Kreuzungen je Achse. 5 = 4x4 Bloecke. Hoch = riesige leere Stadt.
+	-- Kreuzungen je Achse. 7 = 6x6 Bloecke = 720 Studs Kantenlaenge.
+	--
+	-- DAS IST DER GROESSTE BILDRATEN-HEBEL IM GANZEN PROJEKT: die Blockzahl
+	-- waechst quadratisch, und an jedem Block haengen vier Haeuser aus je
+	-- mehreren Modulen. Von 5 auf 7 sind das rund 2,25x so viele Gebaeude.
+	-- Erst messen, dann weiter hochdrehen - und wenn es ruckelt, ist das
+	-- hier die erste Zahl, die wieder runtergeht.
+	Grid = 7,
 	RoadWidth = 34,
 	LaneOffset = 8, -- Abstand der Fahrspur von der Strassenmitte
 	SidewalkWidth = 8,
@@ -1319,6 +1326,68 @@ Config.Theme = {
 
 table.freeze(Config.Theme)
 
+--==========================================================================
+-- KARTE
+--
+-- Zwei Ansichten aus denselben Daten:
+--   Minikarte   klein, oben rechts, folgt dem Spieler, zeigt die Umgebung
+--   Grosse Karte  [M], die ganze Stadt mit Legende - "wo ist was"
+--
+-- Steht bewusst NACH Config.Theme: die Symbolfarben sind dieselben wie im
+-- Rest des Fake-OS und werden nicht ein zweites Mal gepflegt.
+--
+-- Die Daten kommen vom SERVER (Remote MapSync), nicht aus dem Workspace.
+-- Grund: mit StreamingEnabled hat der Client entfernte Teile gar nicht
+-- geladen. Eine Karte, die nur zeigt, was ohnehin schon zu sehen ist,
+-- waere nutzlos.
+--==========================================================================
+Config.Map = {
+	--== Minikarte =========================================================
+	MiniSize = 190, -- Kantenlaenge in Pixeln
+	MiniMargin = 14, -- Abstand zum Bildschirmrand
+	-- Wie viele Studs vom Mittelpunkt bis zum Rand sichtbar sind.
+	-- Runter = mehr Details, hoch = mehr Uebersicht.
+	MiniRange = 300,
+	MiniIcon = 9,
+	MiniRoadWidth = 5, -- Strassenbreite in Pixeln
+
+	--== Grosse Karte ======================================================
+	BigPadding = 70, -- Rand um die Stadt herum
+	BigIcon = 13,
+	BigRoadWidth = 3,
+	BigLabelDistance = 0, -- 0 = Namen immer zeigen
+
+	PlayerIcon = 13,
+
+	-- Obergrenze fuer Hack-Ziele auf der Karte. Bei sehr vielen Zielen
+	-- wuerde die Karte sonst zur Punktwolke - und jedes Symbol ist ein Frame.
+	MaxTargets = 80,
+	-- So lange wird gewartet, bevor nach einer Aenderung neu gesendet wird.
+	-- Ohne das feuert der Aufbau der Welt hunderte Sync-Pakete.
+	SyncDebounce = 2,
+
+	--== Was auf der Karte auftaucht =======================================
+	-- Reihenfolge = Reihenfolge in der Legende.
+	-- Order steuert, was oben liegt: Ziele unten, Wegpunkt ganz oben.
+	Kinds = {
+		{ Id = "TARGET", Label = "Hack-Ziel", Colour = Config.Theme.Cyan, Order = 2 },
+		{ Id = "EXPOSED", Label = "Ziel auf offener Strasse", Colour = Config.Theme.Amber, Order = 3 },
+		{ Id = "FENCE", Label = "Hehler", Colour = Config.Theme.Green, Order = 5 },
+		{ Id = "DEALER", Label = "Autohaus", Colour = Config.Theme.Amber, Order = 5 },
+		{ Id = "GARAGE", Label = "Garage", Colour = Config.Theme.Cyan, Order = 5 },
+		{ Id = "CONTACT", Label = "Kontakt", Colour = Config.Theme.Magenta, Order = 5 },
+		{ Id = "WAYPOINT", Label = "Auftrag", Colour = Config.Theme.Text, Order = 9 },
+	},
+
+	-- Bezirke werden als getoente Flaeche mit Namen gezeichnet. Das ist der
+	-- eigentliche "wo bin ich hier"-Teil.
+	DistrictTransparency = 0.82,
+	DistrictLabelSize = 13,
+	RoadTransparency = 0.35,
+	Background = Config.Theme.Background,
+}
+
+
 return Config
 </ProtectedString>
 </Properties>
@@ -1366,7 +1435,11 @@ Districts.List = {
 		Character = "Enge Gassen, Putzfassaden, Marktstaende.",
 		GridX = 0,
 		GridZ = 0,
-		Radius = 1,
+		-- Radius 2 statt 1: der ausgebaute Bezirk waechst mit der Stadt mit.
+		-- Waere er bei 1 geblieben, waere die Altstadt in einer groesseren
+		-- Stadt zu einem kleinen Fleck im Rohbau geworden - und "eine grosse
+		-- leere Stadt ist schlimmer als ein kleiner voller Block".
+		Radius = 2,
 		MinDifficulty = 1,
 		MaxDifficulty = 3,
 		Tint = Color3.fromRGB(214, 196, 168), -- warmer Altbau-Putz
@@ -2255,6 +2328,7 @@ local EVENT_NAMES = {
 	"StealVehicle", -- C-&gt;S  { }            Verkehrsauto kurzschliessen
 	"PursuitSync", -- S-&gt;C  { level, escaping, seconds }
 	"EndgameChoice", -- C-&gt;S  { choice }    Kassieren oder Verbrennen
+	"MapSync", -- S-&gt;C  { nodes, edges, pois }   Kartendaten, siehe MapService
 }
 
 local FUNCTION_NAMES: { string } = {
@@ -3044,33 +3118,33 @@ return Vehicles
 </Properties>
 </Item>
 </Item>
-<Item class="Folder" referent="GN68">
+<Item class="Folder" referent="GN70">
 <Properties>
 <string name="Name">Assets</string>
 </Properties>
-<Item class="Folder" referent="GN69">
+<Item class="Folder" referent="GN71">
 <Properties>
 <string name="Name">Vehicles</string>
 </Properties>
 </Item>
-<Item class="Folder" referent="GN70">
+<Item class="Folder" referent="GN72">
 <Properties>
 <string name="Name">Buildings</string>
 </Properties>
 </Item>
-<Item class="Folder" referent="GN71">
+<Item class="Folder" referent="GN73">
 <Properties>
 <string name="Name">Props</string>
 </Properties>
 </Item>
-<Item class="Folder" referent="GN72">
+<Item class="Folder" referent="GN74">
 <Properties>
 <string name="Name">Characters</string>
 </Properties>
 </Item>
 </Item>
 </Item>
-<Item class="ServerScriptService" referent="GN75">
+<Item class="ServerScriptService" referent="GN77">
 <Properties>
 <string name="Name">ServerScriptService</string>
 </Properties>
@@ -3177,6 +3251,7 @@ local VehicleService = require(Systems.VehicleService)
 local PursuitService = require(Systems.PursuitService)
 local TrafficService = require(Systems.TrafficService)
 local GuardService = require(Systems.GuardService)
+local MapService = require(Systems.MapService)
 local MonetizationService = require(Systems.MonetizationService)
 local AdminService = require(Systems.AdminService)
 
@@ -3200,6 +3275,7 @@ VehicleService.Init() -- Besitz und Haendler
 PursuitService.Init() -- vor dem Verkehr: der meldet Diebstaehle dorthin
 TrafficService.Init()
 GuardService.Init() -- meldet Alarme an den RaidService
+MapService.Init() -- nach der Welt: sammelt ein, was gebaut wurde
 MonetizationService.Init()
 AdminService.Init() -- zuletzt: greift auf alle anderen zu
 
@@ -3212,7 +3288,7 @@ task.defer(AssetLibrary.Report)
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="Folder" referent="GN39">
+<Item class="Folder" referent="GN40">
 <Properties>
 <string name="Name">Systems</string>
 </Properties>
@@ -5609,6 +5685,218 @@ return InventoryService
 </Item>
 <Item class="ModuleScript" referent="GN22">
 <Properties>
+<string name="Name">MapService</string>
+<ProtectedString name="Source">-- ServerScriptService/Systems/MapService.luau
+--!strict
+-- GHOSTNET :: Was steht wo - einmal serverseitig gesammelt.
+--
+-- WARUM DER SERVER DAS SCHICKT UND NICHT DER CLIENT ES SELBST SUCHT
+--   Mit StreamingEnabled hat der Client entfernte Teile gar nicht geladen.
+--   Eine Karte, die per CollectionService im Workspace nachschaut, wuerde
+--   also genau das zeigen, was ohnehin schon zu sehen ist - und damit nichts
+--   nuetzen. Deshalb sammelt der Server einmal alles ein und schickt eine
+--   Liste aus Position, Art und Name.
+--
+-- WAS HIER NICHT DRINSTEHT
+--   Keine Loesungen, keine Schwierigkeitsdetails, keine Cooldowns. Die Karte
+--   verraet WO etwas steht, nicht WIE man es knackt. Ein Hack-Ziel ist ohnehin
+--   ein sichtbares Objekt in der Welt - das ist kein Geheimnis.
+--
+-- KEIN EIGENER TAKT
+--   Die Welt aendert sich fast nie: Objekte werden beim Serverstart gebaut.
+--   Deshalb wird nur bei Tag-Aenderungen neu gesammelt, und das gebuendelt
+--   (Config.Map.SyncDebounce) - sonst feuert der Weltaufbau hunderte Pakete.
+
+local CollectionService = game:GetService("CollectionService")
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Config = require(ReplicatedStorage.Shared.Config)
+local Remotes = require(ReplicatedStorage.Shared.Remotes)
+
+local RoadNetwork = require(script.Parent.RoadNetwork)
+
+local MapService = {}
+
+local M = Config.Map
+
+type Poi = {
+	Kind: string,
+	Name: string,
+	X: number,
+	Z: number,
+}
+
+-- Einmal gerechnet und dann wiederverwendet: die Liste aendert sich nur,
+-- wenn jemand ein getaggtes Objekt hinzufuegt oder entfernt.
+local cached: { [string]: any }? = nil
+local dirty = true
+local pending = false
+
+--==========================================================================
+-- Sammeln
+--==========================================================================
+
+local function positionOf(instance: Instance): Vector3?
+	if instance:IsA("BasePart") then
+		return instance.Position
+	end
+	if instance:IsA("Model") then
+		local ok, pivot = pcall(function()
+			return instance:GetPivot()
+		end)
+		if ok then
+			return pivot.Position
+		end
+	end
+	return nil
+end
+
+local function labelOf(instance: Instance, fallback: string): string
+	local display = instance:GetAttribute("DisplayName")
+	if typeof(display) == "string" and display ~= "" then
+		return display
+	end
+	return fallback
+end
+
+local function collect(tag: string, kind: string, fallback: string, into: { Poi }, limit: number?)
+	local count = 0
+	for _, instance in CollectionService:GetTagged(tag) do
+		if limit and count &gt;= limit then
+			break
+		end
+		if not instance:IsDescendantOf(workspace) then
+			continue
+		end
+		local position = positionOf(instance)
+		if not position then
+			continue
+		end
+
+		-- Offen stehende Ziele bekommen eine eigene Farbe: der Spieler soll
+		-- auf der Karte sehen koennen, wo mehr Geld und mehr Risiko liegt.
+		local resolved = kind
+		if kind == "TARGET" and instance:GetAttribute("Exposed") == true then
+			resolved = "EXPOSED"
+		end
+
+		table.insert(into, {
+			Kind = resolved,
+			Name = labelOf(instance, fallback),
+			-- Nur X und Z. Die Karte ist zweidimensional, und jedes Feld,
+			-- das nicht geschickt wird, ist gespartes Netzwerk.
+			X = math.round(position.X),
+			Z = math.round(position.Z),
+		})
+		count += 1
+	end
+end
+
+local function build(): { [string]: any }
+	local pois: { Poi } = {}
+
+	collect(Config.FenceTag, "FENCE", "Hehler", pois)
+	collect(Config.DealerTag, "DEALER", "Autohaus", pois)
+	collect(Config.VehicleSpawnTag, "GARAGE", "Garage", pois)
+	collect(Config.ContactTag, "CONTACT", "Kontakt", pois)
+	-- Ziele zuletzt und begrenzt: davon gibt es die meisten, und bei einer
+	-- Punktwolke sieht man die wichtigen Orte nicht mehr.
+	collect(Config.HackableTag, "TARGET", "Ziel", pois, M.MaxTargets)
+
+	-- Strassennetz. Kommt aus demselben Graphen, auf dem Verkehr und Polizei
+	-- fahren - es kann also gar keine zweite, abweichende Karte geben.
+	local nodes: { { number } } = {}
+	local edges: { { number } } = {}
+	local seen: { [string]: boolean } = {}
+
+	for _, node in RoadNetwork.All() do
+		nodes[node.Id] = { math.round(node.Position.X), math.round(node.Position.Z) }
+		for _, linkId in node.Links do
+			local key = if node.Id &lt; linkId
+				then ("%d-%d"):format(node.Id, linkId)
+				else ("%d-%d"):format(linkId, node.Id)
+			if seen[key] then
+				continue
+			end
+			seen[key] = true
+			table.insert(edges, { node.Id, linkId })
+		end
+	end
+
+	return {
+		Nodes = nodes,
+		Edges = edges,
+		Pois = pois,
+	}
+end
+
+local function data(): { [string]: any }
+	if dirty or not cached then
+		cached = build()
+		dirty = false
+	end
+	return cached :: { [string]: any }
+end
+
+--==========================================================================
+-- Senden
+--==========================================================================
+
+function MapService.SyncTo(player: Player)
+	if player.Parent then
+		Remotes.MapSync:FireClient(player, data())
+	end
+end
+
+local function broadcast()
+	local payload = data()
+	for _, player in Players:GetPlayers() do
+		Remotes.MapSync:FireClient(player, payload)
+	end
+end
+
+-- Gebuendelt: der Weltaufbau taggt hunderte Objekte hintereinander, und
+-- jedes einzeln zu senden waere sinnlos teuer.
+local function markDirty()
+	dirty = true
+	if pending then
+		return
+	end
+	pending = true
+	task.delay(M.SyncDebounce, function()
+		pending = false
+		broadcast()
+	end)
+end
+
+--==========================================================================
+
+function MapService.Init()
+	for _, tag in { Config.HackableTag, Config.FenceTag, Config.DealerTag, Config.VehicleSpawnTag, Config.ContactTag } do
+		CollectionService:GetInstanceAddedSignal(tag):Connect(markDirty)
+		CollectionService:GetInstanceRemovedSignal(tag):Connect(markDirty)
+	end
+
+	Players.PlayerAdded:Connect(function(player)
+		-- Kurz warten: beim Beitritt waehrend des Weltaufbaus waere die
+		-- Liste sonst halb leer, und nachgeliefert wird erst beim naechsten
+		-- Tag-Ereignis.
+		task.delay(M.SyncDebounce, MapService.SyncTo, player)
+	end)
+	for _, player in Players:GetPlayers() do
+		task.defer(MapService.SyncTo, player)
+	end
+
+	print("[GHOSTNET] MapService bereit.")
+end
+
+return MapService
+</ProtectedString>
+</Properties>
+</Item>
+<Item class="ModuleScript" referent="GN23">
+<Properties>
 <string name="Name">MarketService</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/MarketService.luau
 --!strict
@@ -5897,11 +6185,11 @@ return MarketService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="Folder" referent="GN24">
+<Item class="Folder" referent="GN25">
 <Properties>
 <string name="Name">Minigames</string>
 </Properties>
-<Item class="ModuleScript" referent="GN23">
+<Item class="ModuleScript" referent="GN24">
 <Properties>
 <string name="Name">NodeBreach</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/Minigames/NodeBreach.luau
@@ -6276,7 +6564,7 @@ return NodeBreach
 </Properties>
 </Item>
 </Item>
-<Item class="ModuleScript" referent="GN25">
+<Item class="ModuleScript" referent="GN26">
 <Properties>
 <string name="Name">MissionService</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/MissionService.luau
@@ -6963,7 +7251,7 @@ return MissionService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN26">
+<Item class="ModuleScript" referent="GN27">
 <Properties>
 <string name="Name">MonetizationService</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/MonetizationService.luau
@@ -7382,7 +7670,7 @@ return MonetizationService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN27">
+<Item class="ModuleScript" referent="GN28">
 <Properties>
 <string name="Name">PursuitService</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/PursuitService.luau
@@ -7779,7 +8067,7 @@ return PursuitService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN28">
+<Item class="ModuleScript" referent="GN29">
 <Properties>
 <string name="Name">RaidService</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/RaidService.luau
@@ -8055,7 +8343,7 @@ return RaidService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN29">
+<Item class="ModuleScript" referent="GN30">
 <Properties>
 <string name="Name">RateLimiter</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/RateLimiter.luau
@@ -8135,7 +8423,7 @@ return RateLimiter
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN30">
+<Item class="ModuleScript" referent="GN31">
 <Properties>
 <string name="Name">RoadNetwork</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/RoadNetwork.luau
@@ -8350,7 +8638,7 @@ return RoadNetwork
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN31">
+<Item class="ModuleScript" referent="GN32">
 <Properties>
 <string name="Name">SaveService</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/SaveService.luau
@@ -8981,7 +9269,7 @@ return SaveService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN32">
+<Item class="ModuleScript" referent="GN33">
 <Properties>
 <string name="Name">SellService</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/SellService.luau
@@ -9147,7 +9435,7 @@ return SellService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN33">
+<Item class="ModuleScript" referent="GN34">
 <Properties>
 <string name="Name">ShopService</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/ShopService.luau
@@ -9273,7 +9561,7 @@ return ShopService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN34">
+<Item class="ModuleScript" referent="GN35">
 <Properties>
 <string name="Name">TimeService</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/TimeService.luau
@@ -9594,7 +9882,7 @@ return TimeService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN35">
+<Item class="ModuleScript" referent="GN36">
 <Properties>
 <string name="Name">TraceService</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/TraceService.luau
@@ -9832,7 +10120,7 @@ return TraceService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN36">
+<Item class="ModuleScript" referent="GN37">
 <Properties>
 <string name="Name">TrafficService</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/TrafficService.luau
@@ -10455,7 +10743,7 @@ return TrafficService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN37">
+<Item class="ModuleScript" referent="GN38">
 <Properties>
 <string name="Name">VehicleChassis</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/VehicleChassis.luau
@@ -11012,7 +11300,7 @@ return VehicleChassis
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN38">
+<Item class="ModuleScript" referent="GN39">
 <Properties>
 <string name="Name">VehicleService</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/VehicleService.luau
@@ -11393,11 +11681,11 @@ return VehicleService
 </Properties>
 </Item>
 </Item>
-<Item class="Folder" referent="GN46">
+<Item class="Folder" referent="GN47">
 <Properties>
 <string name="Name">World</string>
 </Properties>
-<Item class="Script" referent="GN40">
+<Item class="Script" referent="GN41">
 <Properties>
 <string name="Name">BankInterior</string>
 <ProtectedString name="Source">-- ServerScriptService/World/BankInterior.server.luau
@@ -11695,7 +11983,7 @@ print("[GHOSTNET] Bank-Innenraum gebaut: Halle, Sicherheitsbereich, Tresorraum, 
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="Script" referent="GN41">
+<Item class="Script" referent="GN42">
 <Properties>
 <string name="Name">City</string>
 <ProtectedString name="Source">-- ServerScriptService/World/City.server.luau
@@ -12077,7 +12365,7 @@ print(
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="Script" referent="GN42">
+<Item class="Script" referent="GN43">
 <Properties>
 <string name="Name">Dealership</string>
 <ProtectedString name="Source">-- ServerScriptService/World/Dealership.server.luau
@@ -12309,7 +12597,7 @@ print("[GHOSTNET] Autohaus, Garage und Bezirks-Wegpunkte gebaut.")
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="Script" referent="GN43">
+<Item class="Script" referent="GN44">
 <Properties>
 <string name="Name">StoryWorld</string>
 <ProtectedString name="Source">-- ServerScriptService/World/StoryWorld.server.luau
@@ -12859,7 +13147,7 @@ print("[GHOSTNET] Story-Welt gebaut: Uebungsterminal, Laden, Apartment, Nakamura
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="Script" referent="GN44">
+<Item class="Script" referent="GN45">
 <Properties>
 <string name="Name">TestTargets</string>
 <ProtectedString name="Source">-- ServerScriptService/World/TestTargets.server.luau
@@ -13165,7 +13453,7 @@ print("[GHOSTNET] Testwelt gebaut: Kamera (D2), Sicherheitstuer (D4), Geldautoma
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="Script" referent="GN45">
+<Item class="Script" referent="GN46">
 <Properties>
 <string name="Name">TestVehicles</string>
 <ProtectedString name="Source">-- ServerScriptService/World/TestVehicles.server.luau
@@ -13258,19 +13546,19 @@ print(("[GHOSTNET] %d Testfahrzeuge gebaut."):format(built))
 </Item>
 </Item>
 </Item>
-<Item class="StarterPlayer" referent="GN76">
+<Item class="StarterPlayer" referent="GN78">
 <Properties>
 <string name="Name">StarterPlayer</string>
 </Properties>
-<Item class="StarterPlayerScripts" referent="GN77">
+<Item class="StarterPlayerScripts" referent="GN79">
 <Properties>
 <string name="Name">StarterPlayerScripts</string>
 </Properties>
-<Item class="Folder" referent="GN59">
+<Item class="Folder" referent="GN61">
 <Properties>
 <string name="Name">UI</string>
 </Properties>
-<Item class="LocalScript" referent="GN47">
+<Item class="LocalScript" referent="GN48">
 <Properties>
 <string name="Name">AdminUI</string>
 <ProtectedString name="Source">-- StarterPlayer/StarterPlayerScripts/UI/AdminUI.client.luau
@@ -13633,7 +13921,7 @@ end)
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="LocalScript" referent="GN48">
+<Item class="LocalScript" referent="GN49">
 <Properties>
 <string name="Name">CityUI</string>
 <ProtectedString name="Source">-- StarterPlayer/StarterPlayerScripts/UI/CityUI.client.luau
@@ -14247,7 +14535,7 @@ refreshEndgame()
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="LocalScript" referent="GN49">
+<Item class="LocalScript" referent="GN50">
 <Properties>
 <string name="Name">DarknetUI</string>
 <ProtectedString name="Source">-- StarterPlayer/StarterPlayerScripts/UI/DarknetUI.client.luau
@@ -14940,7 +15228,7 @@ end)
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="LocalScript" referent="GN50">
+<Item class="LocalScript" referent="GN51">
 <Properties>
 <string name="Name">HUD</string>
 <ProtectedString name="Source">-- StarterPlayer/StarterPlayerScripts/UI/HUD.client.luau
@@ -15638,7 +15926,7 @@ UITheme.Scanlines(walletPanel, 4)
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="LocalScript" referent="GN51">
+<Item class="LocalScript" referent="GN52">
 <Properties>
 <string name="Name">HackUI</string>
 <ProtectedString name="Source">-- StarterPlayer/StarterPlayerScripts/UI/HackUI.client.luau
@@ -16490,7 +16778,545 @@ end)
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="LocalScript" referent="GN52">
+<Item class="LocalScript" referent="GN53">
+<Properties>
+<string name="Name">MapUI</string>
+<ProtectedString name="Source">-- StarterPlayerScripts/UI/MapUI.client.luau
+--!strict
+-- GHOSTNET :: Minikarte und grosse Karte.
+--
+-- ZWEI ANSICHTEN, EINE DATENQUELLE
+--   Minikarte    klein unten rechts, folgt dem Spieler, zeigt die Umgebung.
+--   Grosse Karte [M] oder Tippen auf die Minikarte: die ganze Stadt mit
+--                Bezirksnamen und Legende. Das ist die Antwort auf
+--                "wo ist eigentlich was".
+--
+-- Beide zeichnen dieselben Daten aus Remotes.MapSync. Es gibt keine zweite
+-- Karte, die auseinanderlaufen koennte.
+--
+-- KEINE BILDER, KEINE ASSET-IDS
+--   Strassen sind gedrehte Frames, Symbole sind kleine Quadrate. Damit
+--   braucht die Karte keine einzige hochgeladene Textur - und Noah muss
+--   nichts eintragen, damit sie funktioniert.
+--
+-- LEISTUNG
+--   Der ganze Karteninhalt wird EINMAL gebaut, wenn die Daten ankommen.
+--   Pro Bild wird nur die Position des Inhalts-Containers und das
+--   Spielersymbol angefasst - nicht jede der rund hundert Strassen.
+
+local CollectionService = game:GetService("CollectionService")
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+
+local Config = require(ReplicatedStorage.Shared.Config)
+local Districts = require(ReplicatedStorage.Shared.Districts)
+local Remotes = require(ReplicatedStorage.Shared.Remotes)
+local UITheme = require(ReplicatedStorage.Shared.UITheme)
+
+local M = Config.Map
+local player = Players.LocalPlayer
+
+--==========================================================================
+-- Kartenarten nachschlagen
+--==========================================================================
+
+local kindById: { [string]: any } = {}
+for _, kind in M.Kinds do
+	kindById[kind.Id] = kind
+end
+
+local function kindColour(id: string): Color3
+	local kind = kindById[id]
+	return if kind then kind.Colour else UITheme.Color.TextDim
+end
+
+local function kindOrder(id: string): number
+	local kind = kindById[id]
+	return if kind then kind.Order else 1
+end
+
+--==========================================================================
+-- Ausmasse der Stadt
+--
+-- Aus Config gerechnet, nicht aus den empfangenen Knoten: so passt die
+-- Karte auch dann, wenn gerade nur ein Teil der Stadt getaggt ist.
+--==========================================================================
+
+local CITY_HALF = (Config.City.Grid - 1) * 0.5 * Config.City.BlockSize + Config.City.BlockSize * 0.5
+
+--==========================================================================
+-- Ein Kartenfenster (Minikarte oder grosse Karte)
+--==========================================================================
+
+type Surface = {
+	Holder: GuiObject,
+	World: Frame, -- verschiebbarer Inhalt
+	Scale: number, -- Pixel pro Stud
+	Icons: number,
+	RoadWidth: number,
+	Marker: Frame?, -- Auftrags-Wegpunkt
+	Player: Frame,
+}
+
+-- Weltkoordinate -&gt; Pixel innerhalb des Inhalts-Containers.
+local function toPixels(surface: Surface, x: number, z: number): (number, number)
+	return x * surface.Scale, z * surface.Scale
+end
+
+local function drawRoad(surface: Surface, ax: number, az: number, bx: number, bz: number)
+	local x1, z1 = toPixels(surface, ax, az)
+	local x2, z2 = toPixels(surface, bx, bz)
+	local dx, dz = x2 - x1, z2 - z1
+	local length = math.sqrt(dx * dx + dz * dz)
+	if length &lt; 1 then
+		return
+	end
+
+	local road = UITheme.Frame({
+		Name = "Strasse",
+		BackgroundColor3 = UITheme.Color.Line,
+		BackgroundTransparency = M.RoadTransparency,
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromOffset((x1 + x2) * 0.5, (z1 + z2) * 0.5),
+		Size = UDim2.fromOffset(length, surface.RoadWidth),
+		Rotation = math.deg(math.atan2(dz, dx)),
+		ZIndex = 2,
+	})
+	road.Parent = surface.World
+end
+
+local function drawDistrict(surface: Surface, district: Districts.District)
+	local block = Config.City.BlockSize
+	local extent = (district.Radius * 2 + 1) * block
+	local x, z = toPixels(surface, district.GridX * block, district.GridZ * block)
+
+	local area = UITheme.Frame({
+		Name = district.Id,
+		BackgroundColor3 = district.Neon,
+		BackgroundTransparency = M.DistrictTransparency,
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromOffset(x, z),
+		Size = UDim2.fromOffset(extent * surface.Scale, extent * surface.Scale),
+		ZIndex = 1,
+	})
+	UITheme.Corner(area, 4)
+	area.Parent = surface.World
+
+	if surface.Icons &gt;= M.BigIcon then
+		local label = UITheme.Label({
+			Name = "Name",
+			Text = district.Name:upper(),
+			TextColor3 = district.Neon,
+			TextSize = M.DistrictLabelSize,
+			TextTransparency = 0.25,
+			TextXAlignment = Enum.TextXAlignment.Center,
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.fromOffset(x, z - extent * surface.Scale * 0.5 + 12),
+			Size = UDim2.fromOffset(160, 16),
+			ZIndex = 3,
+		})
+		label.Parent = surface.World
+	end
+end
+
+local function drawPoi(surface: Surface, poi: { [string]: any })
+	local x, z = toPixels(surface, poi.X, poi.Z)
+	local size = surface.Icons
+
+	local dot = UITheme.Frame({
+		Name = poi.Kind,
+		BackgroundColor3 = kindColour(poi.Kind),
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromOffset(x, z),
+		Size = UDim2.fromOffset(size, size),
+		ZIndex = 4 + kindOrder(poi.Kind),
+	})
+	UITheme.Corner(dot, math.floor(size * 0.5))
+	UITheme.Stroke(dot, UITheme.Color.Background, 1)
+	dot.Parent = surface.World
+
+	-- Namen nur auf der grossen Karte: auf der Minikarte waere das Kleisterei.
+	if surface.Icons &gt;= M.BigIcon and poi.Kind ~= "TARGET" and poi.Kind ~= "EXPOSED" then
+		local label = UITheme.Label({
+			Name = "Name",
+			Text = poi.Name,
+			TextColor3 = kindColour(poi.Kind),
+			TextSize = 11,
+			TextXAlignment = Enum.TextXAlignment.Center,
+			AnchorPoint = Vector2.new(0.5, 0),
+			Position = UDim2.fromOffset(x, z + size * 0.7),
+			Size = UDim2.fromOffset(150, 14),
+			ZIndex = 12,
+		})
+		label.Parent = surface.World
+	end
+end
+
+local function makePlayerIcon(surface: Surface): Frame
+	-- Ein gedrehtes Quadrat als Pfeilersatz: ohne Bild-Asset geht kein
+	-- richtiger Pfeil, und ein gekipptes Viereck liest sich gut genug.
+	local icon = UITheme.Frame({
+		Name = "Spieler",
+		BackgroundColor3 = UITheme.Color.Text,
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Size = UDim2.fromOffset(M.PlayerIcon, M.PlayerIcon),
+		Rotation = 45,
+		ZIndex = 20,
+	})
+	UITheme.Stroke(icon, UITheme.Color.Background, 2)
+	icon.Parent = surface.Holder
+	return icon
+end
+
+--==========================================================================
+-- Aufbau der Fenster
+--==========================================================================
+
+local gui = UITheme.Screen("GhostNetMap", 6)
+gui.Parent = player:WaitForChild("PlayerGui")
+
+--== Minikarte =============================================================
+
+local miniButton = UITheme.Button({
+	Name = "Minikarte",
+	BackgroundColor3 = M.Background,
+	-- Unten rechts: oben rechts sitzen schon Wallet, Trace und die
+	-- Fahndungssterne, unten links die Knoepfe fuer Shop und Store.
+	AnchorPoint = Vector2.new(1, 1),
+	Position = UDim2.new(1, -M.MiniMargin, 1, -M.MiniMargin),
+	Size = UDim2.fromOffset(M.MiniSize, M.MiniSize),
+	ClipsDescendants = true,
+	ZIndex = 2,
+})
+UITheme.Corner(miniButton, 6)
+UITheme.Stroke(miniButton, UITheme.Color.Line, 1)
+miniButton.Parent = gui
+
+local miniWorld = UITheme.Frame({
+	Name = "Inhalt",
+	BackgroundTransparency = 1,
+	Size = UDim2.fromScale(1, 1),
+	ZIndex = 2,
+})
+miniWorld.Parent = miniButton
+
+local miniHint = UITheme.Label({
+	Name = "Hinweis",
+	Text = "[M] KARTE",
+	TextColor3 = UITheme.Color.TextDim,
+	TextSize = 11,
+	TextXAlignment = Enum.TextXAlignment.Center,
+	AnchorPoint = Vector2.new(0.5, 1),
+	Position = UDim2.new(0.5, 0, 1, -3),
+	Size = UDim2.new(1, 0, 0, 14),
+	ZIndex = 25,
+})
+miniHint.Parent = miniButton
+
+local mini: Surface = {
+	Holder = miniButton,
+	World = miniWorld,
+	Scale = (M.MiniSize * 0.5) / M.MiniRange,
+	Icons = M.MiniIcon,
+	RoadWidth = M.MiniRoadWidth,
+	Player = nil :: any,
+}
+mini.Player = makePlayerIcon(mini)
+mini.Player.Position = UDim2.fromScale(0.5, 0.5) -- die Minikarte folgt dem Spieler
+
+--== Grosse Karte ==========================================================
+
+local backdrop = UITheme.Frame({
+	Name = "Karte",
+	BackgroundColor3 = UITheme.Color.Background,
+	BackgroundTransparency = 0.12,
+	Size = UDim2.fromScale(1, 1),
+	Visible = false,
+	ZIndex = 30,
+})
+backdrop.Parent = gui
+
+local bigSize = 0
+local bigScale = 0
+
+local bigPanel = UITheme.Frame({
+	Name = "Blatt",
+	BackgroundColor3 = M.Background,
+	AnchorPoint = Vector2.new(0.5, 0.5),
+	Position = UDim2.fromScale(0.5, 0.5),
+	Size = UDim2.fromScale(0.72, 0.86),
+	ClipsDescendants = true,
+	ZIndex = 31,
+})
+UITheme.Corner(bigPanel, 6)
+UITheme.Stroke(bigPanel, UITheme.Color.Cyan, 1)
+bigPanel.Parent = backdrop
+
+local bigWorld = UITheme.Frame({
+	Name = "Inhalt",
+	BackgroundTransparency = 1,
+	Size = UDim2.fromScale(1, 1),
+	ZIndex = 31,
+})
+bigWorld.Parent = bigPanel
+
+local bigTitle = UITheme.Label({
+	Name = "Titel",
+	Text = "VANTORRA",
+	TextColor3 = UITheme.Color.Cyan,
+	TextSize = 18,
+	Position = UDim2.fromOffset(14, 10),
+	Size = UDim2.fromOffset(300, 22),
+	ZIndex = 40,
+})
+bigTitle.Parent = bigPanel
+
+local closeButton = UITheme.Button({
+	Name = "Schliessen",
+	Text = "[M] SCHLIESSEN",
+	TextColor3 = UITheme.Color.TextDim,
+	AnchorPoint = Vector2.new(1, 0),
+	Position = UDim2.new(1, -10, 0, 10),
+	Size = UDim2.fromOffset(160, 34), -- gross genug fuer Touch
+	ZIndex = 40,
+})
+UITheme.Corner(closeButton, 4)
+closeButton.Parent = bigPanel
+
+local big: Surface = {
+	Holder = bigPanel,
+	World = bigWorld,
+	Scale = 1,
+	Icons = M.BigIcon,
+	RoadWidth = M.BigRoadWidth,
+	Player = nil :: any,
+}
+big.Player = makePlayerIcon(big)
+
+--== Legende ===============================================================
+-- "Wo alles ist" braucht auch: was bedeutet welcher Punkt.
+
+local legend = UITheme.Frame({
+	Name = "Legende",
+	BackgroundColor3 = UITheme.Color.Panel,
+	BackgroundTransparency = 0.15,
+	AnchorPoint = Vector2.new(0, 1),
+	Position = UDim2.new(0, 10, 1, -10),
+	Size = UDim2.fromOffset(230, 22 + #M.Kinds * 18),
+	ZIndex = 40,
+})
+UITheme.Corner(legend, 4)
+UITheme.Stroke(legend, UITheme.Color.Line, 1)
+legend.Parent = bigPanel
+
+do
+	local heading = UITheme.Label({
+		Text = "LEGENDE",
+		TextColor3 = UITheme.Color.TextDim,
+		TextSize = 11,
+		Position = UDim2.fromOffset(8, 4),
+		Size = UDim2.fromOffset(200, 14),
+		ZIndex = 41,
+	})
+	heading.Parent = legend
+
+	for index, kind in M.Kinds do
+		local y = 20 + (index - 1) * 18
+
+		local dot = UITheme.Frame({
+			BackgroundColor3 = kind.Colour,
+			Position = UDim2.fromOffset(10, y + 4),
+			Size = UDim2.fromOffset(8, 8),
+			ZIndex = 41,
+		})
+		UITheme.Corner(dot, 4)
+		dot.Parent = legend
+
+		local text = UITheme.Label({
+			Text = kind.Label,
+			TextSize = 12,
+			Position = UDim2.fromOffset(26, y),
+			Size = UDim2.fromOffset(196, 16),
+			ZIndex = 41,
+		})
+		text.Parent = legend
+	end
+end
+
+--==========================================================================
+-- Zeichnen, sobald die Daten da sind
+--==========================================================================
+
+local drawn = false
+
+local function fillSurface(surface: Surface, payload: { [string]: any })
+	for _, child in surface.World:GetChildren() do
+		child:Destroy()
+	end
+
+	for _, district in Districts.List do
+		drawDistrict(surface, district)
+	end
+
+	local nodes = payload.Nodes
+	for _, edge in payload.Edges do
+		local a = nodes[edge[1]]
+		local b = nodes[edge[2]]
+		if a and b then
+			drawRoad(surface, a[1], a[2], b[1], b[2])
+		end
+	end
+
+	for _, poi in payload.Pois do
+		drawPoi(surface, poi)
+	end
+end
+
+local function onMapSync(payload: { [string]: any })
+	if typeof(payload) ~= "table" or typeof(payload.Edges) ~= "table" then
+		return
+	end
+
+	-- Massstab der grossen Karte: die ganze Stadt soll hineinpassen.
+	bigSize = math.min(bigPanel.AbsoluteSize.X, bigPanel.AbsoluteSize.Y)
+	bigScale = (bigSize - M.BigPadding * 2) / (CITY_HALF * 2)
+	big.Scale = math.max(bigScale, 0.01)
+
+	fillSurface(mini, payload)
+	fillSurface(big, payload)
+
+	-- Die grosse Karte steht fest: Stadtmitte in die Blattmitte.
+	bigWorld.Position = UDim2.fromScale(0.5, 0.5)
+	bigWorld.Size = UDim2.fromOffset(0, 0) -- Kinder liegen als Offset um (0,0)
+
+	drawn = true
+end
+
+Remotes.MapSync.OnClientEvent:Connect(onMapSync)
+
+--==========================================================================
+-- Auftrags-Wegpunkt
+-- Kommt aus WaypointSync, nicht aus MapSync: er wechselt staendig.
+--==========================================================================
+
+local waypoint: Vector3? = nil
+local waypointIcons: { [string]: Frame } = {}
+
+local function setWaypointIcon(surface: Surface, key: string)
+	local existing = waypointIcons[key]
+	if existing then
+		existing:Destroy()
+		waypointIcons[key] = nil
+	end
+	if not waypoint then
+		return
+	end
+
+	local x, z = toPixels(surface, waypoint.X, waypoint.Z)
+	local icon = UITheme.Frame({
+		Name = "Auftrag",
+		BackgroundColor3 = kindColour("WAYPOINT"),
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromOffset(x, z),
+		Size = UDim2.fromOffset(surface.Icons + 3, surface.Icons + 3),
+		Rotation = 45,
+		ZIndex = 18,
+	})
+	UITheme.Stroke(icon, UITheme.Color.Background, 2)
+	icon.Parent = surface.World
+	waypointIcons[key] = icon
+end
+
+Remotes.WaypointSync.OnClientEvent:Connect(function(payload)
+	if typeof(payload) == "table" and typeof(payload.Position) == "Vector3" then
+		waypoint = payload.Position
+	else
+		waypoint = nil
+	end
+	setWaypointIcon(mini, "mini")
+	setWaypointIcon(big, "big")
+end)
+
+--==========================================================================
+-- Bewegung
+--==========================================================================
+
+local function alivePosition(): Vector3?
+	local character = player.Character
+	local root = character and character:FindFirstChild("HumanoidRootPart")
+	if root and root:IsA("BasePart") then
+		return root.Position
+	end
+	return nil
+end
+
+RunService.RenderStepped:Connect(function()
+	if not drawn then
+		return
+	end
+	local position = alivePosition()
+	if not position then
+		return
+	end
+
+	-- Minikarte: der Inhalt wandert unter dem festen Spielersymbol durch.
+	-- Genau EINE Eigenschaft pro Bild statt hundert Frames neu zu setzen.
+	local px, pz = toPixels(mini, position.X, position.Z)
+	miniWorld.Position = UDim2.new(0.5, -px, 0.5, -pz)
+
+	local camera = workspace.CurrentCamera
+	if camera then
+		local look = camera.CFrame.LookVector
+		-- Bildschirm-Y ist Welt-Z: deshalb atan2(X, Z) und nicht umgekehrt.
+		local heading = math.deg(math.atan2(look.X, look.Z))
+		mini.Player.Rotation = 45 - heading
+		big.Player.Rotation = 45 - heading
+	end
+
+	if backdrop.Visible then
+		local bx, bz = toPixels(big, position.X, position.Z)
+		big.Player.Position = UDim2.new(0.5, bx, 0.5, bz)
+	end
+end)
+
+--==========================================================================
+-- Auf und zu
+--==========================================================================
+
+local function setOpen(open: boolean)
+	backdrop.Visible = open
+end
+
+local function toggle()
+	setOpen(not backdrop.Visible)
+end
+
+miniButton.Activated:Connect(toggle)
+closeButton.Activated:Connect(function()
+	setOpen(false)
+end)
+
+UserInputService.InputBegan:Connect(function(input, processed)
+	if processed then
+		return
+	end
+	if input.KeyCode == Enum.KeyCode.M then
+		toggle()
+	elseif input.KeyCode == Enum.KeyCode.Escape and backdrop.Visible then
+		setOpen(false)
+	end
+end)
+
+-- Beim Fahren stoert die grosse Karte. Minikarte bleibt.
+CollectionService:GetInstanceAddedSignal(Config.VehicleTag):Connect(function()
+	setOpen(false)
+end)
+</ProtectedString>
+</Properties>
+</Item>
+<Item class="LocalScript" referent="GN54">
 <Properties>
 <string name="Name">MissionUI</string>
 <ProtectedString name="Source">-- StarterPlayer/StarterPlayerScripts/UI/MissionUI.client.luau
@@ -16858,7 +17684,7 @@ refresh()
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="LocalScript" referent="GN53">
+<Item class="LocalScript" referent="GN55">
 <Properties>
 <string name="Name">ShopUI</string>
 <ProtectedString name="Source">-- StarterPlayer/StarterPlayerScripts/UI/ShopUI.client.luau
@@ -17334,7 +18160,7 @@ refresh()
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="LocalScript" referent="GN54">
+<Item class="LocalScript" referent="GN56">
 <Properties>
 <string name="Name">SoundController</string>
 <ProtectedString name="Source">-- StarterPlayer/StarterPlayerScripts/UI/SoundController.client.luau
@@ -17645,7 +18471,7 @@ local _ = player
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="LocalScript" referent="GN55">
+<Item class="LocalScript" referent="GN57">
 <Properties>
 <string name="Name">StoreUI</string>
 <ProtectedString name="Source">-- StarterPlayer/StarterPlayerScripts/UI/StoreUI.client.luau
@@ -17971,7 +18797,7 @@ refresh()
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="LocalScript" referent="GN56">
+<Item class="LocalScript" referent="GN58">
 <Properties>
 <string name="Name">TargetBeacons</string>
 <ProtectedString name="Source">-- StarterPlayer/StarterPlayerScripts/UI/TargetBeacons.client.luau
@@ -18073,7 +18899,7 @@ end)
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="LocalScript" referent="GN57">
+<Item class="LocalScript" referent="GN59">
 <Properties>
 <string name="Name">TutorialUI</string>
 <ProtectedString name="Source">-- StarterPlayer/StarterPlayerScripts/UI/TutorialUI.client.luau
@@ -18408,7 +19234,7 @@ end)
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="LocalScript" referent="GN58">
+<Item class="LocalScript" referent="GN60">
 <Properties>
 <string name="Name">VehicleController</string>
 <ProtectedString name="Source">-- StarterPlayer/StarterPlayerScripts/UI/VehicleController.client.luau
@@ -18822,11 +19648,11 @@ end)
 </Properties>
 </Item>
 </Item>
-<Item class="Folder" referent="GN61">
+<Item class="Folder" referent="GN63">
 <Properties>
 <string name="Name">World</string>
 </Properties>
-<Item class="LocalScript" referent="GN60">
+<Item class="LocalScript" referent="GN62">
 <Properties>
 <string name="Name">TrafficSmoother</string>
 <ProtectedString name="Source">-- StarterPlayerScripts/World/TrafficSmoother.client.luau

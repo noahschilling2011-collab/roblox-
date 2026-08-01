@@ -3,8 +3,8 @@
 > Wird am Ende jeder Session aktualisiert. Erstes, was eine neue Session liest.
 
 ## Aktuelle Phase
-**Alles abgearbeitet, dazu v2.1.0 „Vantorra bei Tag" und v2.2.0 „Rework"**
-(`Config.Version = "2.2.0"`). Aus dem Hacking-Spiel ist ein Hacking-Spiel mit
+**Alles abgearbeitet, dazu v2.1.0 „Vantorra bei Tag", v2.2.0 „Rework" und
+v2.3.0 „Karte"** (`Config.Version = "2.3.0"`). Aus dem Hacking-Spiel ist ein Hacking-Spiel mit
 offener Stadt geworden — Bezirke, Verkehr, Autobesitz, ein Bankraub mit drei
 Wegen, eine Polizei ohne Waffen und eine 10-Missionen-Story mit Entscheidung
 am Ende. Seit v2.1.0 spielt das Ganze bei **hellem Tag**.
@@ -15,7 +15,7 @@ Warnung direkt darunter und Punkt 0 am Ende von `PHASEN.md`.
 ## ⚠️ Was ich NICHT prüfen konnte
 Der Bauplan verlangt nach jeder Phase eine **gemessene Bildrate**. Das kann ich
 nicht liefern und erfinde die Zahl auch nicht: Ich habe keine Roblox-Laufzeit,
-nur eine Luau-VM für Syntax und Logik. Die 605 Prüfungen sagen **nichts** über
+nur eine Luau-VM für Syntax und Logik. Die 626 Prüfungen sagen **nichts** über
 Bildrate, Fahrverhalten oder Physikstabilität aus. Das muss Noah im
 MicroProfiler messen, und zwar besonders jetzt — Verkehr, Fußgänger,
 Streifenwagen und eine gebaute Stadt sind zusammen der teuerste Teil des
@@ -23,8 +23,8 @@ Projekts.
 
 Die Regler dafür stehen alle in `Config.luau` und sind bewusst niedrig
 gesetzt. In dieser Reihenfolge drehen, wenn es ruckelt:
-`Traffic.MaxActive` (20) → `Traffic.MaxPedestrians` (16) →
-`Traffic.ActiveRadius` (320) → `World.WindowReflectance` (0.35) →
+**`City.Grid` (7)** → `Traffic.MaxActive` (20) → `Traffic.MaxPedestrians`
+(16) → `Assets.PropChance` (0.55) → `Traffic.ActiveRadius` (320) →
 `World`-Streamingradien.
 
 **Seit v2.1.0 wichtiger als vorher:** früher startete der Server nachts und
@@ -34,6 +34,59 @@ gegenüber dem alten Standardzustand. Gegengerechnet: die PointLights an den
 Neonschildern entfallen bei Tag komplett.
 
 ## Fertig ✅
+
+### v2.3.0 — Karte und größere Stadt
+
+#### Karte
+Zwei Ansichten, **eine** Datenquelle (`Remotes.MapSync`) — es kann keine
+zweite Karte geben, die von der Welt abweicht.
+
+- **Minikarte** unten rechts (oben rechts sitzen Wallet, Trace und die
+  Fahndungssterne, unten links die Knöpfe). Folgt dem Spieler, Norden bleibt
+  oben — bei einem Straßenraster liest sich das besser als eine mitdrehende
+  Karte. Antippen öffnet die große.
+- **Große Karte** auf `M`: ganze Stadt, Bezirke farbig hinterlegt mit Namen,
+  **Legende** unten links. Das ist die Antwort auf „wo ist eigentlich was".
+- Drauf sind: Hehler, Autohaus, Garage, Kontakte, Hack-Ziele — **offene Ziele
+  in eigener Farbe**, weil dort mehr Geld *und* mehr Trace liegt — und der
+  aktive Auftrags-Wegpunkt (kommt aus `WaypointSync`, nicht aus `MapSync`,
+  weil er ständig wechselt).
+- Beim Einsteigen ins Auto schließt sich die große Karte von selbst.
+
+**`Systems/MapService.luau`** (neu) sammelt serverseitig. Grund: mit
+`StreamingEnabled` hat der Client entfernte Teile gar nicht geladen — eine
+Karte, die selbst per `CollectionService` im Workspace nachschaut, würde genau
+das zeigen, was ohnehin schon zu sehen ist. Gesendet wird gebündelt
+(`Config.Map.SyncDebounce`), sonst feuert der Weltaufbau hunderte Pakete.
+
+Die Karte verrät **wo** etwas steht, nicht **wie** man es knackt: keine
+Schwierigkeit, keine Cooldowns, keine Rätseldaten. Der Testlauf prüft das.
+
+**Keine Bild-Assets.** Straßen sind gedrehte Frames, Symbole kleine Quadrate.
+Die Karte funktioniert sofort, ohne dass irgendeine ID eingetragen wird — als
+einziges größeres UI-Stück hat sie damit keine offene Abhängigkeit.
+
+**Leistung:** der Inhalt wird *einmal* gebaut. Pro Bild ändern sich genau zwei
+Dinge — die Position des Inhalts-Containers und der Winkel des
+Spielersymbols. Nicht hundert Straßen einzeln.
+
+#### Größer
+| | vorher | jetzt |
+|---|---|---|
+| `Config.City.Grid` | 5 | **7** |
+| Kantenlänge | 480 Studs | **720 Studs** |
+| Blöcke | 16 | **36** |
+| Altstadt `Radius` | 1 | **2** |
+
+Die Altstadt wächst mit. Wäre sie bei Radius 1 geblieben, wäre der ausgebaute
+Bezirk in der größeren Stadt zu einem Fleck im Rohbau geworden — und „eine
+große leere Stadt ist schlimmer als ein kleiner voller Block".
+
+⚠️ **`Config.City.Grid` ist der größte Bildraten-Hebel im Projekt.** Die
+Blockzahl wächst quadratisch, und an jedem Block hängen vier Häuser aus
+mehreren Modulen: von 5 auf 7 sind das rund **2,25× so viele Gebäude**. Erst
+messen, dann weiter hochdrehen. Wenn es ruckelt, ist das die erste Zahl, die
+wieder runtergeht.
 
 ### v2.2.0 — Rework: Optik und Verkehr
 
@@ -462,7 +515,7 @@ Testlauf prüft das.
   Hack kostet — auch das wird geprüft.
 
 ## Tests
-`cd ghostnet/tests && npm install && node testlauf.mjs` → **605/605 grün**.
+`cd ghostnet/tests && npm install && node testlauf.mjs` → **626/626 grün**.
 Drei Stufen:
 1. **Syntax** — `luau-compile` über jede `.luau`-Datei.
 2. **Struktur** — `--!strict` überall, keine veralteten APIs, jede Remote
@@ -514,7 +567,7 @@ Der Bauplan aus dem Prompt ist abgearbeitet. Was fehlt, fehlt mit Absicht:
   fertig, dann den nächsten" — und der Testlauf hält sie fest.
 - **Zwei weitere Minispiele**, **prozeduraler Weltgenerator**, **Tagesziele**
   und **Ranglisten** — Details am Ende von `PHASEN.md`.
-- **Kein echter Spielertest.** Alles ist im Code umgesetzt und durch 605
+- **Kein echter Spielertest.** Alles ist im Code umgesetzt und durch 626
   automatische Prüfungen abgesichert, aber noch nicht von einem Menschen in
   Studio durchgespielt.
 
