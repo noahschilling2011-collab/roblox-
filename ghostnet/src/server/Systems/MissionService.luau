@@ -233,7 +233,9 @@ local function completeMission(player: Player, story: Story, mission: Mission)
 		if typeof(crypto) == "number" and crypto > 0 then
 			-- Standard: die Belohnung ist heiss und muss erst zum Hehler.
 			-- Das haelt den Verkaufs-Loop auch bei Story-Geld relevant.
-			if Config.Mission.RewardToBank then
+			-- Einzelne Missionen duerfen das ueber Reward.ToBank ueberstimmen.
+			local toBank = if reward.ToBank ~= nil then reward.ToBank else Config.Mission.RewardToBank
+			if toBank then
 				EconomyService.AwardBanked(player, crypto)
 			else
 				EconomyService.AwardUnsold(player, crypto)
@@ -394,6 +396,53 @@ local function onAbandon(player: Player, payload: any)
 	MissionService.Sync(player)
 end
 
+-- Ueberspringen ist NICHT dasselbe wie Abbrechen: die Mission gilt als
+-- erledigt und der Unlock wird vergeben, nur die Crypto-Belohnung entfaellt.
+-- Sonst wuerde ein uebersprungenes Tutorial den Spieler dauerhaft von dem
+-- System aussperren, das es freischalten sollte.
+local function onSkip(player: Player, payload: any)
+	if not RateLimiter.Check(player, "MissionSkip") then
+		return
+	end
+	if payload ~= nil and typeof(payload) ~= "table" then
+		return
+	end
+
+	local story = storyOf(player)
+	if not story or story.Active == "" then
+		return
+	end
+	local mission = activeMission(story)
+	if not mission or not Config.Mission.Skippable[mission.Id] then
+		return
+	end
+
+	if not Missions.IsCompleted(story, mission.Id) then
+		table.insert(story.Completed, mission.Id)
+	end
+	local unlock = mission.Reward and mission.Reward.Unlock
+	if typeof(unlock) == "string" and unlock ~= "" and not Missions.HasUnlock(story, unlock) then
+		table.insert(story.Unlocks, unlock)
+	end
+
+	story.Active = ""
+	story.Step = 1
+	story.StepProgress = 0
+	story.StepStartedAt = 0
+	lastMarker[player] = nil
+
+	print(("[GHOSTNET] %s hat Mission '%s' uebersprungen."):format(player.Name, mission.Id))
+	SaveService.RequestSave(player)
+
+	if Config.Mission.AutoStart then
+		local next_ = Missions.FirstAvailable(story)
+		if next_ and startMission(player, story, next_.Id) then
+			return
+		end
+	end
+	MissionService.Sync(player)
+end
+
 local function onInteract(player: Player, payload: any)
 	if not RateLimiter.Check(player, "MissionInteract") then
 		return
@@ -503,6 +552,7 @@ function MissionService.Init()
 	Remotes.MissionAccept.OnServerEvent:Connect(onAccept)
 	Remotes.MissionAbandon.OnServerEvent:Connect(onAbandon)
 	Remotes.MissionInteract.OnServerEvent:Connect(onInteract)
+	Remotes.MissionSkip.OnServerEvent:Connect(onSkip)
 
 	SaveService.OnReady(function(player, profile)
 		lastMarker[player] = nil

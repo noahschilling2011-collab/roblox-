@@ -39,6 +39,10 @@ export type Step = {
 export type Reward = {
 	Crypto: number?,
 	Unlock: string?,
+	-- true = Belohnung geht direkt auf die Bank statt ins heisse Wallet.
+	-- Nur da benutzen, wo der Spieler das Geld sofort ausgeben koennen MUSS
+	-- (Tutorial). Sonst bleibt Story-Geld heiss und der Hehler relevant.
+	ToBank: boolean?,
 }
 
 export type Mission = {
@@ -54,11 +58,84 @@ export type Mission = {
 -- Die Registry
 --==========================================================================
 
--- PHASE A liefert absichtlich das Geruest ohne Inhalt: erst das System, dann
--- die Missionen. Der MissionService muss mit einer leeren Liste sauber laufen.
--- Phase B traegt hier M01_FIRSTHACK bis M03_HOME ein, Phase D M04 und M05.
--- Das Schema steht in Missions.Example - dort abschauen, nicht raten.
-Missions.List = {} :: { Mission }
+-- LEITREGEL, die jede dieser Missionen einhaelt:
+--   Sie ist gleichzeitig das Tutorial fuer ein System UND schaltet dieses
+--   System dauerhaft frei. Nach M05 hat der Spieler kein "durchgespielt",
+--   sondern fuenf Systeme, die alle noch laufen.
+--
+--   M01 lehrt Hacken/Trace/Verkauf  -> FREE_HACKING
+--   M02 lehrt mehrstufige Ziele     -> STORE_RAIDS   (Laeden wiederholbar)
+--   M03 lehrt die Basis             -> DARKNET       (der eigentliche Loop)
+--   M04 lehrt Handel                -> TRADING       (freier Handel)
+--   M05 lehrt das Grossziel         -> BANK_RAIDS    (Endgame mit Cooldown)
+--
+-- Die TargetIds hier muessen zu den Attributen der Parts in
+-- ServerScriptService/World passen. Waypoints und Kontakte ebenso.
+Missions.List = {
+	{
+		Id = "M01_FIRSTHACK",
+		Title = "Erstes Geraet",
+		Briefing = "Ein altes Wartungsterminal, das keiner mehr vermisst. Guter Ort zum Ueben.",
+		Requires = {},
+		Steps = {
+			{ Type = "HACK", TargetId = "TUT_TERMINAL", Text = "Naeher ran. Dann [E]." },
+			{ Type = "SELL", Amount = 1, Text = "Beute zum Hehler bringen" },
+		},
+		-- ToBank, damit direkt nach dem Tutorial das erste Upgrade drin ist.
+		-- Ohne das haette der Spieler nach dem Verkauf wieder nur heisses Geld.
+		Reward = { Crypto = 200, Unlock = "FREE_HACKING", ToBank = true },
+	},
+	{
+		Id = "M02_STORE",
+		Title = "Kalter Anlauf",
+		Briefing = "Der Laden an der Kreuzung Nord faehrt nachts auf Notstrom. Schloss zuerst, dann der Tresor - und zwar zuegig.",
+		Requires = { "M01_FIRSTHACK" },
+		Steps = {
+			{ Type = "GOTO", Target = "STORE_FRONT", Text = "Geh zum Laden an der Kreuzung Nord" },
+			{ Type = "HACK", TargetId = "STORE_LOCK", Text = "Knack das Tuerschloss" },
+			{ Type = "HACK", TargetId = "STORE_SAFE", Text = "Tresor oeffnen, bevor der Alarm durchlaeuft" },
+			{ Type = "SELL", Amount = 1, Text = "Beute zum Hehler bringen" },
+		},
+		Reward = { Crypto = 400, Unlock = "STORE_RAIDS" },
+	},
+	{
+		Id = "M03_HOME",
+		Title = "Nach Hause",
+		Briefing = "Genug Strasse fuer heute. Zeit, den eigenen Rechner hochzufahren.",
+		Requires = { "M02_STORE" },
+		Steps = {
+			{ Type = "GOTO", Target = "APARTMENT_DOOR", Text = "Geh nach Hause" },
+			{ Type = "TALK", ContactId = "HOME_RIG", Text = "Fahr den Rechner hoch" },
+		},
+		Reward = { Crypto = 250, Unlock = "DARKNET", ToBank = true },
+	},
+	{
+		Id = "M04_FIRSTGOODS",
+		Title = "Erste Ware",
+		Briefing = "Im Darknet zaehlt nicht, was etwas kostet, sondern wann. Kauf billig, warte, verkauf teuer.",
+		Requires = { "M03_HOME" },
+		Steps = {
+			{ Type = "BUY", Amount = 3, Text = "Kauf drei Einheiten irgendeiner Ware" },
+			{ Type = "WAIT", Seconds = 60, Text = "Beobachte den Kurs - Preise bewegen sich" },
+			{ Type = "TALK", ContactId = "HOME_RIG", Text = "Zurueck an den Rechner und verkaufen" },
+		},
+		Reward = { Crypto = 300, Unlock = "TRADING", ToBank = true },
+	},
+	{
+		Id = "M05_BANK",
+		Title = "Die Bank",
+		Briefing = "Nakamura Bank. Drei Schichten, ein Alarm ueber allem. Wer hier patzt, fliegt sofort auf.",
+		Requires = { "M04_FIRSTGOODS" },
+		Steps = {
+			{ Type = "GOTO", Target = "BANK_FRONT", Text = "Geh zur Nakamura Bank" },
+			{ Type = "HACK", TargetId = "BANK_CAM", Text = "Aussenkamera abschalten" },
+			{ Type = "HACK", TargetId = "BANK_DOOR", Text = "Sicherheitstuer oeffnen" },
+			{ Type = "HACK", TargetId = "BANK_VAULT", Text = "Tresorraum - zu zweit deutlich leichter" },
+			{ Type = "SELL", Amount = 1, Text = "Alles zum Hehler, sofort" },
+		},
+		Reward = { Crypto = 2500, Unlock = "BANK_RAIDS" },
+	},
+} :: { Mission }
 
 -- Nur Doku und Testmaterial. Steht NICHT in der Registry und laeuft im Spiel
 -- nie. Zeigt jeden Schritt-Typ genau einmal.

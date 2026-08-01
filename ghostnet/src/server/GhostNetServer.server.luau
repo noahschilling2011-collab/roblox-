@@ -20,6 +20,7 @@ local HackTargets = require(Systems.HackTargets)
 local HackService = require(Systems.HackService)
 local SellService = require(Systems.SellService)
 local ShopService = require(Systems.ShopService)
+local RaidService = require(Systems.RaidService)
 local MissionService = require(Systems.MissionService)
 
 SaveService.Init() -- zuerst: haelt das Profil
@@ -29,7 +30,9 @@ HackTargets.Init() -- braucht das Profil fuer Cooldowns
 HackService.Init() -- meldet sich beim TraceService fuer den Bust an
 SellService.Init()
 ShopService.Init()
--- Zuletzt: haengt sich per OnHackResolved / OnSell an die fertigen Services.
+-- Die letzten beiden haengen sich per OnHackResolved / OnSell an die
+-- fertigen Services, muessen also nach ihnen kommen.
+RaidService.Init()
 MissionService.Init()
 
 print(("[GHOSTNET] Server hochgefahren - Version %s"):format(Config.Version))

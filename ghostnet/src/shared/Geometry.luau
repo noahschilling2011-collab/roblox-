@@ -6,6 +6,8 @@
 -- Rechnen beide unterschiedlich, sieht das im Spiel nach einem Bug aus.
 -- Deshalb liegt die Formel genau einmal hier.
 
+local Players = game:GetService("Players")
+
 local Geometry = {}
 
 -- Abstand zur OBERFLAECHE des Parts, nicht zum Mittelpunkt. Sonst waeren
@@ -40,6 +42,24 @@ function Geometry.AlivePosition(player: Player): Vector3?
 		return nil
 	end
 	return root.Position
+end
+
+-- Steht IRGENDEIN anderer lebender Spieler nah genug an diesem Part?
+-- Liegt hier und nicht in einem der Services, weil sowohl HackService (fuer
+-- den halbierten Trace) als auch RaidService (fuer die langsamere Alarm-Uhr)
+-- die Antwort brauchen - und die beiden duerfen sich nicht gegenseitig
+-- requiren.
+function Geometry.HasNearbyOtherPlayer(player: Player, part: BasePart, range: number): boolean
+	for _, other in Players:GetPlayers() do
+		if other == player then
+			continue
+		end
+		local position = Geometry.AlivePosition(other)
+		if position and Geometry.SurfaceDistance(part, position) <= range then
+			return true
+		end
+	end
+	return false
 end
 
 return Geometry

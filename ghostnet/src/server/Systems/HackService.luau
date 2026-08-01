@@ -18,6 +18,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 local Config = require(ReplicatedStorage.Shared.Config)
+local Geometry = require(ReplicatedStorage.Shared.Geometry)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local Types = require(ReplicatedStorage.Shared.Types)
 
@@ -99,6 +100,22 @@ local function resolve(session: Session, success: boolean, reason: string)
 		end
 		local cooling = EconomyService.GetRig(player).Cooling
 		traceDelta = Config.GetTraceGain(target.TraceGain * factor, cooling)
+
+		-- Uebungsziel: erzeugt bewusst gar keinen Trace, damit niemand im
+		-- Tutorial auffliegt, bevor er weiss, was der Balken bedeutet.
+		if target.Part:GetAttribute("NoTrace") == true then
+			traceDelta = 0
+		end
+
+		-- Co-Op: ein zweiter Spieler in Reichweite eines RequiresTwo-Ziels
+		-- halbiert den Trace-Anstieg. Das ist der Grund, einen Freund
+		-- mitzubringen - und er muss spuerbar sein.
+		if
+			target.Part:GetAttribute("RequiresTwo") == true
+			and Geometry.HasNearbyOtherPlayer(player, target.Part, Config.Raid.CoopRange)
+		then
+			traceDelta *= Config.Raid.CoopTraceFactor
+		end
 
 		if success then
 			reward = target.Reward
@@ -281,6 +298,10 @@ local function onRequestStart(player: Player, payload: any)
 		Deadline = session.Deadline,
 		TimeLimit = timeLimit,
 		Attempts = attempts,
+		-- Attribut "Teaches" am Part: die HackUI erklaert das Raetsel dann
+		-- im Spiel. Haengt bewusst am Objekt und nicht am Missionsfortschritt,
+		-- damit der HackService den MissionService nicht kennen muss.
+		Tutorial = target.Part:GetAttribute("Teaches") == true,
 		Target = {
 			Id = target.Id,
 			Name = target.DisplayName,

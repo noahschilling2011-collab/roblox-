@@ -271,10 +271,49 @@ Config.Mission = {
 	RewardToBank = false,
 
 	MaxSteps = 24, -- Sicherheitsgrenze; groessere Missionen gelten als Datenfehler
+
+	-- Nur diese Missionen darf man ueberspringen. Ueberspringen vergibt den
+	-- Unlock, aber keine Crypto - sonst waere es ein Gratis-Geldautomat.
+	-- Story-Missionen mit echtem Inhalt stehen bewusst NICHT hier.
+	Skippable = {
+		M01_FIRSTHACK = true,
+	},
 }
 
 --==========================================================================
--- 12. RATE-LIMITS (Token-Bucket pro Spieler und Remote)
+-- 12. UEBERFAELLE (mehrstufige Ziele mit Alarm)
+-- Ein Ziel gehoert ueber das Attribut "AlarmGroup" zu einer Gruppe.
+-- "AlarmStarts" am ersten Ziel startet die Uhr, "AlarmEnds" am letzten
+-- stoppt sie. Kein Code pro Gebaeude.
+--==========================================================================
+Config.Raid = {
+	-- Sekunden vom ersten geknackten Ziel bis zum Alarm. Runter = mehr Panik,
+	-- hoch = der Ueberfall wird zur Formalitaet.
+	AlarmSeconds = 60,
+	AlarmWarnAt = 15, -- ab hier blinkt die Anzeige rot
+	-- Trace-Sprung, wenn die Uhr durchlaeuft. Muss weh tun, sonst ignoriert
+	-- man den Alarm einfach.
+	AlarmTracePenalty = 35,
+	AlarmSyncInterval = 0.5,
+
+	-- Wiederholbarkeit. Genau das macht aus einer Mission dauerhaften Inhalt.
+	StoreCooldown = 240, -- Ladenueberfall
+	BankCooldown = 1800, -- Endgame-Ziel
+
+	-- Bank: ein Fehlschlag ist kein normaler Fehlversuch, sondern sofort Bust.
+	-- Ueber das Attribut "FailBusts" am Part aktiviert.
+	FailBustTrace = 100,
+
+	-- Co-Op. Ein zweiter Spieler in Reichweite eines Ziels mit dem Attribut
+	-- "RequiresTwo" halbiert Trace-Anstieg und Alarmtempo. Auf Roblox holt
+	-- niemand Freunde, wenn es auch allein geht - deshalb spuerbar machen.
+	CoopRange = 40,
+	CoopTraceFactor = 0.5,
+	CoopAlarmFactor = 0.5,
+}
+
+--==========================================================================
+-- 13. RATE-LIMITS (Token-Bucket pro Spieler und Remote)
 -- Jede neue Remote braucht hier einen Eintrag, sonst wird sie verworfen.
 --==========================================================================
 Config.RateLimits = {
@@ -286,10 +325,11 @@ Config.RateLimits = {
 	MissionAccept = { Rate = 1, Burst = 3 },
 	MissionAbandon = { Rate = 1, Burst = 2 },
 	MissionInteract = { Rate = 2, Burst = 4 },
+	MissionSkip = { Rate = 0.5, Burst = 2 },
 }
 
 --==========================================================================
--- 13. NODE-BREACH
+-- 14. NODE-BREACH
 --==========================================================================
 Config.NodeBreach = {
 	-- Pro Schwierigkeitsband: Gittergroesse, Anzahl Relays, Anteil sichtbares
@@ -306,7 +346,7 @@ Config.NodeBreach = {
 }
 
 --==========================================================================
--- 14. DEFAULTS FUER HACK-ZIELE
+-- 15. DEFAULTS FUER HACK-ZIELE
 -- Ein Part braucht KEIN einziges Attribut. Alles, was fehlt, kommt von hier.
 --==========================================================================
 Config.TargetDefaults = {
@@ -319,6 +359,14 @@ Config.TargetDefaults = {
 	OnSuccess = "Offline",
 	DisplayName = "", -- "" = Instanzname benutzen
 	DownTime = 30, -- wie lange der Welteffekt haelt
+	-- Weitere Attribute, die ein Part optional tragen darf und die hier
+	-- bewusst KEINEN Default brauchen (nicht gesetzt = Funktion aus):
+	--   TargetId   fester Bezeichner, auf den Missionen zeigen koennen
+	--   AlarmGroup Name der Ueberfall-Gruppe (siehe Config.Raid)
+	--   AlarmStarts / AlarmEnds  startet bzw. stoppt die Alarm-Uhr
+	--   FailBusts  true = ein Fehlschlag hier ist sofort ein Bust
+	--   RequiresTwo true = zu zweit deutlich leichter (Co-Op)
+	--   NoTrace    true = dieses Ziel erzeugt keinen Trace (nur Tutorial)
 }
 
 --==========================================================================

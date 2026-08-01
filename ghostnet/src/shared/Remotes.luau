@@ -26,7 +26,9 @@ local EVENT_NAMES = {
 	"MissionAccept", -- C->S  { missionId }
 	"MissionAbandon", -- C->S  { }
 	"MissionInteract", -- C->S  { contactId }   loest TALK-Schritte aus
+	"MissionSkip", -- C->S  { }            Tutorial ueberspringen
 	"WaypointSync", -- S->C  { position, label }  Marker fuer GOTO/HACK/TALK
+	"AlarmSync", -- S->C  { active, label, remaining, total, coop, triggered? }
 }
 
 local FUNCTION_NAMES: { string } = {

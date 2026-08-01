@@ -421,6 +421,39 @@ Remotes.EconomySync.OnClientEvent:Connect(function(snapshot: any)
 	refresh()
 end)
 
+-- Nach dem ersten Verkauf im Tutorial oeffnet sich der Shop genau EINMAL von
+-- selbst. Ausgeloest wird das durch den Abschluss der Tutorial-Mission, also
+-- durch eine Handlung des Spielers - nie durch einen Timer.
+local TUTORIAL_MISSION = "M01_FIRSTHACK"
+local tutorialWasDone: boolean? = nil
+
+Remotes.MissionSync.OnClientEvent:Connect(function(data: any)
+	if typeof(data) ~= "table" or typeof(data.Completed) ~= "table" then
+		return
+	end
+
+	local done = false
+	for _, id in data.Completed do
+		if id == TUTORIAL_MISSION then
+			done = true
+			break
+		end
+	end
+
+	-- Beim ersten Paket nach dem Join nur merken, nicht aufmachen: sonst
+	-- springt der Shop bei jedem Rejoin wieder auf.
+	if tutorialWasDone == nil then
+		tutorialWasDone = done
+		return
+	end
+
+	if done and not tutorialWasDone then
+		tutorialWasDone = true
+		task.wait(1.2) -- die Abschluss-Meldung erst lesen lassen
+		setOpen(true)
+	end
+end)
+
 -- Waehrend eines Hacks ist der Shop tabu, sonst klickt man sich aus dem
 -- laufenden Raetsel heraus.
 Remotes.HackSessionStarted.OnClientEvent:Connect(function()

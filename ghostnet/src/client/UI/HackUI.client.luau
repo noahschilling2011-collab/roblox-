@@ -54,6 +54,10 @@ local connectors: { Frame } = {}
 local logLines: { TextLabel } = {}
 local typingToken = 0
 
+-- Erklaermodus. Der Server setzt ihn ueber das Attribut "Teaches" am Ziel -
+-- also nur am Uebungsterminal. Danach nie wieder.
+local teaching = false
+
 --==========================================================================
 -- Aufbau
 --==========================================================================
@@ -220,6 +224,20 @@ local grid = UITheme.Frame({
 local gridAspect = Instance.new("UIAspectRatioConstraint")
 gridAspect.AspectRatio = 1
 gridAspect.Parent = grid
+
+-- Regelzeile fuer den Erklaermodus. Standardmaessig unsichtbar.
+local rule = UITheme.Label({
+	Name = "Rule",
+	Text = "",
+	TextColor3 = C.Amber,
+	TextSize = 13,
+	TextWrapped = true,
+	TextXAlignment = Enum.TextXAlignment.Center,
+	Position = UDim2.new(0, 8, 0, 2),
+	Size = UDim2.new(1, -16, 0, 30),
+	Visible = false,
+	Parent = gridArea,
+})
 
 --== Timer-Balken ==========================================================
 
@@ -448,6 +466,44 @@ local function redrawGrid()
 		end
 	end
 
+	-- Erklaermodus: Start und Exit hervorheben und den ersten gueltigen
+	-- Nachbarknoten pulsieren lassen. Das verraet die Loesung nicht - es
+	-- zeigt nur, was ueberhaupt anklickbar ist. Getarntes ICE sieht auch
+	-- hier aus wie ein freier Knoten.
+	if teaching and head then
+		local width, height = s.Width, s.Height
+		local hx = (head - 1) % width + 1
+		local hy = math.floor((head - 1) / width) + 1
+		local candidates = {}
+		if hx > 1 then
+			table.insert(candidates, head - 1)
+		end
+		if hx < width then
+			table.insert(candidates, head + 1)
+		end
+		if hy > 1 then
+			table.insert(candidates, head - width)
+		end
+		if hy < height then
+			table.insert(candidates, head + width)
+		end
+
+		for _, idx in candidates do
+			local cell = s.Cells[idx]
+			if cell ~= ICE and not inPath[idx] then
+				local btn = cellButtons[idx]
+				if btn then
+					local stroke = btn:FindFirstChildOfClass("UIStroke")
+					if stroke then
+						stroke.Color = C.Amber
+						stroke.Thickness = 2
+					end
+				end
+				break -- nur EINER pulsiert, sonst ist es wieder Rauschen
+			end
+		end
+	end
+
 	-- Verbindungslinien zwischen den Pfadknoten
 	for _, c in connectors do
 		c:Destroy()
@@ -589,6 +645,7 @@ Remotes.HackSessionStarted.OnClientEvent:Connect(function(data: any)
 		return
 	end
 	local public = data.Public
+	teaching = data.Tutorial == true
 
 	session = {
 		Id = data.SessionId,
@@ -637,6 +694,13 @@ Remotes.HackSessionStarted.OnClientEvent:Connect(function(data: any)
 			pushLog("> warnung: getarntes ice im gitter", C.Magenta)
 		end
 	end)
+
+	-- Die Regel steht IM Spiel, nicht davor. Ein Satz, gross, ueber dem
+	-- Gitter - und nur beim Uebungsterminal.
+	rule.Visible = teaching
+	if teaching then
+		rule.Text = "Von S nach E.  Alle R mitnehmen.  # ist gesperrt.  Der gelbe Knoten ist dein naechster Zug."
+	end
 end)
 
 local REASON_TEXT: { [string]: { Text: string, Color: Color3 } } = {
