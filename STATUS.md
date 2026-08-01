@@ -58,13 +58,15 @@ Beide sind von PlanetForge unabhängig und werden von diesem Bauplan NICHT abged
 Sie haben eigene `CLAUDE.md`/`PHASEN.md`/`STATUS.md` in ihrem Ordner — die gelten dort
 vor dieser Datei.
 - `turmfall/` — TURMFALL, physik-basiertes Rundenspiel, eigene `Turmfall.rbxlx`.
-- `ghostnet/` — GHOSTNET, Hacking-Spiel (dunkles Fake-OS), eigene `GhostNet.rbxlx`.
-  Stand: v2.0.0 — Umbau zur offenen Stadt abgeschlossen: Bezirke mit gerechnetem
+- `ghostnet/` — GHOSTNET, Hacking-Spiel (helle Stadt, dunkles Fake-OS), eigene `GhostNet.rbxlx`.
+  Stand: v2.1.0 — helle Stadt bei dauerhaftem Tag (der Nachtbonus hängt jetzt
+  am Ort statt an der Uhrzeit: offene Ziele zahlen mehr und kosten mehr Trace).
+  Darunter v2.0.0, der Umbau zur offenen Stadt: Bezirke mit gerechnetem
   Straßengraph, Verkehr und Fußgänger (gepoolt, ohne PathfindingService),
   Fahrzeugbesitz mit Autohaus und Garage, Bankraub mit drei Wegen, Polizei-
   Verfolgung ohne Waffen und eine 10-Missionen-Story mit Entscheidung am Ende.
   Profil-Schema steht auf Version 5 (Migration 4 → 5: Garage + Allegiance).
-  Testlauf 569/569 grün. **Bildrate ist ungemessen** — dafür braucht es den
+  Testlauf 582/582 grün. **Bildrate ist ungemessen** — dafür braucht es den
   MicroProfiler in Studio, nicht die Luau-VM des Testlaufs.
   Alle Asset-/Produkt-IDs sind noch Platzhalter.
 

@@ -22,8 +22,12 @@ export type District = {
 	Radius: number, -- in Bloecken
 	MinDifficulty: number,
 	MaxDifficulty: number,
-	Tint: Color3, -- Grundton der Haeuser
-	Neon: Color3, -- Leitfarbe der Schilder
+	-- Grundton der Haeuser. Vantorra ist eine HELLE Stadt bei Tag - diese
+	-- Werte liegen deshalb im Bereich echter Baumaterialien und nicht mehr
+	-- knapp ueber Schwarz. Wer die Stadt abdunkeln will, aendert sie hier
+	-- und in Config.Palette, sonst nirgends.
+	Tint: Color3,
+	Neon: Color3, -- Leitfarbe der Schilder (bleibt kraeftig, auch bei Tag)
 	Dense: boolean, -- true = voll ausgebaut
 }
 
@@ -31,39 +35,39 @@ Districts.List = {
 	{
 		Id = "OLDTOWN",
 		Name = "Altstadt",
-		Character = "Enge Gassen, Neon, Marktstaende.",
+		Character = "Enge Gassen, Putzfassaden, Marktstaende.",
 		GridX = 0,
 		GridZ = 0,
 		Radius = 1,
 		MinDifficulty = 1,
 		MaxDifficulty = 3,
-		Tint = Color3.fromRGB(34, 30, 36),
+		Tint = Color3.fromRGB(214, 196, 168), -- warmer Altbau-Putz
 		Neon = Color3.fromRGB(255, 45, 149),
 		Dense = true, -- der erste fertige Bezirk
 	},
 	{
 		Id = "DOCKS",
 		Name = "Hafen",
-		Character = "Container, Lagerhallen, wenig Licht.",
+		Character = "Container, Lagerhallen, kaum Deckung.",
 		GridX = -2,
 		GridZ = 1,
 		Radius = 1,
 		MinDifficulty = 3,
 		MaxDifficulty = 5,
-		Tint = Color3.fromRGB(26, 30, 34),
+		Tint = Color3.fromRGB(154, 162, 168), -- verwitterter Beton, Stahlgrau
 		Neon = Color3.fromRGB(0, 229, 255),
 		Dense = false,
 	},
 	{
 		Id = "FINANCE",
 		Name = "Finanzviertel",
-		Character = "Glas, Kameras ueberall, hell.",
+		Character = "Glas, Kameras ueberall, alles einsehbar.",
 		GridX = 2,
 		GridZ = -1,
 		Radius = 1,
 		MinDifficulty = 5,
 		MaxDifficulty = 7,
-		Tint = Color3.fromRGB(30, 36, 46),
+		Tint = Color3.fromRGB(190, 206, 220), -- Glasfassade, kuehl
 		Neon = Color3.fromRGB(198, 214, 226),
 		Dense = false,
 	},
@@ -76,7 +80,7 @@ Districts.List = {
 		Radius = 1,
 		MinDifficulty = 6,
 		MaxDifficulty = 8,
-		Tint = Color3.fromRGB(38, 36, 32),
+		Tint = Color3.fromRGB(208, 192, 164), -- Sandstein, Villenputz
 		Neon = Color3.fromRGB(255, 176, 0),
 		Dense = false,
 	},
@@ -89,7 +93,7 @@ Districts.List = {
 		Radius = 1,
 		MinDifficulty = 4,
 		MaxDifficulty = 6,
-		Tint = Color3.fromRGB(28, 28, 30),
+		Tint = Color3.fromRGB(168, 160, 150), -- Betonplatten, Blechhallen
 		Neon = Color3.fromRGB(0, 230, 118),
 		Dense = false,
 	},

@@ -78,7 +78,9 @@ const worldXml = `<Item class="Part" referent="${nextReferent()}">
 <bool name="CanCollide">true</bool>
 <CoordinateFrame name="CFrame"><X>0</X><Y>-8</Y><Z>0</Z>${IDENTITY_ROT}</CoordinateFrame>
 <Vector3 name="size"><X>512</X><Y>16</Y><Z>512</Z></Vector3>
-<Color3uint8 name="Color3uint8">4279374874</Color3uint8>
+<!-- RGB(118,120,116): heller Untergrund. Ein fast schwarzer Boden unter
+     einer hellen Stadt sieht aus wie ein Loch. -->
+<Color3uint8 name="Color3uint8">4285954164</Color3uint8>
 <token name="TopSurface">0</token>
 <token name="BottomSurface">0</token>
 </Properties>
@@ -97,29 +99,43 @@ const worldXml = `<Item class="Part" referent="${nextReferent()}">
 </Item>
 `;
 
-// Naechtliche Stadt: dunkel, kalt, viel Nebel. Traegt die halbe Atmosphaere.
+// Heller Tag ueber Vantorra. Diese Werte sind nur der ZUSTAND BEIM OEFFNEN
+// der Datei - sobald der Server laeuft, setzt TimeService sie aus
+// Config.World neu. Sie stehen hier trotzdem passend, damit die Place-Datei
+// in Studio nicht erst dunkel aufgeht und dann umspringt.
 const lightingXml = `<Item class="Lighting" referent="${nextReferent()}">
 <Properties>
 <string name="Name">Lighting</string>
 <token name="Technology">4</token>
-<string name="TimeOfDay">00:00:00</string>
+<string name="TimeOfDay">13:30:00</string>
+<float name="GeographicLatitude">12</float>
 <bool name="GlobalShadows">true</bool>
-<float name="Brightness">1</float>
-<float name="EnvironmentDiffuseScale">0.35</float>
-<float name="EnvironmentSpecularScale">0.6</float>
-<float name="ShadowSoftness">0.3</float>
-<Color3 name="Ambient"><R>0.05</R><G>0.06</G><B>0.08</B></Color3>
-<Color3 name="OutdoorAmbient"><R>0.08</R><G>0.09</G><B>0.13</B></Color3>
-<Color3 name="FogColor"><R>0.03</R><G>0.04</G><B>0.07</B></Color3>
-<float name="FogEnd">420</float>
+<float name="Brightness">3</float>
+<float name="EnvironmentDiffuseScale">1</float>
+<float name="EnvironmentSpecularScale">1</float>
+<float name="ShadowSoftness">0.2</float>
+<Color3 name="Ambient"><R>0.541</R><G>0.557</G><B>0.588</B></Color3>
+<Color3 name="OutdoorAmbient"><R>0.659</R><G>0.682</G><B>0.722</B></Color3>
+<Color3 name="FogColor"><R>0.78</R><G>0.83</G><B>0.89</B></Color3>
+<float name="FogEnd">2200</float>
 </Properties>
+<Item class="Atmosphere" referent="${nextReferent()}">
+<Properties>
+<string name="Name">Atmosphere</string>
+<float name="Density">0.12</float>
+<float name="Haze">0.6</float>
+<float name="Glare">0.05</float>
+<Color3 name="Color"><R>0.831</R><G>0.863</G><B>0.91</B></Color3>
+<Color3 name="Decay"><R>0.588</R><G>0.659</G><B>0.745</B></Color3>
+</Properties>
+</Item>
 <Item class="BloomEffect" referent="${nextReferent()}">
 <Properties>
 <string name="Name">Bloom</string>
 <bool name="Enabled">true</bool>
-<float name="Intensity">0.6</float>
-<float name="Size">28</float>
-<float name="Threshold">0.9</float>
+<float name="Intensity">0.25</float>
+<float name="Size">24</float>
+<float name="Threshold">0.95</float>
 </Properties>
 </Item>
 <Item class="ColorCorrectionEffect" referent="${nextReferent()}">
@@ -127,9 +143,9 @@ const lightingXml = `<Item class="Lighting" referent="${nextReferent()}">
 <string name="Name">ColorCorrection</string>
 <bool name="Enabled">true</bool>
 <float name="Brightness">0</float>
-<float name="Contrast">0.12</float>
-<float name="Saturation">0.08</float>
-<Color3 name="TintColor"><R>0.9</R><G>0.97</G><B>1</B></Color3>
+<float name="Contrast">0.08</float>
+<float name="Saturation">0.05</float>
+<Color3 name="TintColor"><R>1</R><G>0.988</G><B>0.957</B></Color3>
 </Properties>
 </Item>
 </Item>

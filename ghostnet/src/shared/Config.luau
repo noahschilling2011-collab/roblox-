@@ -6,7 +6,7 @@
 
 local Config = {}
 
-Config.Version = "2.0.0" -- Open World komplett: Stadt, Verkehr, Bank, Polizei, Story
+Config.Version = "2.1.0" -- Vantorra bei Tag: helle Stadt, Bonus haengt am Ort statt an der Uhr
 
 -- CollectionService-Tags. Ein Part mit dem Tag ist ein Hack-Ziel, ein Hehler,
 -- ein Missions-Wegpunkt oder ein ansprechbarer Kontakt. Kein Code pro Objekt.
@@ -427,22 +427,33 @@ Config.Monetization = {
 Config.World = {
 	Seed = 20260801, -- feste Zahl: die Stadt sieht auf jedem Server gleich aus
 
-	--== TAG UND NACHT =====================================================
-	-- Ein echter Zyklus, der Spielmechanik ist - keine Kulisse. Dauerhaftes
-	-- Tageslicht wuerde Neon, Bloom und die Terminal-Aesthetik zerstoeren,
-	-- dauerhafte Nacht macht die Stadt eintoenig.
+	--== TAGESLICHT ========================================================
+	-- ENTSCHEIDUNG: Vantorra ist eine HELLE Stadt bei Tag.
+	--
+	-- Frueher lief hier ein Tag-/Nachtzyklus, und die Nacht war die Mechanik
+	-- (+35 % Ertrag, NPCs sehen kuerzer). Das ist jetzt umgezogen: der Bonus
+	-- haengt am ORT statt an der Uhrzeit - siehe Config.Cover. Bei Tageslicht
+	-- ist das sogar der logischere Ort dafuer, weil es keine Dunkelheit mehr
+	-- gibt, hinter der man sich verstecken koennte. Wer auf offener Strasse
+	-- arbeitet, verdient mehr und wird eher gesehen.
+	--
+	-- PermanentDay = false schaltet den kompletten alten Zyklus wieder an,
+	-- ohne dass irgendwo sonst Code angefasst werden muss. Alle Nacht-Werte
+	-- darunter bleiben deshalb stehen und sind weiter gueltig.
+	PermanentDay = true,
+	DayClock = 13.5, -- Uhrzeit, auf der die Sonne steht. 12 = senkrecht.
+
 	DayLengthMinutes = 24, -- voller Zyklus. 24 = eine Minute pro Stunde.
-	StartClock = 21, -- womit ein frischer Server anfaengt (Nacht)
+	StartClock = 13.5, -- womit ein frischer Server anfaengt
 	TimeTick = 0.25, -- wie oft die Uhr gestellt wird (reine Performance)
 
 	DayStartHour = 6, -- ab hier gilt "Tag"
 	NightStartHour = 20, -- ab hier gilt "Nacht"
 
-	-- DER MECHANISCHE UNTERSCHIED. Ohne den ist der Zyklus nur Deko.
-	-- Hoch = Nachtspiel lohnt deutlich, runter = Tageszeit wird egal.
+	-- Nur noch wirksam, wenn PermanentDay auf false steht.
 	NightRewardBonus = 0.35, -- +35 % auf jeden Hack-Ertrag nachts
-	NightSightFactor = 0.6, -- NPCs sehen nachts kuerzer (Phase 5/6)
-	DayMarketCalm = 0.6, -- tagsuebers schwanken die Kurse nur 60 %
+	NightSightFactor = 0.6, -- NPCs sehen nachts kuerzer
+	DayMarketCalm = 0.6, -- tagsueber schwanken die Kurse nur 60 %
 
 	-- Lighting. Future sieht deutlich besser aus, kostet auf schwachen
 	-- Geraeten aber spuerbar Bildrate. Auf "ShadowMap" stellen, wenn es
@@ -455,6 +466,20 @@ Config.World = {
 	BloomNight = 0.9,
 	BloomDay = 0.35,
 
+	-- Werte fuer den dauerhaften Tag. Bewusst kraeftiger als die alten
+	-- "Day"-Werte oben: die waren nur das helle Ende einer Rampe, die
+	-- meistens woanders stand. Jetzt ist das der Normalzustand.
+	--   Brightness hoch  = harte Sonne, tiefe Schatten
+	--   Brightness runter= flacher, weicher, aber matschiger
+	SunBrightness = 3,
+	SunFog = 2200, -- Sichtweite. Runter = Dunst, hoch = klare Fernsicht.
+	SunAtmosphere = 0.12, -- wenig Dunst. Hoch = milchig.
+	SunBloom = 0.25, -- sparsam: bei Tag wird Bloom schnell zu Matsch.
+	SunAmbient = Color3.fromRGB(138, 142, 150), -- Licht im Schatten
+	SunOutdoorAmbient = Color3.fromRGB(168, 174, 184),
+	SunSaturation = 0.05, -- leicht kraeftigere Farben, nicht knallig
+	SunTint = Color3.fromRGB(255, 252, 244), -- Hauch warm
+
 	--== STREAMING =========================================================
 	-- Pflicht fuer eine grosse Karte: ohne laedt jeder Spieler die ganze
 	-- Stadt in den Speicher und Handys brechen zusammen.
@@ -464,10 +489,15 @@ Config.World = {
 
 	RoadWidth = 46,
 	RoadLength = 320,
-	RoadReflectance = 0.28, -- nasse Fahrbahn. 0 = trocken und matt.
+	-- Bei Tag ist eine spiegelnde Fahrbahn nur grell. Frueher stand das auf
+	-- 0.28 (nasse Nachtstrasse). 0 = trocken und matt, 0.3 = frisch geregnet.
+	RoadReflectance = 0.08,
 
 	MaxBuildingHeight = 78,
-	WindowChance = 0.55, -- Anteil erleuchteter Fensterbaender
+	WindowChance = 0.55, -- Anteil Fensterbaender an einer Fassade
+	-- Wie stark Fenster spiegeln. Bei Tag ersetzt das die frueher leuchtenden
+	-- Neonfenster. Hoch = Glaspalast, 0 = mattes Fensterband.
+	WindowReflectance = 0.35,
 	SignChance = 0.45, -- Anteil Haeuser mit Neonschild
 	SignBrightness = 3,
 	SignRange = 26,
@@ -608,6 +638,10 @@ Config.Bank = {
 	GuardTick = 0.4, -- Sichtpruefung nur so oft, und nur wenn jemand im Raum ist
 	GuardPatrolSpeed = 9,
 	GuardSpotSeconds = 0.8, -- so lange muss man sichtbar sein, bevor Alarm kommt
+	-- Wachen im Gebaeude sehen kuerzer als die Sichtweite draussen. Wird als
+	-- Attribut "SightFactor" an die Wache geschrieben, siehe Config.Cover.
+	-- Runter = drinnen wird zur sicheren Bank, hoch = die Halle wird zaeh.
+	IndoorSightFactor = 0.7,
 
 	VaultBoxes = 6, -- Schliessfaecher zusaetzlich zum Haupttresor
 	BoxReward = 900,
@@ -660,7 +694,36 @@ Config.Endgame = {
 }
 
 --==========================================================================
--- 23. RATE-LIMITS (Token-Bucket pro Spieler und Remote)
+-- 23. DECKUNG (ersetzt den alten Nachtbonus)
+--
+-- Frueher hing der Risiko-Bonus an der Uhrzeit: nachts mehr Ertrag, NPCs
+-- sehen kuerzer. Seit die Stadt dauerhaft hell ist, haengt er am ORT.
+--
+--   Ein Ziel mit Attribut  Exposed = true  steht auf offener Strasse:
+--   Schaufenster, Geldautomat am Gehweg, Kamera an der Fassade. Man sieht
+--   den Spieler dort von weitem.
+--     -> mehr Ertrag UND mehr Trace
+--
+--   Alles andere ist gedeckt: drinnen, im Hinterhof, auf dem Dach, im
+--   Schacht. Sicherer, aber normal bezahlt - und man muss erst hinkommen.
+--
+-- Das ist derselbe Tausch wie frueher (mehr Geld gegen mehr Risiko), nur
+-- trifft der Spieler die Entscheidung jetzt beim WOHIN statt beim WANN.
+-- Ein Wann kann man aussitzen, ein Wohin nicht.
+--==========================================================================
+Config.Cover = {
+	-- Hoch = offene Ziele lohnen deutlich, runter = die Deckung wird egal.
+	ExposedRewardBonus = 0.35, -- +35 % auf offene Ziele
+	-- Der Preis dafuer. Muss spuerbar sein, sonst ist "offen" gratis Geld.
+	ExposedTraceFactor = 1.3,
+	-- Sichtweite von Wachen. Eine Wache darf ueber ihr Attribut
+	-- "SightFactor" davon abweichen (drinnen sieht man weniger weit).
+	DefaultGuardSight = 1,
+	MinGuardSight = 0.25, -- Untergrenze, damit eine Wache nie blind ist
+}
+
+--==========================================================================
+-- 24. RATE-LIMITS (Token-Bucket pro Spieler und Remote)
 -- Jede neue Remote braucht hier einen Eintrag, sonst wird sie verworfen.
 --==========================================================================
 Config.RateLimits = {
@@ -682,7 +745,7 @@ Config.RateLimits = {
 }
 
 --==========================================================================
--- 24. NODE-BREACH
+-- 25. NODE-BREACH
 --==========================================================================
 Config.NodeBreach = {
 	-- Pro Schwierigkeitsband: Gittergroesse, Anzahl Relays, Anteil sichtbares
@@ -699,7 +762,7 @@ Config.NodeBreach = {
 }
 
 --==========================================================================
--- 25. DEFAULTS FUER HACK-ZIELE
+-- 26. DEFAULTS FUER HACK-ZIELE
 -- Ein Part braucht KEIN einziges Attribut. Alles, was fehlt, kommt von hier.
 --==========================================================================
 Config.TargetDefaults = {
@@ -712,6 +775,9 @@ Config.TargetDefaults = {
 	OnSuccess = "Offline",
 	DisplayName = "", -- "" = Instanzname benutzen
 	DownTime = 30, -- wie lange der Welteffekt haelt
+	-- Steht das Ziel auf offener Strasse? Siehe Config.Cover.
+	-- false = gedeckt (drinnen, Hinterhof, Dach): normal bezahlt, sicherer.
+	Exposed = false,
 	-- Weitere Attribute, die ein Part optional tragen darf und die hier
 	-- bewusst KEINEN Default brauchen (nicht gesetzt = Funktion aus):
 	--   TargetId   fester Bezeichner, auf den Missionen zeigen koennen
@@ -731,7 +797,51 @@ Config.Session = {
 }
 
 --==========================================================================
--- UI-FARBEN (Fake-OS)
+-- WELT-FARBEN (Vantorra bei Tag)
+--
+-- Zwei getrennte Paletten, und das mit Absicht:
+--   Config.Palette  = die STADT. Hell, echte Baumaterialien.
+--   Config.Theme    = das FAKE-OS in den Fenstern. Bleibt dunkel.
+-- Der Kontrast ist der Witz: draussen heller Tag, im Terminal schwarzes
+-- Bild mit Cyan. Wer die Stadt umfaerbt, faellt hier an EINER Stelle an.
+--
+-- Zum Abdunkeln der ganzen Stadt reicht es, diese Werte zu senken - kein
+-- World-Skript enthaelt noch eine eigene Farbe.
+--==========================================================================
+Config.Palette = {
+	--== Strasse ==========================================================
+	Asphalt = Color3.fromRGB(112, 114, 120),
+	Gehweg = Color3.fromRGB(182, 180, 174),
+	Markierung = Color3.fromRGB(240, 232, 178),
+
+	--== Gebaeude von aussen ==============================================
+	BetonHell = Color3.fromRGB(206, 202, 194),
+	Beton = Color3.fromRGB(172, 168, 160),
+	BetonDunkel = Color3.fromRGB(126, 123, 118),
+	Putz = Color3.fromRGB(216, 200, 172), -- warmer Altbau-Putz
+	Ziegel = Color3.fromRGB(172, 112, 92),
+	Dach = Color3.fromRGB(138, 136, 132),
+
+	--== Bauteile =========================================================
+	Metall = Color3.fromRGB(164, 168, 174),
+	MetallDunkel = Color3.fromRGB(108, 112, 120),
+	Glas = Color3.fromRGB(190, 212, 226),
+	Holz = Color3.fromRGB(158, 118, 82),
+
+	--== Innenraeume ======================================================
+	-- Heller als frueher, aber merklich kuehler und matter als draussen:
+	-- drinnen ist Deckung, und Deckung soll man sehen koennen.
+	InnenBoden = Color3.fromRGB(146, 144, 148),
+	InnenWand = Color3.fromRGB(178, 176, 178),
+	InnenDecke = Color3.fromRGB(158, 157, 160),
+
+	Haut = Color3.fromRGB(214, 176, 152), -- Wachen-Koepfe
+}
+
+table.freeze(Config.Palette)
+
+--==========================================================================
+-- UI-FARBEN (Fake-OS) - bleibt dunkel, siehe oben
 --==========================================================================
 Config.Theme = {
 	Background = Color3.fromRGB(6, 8, 11),

@@ -36,6 +36,7 @@ type Guard = {
 	B: Vector3,
 	Alpha: number,
 	Direction: number,
+	Sight: number, -- Faktor auf die Sichtweite, aus dem Attribut SightFactor
 	Seen: { [Player]: number },
 }
 
@@ -55,6 +56,17 @@ local function register(inst: Instance)
 
 	local a = inst:GetAttribute("PatrolA")
 	local b = inst:GetAttribute("PatrolB")
+
+	-- Frueher haben alle Wachen nachts pauschal kuerzer gesehen. Seit die
+	-- Stadt dauerhaft hell ist, gibt es keine Nacht mehr - also entscheidet
+	-- jetzt der Ort: eine Wache im Inneren bekommt ueber das Attribut
+	-- SightFactor eine kuerzere Sichtweite als eine draussen. Kein Wert
+	-- gesetzt = Config.Cover.DefaultGuardSight.
+	local sightAttribute = inst:GetAttribute("SightFactor")
+	local sight = if typeof(sightAttribute) == "number"
+		then math.clamp(sightAttribute, Config.Cover.MinGuardSight, 1)
+		else Config.Cover.DefaultGuardSight
+
 	table.insert(guards, {
 		Model = inst,
 		Root = root,
@@ -62,6 +74,7 @@ local function register(inst: Instance)
 		B = if typeof(b) == "Vector3" then b else root.Position,
 		Alpha = 0,
 		Direction = 1,
+		Sight = sight,
 		Seen = {},
 	})
 end
@@ -87,7 +100,9 @@ rayParams.IgnoreWater = true
 local function canSee(guard: Guard, player: Player, position: Vector3): boolean
 	local toPlayer = position - guard.Root.Position
 	local distance = toPlayer.Magnitude
-	local range = B.GuardSightRange * TimeService.SightFactor()
+	-- Zwei Faktoren: die Tageszeit (nur wirksam, wenn der Zyklus laeuft) und
+	-- der Ort, an dem diese Wache steht.
+	local range = B.GuardSightRange * TimeService.SightFactor() * guard.Sight
 	if distance > range or distance < 0.1 then
 		return false
 	end

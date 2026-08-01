@@ -6,13 +6,17 @@
 > alles unterhalb von `ghostnet/` **diese** Datei.
 
 ## Was das Spiel ist
-Roblox-Hacking-Spiel. Nachts in einer Stadt. Man geht an ein Objekt heran
-(Kamera, Tür, Geldautomat), löst ein Terminal-Rätsel, kassiert Crypto — das ist
+Roblox-Hacking-Spiel in der offenen Stadt Vantorra, bei hellem Tag. Man geht an
+ein Objekt heran (Kamera, Tür, Geldautomat), löst ein Terminal-Rätsel, kassiert Crypto — das ist
 aber erstmal **heiß** (`Unsold`). Jeder Hack treibt den **Trace** hoch. Bei 100
 ist alles Unverkaufte weg. Beim **Hehler** wird Unverkauftes gegen Gebühr zu
 sicherem Guthaben (`Banked`) und senkt den Trace. Von der Bank kauft man
 **Rig-Upgrades**, die schwerere Ziele öffnen. Die Frage jeder Runde ist:
 *noch ein Ziel mitnehmen oder jetzt abliefern?*
+
+Die zweite Frage ist *wohin*: Ziele auf offener Straße (Attribut `Exposed`)
+zahlen mehr und kosten mehr Trace als gedeckte. Das ist der Nachfolger des
+früheren Nachtbonus, seit die Stadt dauerhaft hell ist.
 
 ## Architektur-Regeln — nicht verhandelbar
 1. **Server-Autorität ist absolut.** Der Client schickt nur "ich habe X
@@ -31,10 +35,14 @@ sicherem Guthaben (`Banked`) und senkt den Trace. Von der Bank kauft man
    `Input(serverState, payload) -> InputResult`, `Label() -> string`.
    `publicState` enthält **nie** die Lösung.
 8. **`--!strict` bleibt überall an.**
-9. **Zeit:** Alles, was einen Serverwechsel überleben muss, benutzt `os.time()`.
+9. **Eine Kulissenänderung darf nie stillschweigend eine Mechanik mitnehmen.**
+   Als der Tag-/Nachtzyklus abgeschaltet wurde, ist der Nachtbonus nicht
+   verschwunden, sondern an den Ort gewandert (`Config.Cover`). Wer etwas
+   Optisches abschaltet, prüft zuerst, welche Regel daran hing.
+10. **Zeit:** Alles, was einen Serverwechsel überleben muss, benutzt `os.time()`.
    `os.clock()` nur für serverinterne Kurzzeit-Timer (`DownUntil`, Rate-Limits,
    Bust-Sperre).
-10. `task.wait` / `task.spawn` / `task.delay` — nie `wait()` / `spawn()` / `delay()`.
+11. `task.wait` / `task.spawn` / `task.delay` — nie `wait()` / `spawn()` / `delay()`.
 
 ## Arbeitsweise
 - Eine Phase aus `PHASEN.md` komplett abarbeiten, dann erst die nächste.
@@ -46,10 +54,17 @@ sicherem Guthaben (`Banked`) und senkt den Trace. Von der Bank kauft man
 - `Config.Version` am Ende jeder Phase hochzählen.
 
 ## Look
-Dunkles Fake-OS: fast schwarz, Cyan/Magenta/Amber-Akzente, `Enum.Font.Code`,
-Scanlines. Alle Farben aus `Config.Theme` über `UITheme`. UI-Texte deutsch,
-kurz, in Großbuchstaben im Terminal-Stil. Muss auf dem Handy bedienbar sein
-(Touch-Ziele groß genug).
+**Zwei Paletten, und die werden nicht vermischt:**
+
+- **Stadt** = `Config.Palette`. Hell, echte Baumaterialien, dauerhafter Tag.
+  In `src/server/World/` steht **kein einziger** eigener Farbwert — der
+  Testlauf lehnt dort jedes `Color3.fromRGB` ab.
+- **Fake-OS** = `Config.Theme` über `UITheme`. Bleibt fast schwarz mit
+  Cyan/Magenta/Amber, `Enum.Font.Code`, Scanlines. **Nicht aufhellen** — der
+  Kontrast zwischen heller Stadt und schwarzem Terminal ist der Look.
+
+UI-Texte deutsch, kurz, in Großbuchstaben im Terminal-Stil. Muss auf dem Handy
+bedienbar sein (Touch-Ziele groß genug).
 
 ## Werkzeuge
 Claude Code, Rojo, Roblox Studio, VS Code, Node (nur für `tests/` und

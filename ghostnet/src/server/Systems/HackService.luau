@@ -78,6 +78,18 @@ local function combined(list: { (Player) -> number }, player: Player): number
 	return factor
 end
 
+-- DECKUNG. Ein Ziel mit Attribut Exposed = true steht auf offener Strasse:
+-- es zahlt mehr und kostet mehr Trace. Das ist der Nachfolger des alten
+-- Nachtbonus - seit die Stadt dauerhaft hell ist, entscheidet der Ort ueber
+-- das Risiko und nicht mehr die Uhrzeit. Siehe Config.Cover.
+local function isExposed(part: BasePart): boolean
+	local value = part:GetAttribute("Exposed")
+	if typeof(value) == "boolean" then
+		return value
+	end
+	return Config.TargetDefaults.Exposed
+end
+
 --==========================================================================
 -- Hilfsfunktionen
 --==========================================================================
@@ -129,6 +141,13 @@ local function resolve(session: Session, success: boolean, reason: string)
 		local cooling = EconomyService.GetRig(player).Cooling
 		traceDelta = Config.GetTraceGain(target.TraceGain * factor, cooling)
 
+		-- Offen stehende Ziele kosten mehr Trace. Der Aufschlag gilt auch bei
+		-- Fehlschlag und Abbruch: gesehen wurde man auf offener Strasse so
+		-- oder so, das ist ja gerade der Punkt.
+		if isExposed(target.Part) then
+			traceDelta *= Config.Cover.ExposedTraceFactor
+		end
+
 		-- Uebungsziel: erzeugt bewusst gar keinen Trace, damit niemand im
 		-- Tutorial auffliegt, bevor er weiss, was der Balken bedeutet.
 		if target.Part:GetAttribute("NoTrace") == true then
@@ -153,9 +172,14 @@ local function resolve(session: Session, success: boolean, reason: string)
 		end
 
 		if success then
-			-- Nachts bringt jeder Hack mehr. Das ist der mechanische Grund,
-			-- auf die Uhr zu schauen - sonst waere der Tageszyklus Deko.
-			reward = math.floor(target.Reward * TimeService.RewardMultiplier())
+			-- Drei Faktoren, alle serverseitig:
+			--   Tageszeit  nur wenn der Zyklus laeuft, sonst 1
+			--   Deckung    offene Ziele zahlen mehr (Config.Cover)
+			--   Angemeldet Endgame-Entscheidung aus Mission 10
+			local exposure = if isExposed(target.Part) then 1 + Config.Cover.ExposedRewardBonus else 1
+			reward = math.floor(
+				target.Reward * TimeService.RewardMultiplier() * exposure * combined(rewardModifiers, player)
+			)
 			cooldown = target.Cooldown
 			EconomyService.AwardUnsold(player, reward)
 			HackTargets.SetCooldown(player, target.Id, cooldown)

@@ -5,10 +5,16 @@
 -- Baut Strassen, Gehwege und Haeuser entlang des Graphen aus RoadNetwork.
 -- Reine Geometrie - kein Objekt hier traegt Spiellogik.
 --
+-- ALLE FARBEN KOMMEN AUS Config.Palette
+--   Hier steht kein einziger Farbwert. Die Stadt heller oder dunkler zu
+--   machen ist eine Aenderung an der Palette, nicht an diesem Skript.
+--
 -- LEISTUNGSBUDGET (verbindlich, nicht optional)
 --   Alles Dekorative: Anchored, CanQuery = false, CanTouch = false,
---   CastShadow = false bei kleinen Teilen. Fenster sind Neon-FLAECHEN, keine
---   Lichtquellen - hunderte PointLights waeren auf dem Handy nicht bezahlbar.
+--   CastShadow = false bei kleinen Teilen. Fenster sind spiegelnde
+--   FLAECHEN, keine Lichtquellen - hunderte PointLights waeren auf dem
+--   Handy nicht bezahlbar. Bei Tageslicht sieht man sie ohnehin kaum,
+--   deshalb entfallen sie unter Config.World.PermanentDay ganz.
 --
 --   Nur der als "Dense" markierte Bezirk wird voll ausgebaut. Der Rest bleibt
 --   Rohbau, bis er dran ist: eine grosse leere Stadt ist schlimmer als ein
@@ -90,7 +96,7 @@ for _, node in RoadNetwork.All() do
 			then Vector3.new(length, 1, C.RoadWidth)
 			else Vector3.new(C.RoadWidth, 1, length)
 
-		local road = decor("Fahrbahn", size, CFrame.new(mid), Color3.fromRGB(14, 15, 19), Enum.Material.Slate, roads)
+		local road = decor("Fahrbahn", size, CFrame.new(mid), Config.Palette.Asphalt, Enum.Material.Slate, roads)
 		road.Reflectance = Config.World.RoadReflectance
 		road.CanCollide = true
 
@@ -106,7 +112,7 @@ for _, node in RoadNetwork.All() do
 				"Gehweg",
 				sidewalkSize,
 				CFrame.new(mid + offset),
-				Color3.fromRGB(26, 27, 32),
+				Config.Palette.Gehweg,
 				Enum.Material.Concrete,
 				roads
 			)
@@ -122,7 +128,7 @@ for _, node in RoadNetwork.All() do
 				"Markierung",
 				if horizontal then Vector3.new(6, 0.06, 0.6) else Vector3.new(0.6, 0.06, 6),
 				CFrame.new(along + Vector3.new(0, 0.55, 0)),
-				Color3.fromRGB(92, 90, 76),
+				Config.Palette.Markierung,
 				Enum.Material.SmoothPlastic,
 				roads
 			)
@@ -149,7 +155,9 @@ local function building(centre: Vector3, footprint: Vector3, district: Districts
 		"Erdgeschoss",
 		Vector3.new(footprint.X, 12, footprint.Z),
 		CFrame.new(centre + Vector3.new(0, 6, 0)),
-		tint:Lerp(Color3.new(0, 0, 0), 0.35),
+		-- Erdgeschoss abgesetzt, aber nicht Richtung Schwarz: bei heller
+		-- Stadt wirkt ein schwarzer Sockel wie ein Loch in der Fassade.
+		tint:Lerp(Config.Palette.BetonDunkel, 0.55),
 		Enum.Material.Concrete,
 		blocks
 	).CanCollide = true
@@ -165,21 +173,23 @@ local function building(centre: Vector3, footprint: Vector3, district: Districts
 	).CanCollide = true
 
 	if dense then
+		-- Fensterbaender: bei Tag spiegelndes Glas statt leuchtender Neonflaechen.
 		local rows = math.floor((height - 14) / 10)
 		for row = 1, rows do
 			if rng:NextNumber() > Config.World.WindowChance then
 				continue
 			end
 			for _, face in { 1, -1 } do
-				local lit = decor(
+				local glass = decor(
 					"Fenster",
 					Vector3.new(footprint.X * 0.7, 2.4, 0.3),
 					CFrame.new(centre + Vector3.new(0, 12 + row * 10, face * (footprint.Z * 0.5 + 0.2))),
-					Color3.fromRGB(rng:NextInteger(40, 95), rng:NextInteger(60, 125), rng:NextInteger(95, 165)),
-					Enum.Material.Neon,
+					Config.Palette.Glas,
+					Enum.Material.SmoothPlastic,
 					blocks
 				)
-				lit.Transparency = 0.2
+				glass.Reflectance = Config.World.WindowReflectance
+				glass.Transparency = 0.1
 			end
 		end
 	end
@@ -190,7 +200,7 @@ local function building(centre: Vector3, footprint: Vector3, district: Districts
 		"Dach",
 		Vector3.new(footprint.X + 1.5, 1.2, footprint.Z + 1.5),
 		CFrame.new(centre + Vector3.new(0, height, 0)),
-		tint:Lerp(Color3.new(0, 0, 0), 0.5),
+		Config.Palette.Dach,
 		Enum.Material.Metal,
 		blocks
 	).CanCollide = true
@@ -203,7 +213,7 @@ local function building(centre: Vector3, footprint: Vector3, district: Districts
 			"Bruestung",
 			size,
 			CFrame.new(centre + Vector3.new(side[1] * footprint.X * 0.5, height + 2, side[2] * footprint.Z * 0.5)),
-			tint:Lerp(Color3.new(0, 0, 0), 0.5),
+			Config.Palette.Dach,
 			Enum.Material.Metal,
 			blocks
 		).CanCollide = true
@@ -217,7 +227,7 @@ local function building(centre: Vector3, footprint: Vector3, district: Districts
 				"Sprosse",
 				Vector3.new(2.6, 0.4, 1.2),
 				CFrame.new(x, y, centre.Z),
-				Color3.fromRGB(52, 54, 58),
+				Config.Palette.Metall,
 				Enum.Material.Metal,
 				blocks
 			).CanCollide = true
@@ -234,7 +244,9 @@ local function building(centre: Vector3, footprint: Vector3, district: Districts
 			Enum.Material.Neon,
 			blocks
 		)
-		if rng:NextNumber() < C.LightChance then
+		-- Bei Tageslicht kostet ein PointLight Bildrate und bringt optisch
+		-- nichts. Das Schild bleibt, das Licht entfaellt.
+		if not Config.World.PermanentDay and rng:NextNumber() < C.LightChance then
 			local light = Instance.new("PointLight")
 			light.Color = district.Neon
 			light.Brightness = Config.World.SignBrightness

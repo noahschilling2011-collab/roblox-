@@ -1,12 +1,18 @@
 # GHOSTNET
 
-Roblox-Hacking-Spiel in der offenen Stadt Vantorra: an ein Objekt herangehen,
-im Terminal ein Rätsel lösen, Crypto kassieren — die ist aber erstmal **heiß**.
+Roblox-Hacking-Spiel in der offenen Stadt Vantorra, bei hellem Tag: an ein
+Objekt herangehen, im Terminal ein Rätsel lösen, Crypto kassieren — die ist
+aber erstmal **heiß**.
 Jeder Einbruch treibt den **Trace**. Bei 100 ist alles Unverkaufte weg. Beim
 **Hehler** wird es gegen Gebühr zu sicherem Guthaben und der Trace sinkt.
 Vom Guthaben kauft man **Rig-Upgrades**, die schwerere Ziele öffnen.
 
 Die Frage jeder Runde: *noch ein Ziel mitnehmen oder jetzt abliefern?*
+
+Ziele auf **offener Straße** (Attribut `Exposed`) zahlen 35 % mehr und kosten
+30 % mehr Trace. Gedeckte Ziele — drinnen, im Hinterhof, auf dem Dach — zahlen
+normal und sind sicherer. Das ist die Entscheidung, um die es beim *Wohin*
+geht.
 
 **Kein GTA-Klon mit Hacking, sondern ein Hacking-Spiel mit offener Stadt.**
 Daraus folgt der Rest: keine Schusswaffen, kein Kampfsystem. Autos sind
@@ -83,6 +89,7 @@ src/shared/          -> ReplicatedStorage.Shared
   Remotes.luau         der einzige Ort, an dem Remotes entstehen
   Types.luau           gemeinsame Typen, inkl. Profil-Schema
   Geometry.luau        die eine Abstandsrechnung für Server und Client
+  Config.luau/Palette  Weltfarben (hell) - getrennt vom dunklen Fake-OS-Theme
   Missions.luau        Missionen als Daten + die puren Regeln dazu
   Vehicles.luau        Fahrzeugklassen als Daten
   Districts.luau       die fünf Stadtbezirke als Daten
@@ -157,8 +164,18 @@ Kein Code nötig:
 - **Ausparkplatz:** BasePart mit Tag `GhostNetVehicleSpawn`. Nur dort lässt sich
   ein eigenes Fahrzeug ausparken.
 - **Wache:** Model mit Tag `GhostNetGuard` und den Attributen `PatrolA`,
-  `PatrolB` (Vector3) und `AlarmGroup`. Läuft die Strecke ab und meldet, was
-  sie sieht — angreifen kann sie nicht.
+  `PatrolB` (Vector3) und `AlarmGroup`. Optional `SightFactor` (0–1), damit
+  eine Wache im Gebäude weniger weit sieht als eine draußen. Läuft die Strecke
+  ab und meldet, was sie sieht — angreifen kann sie nicht.
+
+Beim Hack-Ziel ist `Exposed = true` das wichtigste optionale Attribut: es
+markiert ein Ziel als „steht offen auf der Straße" und schaltet damit den
+Risiko-Bonus aus `Config.Cover` an. Ohne das Attribut gilt das Ziel als
+gedeckt.
+
+**Farben nie im Skript.** Jede Weltfarbe kommt aus `Config.Palette` — der
+Testlauf lehnt ein `Color3.fromRGB` in `src/server/World/` ab. Die Stadt
+heller oder dunkler zu machen ist eine Änderung an einer Tabelle.
 
 ## Eine Mission schreiben
 

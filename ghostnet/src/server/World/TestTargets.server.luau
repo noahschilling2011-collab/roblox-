@@ -110,7 +110,7 @@ do
 		Name = "KameraMast",
 		Size = Vector3.new(0.8, 12, 0.8),
 		CFrame = CFrame.new(base + Vector3.new(0, 6, 0)),
-		Color = Color3.fromRGB(38, 44, 54),
+		Color = Config.Palette.Metall,
 		Material = Enum.Material.Metal,
 	})
 
@@ -118,7 +118,7 @@ do
 		Name = "KameraArm",
 		Size = Vector3.new(3.4, 0.5, 0.5),
 		CFrame = CFrame.new(base + Vector3.new(1.7, 11.6, 0)),
-		Color = Color3.fromRGB(38, 44, 54),
+		Color = Config.Palette.Metall,
 		Material = Enum.Material.Metal,
 	})
 
@@ -126,7 +126,7 @@ do
 		Name = "Ueberwachungskamera",
 		Size = Vector3.new(1.6, 1.6, 3.2),
 		CFrame = CFrame.new(base + Vector3.new(3.4, 11.2, 0)) * CFrame.Angles(math.rad(-15), 0, 0),
-		Color = Color3.fromRGB(24, 30, 38),
+		Color = Config.Palette.MetallDunkel,
 		Material = Enum.Material.Metal,
 	})
 	accentLight(head, Config.Theme.Magenta, 14)
@@ -138,6 +138,8 @@ do
 		RequiredLevel = 1,
 		OnSuccess = "CameraOffline",
 		DownTime = 30,
+		-- Haengt an einer Fassade ueber dem Gehweg: jeder sieht einen dabei.
+		Exposed = true,
 	})
 end
 
@@ -151,21 +153,21 @@ do
 		Name = "WandLinks",
 		Size = Vector3.new(10, 12, 1.2),
 		CFrame = CFrame.new(base + Vector3.new(-8, 6, 0)),
-		Color = Color3.fromRGB(30, 34, 42),
+		Color = Config.Palette.Beton,
 		Material = Enum.Material.Concrete,
 	})
 	makePart({
 		Name = "WandRechts",
 		Size = Vector3.new(10, 12, 1.2),
 		CFrame = CFrame.new(base + Vector3.new(8, 6, 0)),
-		Color = Color3.fromRGB(30, 34, 42),
+		Color = Config.Palette.Beton,
 		Material = Enum.Material.Concrete,
 	})
 	makePart({
 		Name = "Sturz",
 		Size = Vector3.new(6, 2, 1.2),
 		CFrame = CFrame.new(base + Vector3.new(0, 11, 0)),
-		Color = Color3.fromRGB(30, 34, 42),
+		Color = Config.Palette.Beton,
 		Material = Enum.Material.Concrete,
 	})
 
@@ -173,12 +175,14 @@ do
 		Name = "Sicherheitstuer",
 		Size = Vector3.new(6, 10, 0.8),
 		CFrame = CFrame.new(base + Vector3.new(0, 5, 0)),
-		Color = Color3.fromRGB(20, 26, 34),
+		Color = Config.Palette.MetallDunkel,
 		Material = Enum.Material.Metal,
 	})
 	accentLight(door, Config.Theme.Cyan, 12)
 
 	makeHackable(door, {
+		-- Kein Exposed: die Tuer liegt an der Rueckseite der Halle. Weniger
+		-- Ertrag als der Automat, dafuer sieht einen dort niemand.
 		DisplayName = "SEC-DOOR // Lagerhalle B",
 		Difficulty = 4,
 		HackType = "NodeBreach",
@@ -198,7 +202,7 @@ do
 		Name = "AutomatSockel",
 		Size = Vector3.new(5, 1, 3),
 		CFrame = CFrame.new(base + Vector3.new(0, 0.5, 0)),
-		Color = Color3.fromRGB(26, 30, 38),
+		Color = Config.Palette.BetonDunkel,
 		Material = Enum.Material.Concrete,
 	})
 
@@ -206,7 +210,7 @@ do
 		Name = "Geldautomat",
 		Size = Vector3.new(4.4, 7, 2.4),
 		CFrame = CFrame.new(base + Vector3.new(0, 4.5, 0)),
-		Color = Color3.fromRGB(34, 40, 50),
+		Color = Config.Palette.Metall,
 		Material = Enum.Material.Metal,
 	})
 
@@ -228,6 +232,9 @@ do
 		OnSuccess = "AtmPayout",
 		Cooldown = 300,
 		DownTime = 20,
+		-- Steht offen am Gehweg. Das lohnendste Ziel der Uebungszone -
+		-- und das, bei dem der Trace am schnellsten hochgeht.
+		Exposed = true,
 	})
 end
 
@@ -243,7 +250,7 @@ do
 		Name = "HehlerRueckwand",
 		Size = Vector3.new(12, 9, 1),
 		CFrame = CFrame.new(base + Vector3.new(0, 4.5, 2.5)),
-		Color = Color3.fromRGB(24, 28, 36),
+		Color = Config.Palette.Beton,
 		Material = Enum.Material.Concrete,
 	})
 
@@ -251,7 +258,7 @@ do
 		Name = "HehlerDach",
 		Size = Vector3.new(13, 0.6, 6),
 		CFrame = CFrame.new(base + Vector3.new(0, 9, 0)),
-		Color = Color3.fromRGB(18, 22, 28),
+		Color = Config.Palette.Dach,
 		Material = Enum.Material.Metal,
 	})
 
@@ -259,7 +266,7 @@ do
 		Name = "Hehler",
 		Size = Vector3.new(10, 4, 2.4),
 		CFrame = CFrame.new(base + Vector3.new(0, 2, 0)),
-		Color = Color3.fromRGB(30, 36, 46),
+		Color = Config.Palette.Metall,
 		Material = Enum.Material.Metal,
 	})
 

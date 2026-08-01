@@ -138,7 +138,7 @@ do
 		Name = "TerminalSockel",
 		Size = Vector3.new(3, 3, 2),
 		CFrame = CFrame.new(base + Vector3.new(0, 1.5, 0)),
-		Color = Color3.fromRGB(26, 30, 38),
+		Color = Config.Palette.MetallDunkel,
 		Material = Enum.Material.Metal,
 	})
 
@@ -182,35 +182,35 @@ do
 		Name = "LadenBoden",
 		Size = Vector3.new(24, 1, 18),
 		CFrame = CFrame.new(base + Vector3.new(0, 0.5, -2)),
-		Color = Color3.fromRGB(22, 25, 31),
+		Color = Config.Palette.InnenBoden,
 		Material = Enum.Material.Concrete,
 	})
 	makePart({
 		Name = "LadenRueckwand",
 		Size = Vector3.new(24, 12, 1),
 		CFrame = CFrame.new(base + Vector3.new(0, 6, -11)),
-		Color = Color3.fromRGB(28, 32, 40),
+		Color = Config.Palette.Beton,
 		Material = Enum.Material.Concrete,
 	})
 	makePart({
 		Name = "LadenWandLinks",
 		Size = Vector3.new(1, 12, 18),
 		CFrame = CFrame.new(base + Vector3.new(-12, 6, -2)),
-		Color = Color3.fromRGB(28, 32, 40),
+		Color = Config.Palette.Beton,
 		Material = Enum.Material.Concrete,
 	})
 	makePart({
 		Name = "LadenWandRechts",
 		Size = Vector3.new(1, 12, 18),
 		CFrame = CFrame.new(base + Vector3.new(12, 6, -2)),
-		Color = Color3.fromRGB(28, 32, 40),
+		Color = Config.Palette.Beton,
 		Material = Enum.Material.Concrete,
 	})
 	makePart({
 		Name = "LadenDach",
 		Size = Vector3.new(25, 0.8, 19),
 		CFrame = CFrame.new(base + Vector3.new(0, 12, -2)),
-		Color = Color3.fromRGB(18, 21, 27),
+		Color = Config.Palette.Dach,
 		Material = Enum.Material.Metal,
 	})
 	-- Front mit Tueroeffnung
@@ -218,21 +218,21 @@ do
 		Name = "LadenFrontLinks",
 		Size = Vector3.new(9, 12, 1),
 		CFrame = CFrame.new(base + Vector3.new(-7.5, 6, 7)),
-		Color = Color3.fromRGB(28, 32, 40),
+		Color = Config.Palette.Beton,
 		Material = Enum.Material.Concrete,
 	})
 	makePart({
 		Name = "LadenFrontRechts",
 		Size = Vector3.new(9, 12, 1),
 		CFrame = CFrame.new(base + Vector3.new(7.5, 6, 7)),
-		Color = Color3.fromRGB(28, 32, 40),
+		Color = Config.Palette.Beton,
 		Material = Enum.Material.Concrete,
 	})
 	makePart({
 		Name = "LadenSturz",
 		Size = Vector3.new(6, 3, 1),
 		CFrame = CFrame.new(base + Vector3.new(0, 10.5, 7)),
-		Color = Color3.fromRGB(28, 32, 40),
+		Color = Config.Palette.Beton,
 		Material = Enum.Material.Concrete,
 	})
 
@@ -241,7 +241,7 @@ do
 		Name = "Tuerschloss",
 		Size = Vector3.new(6, 9, 0.7),
 		CFrame = CFrame.new(base + Vector3.new(0, 4.5, 7)),
-		Color = Color3.fromRGB(20, 26, 34),
+		Color = Config.Palette.MetallDunkel,
 		Material = Enum.Material.Metal,
 	})
 	accentLight(lock, Config.Theme.Amber, 14)
@@ -253,6 +253,7 @@ do
 		RequiredLevel = 1,
 		OnSuccess = "DoorOpen",
 		DownTime = 45, -- lange genug offen, um wirklich reinzukommen
+		Exposed = true, -- Ladenfront zur Strasse
 		Cooldown = Config.Raid.StoreCooldown,
 		AlarmGroup = "STORE",
 		AlarmStarts = true,
@@ -264,14 +265,14 @@ do
 		Name = "TresorSockel",
 		Size = Vector3.new(6, 1, 4),
 		CFrame = CFrame.new(base + Vector3.new(0, 1.5, -9)),
-		Color = Color3.fromRGB(24, 28, 34),
+		Color = Config.Palette.BetonDunkel,
 		Material = Enum.Material.Concrete,
 	})
 	local safe = makePart({
 		Name = "Tresor",
 		Size = Vector3.new(5, 5, 3.4),
 		CFrame = CFrame.new(base + Vector3.new(0, 4.5, -9)),
-		Color = Color3.fromRGB(32, 38, 48),
+		Color = Config.Palette.Metall,
 		Material = Enum.Material.Metal,
 	})
 	accentLight(safe, Config.Theme.Magenta, 14)
@@ -286,6 +287,8 @@ do
 		Cooldown = Config.Raid.StoreCooldown,
 		AlarmGroup = "STORE",
 		AlarmEnds = true,
+		-- Kein Exposed: der Tresor steht im Laden. Wer erst reinkommt,
+		-- arbeitet dort in Ruhe.
 	})
 end
 
@@ -302,56 +305,56 @@ do
 		Name = "ApartmentBoden",
 		Size = Vector3.new(20, 1, 18),
 		CFrame = CFrame.new(base + Vector3.new(0, 0.5, 0)),
-		Color = Color3.fromRGB(26, 24, 30),
+		Color = Config.Palette.Holz,
 		Material = Enum.Material.WoodPlanks,
 	})
 	makePart({
 		Name = "ApartmentRueckwand",
 		Size = Vector3.new(20, 11, 1),
 		CFrame = CFrame.new(base + Vector3.new(0, 6, -9)),
-		Color = Color3.fromRGB(30, 28, 36),
+		Color = Config.Palette.Ziegel,
 		Material = Enum.Material.Brick,
 	})
 	makePart({
 		Name = "ApartmentWandLinks",
 		Size = Vector3.new(1, 11, 18),
 		CFrame = CFrame.new(base + Vector3.new(-10, 6, 0)),
-		Color = Color3.fromRGB(30, 28, 36),
+		Color = Config.Palette.Ziegel,
 		Material = Enum.Material.Brick,
 	})
 	makePart({
 		Name = "ApartmentWandRechts",
 		Size = Vector3.new(1, 11, 18),
 		CFrame = CFrame.new(base + Vector3.new(10, 6, 0)),
-		Color = Color3.fromRGB(30, 28, 36),
+		Color = Config.Palette.Ziegel,
 		Material = Enum.Material.Brick,
 	})
 	makePart({
 		Name = "ApartmentDach",
 		Size = Vector3.new(21, 0.8, 19),
 		CFrame = CFrame.new(base + Vector3.new(0, 11, 0)),
-		Color = Color3.fromRGB(18, 17, 22),
+		Color = Config.Palette.InnenDecke,
 		Material = Enum.Material.Concrete,
 	})
 	makePart({
 		Name = "ApartmentFrontLinks",
 		Size = Vector3.new(7, 11, 1),
 		CFrame = CFrame.new(base + Vector3.new(-6.5, 6, 9)),
-		Color = Color3.fromRGB(30, 28, 36),
+		Color = Config.Palette.Ziegel,
 		Material = Enum.Material.Brick,
 	})
 	makePart({
 		Name = "ApartmentFrontRechts",
 		Size = Vector3.new(7, 11, 1),
 		CFrame = CFrame.new(base + Vector3.new(6.5, 6, 9)),
-		Color = Color3.fromRGB(30, 28, 36),
+		Color = Config.Palette.Ziegel,
 		Material = Enum.Material.Brick,
 	})
 	makePart({
 		Name = "ApartmentSturz",
 		Size = Vector3.new(6, 4, 1),
 		CFrame = CFrame.new(base + Vector3.new(0, 9, 9)),
-		Color = Color3.fromRGB(30, 28, 36),
+		Color = Config.Palette.Ziegel,
 		Material = Enum.Material.Brick,
 	})
 
@@ -361,7 +364,7 @@ do
 		Name = "Schreibtisch",
 		Size = Vector3.new(8, 0.4, 3),
 		CFrame = CFrame.new(base + Vector3.new(0, 3.4, -7)),
-		Color = Color3.fromRGB(38, 34, 30),
+		Color = Config.Palette.Holz,
 		Material = Enum.Material.Wood,
 	})
 	local rig = makePart({
@@ -399,56 +402,56 @@ do
 		Name = "BankBoden",
 		Size = Vector3.new(34, 1, 30),
 		CFrame = CFrame.new(base + Vector3.new(0, 0.5, 0)),
-		Color = Color3.fromRGB(20, 22, 28),
+		Color = Config.Palette.InnenBoden,
 		Material = Enum.Material.Marble,
 	})
 	makePart({
 		Name = "BankRueckwand",
 		Size = Vector3.new(34, 18, 1),
 		CFrame = CFrame.new(base + Vector3.new(0, 9, -15)),
-		Color = Color3.fromRGB(26, 29, 36),
+		Color = Config.Palette.BetonHell,
 		Material = Enum.Material.Concrete,
 	})
 	makePart({
 		Name = "BankWandLinks",
 		Size = Vector3.new(1, 18, 30),
 		CFrame = CFrame.new(base + Vector3.new(-17, 9, 0)),
-		Color = Color3.fromRGB(26, 29, 36),
+		Color = Config.Palette.BetonHell,
 		Material = Enum.Material.Concrete,
 	})
 	makePart({
 		Name = "BankWandRechts",
 		Size = Vector3.new(1, 18, 30),
 		CFrame = CFrame.new(base + Vector3.new(17, 9, 0)),
-		Color = Color3.fromRGB(26, 29, 36),
+		Color = Config.Palette.BetonHell,
 		Material = Enum.Material.Concrete,
 	})
 	makePart({
 		Name = "BankDach",
 		Size = Vector3.new(35, 1, 31),
 		CFrame = CFrame.new(base + Vector3.new(0, 18, 0)),
-		Color = Color3.fromRGB(16, 18, 23),
+		Color = Config.Palette.Dach,
 		Material = Enum.Material.Concrete,
 	})
 	makePart({
 		Name = "BankFrontLinks",
 		Size = Vector3.new(14, 18, 1),
 		CFrame = CFrame.new(base + Vector3.new(-10, 9, 15)),
-		Color = Color3.fromRGB(26, 29, 36),
+		Color = Config.Palette.BetonHell,
 		Material = Enum.Material.Concrete,
 	})
 	makePart({
 		Name = "BankFrontRechts",
 		Size = Vector3.new(14, 18, 1),
 		CFrame = CFrame.new(base + Vector3.new(10, 9, 15)),
-		Color = Color3.fromRGB(26, 29, 36),
+		Color = Config.Palette.BetonHell,
 		Material = Enum.Material.Concrete,
 	})
 	makePart({
 		Name = "BankSturz",
 		Size = Vector3.new(6, 8, 1),
 		CFrame = CFrame.new(base + Vector3.new(0, 14, 15)),
-		Color = Color3.fromRGB(26, 29, 36),
+		Color = Config.Palette.BetonHell,
 		Material = Enum.Material.Concrete,
 	})
 
@@ -457,14 +460,14 @@ do
 		Name = "BankKameraArm",
 		Size = Vector3.new(0.5, 0.5, 3),
 		CFrame = CFrame.new(base + Vector3.new(-6, 15, 16.5)),
-		Color = Color3.fromRGB(38, 44, 54),
+		Color = Config.Palette.Metall,
 		Material = Enum.Material.Metal,
 	})
 	local cam = makePart({
 		Name = "Aussenkamera",
 		Size = Vector3.new(1.6, 1.6, 3),
 		CFrame = CFrame.new(base + Vector3.new(-6, 15, 18)) * CFrame.Angles(math.rad(-20), 0, 0),
-		Color = Color3.fromRGB(24, 30, 38),
+		Color = Config.Palette.MetallDunkel,
 		Material = Enum.Material.Metal,
 	})
 	accentLight(cam, Config.Theme.Magenta, 16)
@@ -479,6 +482,7 @@ do
 		Cooldown = Config.Raid.BankCooldown,
 		AlarmGroup = "BANK",
 		AlarmStarts = true,
+		Exposed = true, -- haengt aussen ueber dem Eingang
 	})
 	sign(cam, "NAKAMURA BANK", "drei Schichten, ein Alarm", Config.Theme.Magenta, 3.4)
 
@@ -487,7 +491,7 @@ do
 		Name = "BankSicherheitstuer",
 		Size = Vector3.new(6, 12, 0.9),
 		CFrame = CFrame.new(base + Vector3.new(0, 6, 15)),
-		Color = Color3.fromRGB(18, 24, 32),
+		Color = Config.Palette.MetallDunkel,
 		Material = Enum.Material.Metal,
 	})
 	accentLight(door, Config.Theme.Cyan, 14)
@@ -501,6 +505,7 @@ do
 		DownTime = 60,
 		Cooldown = Config.Raid.BankCooldown,
 		AlarmGroup = "BANK",
+		Exposed = true, -- Eingangstuer, direkt an der Strasse
 	})
 
 	-- Stufe 3: Tresorraum. Fehlschlag = sofort auffliegen. Zu zweit leichter.
@@ -508,14 +513,14 @@ do
 		Name = "TresorraumRahmen",
 		Size = Vector3.new(12, 12, 2),
 		CFrame = CFrame.new(base + Vector3.new(0, 6, -13)),
-		Color = Color3.fromRGB(22, 25, 32),
+		Color = Config.Palette.Metall,
 		Material = Enum.Material.Metal,
 	})
 	local vault = makePart({
 		Name = "Tresorraum",
 		Size = Vector3.new(8, 8, 2.6),
 		CFrame = CFrame.new(base + Vector3.new(0, 5, -12)),
-		Color = Color3.fromRGB(40, 46, 58),
+		Color = Config.Palette.Metall,
 		Material = Enum.Material.DiamondPlate,
 	})
 	accentLight(vault, Config.Theme.Amber, 20, 3)

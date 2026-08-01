@@ -2,13 +2,18 @@
 --!strict
 -- GHOSTNET :: Die Stadt drumherum.
 --
--- Ersetzt die nackte Baseplate durch eine naechtliche Strassenzeile: nasse
--- Fahrbahn, Neonschilder, Haeuserfronten. Reine Kulisse - kein einziges
--- Objekt hier traegt einen Tag oder eine Spiellogik.
+-- Ersetzt die nackte Baseplate durch eine Strassenzeile bei Tag: helle
+-- Fahrbahn, Betonfronten, Glasfenster. Reine Kulisse - kein einziges Objekt
+-- hier traegt einen Tag oder eine Spiellogik.
+--
+-- ALLE FARBEN KOMMEN AUS Config.Palette
+--   In dieser Datei steht kein einziger Farbwert mehr. Wer die Stadt heller
+--   oder dunkler will, aendert die Palette und sonst nichts.
 --
 -- SPARSAM MIT EFFEKTEN
---   Ein Hacking-Spiel lebt von Ruhe und wenigen scharfen Lichtern, nicht von
---   Partikeln. Deshalb: viel Dunkel, wenige Neonflaechen, keine Emitter.
+--   Ein Hacking-Spiel lebt von Ruhe, nicht von Partikeln. Bei Tageslicht
+--   sieht man von PointLights ohnehin fast nichts - deshalb werden sie bei
+--   Config.World.PermanentDay gar nicht erst erzeugt. Geschenkte Bildrate.
 --
 -- LEISTUNG
 --   Alles ist anchored, CanQuery und CanTouch sind aus. Wer auf schwachen
@@ -49,8 +54,8 @@ local function decor(name: string, size: Vector3, cframe: CFrame, colour: Color3
 end
 
 --==========================================================================
--- Nasse Fahrbahn
--- Reflexion kommt ueber Material und Reflectance, nicht ueber eine Textur -
+-- Fahrbahn
+-- Der Glanz kommt ueber Material und Reflectance, nicht ueber eine Textur -
 -- es soll keine Asset-Id noetig sein.
 --==========================================================================
 do
@@ -58,7 +63,7 @@ do
 		"Fahrbahn",
 		Vector3.new(Config.World.RoadWidth, 1, Config.World.RoadLength),
 		CFrame.new(0, 0.05, -Config.World.RoadLength * 0.25),
-		Color3.fromRGB(14, 15, 19),
+		Config.Palette.Asphalt,
 		Enum.Material.Slate
 	)
 	road.Reflectance = Config.World.RoadReflectance
@@ -69,7 +74,7 @@ do
 			"Markierung",
 			Vector3.new(0.6, 0.05, 7),
 			CFrame.new(0, 0.6, -Config.World.RoadLength * 0.25 + i),
-			Color3.fromRGB(90, 88, 74),
+			Config.Palette.Markierung,
 			Enum.Material.SmoothPlastic
 		)
 	end
@@ -80,7 +85,7 @@ do
 			"Gehweg",
 			Vector3.new(10, 1.4, Config.World.RoadLength),
 			CFrame.new(side * (Config.World.RoadWidth * 0.5 + 5), 0.7, -Config.World.RoadLength * 0.25),
-			Color3.fromRGB(26, 27, 32),
+			Config.Palette.Gehweg,
 			Enum.Material.Concrete
 		)
 	end
@@ -97,29 +102,28 @@ local function building(x: number, z: number, width: number, depth: number, heig
 		"Haus",
 		Vector3.new(width, height, depth),
 		CFrame.new(x, height * 0.5, z),
-		Color3.fromRGB(
-			rng:NextInteger(18, 30),
-			rng:NextInteger(19, 31),
-			rng:NextInteger(24, 38)
-		),
+		-- Vielfalt ueber die Mischung zweier Palettentoene statt ueber
+		-- freie Zufallsfarben: so bleibt die Zeile bei jeder Palette stimmig.
+		Config.Palette.Beton:Lerp(Config.Palette.BetonHell, rng:NextNumber()),
 		Enum.Material.Concrete
 	)
 
-	-- Ein paar erleuchtete Fenster. Nur Farbe, kein Licht - hunderte
-	-- PointLights waeren auf dem Handy nicht bezahlbar.
+	-- Fensterbaender. Bei Tag sind das spiegelnde Glasflaechen, keine
+	-- Leuchtflaechen - erleuchtete Fenster mittags sehen falsch aus.
 	local rows = math.floor(height / 9)
 	for row = 1, rows do
 		if rng:NextNumber() > Config.World.WindowChance then
 			continue
 		end
-		local lit = decor(
+		local glass = decor(
 			"Fenster",
 			Vector3.new(width * 0.62, 2.2, 0.3),
 			CFrame.new(x, row * 9 - 2, z + depth * 0.5 + 0.2),
-			Color3.fromRGB(rng:NextInteger(40, 90), rng:NextInteger(60, 120), rng:NextInteger(90, 160)),
-			Enum.Material.Neon
+			Config.Palette.Glas,
+			Enum.Material.SmoothPlastic
 		)
-		lit.Transparency = 0.25
+		glass.Reflectance = Config.World.WindowReflectance
+		glass.Transparency = 0.1
 	end
 
 	-- Genau ein Neonschild je Haus, mit echtem Licht.
@@ -132,11 +136,15 @@ local function building(x: number, z: number, width: number, depth: number, heig
 			colour,
 			Enum.Material.Neon
 		)
-		local light = Instance.new("PointLight")
-		light.Color = colour
-		light.Brightness = Config.World.SignBrightness
-		light.Range = Config.World.SignRange
-		light.Parent = signPart
+		-- Bei Tageslicht ist ein PointLight praktisch unsichtbar und trotzdem
+		-- teuer. Das Schild selbst bleibt, das Licht sparen wir uns.
+		if not Config.World.PermanentDay then
+			local light = Instance.new("PointLight")
+			light.Color = colour
+			light.Brightness = Config.World.SignBrightness
+			light.Range = Config.World.SignRange
+			light.Parent = signPart
+		end
 	end
 end
 

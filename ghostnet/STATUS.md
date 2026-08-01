@@ -3,11 +3,11 @@
 > Wird am Ende jeder Session aktualisiert. Erstes, was eine neue Session liest.
 
 ## Aktuelle Phase
-**Alles abgearbeitet: Phase 0–G plus Open-World-Abschnitt 2 und Phase 1–7**
-(`Config.Version = "2.0.0"`). Aus dem Hacking-Spiel ist ein Hacking-Spiel mit
+**Alles abgearbeitet, dazu v2.1.0 „Vantorra bei Tag"**
+(`Config.Version = "2.1.0"`). Aus dem Hacking-Spiel ist ein Hacking-Spiel mit
 offener Stadt geworden — Bezirke, Verkehr, Autobesitz, ein Bankraub mit drei
 Wegen, eine Polizei ohne Waffen und eine 10-Missionen-Story mit Entscheidung
-am Ende. Alles Bisherige läuft unverändert darunter weiter.
+am Ende. Seit v2.1.0 spielt das Ganze bei **hellem Tag**.
 
 **Nächster Schritt: kein Code, sondern Messen und Spielen.** Siehe die
 Warnung direkt darunter und Punkt 0 am Ende von `PHASEN.md`.
@@ -15,7 +15,7 @@ Warnung direkt darunter und Punkt 0 am Ende von `PHASEN.md`.
 ## ⚠️ Was ich NICHT prüfen konnte
 Der Bauplan verlangt nach jeder Phase eine **gemessene Bildrate**. Das kann ich
 nicht liefern und erfinde die Zahl auch nicht: Ich habe keine Roblox-Laufzeit,
-nur eine Luau-VM für Syntax und Logik. Die 569 Prüfungen sagen **nichts** über
+nur eine Luau-VM für Syntax und Logik. Die 582 Prüfungen sagen **nichts** über
 Bildrate, Fahrverhalten oder Physikstabilität aus. Das muss Noah im
 MicroProfiler messen, und zwar besonders jetzt — Verkehr, Fußgänger,
 Streifenwagen und eine gebaute Stadt sind zusammen der teuerste Teil des
@@ -24,10 +24,76 @@ Projekts.
 Die Regler dafür stehen alle in `Config.luau` und sind bewusst niedrig
 gesetzt. In dieser Reihenfolge drehen, wenn es ruckelt:
 `Traffic.MaxActive` (20) → `Traffic.MaxPedestrians` (16) →
-`Traffic.ActiveRadius` (320) → `City.LightChance` (0.25) →
+`Traffic.ActiveRadius` (320) → `World.WindowReflectance` (0.35) →
 `World`-Streamingradien.
 
+**Seit v2.1.0 wichtiger als vorher:** früher startete der Server nachts und
+fuhr damit auf halber Verkehrsdichte. Bei dauerhaftem Tag läuft die Stadt
+dauerhaft am vollen `Traffic.MaxActive` — also auf der doppelten Last
+gegenüber dem alten Standardzustand. Gegengerechnet: die PointLights an den
+Neonschildern entfallen bei Tag komplett.
+
 ## Fertig ✅
+
+### v2.1.0 — Vantorra bei Tag
+Entscheidung von Noah: die Stadt soll hell sein, dauerhaft Tag. Die
+**Benutzeroberfläche bleibt bewusst das dunkle Fake-OS** — heller Tag draußen,
+schwarzes Terminal im Fenster. Der Kontrast ist gewollt und wird vom Testlauf
+festgehalten.
+
+- **`Config.Palette`** (neu) — sämtliche Weltfarben an einer Stelle: Asphalt,
+  Gehweg, Beton, Putz, Ziegel, Glas, Metall, Dach, Innenräume.
+  **Kein Skript unter `src/server/World/` enthält noch einen eigenen Farbwert**
+  — der Testlauf lehnt dort jedes `Color3.fromRGB` ab. Die Stadt umzufärben ist
+  damit eine Änderung an einer Tabelle statt an sieben Dateien.
+- **Bezirks-Grundtöne** sind echte Baumaterialien geworden (Altbau-Putz,
+  Stahlgrau, Glasfassade, Sandstein, Betonplatten) statt fünf Grautönen knapp
+  über Schwarz.
+- **Fenster** sind spiegelndes Glas statt leuchtender Neonflächen — erleuchtete
+  Fenster mittags sehen falsch aus. Fahrbahn matt statt nass. Untergrund in der
+  Place-Datei hell statt fast schwarz.
+- **`Config.World.PermanentDay`** — ein Schalter. `true` (Standard): Sonne steht
+  fest, kein Zyklus, **kein Heartbeat**, Licht wird genau einmal gesetzt.
+  `false`: der komplette alte Tag-/Nachtzyklus läuft wieder, ohne dass irgendwo
+  Code angefasst werden muss. Der Zyklus-Code steht deshalb noch vollständig da.
+
+#### ⚠️ Der Nachtbonus ist umgezogen, nicht gestrichen
+Das ist der eigentliche Eingriff, und er ist nicht optisch. Die Nacht **war**
+eine Mechanik (+35 % Ertrag, NPCs sehen kürzer). Hätte man nur das Licht
+angeschaltet, wäre die zentrale Risiko-Entscheidung des Spiels ersatzlos
+verschwunden. Sie hängt jetzt am **Ort** statt an der **Uhrzeit** —
+`Config.Cover`:
+
+| | Ertrag | Trace | Beispiele |
+|---|---|---|---|
+| Attribut `Exposed = true` | +35 % | ×1,3 | Geldautomat am Gehweg, Fassadenkamera, Ladenfront, Bankeingang |
+| gedeckt (Standard) | normal | normal | Tresor im Laden, Bankinnenraum, Lüftung, Rückseite der Lagerhalle |
+
+Bei Tageslicht ist das sogar der ehrlichere Ort dafür: es gibt keine Dunkelheit
+mehr, in der man verschwinden könnte. Und ein *Wann* kann man aussitzen, ein
+*Wohin* nicht. Die zweite Hälfte des alten Nachtbonus — kürzere NPC-Sicht —
+ist genauso umgezogen: Wachen tragen ein Attribut `SightFactor`
+(Bankinnenraum 0,7). Ort statt Uhrzeit, Attribut statt Code.
+
+Der Testlauf hält beide Hälften des Tauschs fest: `ExposedRewardBonus > 0`
+**und** `ExposedTraceFactor > 1`. Ohne den Aufpreis wäre „offen" gratis Geld
+und jedes gedeckte Ziel tot.
+
+#### Folgeänderungen
+- **Händler:** ohne Abend keine Sperrstunde — bei `PermanentDay` immer offen.
+  Das Schild am Autohaus sagt das jetzt auch, statt eine Uhrzeit zu nennen,
+  die nie eintritt.
+- **Darknet:** `MarketVolatilityFactor` gibt bei dauerhaftem Tag 1 zurück, nicht
+  `DayMarketCalm` (0,6). Der ruhige Tag war die Gegenseite einer bewegten Nacht
+  — ohne Nacht wäre daraus eine dauerhafte Drosselung des Darknets geworden.
+- **PointLights** an Neonschildern entfallen bei Tag: praktisch unsichtbar und
+  trotzdem teuer.
+
+#### Nebenbei gefunden
+`HackService.AddRewardModifier` war angemeldet, wurde aber **nie eingerechnet**.
+Die Endgame-Entscheidung aus Mission 10 hatte damit gar keine Wirkung auf den
+Ertrag — nur auf den Trace. Behoben; zwei neue Testlauf-Einträge prüfen jetzt,
+dass angemeldete Ertrags- *und* Trace-Faktoren auch wirklich angewendet werden.
 
 ### Open-World Phase 2 — Die Stadt
 - **`Shared/Districts.luau`** (neu) — fünf Bezirke als Daten: Altstadt, Hafen,
@@ -261,7 +327,10 @@ Laden nach, **bevor** geschrieben wird — ein Altprofil wird nie verworfen.
 | 3 | `Stash` (Darknet-Lager) | Lager startet leer |
 | 4 | `PurchaseLog` (gegen Doppelvergabe) | Log startet leer |
 | 5 | `Garage` (Fahrzeugbesitz) + `Story.Allegiance` | Garage leer, Allegiance `""` |
-**Migration 4 → 5 ist neu in dieser Session** und gehört zu Open-World-Phase 4.
+**v2.1.0 ändert das Profil nicht** — helle Stadt und Deckungs-Bonus brauchen
+kein neues Feld, `SchemaVersion` bleibt auf 5 und es gibt nichts zu migrieren.
+
+**Migration 4 → 5** gehört zu Open-World-Phase 4.
 Ein Profil aus Version 1.1.0 lädt weiter, bekommt eine leere Garage und keine
 Entscheidung — es verliert nichts.
 Bank, Rig, Trace, Cooldowns und Statistik bleiben in allen Fällen erhalten.
@@ -326,7 +395,7 @@ Testlauf prüft das.
   Hack kostet — auch das wird geprüft.
 
 ## Tests
-`cd ghostnet/tests && npm install && node testlauf.mjs` → **569/569 grün**.
+`cd ghostnet/tests && npm install && node testlauf.mjs` → **582/582 grün**.
 Drei Stufen:
 1. **Syntax** — `luau-compile` über jede `.luau`-Datei.
 2. **Struktur** — `--!strict` überall, keine veralteten APIs, jede Remote
@@ -378,7 +447,7 @@ Der Bauplan aus dem Prompt ist abgearbeitet. Was fehlt, fehlt mit Absicht:
   fertig, dann den nächsten" — und der Testlauf hält sie fest.
 - **Zwei weitere Minispiele**, **prozeduraler Weltgenerator**, **Tagesziele**
   und **Ranglisten** — Details am Ende von `PHASEN.md`.
-- **Kein echter Spielertest.** Alles ist im Code umgesetzt und durch 569
+- **Kein echter Spielertest.** Alles ist im Code umgesetzt und durch 582
   automatische Prüfungen abgesichert, aber noch nicht von einem Menschen in
   Studio durchgespielt.
 
@@ -425,6 +494,14 @@ Der Bauplan aus dem Prompt ist abgearbeitet. Was fehlt, fehlt mit Absicht:
 - Leitregel für jede künftige Mission: sie ist gleichzeitig das Tutorial für
   ein System **und** schaltet dieses System dauerhaft frei. Keine Mission
   bauen, deren Inhalt danach verschwindet.
+- **Zwei Paletten, mit Absicht:** `Config.Palette` ist die Stadt (hell),
+  `Config.Theme` ist das Fake-OS (dunkel). Der Kontrast zwischen hellem Tag
+  draußen und schwarzem Terminal im Fenster ist der Look des Spiels. Wer das
+  Terminal aufhellt, nimmt ihm die Identität.
+- **Mechanik geht nicht verloren, sie zieht um.** Als der Tag-/Nachtzyklus
+  abgeschaltet wurde, ist der Nachtbonus nicht gestrichen, sondern an den Ort
+  gehängt worden (`Config.Cover`). Regel für später: eine Kulissenänderung darf
+  nie stillschweigend eine Spielmechanik mitnehmen.
 - **Identität der offenen Welt:** kein GTA-Klon mit Hacking, sondern ein
   Hacking-Spiel mit offener Stadt. Daraus folgt alles Weitere: keine
   Schusswaffen, kein Kampfsystem, Autos sind Werkzeug (schneller da, mehr

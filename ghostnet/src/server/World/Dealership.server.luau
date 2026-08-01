@@ -91,7 +91,7 @@ part(
 	"ShowroomBoden",
 	Vector3.new(74, 1, 40),
 	CFrame.new(dealerBase + Vector3.new(0, 0.5, 0)),
-	Color3.fromRGB(24, 26, 32),
+	Config.Palette.InnenBoden,
 	Enum.Material.Concrete
 ).CanCollide = true
 
@@ -99,7 +99,7 @@ part(
 	"ShowroomRueckwand",
 	Vector3.new(74, 18, 1),
 	CFrame.new(dealerBase + Vector3.new(0, 9, -20)),
-	Color3.fromRGB(20, 22, 28),
+	Config.Palette.InnenWand,
 	Enum.Material.Concrete
 ).CanCollide = true
 
@@ -107,7 +107,7 @@ part(
 	"ShowroomDach",
 	Vector3.new(75, 1, 41),
 	CFrame.new(dealerBase + Vector3.new(0, 18, 0)),
-	Color3.fromRGB(16, 18, 23),
+	Config.Palette.Dach,
 	Enum.Material.Metal
 ).CanCollide = true
 
@@ -115,7 +115,7 @@ local counter = part(
 	"HaendlerTresen",
 	Vector3.new(12, 4, 3),
 	CFrame.new(dealerBase + Vector3.new(0, 2.5, -16)),
-	Color3.fromRGB(40, 44, 54),
+	Config.Palette.Metall,
 	Enum.Material.Metal
 )
 counter.CanCollide = true
@@ -125,7 +125,11 @@ CollectionService:AddTag(counter, Config.DealerTag)
 sign(
 	counter,
 	"AUTOHAUS",
-	("offen %d-%d Uhr"):format(Config.Dealer.OpenHour, Config.Dealer.CloseHour),
+	-- Bei dauerhaftem Tag gibt es keinen Feierabend, auf den das Schild
+	-- hinweisen koennte. Sonst stuende hier eine Zeit, die nie eintritt.
+	if Config.World.PermanentDay
+		then "durchgehend offen"
+		else ("offen %d-%d Uhr"):format(Config.Dealer.OpenHour, Config.Dealer.CloseHour),
 	Config.Theme.Amber,
 	4.5
 )
@@ -166,7 +170,7 @@ part(
 	"GarageBoden",
 	Vector3.new(26, 1, 22),
 	CFrame.new(garageBase + Vector3.new(0, 0.5, 0)),
-	Color3.fromRGB(22, 24, 30),
+	Config.Palette.InnenBoden,
 	Enum.Material.Concrete
 ).CanCollide = true
 
@@ -174,7 +178,7 @@ part(
 	"GarageDach",
 	Vector3.new(27, 1, 23),
 	CFrame.new(garageBase + Vector3.new(0, 12, 0)),
-	Color3.fromRGB(16, 18, 22),
+	Config.Palette.Dach,
 	Enum.Material.Metal
 ).CanCollide = true
 
@@ -183,7 +187,7 @@ for _, side in { -1, 1 } do
 		"GarageWand",
 		Vector3.new(1, 12, 22),
 		CFrame.new(garageBase + Vector3.new(side * 13, 6, 0)),
-		Color3.fromRGB(24, 26, 32),
+		Config.Palette.InnenBoden,
 		Enum.Material.Concrete
 	).CanCollide = true
 end

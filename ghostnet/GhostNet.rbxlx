@@ -1,5 +1,5 @@
 <roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4">
-<Item class="Workspace" referent="GN65">
+<Item class="Workspace" referent="GN66">
 <Properties>
 <string name="Name">Workspace</string>
 <float name="Gravity">196.2</float>
@@ -14,7 +14,9 @@
 <bool name="CanCollide">true</bool>
 <CoordinateFrame name="CFrame"><X>0</X><Y>-8</Y><Z>0</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
 <Vector3 name="size"><X>512</X><Y>16</Y><Z>512</Z></Vector3>
-<Color3uint8 name="Color3uint8">4279374874</Color3uint8>
+<!-- RGB(118,120,116): heller Untergrund. Ein fast schwarzer Boden unter
+     einer hellen Stadt sieht aus wie ein Loch. -->
+<Color3uint8 name="Color3uint8">4285954164</Color3uint8>
 <token name="TopSurface">0</token>
 <token name="BottomSurface">0</token>
 </Properties>
@@ -36,38 +38,49 @@
 <Properties>
 <string name="Name">Lighting</string>
 <token name="Technology">4</token>
-<string name="TimeOfDay">00:00:00</string>
+<string name="TimeOfDay">13:30:00</string>
+<float name="GeographicLatitude">12</float>
 <bool name="GlobalShadows">true</bool>
-<float name="Brightness">1</float>
-<float name="EnvironmentDiffuseScale">0.35</float>
-<float name="EnvironmentSpecularScale">0.6</float>
-<float name="ShadowSoftness">0.3</float>
-<Color3 name="Ambient"><R>0.05</R><G>0.06</G><B>0.08</B></Color3>
-<Color3 name="OutdoorAmbient"><R>0.08</R><G>0.09</G><B>0.13</B></Color3>
-<Color3 name="FogColor"><R>0.03</R><G>0.04</G><B>0.07</B></Color3>
-<float name="FogEnd">420</float>
+<float name="Brightness">3</float>
+<float name="EnvironmentDiffuseScale">1</float>
+<float name="EnvironmentSpecularScale">1</float>
+<float name="ShadowSoftness">0.2</float>
+<Color3 name="Ambient"><R>0.541</R><G>0.557</G><B>0.588</B></Color3>
+<Color3 name="OutdoorAmbient"><R>0.659</R><G>0.682</G><B>0.722</B></Color3>
+<Color3 name="FogColor"><R>0.78</R><G>0.83</G><B>0.89</B></Color3>
+<float name="FogEnd">2200</float>
 </Properties>
-<Item class="BloomEffect" referent="GN63">
+<Item class="Atmosphere" referent="GN63">
+<Properties>
+<string name="Name">Atmosphere</string>
+<float name="Density">0.12</float>
+<float name="Haze">0.6</float>
+<float name="Glare">0.05</float>
+<Color3 name="Color"><R>0.831</R><G>0.863</G><B>0.91</B></Color3>
+<Color3 name="Decay"><R>0.588</R><G>0.659</G><B>0.745</B></Color3>
+</Properties>
+</Item>
+<Item class="BloomEffect" referent="GN64">
 <Properties>
 <string name="Name">Bloom</string>
 <bool name="Enabled">true</bool>
-<float name="Intensity">0.6</float>
-<float name="Size">28</float>
-<float name="Threshold">0.9</float>
+<float name="Intensity">0.25</float>
+<float name="Size">24</float>
+<float name="Threshold">0.95</float>
 </Properties>
 </Item>
-<Item class="ColorCorrectionEffect" referent="GN64">
+<Item class="ColorCorrectionEffect" referent="GN65">
 <Properties>
 <string name="Name">ColorCorrection</string>
 <bool name="Enabled">true</bool>
 <float name="Brightness">0</float>
-<float name="Contrast">0.12</float>
-<float name="Saturation">0.08</float>
-<Color3 name="TintColor"><R>0.9</R><G>0.97</G><B>1</B></Color3>
+<float name="Contrast">0.08</float>
+<float name="Saturation">0.05</float>
+<Color3 name="TintColor"><R>1</R><G>0.988</G><B>0.957</B></Color3>
 </Properties>
 </Item>
 </Item>
-<Item class="ReplicatedStorage" referent="GN66">
+<Item class="ReplicatedStorage" referent="GN67">
 <Properties>
 <string name="Name">ReplicatedStorage</string>
 </Properties>
@@ -86,7 +99,7 @@
 
 local Config = {}
 
-Config.Version = "2.0.0" -- Open World komplett: Stadt, Verkehr, Bank, Polizei, Story
+Config.Version = "2.1.0" -- Vantorra bei Tag: helle Stadt, Bonus haengt am Ort statt an der Uhr
 
 -- CollectionService-Tags. Ein Part mit dem Tag ist ein Hack-Ziel, ein Hehler,
 -- ein Missions-Wegpunkt oder ein ansprechbarer Kontakt. Kein Code pro Objekt.
@@ -507,22 +520,33 @@ Config.Monetization = {
 Config.World = {
 	Seed = 20260801, -- feste Zahl: die Stadt sieht auf jedem Server gleich aus
 
-	--== TAG UND NACHT =====================================================
-	-- Ein echter Zyklus, der Spielmechanik ist - keine Kulisse. Dauerhaftes
-	-- Tageslicht wuerde Neon, Bloom und die Terminal-Aesthetik zerstoeren,
-	-- dauerhafte Nacht macht die Stadt eintoenig.
+	--== TAGESLICHT ========================================================
+	-- ENTSCHEIDUNG: Vantorra ist eine HELLE Stadt bei Tag.
+	--
+	-- Frueher lief hier ein Tag-/Nachtzyklus, und die Nacht war die Mechanik
+	-- (+35 % Ertrag, NPCs sehen kuerzer). Das ist jetzt umgezogen: der Bonus
+	-- haengt am ORT statt an der Uhrzeit - siehe Config.Cover. Bei Tageslicht
+	-- ist das sogar der logischere Ort dafuer, weil es keine Dunkelheit mehr
+	-- gibt, hinter der man sich verstecken koennte. Wer auf offener Strasse
+	-- arbeitet, verdient mehr und wird eher gesehen.
+	--
+	-- PermanentDay = false schaltet den kompletten alten Zyklus wieder an,
+	-- ohne dass irgendwo sonst Code angefasst werden muss. Alle Nacht-Werte
+	-- darunter bleiben deshalb stehen und sind weiter gueltig.
+	PermanentDay = true,
+	DayClock = 13.5, -- Uhrzeit, auf der die Sonne steht. 12 = senkrecht.
+
 	DayLengthMinutes = 24, -- voller Zyklus. 24 = eine Minute pro Stunde.
-	StartClock = 21, -- womit ein frischer Server anfaengt (Nacht)
+	StartClock = 13.5, -- womit ein frischer Server anfaengt
 	TimeTick = 0.25, -- wie oft die Uhr gestellt wird (reine Performance)
 
 	DayStartHour = 6, -- ab hier gilt "Tag"
 	NightStartHour = 20, -- ab hier gilt "Nacht"
 
-	-- DER MECHANISCHE UNTERSCHIED. Ohne den ist der Zyklus nur Deko.
-	-- Hoch = Nachtspiel lohnt deutlich, runter = Tageszeit wird egal.
+	-- Nur noch wirksam, wenn PermanentDay auf false steht.
 	NightRewardBonus = 0.35, -- +35 % auf jeden Hack-Ertrag nachts
-	NightSightFactor = 0.6, -- NPCs sehen nachts kuerzer (Phase 5/6)
-	DayMarketCalm = 0.6, -- tagsuebers schwanken die Kurse nur 60 %
+	NightSightFactor = 0.6, -- NPCs sehen nachts kuerzer
+	DayMarketCalm = 0.6, -- tagsueber schwanken die Kurse nur 60 %
 
 	-- Lighting. Future sieht deutlich besser aus, kostet auf schwachen
 	-- Geraeten aber spuerbar Bildrate. Auf "ShadowMap" stellen, wenn es
@@ -535,6 +559,20 @@ Config.World = {
 	BloomNight = 0.9,
 	BloomDay = 0.35,
 
+	-- Werte fuer den dauerhaften Tag. Bewusst kraeftiger als die alten
+	-- "Day"-Werte oben: die waren nur das helle Ende einer Rampe, die
+	-- meistens woanders stand. Jetzt ist das der Normalzustand.
+	--   Brightness hoch  = harte Sonne, tiefe Schatten
+	--   Brightness runter= flacher, weicher, aber matschiger
+	SunBrightness = 3,
+	SunFog = 2200, -- Sichtweite. Runter = Dunst, hoch = klare Fernsicht.
+	SunAtmosphere = 0.12, -- wenig Dunst. Hoch = milchig.
+	SunBloom = 0.25, -- sparsam: bei Tag wird Bloom schnell zu Matsch.
+	SunAmbient = Color3.fromRGB(138, 142, 150), -- Licht im Schatten
+	SunOutdoorAmbient = Color3.fromRGB(168, 174, 184),
+	SunSaturation = 0.05, -- leicht kraeftigere Farben, nicht knallig
+	SunTint = Color3.fromRGB(255, 252, 244), -- Hauch warm
+
 	--== STREAMING =========================================================
 	-- Pflicht fuer eine grosse Karte: ohne laedt jeder Spieler die ganze
 	-- Stadt in den Speicher und Handys brechen zusammen.
@@ -544,10 +582,15 @@ Config.World = {
 
 	RoadWidth = 46,
 	RoadLength = 320,
-	RoadReflectance = 0.28, -- nasse Fahrbahn. 0 = trocken und matt.
+	-- Bei Tag ist eine spiegelnde Fahrbahn nur grell. Frueher stand das auf
+	-- 0.28 (nasse Nachtstrasse). 0 = trocken und matt, 0.3 = frisch geregnet.
+	RoadReflectance = 0.08,
 
 	MaxBuildingHeight = 78,
-	WindowChance = 0.55, -- Anteil erleuchteter Fensterbaender
+	WindowChance = 0.55, -- Anteil Fensterbaender an einer Fassade
+	-- Wie stark Fenster spiegeln. Bei Tag ersetzt das die frueher leuchtenden
+	-- Neonfenster. Hoch = Glaspalast, 0 = mattes Fensterband.
+	WindowReflectance = 0.35,
 	SignChance = 0.45, -- Anteil Haeuser mit Neonschild
 	SignBrightness = 3,
 	SignRange = 26,
@@ -688,6 +731,10 @@ Config.Bank = {
 	GuardTick = 0.4, -- Sichtpruefung nur so oft, und nur wenn jemand im Raum ist
 	GuardPatrolSpeed = 9,
 	GuardSpotSeconds = 0.8, -- so lange muss man sichtbar sein, bevor Alarm kommt
+	-- Wachen im Gebaeude sehen kuerzer als die Sichtweite draussen. Wird als
+	-- Attribut "SightFactor" an die Wache geschrieben, siehe Config.Cover.
+	-- Runter = drinnen wird zur sicheren Bank, hoch = die Halle wird zaeh.
+	IndoorSightFactor = 0.7,
 
 	VaultBoxes = 6, -- Schliessfaecher zusaetzlich zum Haupttresor
 	BoxReward = 900,
@@ -740,7 +787,36 @@ Config.Endgame = {
 }
 
 --==========================================================================
--- 23. RATE-LIMITS (Token-Bucket pro Spieler und Remote)
+-- 23. DECKUNG (ersetzt den alten Nachtbonus)
+--
+-- Frueher hing der Risiko-Bonus an der Uhrzeit: nachts mehr Ertrag, NPCs
+-- sehen kuerzer. Seit die Stadt dauerhaft hell ist, haengt er am ORT.
+--
+--   Ein Ziel mit Attribut  Exposed = true  steht auf offener Strasse:
+--   Schaufenster, Geldautomat am Gehweg, Kamera an der Fassade. Man sieht
+--   den Spieler dort von weitem.
+--     -&gt; mehr Ertrag UND mehr Trace
+--
+--   Alles andere ist gedeckt: drinnen, im Hinterhof, auf dem Dach, im
+--   Schacht. Sicherer, aber normal bezahlt - und man muss erst hinkommen.
+--
+-- Das ist derselbe Tausch wie frueher (mehr Geld gegen mehr Risiko), nur
+-- trifft der Spieler die Entscheidung jetzt beim WOHIN statt beim WANN.
+-- Ein Wann kann man aussitzen, ein Wohin nicht.
+--==========================================================================
+Config.Cover = {
+	-- Hoch = offene Ziele lohnen deutlich, runter = die Deckung wird egal.
+	ExposedRewardBonus = 0.35, -- +35 % auf offene Ziele
+	-- Der Preis dafuer. Muss spuerbar sein, sonst ist "offen" gratis Geld.
+	ExposedTraceFactor = 1.3,
+	-- Sichtweite von Wachen. Eine Wache darf ueber ihr Attribut
+	-- "SightFactor" davon abweichen (drinnen sieht man weniger weit).
+	DefaultGuardSight = 1,
+	MinGuardSight = 0.25, -- Untergrenze, damit eine Wache nie blind ist
+}
+
+--==========================================================================
+-- 24. RATE-LIMITS (Token-Bucket pro Spieler und Remote)
 -- Jede neue Remote braucht hier einen Eintrag, sonst wird sie verworfen.
 --==========================================================================
 Config.RateLimits = {
@@ -762,7 +838,7 @@ Config.RateLimits = {
 }
 
 --==========================================================================
--- 24. NODE-BREACH
+-- 25. NODE-BREACH
 --==========================================================================
 Config.NodeBreach = {
 	-- Pro Schwierigkeitsband: Gittergroesse, Anzahl Relays, Anteil sichtbares
@@ -779,7 +855,7 @@ Config.NodeBreach = {
 }
 
 --==========================================================================
--- 25. DEFAULTS FUER HACK-ZIELE
+-- 26. DEFAULTS FUER HACK-ZIELE
 -- Ein Part braucht KEIN einziges Attribut. Alles, was fehlt, kommt von hier.
 --==========================================================================
 Config.TargetDefaults = {
@@ -792,6 +868,9 @@ Config.TargetDefaults = {
 	OnSuccess = "Offline",
 	DisplayName = "", -- "" = Instanzname benutzen
 	DownTime = 30, -- wie lange der Welteffekt haelt
+	-- Steht das Ziel auf offener Strasse? Siehe Config.Cover.
+	-- false = gedeckt (drinnen, Hinterhof, Dach): normal bezahlt, sicherer.
+	Exposed = false,
 	-- Weitere Attribute, die ein Part optional tragen darf und die hier
 	-- bewusst KEINEN Default brauchen (nicht gesetzt = Funktion aus):
 	--   TargetId   fester Bezeichner, auf den Missionen zeigen koennen
@@ -811,7 +890,51 @@ Config.Session = {
 }
 
 --==========================================================================
--- UI-FARBEN (Fake-OS)
+-- WELT-FARBEN (Vantorra bei Tag)
+--
+-- Zwei getrennte Paletten, und das mit Absicht:
+--   Config.Palette  = die STADT. Hell, echte Baumaterialien.
+--   Config.Theme    = das FAKE-OS in den Fenstern. Bleibt dunkel.
+-- Der Kontrast ist der Witz: draussen heller Tag, im Terminal schwarzes
+-- Bild mit Cyan. Wer die Stadt umfaerbt, faellt hier an EINER Stelle an.
+--
+-- Zum Abdunkeln der ganzen Stadt reicht es, diese Werte zu senken - kein
+-- World-Skript enthaelt noch eine eigene Farbe.
+--==========================================================================
+Config.Palette = {
+	--== Strasse ==========================================================
+	Asphalt = Color3.fromRGB(112, 114, 120),
+	Gehweg = Color3.fromRGB(182, 180, 174),
+	Markierung = Color3.fromRGB(240, 232, 178),
+
+	--== Gebaeude von aussen ==============================================
+	BetonHell = Color3.fromRGB(206, 202, 194),
+	Beton = Color3.fromRGB(172, 168, 160),
+	BetonDunkel = Color3.fromRGB(126, 123, 118),
+	Putz = Color3.fromRGB(216, 200, 172), -- warmer Altbau-Putz
+	Ziegel = Color3.fromRGB(172, 112, 92),
+	Dach = Color3.fromRGB(138, 136, 132),
+
+	--== Bauteile =========================================================
+	Metall = Color3.fromRGB(164, 168, 174),
+	MetallDunkel = Color3.fromRGB(108, 112, 120),
+	Glas = Color3.fromRGB(190, 212, 226),
+	Holz = Color3.fromRGB(158, 118, 82),
+
+	--== Innenraeume ======================================================
+	-- Heller als frueher, aber merklich kuehler und matter als draussen:
+	-- drinnen ist Deckung, und Deckung soll man sehen koennen.
+	InnenBoden = Color3.fromRGB(146, 144, 148),
+	InnenWand = Color3.fromRGB(178, 176, 178),
+	InnenDecke = Color3.fromRGB(158, 157, 160),
+
+	Haut = Color3.fromRGB(214, 176, 152), -- Wachen-Koepfe
+}
+
+table.freeze(Config.Palette)
+
+--==========================================================================
+-- UI-FARBEN (Fake-OS) - bleibt dunkel, siehe oben
 --==========================================================================
 Config.Theme = {
 	Background = Color3.fromRGB(6, 8, 11),
@@ -861,8 +984,12 @@ export type District = {
 	Radius: number, -- in Bloecken
 	MinDifficulty: number,
 	MaxDifficulty: number,
-	Tint: Color3, -- Grundton der Haeuser
-	Neon: Color3, -- Leitfarbe der Schilder
+	-- Grundton der Haeuser. Vantorra ist eine HELLE Stadt bei Tag - diese
+	-- Werte liegen deshalb im Bereich echter Baumaterialien und nicht mehr
+	-- knapp ueber Schwarz. Wer die Stadt abdunkeln will, aendert sie hier
+	-- und in Config.Palette, sonst nirgends.
+	Tint: Color3,
+	Neon: Color3, -- Leitfarbe der Schilder (bleibt kraeftig, auch bei Tag)
 	Dense: boolean, -- true = voll ausgebaut
 }
 
@@ -870,39 +997,39 @@ Districts.List = {
 	{
 		Id = "OLDTOWN",
 		Name = "Altstadt",
-		Character = "Enge Gassen, Neon, Marktstaende.",
+		Character = "Enge Gassen, Putzfassaden, Marktstaende.",
 		GridX = 0,
 		GridZ = 0,
 		Radius = 1,
 		MinDifficulty = 1,
 		MaxDifficulty = 3,
-		Tint = Color3.fromRGB(34, 30, 36),
+		Tint = Color3.fromRGB(214, 196, 168), -- warmer Altbau-Putz
 		Neon = Color3.fromRGB(255, 45, 149),
 		Dense = true, -- der erste fertige Bezirk
 	},
 	{
 		Id = "DOCKS",
 		Name = "Hafen",
-		Character = "Container, Lagerhallen, wenig Licht.",
+		Character = "Container, Lagerhallen, kaum Deckung.",
 		GridX = -2,
 		GridZ = 1,
 		Radius = 1,
 		MinDifficulty = 3,
 		MaxDifficulty = 5,
-		Tint = Color3.fromRGB(26, 30, 34),
+		Tint = Color3.fromRGB(154, 162, 168), -- verwitterter Beton, Stahlgrau
 		Neon = Color3.fromRGB(0, 229, 255),
 		Dense = false,
 	},
 	{
 		Id = "FINANCE",
 		Name = "Finanzviertel",
-		Character = "Glas, Kameras ueberall, hell.",
+		Character = "Glas, Kameras ueberall, alles einsehbar.",
 		GridX = 2,
 		GridZ = -1,
 		Radius = 1,
 		MinDifficulty = 5,
 		MaxDifficulty = 7,
-		Tint = Color3.fromRGB(30, 36, 46),
+		Tint = Color3.fromRGB(190, 206, 220), -- Glasfassade, kuehl
 		Neon = Color3.fromRGB(198, 214, 226),
 		Dense = false,
 	},
@@ -915,7 +1042,7 @@ Districts.List = {
 		Radius = 1,
 		MinDifficulty = 6,
 		MaxDifficulty = 8,
-		Tint = Color3.fromRGB(38, 36, 32),
+		Tint = Color3.fromRGB(208, 192, 164), -- Sandstein, Villenputz
 		Neon = Color3.fromRGB(255, 176, 0),
 		Dense = false,
 	},
@@ -928,7 +1055,7 @@ Districts.List = {
 		Radius = 1,
 		MinDifficulty = 4,
 		MaxDifficulty = 6,
-		Tint = Color3.fromRGB(28, 28, 30),
+		Tint = Color3.fromRGB(168, 160, 150), -- Betonplatten, Blechhallen
 		Neon = Color3.fromRGB(0, 230, 118),
 		Dense = false,
 	},
@@ -2535,7 +2662,7 @@ return Vehicles
 </Item>
 </Item>
 </Item>
-<Item class="ServerScriptService" referent="GN67">
+<Item class="ServerScriptService" referent="GN68">
 <Properties>
 <string name="Name">ServerScriptService</string>
 </Properties>
@@ -3550,6 +3677,7 @@ type Guard = {
 	B: Vector3,
 	Alpha: number,
 	Direction: number,
+	Sight: number, -- Faktor auf die Sichtweite, aus dem Attribut SightFactor
 	Seen: { [Player]: number },
 }
 
@@ -3569,6 +3697,17 @@ local function register(inst: Instance)
 
 	local a = inst:GetAttribute("PatrolA")
 	local b = inst:GetAttribute("PatrolB")
+
+	-- Frueher haben alle Wachen nachts pauschal kuerzer gesehen. Seit die
+	-- Stadt dauerhaft hell ist, gibt es keine Nacht mehr - also entscheidet
+	-- jetzt der Ort: eine Wache im Inneren bekommt ueber das Attribut
+	-- SightFactor eine kuerzere Sichtweite als eine draussen. Kein Wert
+	-- gesetzt = Config.Cover.DefaultGuardSight.
+	local sightAttribute = inst:GetAttribute("SightFactor")
+	local sight = if typeof(sightAttribute) == "number"
+		then math.clamp(sightAttribute, Config.Cover.MinGuardSight, 1)
+		else Config.Cover.DefaultGuardSight
+
 	table.insert(guards, {
 		Model = inst,
 		Root = root,
@@ -3576,6 +3715,7 @@ local function register(inst: Instance)
 		B = if typeof(b) == "Vector3" then b else root.Position,
 		Alpha = 0,
 		Direction = 1,
+		Sight = sight,
 		Seen = {},
 	})
 end
@@ -3601,7 +3741,9 @@ rayParams.IgnoreWater = true
 local function canSee(guard: Guard, player: Player, position: Vector3): boolean
 	local toPlayer = position - guard.Root.Position
 	local distance = toPlayer.Magnitude
-	local range = B.GuardSightRange * TimeService.SightFactor()
+	-- Zwei Faktoren: die Tageszeit (nur wirksam, wenn der Zyklus laeuft) und
+	-- der Ort, an dem diese Wache steht.
+	local range = B.GuardSightRange * TimeService.SightFactor() * guard.Sight
 	if distance &gt; range or distance &lt; 0.1 then
 		return false
 	end
@@ -3979,6 +4121,18 @@ local function combined(list: { (Player) -&gt; number }, player: Player): number
 	return factor
 end
 
+-- DECKUNG. Ein Ziel mit Attribut Exposed = true steht auf offener Strasse:
+-- es zahlt mehr und kostet mehr Trace. Das ist der Nachfolger des alten
+-- Nachtbonus - seit die Stadt dauerhaft hell ist, entscheidet der Ort ueber
+-- das Risiko und nicht mehr die Uhrzeit. Siehe Config.Cover.
+local function isExposed(part: BasePart): boolean
+	local value = part:GetAttribute("Exposed")
+	if typeof(value) == "boolean" then
+		return value
+	end
+	return Config.TargetDefaults.Exposed
+end
+
 --==========================================================================
 -- Hilfsfunktionen
 --==========================================================================
@@ -4030,6 +4184,13 @@ local function resolve(session: Session, success: boolean, reason: string)
 		local cooling = EconomyService.GetRig(player).Cooling
 		traceDelta = Config.GetTraceGain(target.TraceGain * factor, cooling)
 
+		-- Offen stehende Ziele kosten mehr Trace. Der Aufschlag gilt auch bei
+		-- Fehlschlag und Abbruch: gesehen wurde man auf offener Strasse so
+		-- oder so, das ist ja gerade der Punkt.
+		if isExposed(target.Part) then
+			traceDelta *= Config.Cover.ExposedTraceFactor
+		end
+
 		-- Uebungsziel: erzeugt bewusst gar keinen Trace, damit niemand im
 		-- Tutorial auffliegt, bevor er weiss, was der Balken bedeutet.
 		if target.Part:GetAttribute("NoTrace") == true then
@@ -4054,9 +4215,14 @@ local function resolve(session: Session, success: boolean, reason: string)
 		end
 
 		if success then
-			-- Nachts bringt jeder Hack mehr. Das ist der mechanische Grund,
-			-- auf die Uhr zu schauen - sonst waere der Tageszyklus Deko.
-			reward = math.floor(target.Reward * TimeService.RewardMultiplier())
+			-- Drei Faktoren, alle serverseitig:
+			--   Tageszeit  nur wenn der Zyklus laeuft, sonst 1
+			--   Deckung    offene Ziele zahlen mehr (Config.Cover)
+			--   Angemeldet Endgame-Entscheidung aus Mission 10
+			local exposure = if isExposed(target.Part) then 1 + Config.Cover.ExposedRewardBonus else 1
+			reward = math.floor(
+				target.Reward * TimeService.RewardMultiplier() * exposure * combined(rewardModifiers, player)
+			)
 			cooldown = target.Cooldown
 			EconomyService.AwardUnsold(player, reward)
 			HackTargets.SetCooldown(player, target.Id, cooldown)
@@ -8654,18 +8820,27 @@ return ShopService
 <string name="Name">TimeService</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/TimeService.luau
 --!strict
--- GHOSTNET :: Tag und Nacht.
+-- GHOSTNET :: Das Licht ueber Vantorra.
 --
--- WARUM UEBERHAUPT EIN ZYKLUS
---   Dauerhaftes Tageslicht wuerde den kompletten visuellen Aufbau zerstoeren:
---   Neon, Bloom und die Terminal-Aesthetik funktionieren nur im Dunkeln.
---   Dauerhafte Nacht macht die Stadt eintoenig. Also beides - aber als
---   Mechanik, nicht als Kulisse:
+-- ZWEI BETRIEBSARTEN, EIN SCHALTER: Config.World.PermanentDay
 --
---     Nachts  +35 % auf jeden Hack-Ertrag, NPCs sehen kuerzer.
---     Tags    Haendler und Laeden offen, Kurse ruhiger.
+--   true (Standard)  Dauerhafter heller Tag. Die Sonne steht fest auf
+--                    Config.World.DayClock, es gibt keinen Zyklus und
+--                    keinen Heartbeat - das Licht wird EINMAL gesetzt.
+--                    Alle Tageszeit-Faktoren sind neutral.
 --
---   Damit hat der Spieler einen Grund, auf die Uhr zu schauen.
+--   false            Der komplette alte Zyklus laeuft wieder: 24 Stunden
+--                    in DayLengthMinutes, weiche Rampe um Auf- und
+--                    Untergang, nachts mehr Ertrag und kuerzere NPC-Sicht.
+--
+--   Der ganze Zyklus-Code steht bewusst noch hier. Umschalten kostet dann
+--   genau eine Zahl in Config und keine Zeile Code irgendwo sonst.
+--
+-- WO IST DER NACHTBONUS HIN
+--   Er haengt jetzt am Ort statt an der Uhrzeit: Config.Cover. Ein Ziel mit
+--   Attribut Exposed = true steht auf offener Strasse und zahlt mehr, kostet
+--   aber auch mehr Trace. Bei dauerhaftem Tag ist das der ehrlichere Ort
+--   dafuer - es gibt keine Dunkelheit mehr, in der man verschwinden koennte.
 --
 -- DER SERVER IST DIE UHR
 --   Lighting-Eigenschaften werden vom Server gesetzt und replizieren zu
@@ -8682,7 +8857,9 @@ local Remotes = require(ReplicatedStorage.Shared.Remotes)
 
 local TimeService = {}
 
-local clock = Config.World.StartClock -- 0..24
+local PERMANENT_DAY = Config.World.PermanentDay
+
+local clock = if PERMANENT_DAY then Config.World.DayClock else Config.World.StartClock -- 0..24
 local lastPhase = ""
 
 -- Wer auf den Wechsel reagieren will (Haendler auf/zu, Verkehrsdichte).
@@ -8701,6 +8878,9 @@ function TimeService.GetClock(): number
 end
 
 function TimeService.IsNight(): boolean
+	if PERMANENT_DAY then
+		return false
+	end
 	return clock &gt;= Config.World.NightStartHour or clock &lt; Config.World.DayStartHour
 end
 
@@ -8712,18 +8892,26 @@ function TimeService.GetPhase(): string
 	return if TimeService.IsNight() then "NIGHT" else "DAY"
 end
 
--- Faktor auf Hack-Ertraege. Wird vom HackService gelesen.
+-- Faktor auf Hack-Ertraege. Bei dauerhaftem Tag immer 1 - der Bonus haengt
+-- dann am Ziel (Config.Cover), nicht an der Uhrzeit.
 function TimeService.RewardMultiplier(): number
 	return if TimeService.IsNight() then 1 + Config.World.NightRewardBonus else 1
 end
 
--- Wie weit NPCs sehen (Phase 5/6 nutzt das).
+-- Wie weit NPCs sehen. Bei dauerhaftem Tag immer 1; abweichen kann eine
+-- Wache dann nur noch ueber ihr eigenes Attribut "SightFactor".
 function TimeService.SightFactor(): number
 	return if TimeService.IsNight() then Config.World.NightSightFactor else 1
 end
 
 -- Wie stark die Darknet-Kurse schwanken duerfen.
+-- Wichtig: bei dauerhaftem Tag ist das 1 und NICHT DayMarketCalm. Der
+-- ruhige Tag war die Gegenseite einer bewegten Nacht - ohne Nacht waere
+-- daraus eine dauerhafte Drosselung des Darknets geworden.
 function TimeService.MarketVolatilityFactor(): number
+	if PERMANENT_DAY then
+		return 1
+	end
 	return if TimeService.IsNight() then 1 else Config.World.DayMarketCalm
 end
 
@@ -8764,15 +8952,45 @@ local function ensureEffects()
 	if not atmosphere then
 		local created = Instance.new("Atmosphere")
 		created.Name = "Atmosphere"
-		created.Haze = 2
-		created.Glare = 0.2
-		created.Color = Color3.fromRGB(150, 160, 175)
-		created.Decay = Color3.fromRGB(60, 70, 90)
+		created.Haze = if PERMANENT_DAY then 0.6 else 2
+		created.Glare = if PERMANENT_DAY then 0.05 else 0.2
+		created.Color = if PERMANENT_DAY
+			then Color3.fromRGB(212, 220, 232)
+			else Color3.fromRGB(150, 160, 175)
+		created.Decay = if PERMANENT_DAY
+			then Color3.fromRGB(150, 168, 190)
+			else Color3.fromRGB(60, 70, 90)
 		created.Parent = Lighting
 		atmosphere = created
 	end
 	bloom = Lighting:FindFirstChildOfClass("BloomEffect")
 	colour = Lighting:FindFirstChildOfClass("ColorCorrectionEffect")
+end
+
+-- Dauerhafter Tag: einmal setzen, danach nie wieder anfassen.
+local function applyDaylight()
+	local W = Config.World
+
+	Lighting.ClockTime = W.DayClock
+	Lighting.GeographicLatitude = 12 -- Sonne hoch, aber nicht senkrecht
+	Lighting.Brightness = W.SunBrightness
+	Lighting.ExposureCompensation = 0
+	Lighting.FogEnd = W.SunFog
+	Lighting.FogStart = 0
+	Lighting.OutdoorAmbient = W.SunOutdoorAmbient
+	Lighting.Ambient = W.SunAmbient
+
+	if atmosphere then
+		atmosphere.Density = W.SunAtmosphere
+	end
+	if bloom then
+		bloom.Intensity = W.SunBloom
+	end
+	if colour then
+		colour.Saturation = W.SunSaturation
+		colour.TintColor = W.SunTint
+		colour.Brightness = 0
+	end
 end
 
 local function applyLighting()
@@ -8811,6 +9029,7 @@ local function payload(): { [string]: any }
 		IsNight = TimeService.IsNight(),
 		RewardBonus = TimeService.RewardMultiplier() - 1,
 		DayLengthMinutes = Config.World.DayLengthMinutes,
+		PermanentDay = PERMANENT_DAY,
 	}
 end
 
@@ -8843,7 +9062,6 @@ function TimeService.Init()
 
 	Lighting.GlobalShadows = true
 	ensureEffects()
-	applyLighting()
 
 	Players.PlayerAdded:Connect(function(player)
 		task.defer(TimeService.SyncTo, player)
@@ -8851,6 +9069,16 @@ function TimeService.Init()
 	for _, player in Players:GetPlayers() do
 		task.defer(TimeService.SyncTo, player)
 	end
+
+	if PERMANENT_DAY then
+		-- Kein Zyklus, also auch kein Heartbeat. Das Licht steht.
+		applyDaylight()
+		lastPhase = "DAY"
+		print(("[GHOSTNET] TimeService bereit. Dauerhafter Tag (%s Uhr)."):format(TimeService.FormatClock()))
+		return
+	end
+
+	applyLighting()
 
 	-- 24 Spielstunden pro DayLengthMinutes Echtzeit.
 	local hoursPerSecond = 24 / (Config.World.DayLengthMinutes * 60)
@@ -9675,8 +9903,14 @@ function TrafficService.Init()
 		end
 	end)
 
-	-- Nachfuellen. Nachts duenner - das ist der zweite sichtbare Unterschied
-	-- zwischen Tag und Nacht.
+	-- Nachfuellen. Nachts duenner - greift nur, wenn der Tag-/Nachtzyklus
+	-- laeuft. Bei Config.World.PermanentDay ist IsNight() immer false, die
+	-- Stadt faehrt also dauerhaft am vollen Limit.
+	--
+	-- ACHTUNG BEIM MESSEN: frueher startete der Server nachts, also mit der
+	-- halben Menge. Wer jetzt zum ersten Mal in den MicroProfiler schaut,
+	-- sieht die doppelte Last gegenueber dem alten Standardzustand.
+	-- T.MaxActive ist und bleibt der wichtigste Regler.
 	task.spawn(function()
 		while true do
 			task.wait(T.SpawnTick)
@@ -10164,6 +10398,17 @@ local function colourOf(name: string): Color3
 	return COLOURS[name] or COLOURS.Schwarz
 end
 
+-- Oeffnungszeiten. Bei dauerhaftem Tag gibt es keinen Abend mehr, an dem
+-- zugesperrt werden koennte - der Haendler hat dann immer auf. Schaltet man
+-- Config.World.PermanentDay wieder aus, gelten sofort wieder die Zeiten.
+local function dealerOpen(): boolean
+	if Config.World.PermanentDay then
+		return true
+	end
+	local clock = TimeService.GetClock()
+	return clock &gt;= Config.Dealer.OpenHour and clock &lt; Config.Dealer.CloseHour
+end
+
 --==========================================================================
 -- Lesen
 --==========================================================================
@@ -10217,8 +10462,7 @@ function VehicleService.Sync(player: Player)
 		Owned = owned,
 		Spawned = if current and current.Parent then current:GetAttribute("ClassId") else "",
 		MaxSpawned = Config.Vehicle.MaxSpawned,
-		DealerOpen = TimeService.GetClock() &gt;= Config.Dealer.OpenHour
-			and TimeService.GetClock() &lt; Config.Dealer.CloseHour,
+		DealerOpen = dealerOpen(),
 		Colours = Config.Dealer.ColourOptions,
 		RepaintCost = Config.Dealer.RepaintCost,
 	})
@@ -10307,11 +10551,6 @@ end
 --==========================================================================
 -- Kaufen und Lackieren
 --==========================================================================
-
-local function dealerOpen(): boolean
-	local clock = TimeService.GetClock()
-	return clock &gt;= Config.Dealer.OpenHour and clock &lt; Config.Dealer.CloseHour
-end
 
 local function nearDealer(player: Player): boolean
 	local position = Geometry.AlivePosition(player)
@@ -10473,11 +10712,17 @@ function VehicleService.Init()
 		end
 	end)
 
-	print(("[GHOSTNET] VehicleService bereit. %d gleichzeitig ausgeparkt, Haendler %d-%d Uhr."):format(
-		Config.Vehicle.MaxSpawned,
-		Config.Dealer.OpenHour,
-		Config.Dealer.CloseHour
-	))
+	if Config.World.PermanentDay then
+		print(("[GHOSTNET] VehicleService bereit. %d gleichzeitig ausgeparkt, Haendler durchgehend offen."):format(
+			Config.Vehicle.MaxSpawned
+		))
+	else
+		print(("[GHOSTNET] VehicleService bereit. %d gleichzeitig ausgeparkt, Haendler %d-%d Uhr."):format(
+			Config.Vehicle.MaxSpawned,
+			Config.Dealer.OpenHour,
+			Config.Dealer.CloseHour
+		))
+	end
 end
 
 return VehicleService
@@ -10495,6 +10740,10 @@ return VehicleService
 <ProtectedString name="Source">-- ServerScriptService/World/BankInterior.server.luau
 --!strict
 -- GHOSTNET :: Die Nakamura Bank von innen.
+--
+-- Alles hier drin ist GEDECKT (kein Attribut Exposed): drinnen zahlt normal
+-- und ist sicherer. Der Aufschlag fuer offene Ziele liegt draussen an der
+-- Fassade - siehe Config.Cover.
 --
 -- DREI EBENEN, DREI WEGE HINEIN. Ein Raubzug, der jedes Mal identisch
 -- ablaeuft, ist nach dem dritten Mal langweilig.
@@ -10568,7 +10817,7 @@ part(
 	"HalleBoden",
 	Vector3.new(32, 1, 26),
 	CFrame.new(base + Vector3.new(0, 1, 2)),
-	Color3.fromRGB(26, 28, 34),
+	Config.Palette.InnenBoden,
 	Enum.Material.Marble
 )
 
@@ -10576,7 +10825,7 @@ part(
 	"Schaltertresen",
 	Vector3.new(22, 4, 2),
 	CFrame.new(base + Vector3.new(0, 3.5, -6)),
-	Color3.fromRGB(40, 44, 54),
+	Config.Palette.Holz,
 	Enum.Material.Wood
 )
 
@@ -10586,7 +10835,7 @@ for index, offset in { Vector3.new(-11, 15, 8), Vector3.new(11, 15, 8) } do
 		("HalleKamera%d"):format(index),
 		Vector3.new(1.4, 1.4, 2.6),
 		CFrame.new(base + offset) * CFrame.Angles(math.rad(-30), 0, 0),
-		Color3.fromRGB(24, 30, 38),
+		Config.Palette.MetallDunkel,
 		Enum.Material.Metal
 	)
 	light(cam, Config.Theme.Magenta, 12)
@@ -10615,7 +10864,7 @@ do
 	root.Name = "Root"
 	root.Size = Vector3.new(2, 5.6, 1.4)
 	root.CFrame = CFrame.new(route.A)
-	root.Color = Color3.fromRGB(30, 34, 44)
+	root.Color = Config.Palette.BetonDunkel
 	root.Material = Enum.Material.Fabric
 	root.Anchored = true
 	root.CanCollide = false
@@ -10626,7 +10875,7 @@ do
 	local head = Instance.new("Part")
 	head.Name = "Kopf"
 	head.Size = Vector3.new(1.2, 1.2, 1.2)
-	head.Color = Color3.fromRGB(180, 150, 130)
+	head.Color = Config.Palette.Haut
 	head.Anchored = true
 	head.CanCollide = false
 	head.CanQuery = false
@@ -10642,6 +10891,10 @@ do
 	guard:SetAttribute("PatrolA", route.A)
 	guard:SetAttribute("PatrolB", route.B)
 	guard:SetAttribute("AlarmGroup", "BANK")
+	-- Drinnen sieht man weniger weit als auf der Strasse. Frueher hat das die
+	-- Nacht erledigt; seit die Stadt dauerhaft hell ist, macht es der Ort -
+	-- und der Ort steht als Attribut am Objekt, nicht im Code.
+	guard:SetAttribute("SightFactor", Config.Bank.IndoorSightFactor)
 	guard.Parent = folder
 	CollectionService:AddTag(guard, Config.GuardTag)
 end
@@ -10654,7 +10907,7 @@ part(
 	"SchleusenWand",
 	Vector3.new(32, 16, 1.5),
 	CFrame.new(base + Vector3.new(0, 8, -9)),
-	Color3.fromRGB(22, 25, 32),
+	Config.Palette.Beton,
 	Enum.Material.Metal
 )
 
@@ -10662,7 +10915,7 @@ local sluice = part(
 	"Schleuse",
 	Vector3.new(7, 11, 1),
 	CFrame.new(base + Vector3.new(0, 6, -9)),
-	Color3.fromRGB(16, 22, 30),
+	Config.Palette.MetallDunkel,
 	Enum.Material.DiamondPlate
 )
 light(sluice, Config.Theme.Cyan, 14)
@@ -10682,7 +10935,7 @@ part(
 	"ServerraumBoden",
 	Vector3.new(32, 1, 14),
 	CFrame.new(base + Vector3.new(0, 1, -17)),
-	Color3.fromRGB(20, 23, 29),
+	Config.Palette.InnenBoden,
 	Enum.Material.Concrete
 )
 
@@ -10691,7 +10944,7 @@ for index = 1, 4 do
 		("Serverschrank%d"):format(index),
 		Vector3.new(3, 8, 2),
 		CFrame.new(base + Vector3.new(-11 + (index - 1) * 7, 5, -20)),
-		Color3.fromRGB(18, 20, 26),
+		Config.Palette.MetallDunkel,
 		Enum.Material.Metal
 	)
 	local strip = part(
@@ -10713,7 +10966,7 @@ local vent = part(
 	"Lueftungsgitter",
 	Vector3.new(5, 0.6, 5),
 	CFrame.new(base + Vector3.new(0, 18.5, -17)),
-	Color3.fromRGB(44, 48, 56),
+	Config.Palette.Metall,
 	Enum.Material.DiamondPlate
 )
 light(vent, Config.Theme.Amber, 10)
@@ -10735,7 +10988,7 @@ for y = 4, 18, 4 do
 		"DachLeiter",
 		Vector3.new(2.6, 0.4, 1.2),
 		CFrame.new(base + Vector3.new(18, y, 12)),
-		Color3.fromRGB(52, 54, 58),
+		Config.Palette.Metall,
 		Enum.Material.Metal
 	).CanCollide = true
 end
@@ -10748,7 +11001,7 @@ part(
 	"TresorraumBoden",
 	Vector3.new(24, 1, 14),
 	CFrame.new(base + Vector3.new(0, 1, -30)),
-	Color3.fromRGB(18, 20, 26),
+	Config.Palette.MetallDunkel,
 	Enum.Material.Metal
 )
 
@@ -10761,7 +11014,7 @@ for index = 1, Config.Bank.VaultBoxes do
 		("Schliessfach%d"):format(index),
 		Vector3.new(3, 3, 1),
 		CFrame.new(base + Vector3.new(-7 + column * 7, 4 + row * 4, -35)),
-		Color3.fromRGB(46, 50, 60),
+		Config.Palette.Metall,
 		Enum.Material.Metal
 	)
 	hackable(box, {
@@ -10791,10 +11044,16 @@ print("[GHOSTNET] Bank-Innenraum gebaut: Halle, Sicherheitsbereich, Tresorraum, 
 -- Baut Strassen, Gehwege und Haeuser entlang des Graphen aus RoadNetwork.
 -- Reine Geometrie - kein Objekt hier traegt Spiellogik.
 --
+-- ALLE FARBEN KOMMEN AUS Config.Palette
+--   Hier steht kein einziger Farbwert. Die Stadt heller oder dunkler zu
+--   machen ist eine Aenderung an der Palette, nicht an diesem Skript.
+--
 -- LEISTUNGSBUDGET (verbindlich, nicht optional)
 --   Alles Dekorative: Anchored, CanQuery = false, CanTouch = false,
---   CastShadow = false bei kleinen Teilen. Fenster sind Neon-FLAECHEN, keine
---   Lichtquellen - hunderte PointLights waeren auf dem Handy nicht bezahlbar.
+--   CastShadow = false bei kleinen Teilen. Fenster sind spiegelnde
+--   FLAECHEN, keine Lichtquellen - hunderte PointLights waeren auf dem
+--   Handy nicht bezahlbar. Bei Tageslicht sieht man sie ohnehin kaum,
+--   deshalb entfallen sie unter Config.World.PermanentDay ganz.
 --
 --   Nur der als "Dense" markierte Bezirk wird voll ausgebaut. Der Rest bleibt
 --   Rohbau, bis er dran ist: eine grosse leere Stadt ist schlimmer als ein
@@ -10876,7 +11135,7 @@ for _, node in RoadNetwork.All() do
 			then Vector3.new(length, 1, C.RoadWidth)
 			else Vector3.new(C.RoadWidth, 1, length)
 
-		local road = decor("Fahrbahn", size, CFrame.new(mid), Color3.fromRGB(14, 15, 19), Enum.Material.Slate, roads)
+		local road = decor("Fahrbahn", size, CFrame.new(mid), Config.Palette.Asphalt, Enum.Material.Slate, roads)
 		road.Reflectance = Config.World.RoadReflectance
 		road.CanCollide = true
 
@@ -10892,7 +11151,7 @@ for _, node in RoadNetwork.All() do
 				"Gehweg",
 				sidewalkSize,
 				CFrame.new(mid + offset),
-				Color3.fromRGB(26, 27, 32),
+				Config.Palette.Gehweg,
 				Enum.Material.Concrete,
 				roads
 			)
@@ -10908,7 +11167,7 @@ for _, node in RoadNetwork.All() do
 				"Markierung",
 				if horizontal then Vector3.new(6, 0.06, 0.6) else Vector3.new(0.6, 0.06, 6),
 				CFrame.new(along + Vector3.new(0, 0.55, 0)),
-				Color3.fromRGB(92, 90, 76),
+				Config.Palette.Markierung,
 				Enum.Material.SmoothPlastic,
 				roads
 			)
@@ -10935,7 +11194,9 @@ local function building(centre: Vector3, footprint: Vector3, district: Districts
 		"Erdgeschoss",
 		Vector3.new(footprint.X, 12, footprint.Z),
 		CFrame.new(centre + Vector3.new(0, 6, 0)),
-		tint:Lerp(Color3.new(0, 0, 0), 0.35),
+		-- Erdgeschoss abgesetzt, aber nicht Richtung Schwarz: bei heller
+		-- Stadt wirkt ein schwarzer Sockel wie ein Loch in der Fassade.
+		tint:Lerp(Config.Palette.BetonDunkel, 0.55),
 		Enum.Material.Concrete,
 		blocks
 	).CanCollide = true
@@ -10951,21 +11212,23 @@ local function building(centre: Vector3, footprint: Vector3, district: Districts
 	).CanCollide = true
 
 	if dense then
+		-- Fensterbaender: bei Tag spiegelndes Glas statt leuchtender Neonflaechen.
 		local rows = math.floor((height - 14) / 10)
 		for row = 1, rows do
 			if rng:NextNumber() &gt; Config.World.WindowChance then
 				continue
 			end
 			for _, face in { 1, -1 } do
-				local lit = decor(
+				local glass = decor(
 					"Fenster",
 					Vector3.new(footprint.X * 0.7, 2.4, 0.3),
 					CFrame.new(centre + Vector3.new(0, 12 + row * 10, face * (footprint.Z * 0.5 + 0.2))),
-					Color3.fromRGB(rng:NextInteger(40, 95), rng:NextInteger(60, 125), rng:NextInteger(95, 165)),
-					Enum.Material.Neon,
+					Config.Palette.Glas,
+					Enum.Material.SmoothPlastic,
 					blocks
 				)
-				lit.Transparency = 0.2
+				glass.Reflectance = Config.World.WindowReflectance
+				glass.Transparency = 0.1
 			end
 		end
 	end
@@ -10976,7 +11239,7 @@ local function building(centre: Vector3, footprint: Vector3, district: Districts
 		"Dach",
 		Vector3.new(footprint.X + 1.5, 1.2, footprint.Z + 1.5),
 		CFrame.new(centre + Vector3.new(0, height, 0)),
-		tint:Lerp(Color3.new(0, 0, 0), 0.5),
+		Config.Palette.Dach,
 		Enum.Material.Metal,
 		blocks
 	).CanCollide = true
@@ -10989,7 +11252,7 @@ local function building(centre: Vector3, footprint: Vector3, district: Districts
 			"Bruestung",
 			size,
 			CFrame.new(centre + Vector3.new(side[1] * footprint.X * 0.5, height + 2, side[2] * footprint.Z * 0.5)),
-			tint:Lerp(Color3.new(0, 0, 0), 0.5),
+			Config.Palette.Dach,
 			Enum.Material.Metal,
 			blocks
 		).CanCollide = true
@@ -11003,7 +11266,7 @@ local function building(centre: Vector3, footprint: Vector3, district: Districts
 				"Sprosse",
 				Vector3.new(2.6, 0.4, 1.2),
 				CFrame.new(x, y, centre.Z),
-				Color3.fromRGB(52, 54, 58),
+				Config.Palette.Metall,
 				Enum.Material.Metal,
 				blocks
 			).CanCollide = true
@@ -11020,7 +11283,9 @@ local function building(centre: Vector3, footprint: Vector3, district: Districts
 			Enum.Material.Neon,
 			blocks
 		)
-		if rng:NextNumber() &lt; C.LightChance then
+		-- Bei Tageslicht kostet ein PointLight Bildrate und bringt optisch
+		-- nichts. Das Schild bleibt, das Licht entfaellt.
+		if not Config.World.PermanentDay and rng:NextNumber() &lt; C.LightChance then
 			local light = Instance.new("PointLight")
 			light.Color = district.Neon
 			light.Brightness = Config.World.SignBrightness
@@ -11078,13 +11343,18 @@ print(("[GHOSTNET] Vantorra gebaut: %d ausgebaute Bloecke, %d im Rohbau."):forma
 --!strict
 -- GHOSTNET :: Die Stadt drumherum.
 --
--- Ersetzt die nackte Baseplate durch eine naechtliche Strassenzeile: nasse
--- Fahrbahn, Neonschilder, Haeuserfronten. Reine Kulisse - kein einziges
--- Objekt hier traegt einen Tag oder eine Spiellogik.
+-- Ersetzt die nackte Baseplate durch eine Strassenzeile bei Tag: helle
+-- Fahrbahn, Betonfronten, Glasfenster. Reine Kulisse - kein einziges Objekt
+-- hier traegt einen Tag oder eine Spiellogik.
+--
+-- ALLE FARBEN KOMMEN AUS Config.Palette
+--   In dieser Datei steht kein einziger Farbwert mehr. Wer die Stadt heller
+--   oder dunkler will, aendert die Palette und sonst nichts.
 --
 -- SPARSAM MIT EFFEKTEN
---   Ein Hacking-Spiel lebt von Ruhe und wenigen scharfen Lichtern, nicht von
---   Partikeln. Deshalb: viel Dunkel, wenige Neonflaechen, keine Emitter.
+--   Ein Hacking-Spiel lebt von Ruhe, nicht von Partikeln. Bei Tageslicht
+--   sieht man von PointLights ohnehin fast nichts - deshalb werden sie bei
+--   Config.World.PermanentDay gar nicht erst erzeugt. Geschenkte Bildrate.
 --
 -- LEISTUNG
 --   Alles ist anchored, CanQuery und CanTouch sind aus. Wer auf schwachen
@@ -11125,8 +11395,8 @@ local function decor(name: string, size: Vector3, cframe: CFrame, colour: Color3
 end
 
 --==========================================================================
--- Nasse Fahrbahn
--- Reflexion kommt ueber Material und Reflectance, nicht ueber eine Textur -
+-- Fahrbahn
+-- Der Glanz kommt ueber Material und Reflectance, nicht ueber eine Textur -
 -- es soll keine Asset-Id noetig sein.
 --==========================================================================
 do
@@ -11134,7 +11404,7 @@ do
 		"Fahrbahn",
 		Vector3.new(Config.World.RoadWidth, 1, Config.World.RoadLength),
 		CFrame.new(0, 0.05, -Config.World.RoadLength * 0.25),
-		Color3.fromRGB(14, 15, 19),
+		Config.Palette.Asphalt,
 		Enum.Material.Slate
 	)
 	road.Reflectance = Config.World.RoadReflectance
@@ -11145,7 +11415,7 @@ do
 			"Markierung",
 			Vector3.new(0.6, 0.05, 7),
 			CFrame.new(0, 0.6, -Config.World.RoadLength * 0.25 + i),
-			Color3.fromRGB(90, 88, 74),
+			Config.Palette.Markierung,
 			Enum.Material.SmoothPlastic
 		)
 	end
@@ -11156,7 +11426,7 @@ do
 			"Gehweg",
 			Vector3.new(10, 1.4, Config.World.RoadLength),
 			CFrame.new(side * (Config.World.RoadWidth * 0.5 + 5), 0.7, -Config.World.RoadLength * 0.25),
-			Color3.fromRGB(26, 27, 32),
+			Config.Palette.Gehweg,
 			Enum.Material.Concrete
 		)
 	end
@@ -11173,29 +11443,28 @@ local function building(x: number, z: number, width: number, depth: number, heig
 		"Haus",
 		Vector3.new(width, height, depth),
 		CFrame.new(x, height * 0.5, z),
-		Color3.fromRGB(
-			rng:NextInteger(18, 30),
-			rng:NextInteger(19, 31),
-			rng:NextInteger(24, 38)
-		),
+		-- Vielfalt ueber die Mischung zweier Palettentoene statt ueber
+		-- freie Zufallsfarben: so bleibt die Zeile bei jeder Palette stimmig.
+		Config.Palette.Beton:Lerp(Config.Palette.BetonHell, rng:NextNumber()),
 		Enum.Material.Concrete
 	)
 
-	-- Ein paar erleuchtete Fenster. Nur Farbe, kein Licht - hunderte
-	-- PointLights waeren auf dem Handy nicht bezahlbar.
+	-- Fensterbaender. Bei Tag sind das spiegelnde Glasflaechen, keine
+	-- Leuchtflaechen - erleuchtete Fenster mittags sehen falsch aus.
 	local rows = math.floor(height / 9)
 	for row = 1, rows do
 		if rng:NextNumber() &gt; Config.World.WindowChance then
 			continue
 		end
-		local lit = decor(
+		local glass = decor(
 			"Fenster",
 			Vector3.new(width * 0.62, 2.2, 0.3),
 			CFrame.new(x, row * 9 - 2, z + depth * 0.5 + 0.2),
-			Color3.fromRGB(rng:NextInteger(40, 90), rng:NextInteger(60, 120), rng:NextInteger(90, 160)),
-			Enum.Material.Neon
+			Config.Palette.Glas,
+			Enum.Material.SmoothPlastic
 		)
-		lit.Transparency = 0.25
+		glass.Reflectance = Config.World.WindowReflectance
+		glass.Transparency = 0.1
 	end
 
 	-- Genau ein Neonschild je Haus, mit echtem Licht.
@@ -11208,11 +11477,15 @@ local function building(x: number, z: number, width: number, depth: number, heig
 			colour,
 			Enum.Material.Neon
 		)
-		local light = Instance.new("PointLight")
-		light.Color = colour
-		light.Brightness = Config.World.SignBrightness
-		light.Range = Config.World.SignRange
-		light.Parent = signPart
+		-- Bei Tageslicht ist ein PointLight praktisch unsichtbar und trotzdem
+		-- teuer. Das Schild selbst bleibt, das Licht sparen wir uns.
+		if not Config.World.PermanentDay then
+			local light = Instance.new("PointLight")
+			light.Color = colour
+			light.Brightness = Config.World.SignBrightness
+			light.Range = Config.World.SignRange
+			light.Parent = signPart
+		end
 	end
 end
 
@@ -11332,7 +11605,7 @@ part(
 	"ShowroomBoden",
 	Vector3.new(74, 1, 40),
 	CFrame.new(dealerBase + Vector3.new(0, 0.5, 0)),
-	Color3.fromRGB(24, 26, 32),
+	Config.Palette.InnenBoden,
 	Enum.Material.Concrete
 ).CanCollide = true
 
@@ -11340,7 +11613,7 @@ part(
 	"ShowroomRueckwand",
 	Vector3.new(74, 18, 1),
 	CFrame.new(dealerBase + Vector3.new(0, 9, -20)),
-	Color3.fromRGB(20, 22, 28),
+	Config.Palette.InnenWand,
 	Enum.Material.Concrete
 ).CanCollide = true
 
@@ -11348,7 +11621,7 @@ part(
 	"ShowroomDach",
 	Vector3.new(75, 1, 41),
 	CFrame.new(dealerBase + Vector3.new(0, 18, 0)),
-	Color3.fromRGB(16, 18, 23),
+	Config.Palette.Dach,
 	Enum.Material.Metal
 ).CanCollide = true
 
@@ -11356,7 +11629,7 @@ local counter = part(
 	"HaendlerTresen",
 	Vector3.new(12, 4, 3),
 	CFrame.new(dealerBase + Vector3.new(0, 2.5, -16)),
-	Color3.fromRGB(40, 44, 54),
+	Config.Palette.Metall,
 	Enum.Material.Metal
 )
 counter.CanCollide = true
@@ -11366,7 +11639,11 @@ CollectionService:AddTag(counter, Config.DealerTag)
 sign(
 	counter,
 	"AUTOHAUS",
-	("offen %d-%d Uhr"):format(Config.Dealer.OpenHour, Config.Dealer.CloseHour),
+	-- Bei dauerhaftem Tag gibt es keinen Feierabend, auf den das Schild
+	-- hinweisen koennte. Sonst stuende hier eine Zeit, die nie eintritt.
+	if Config.World.PermanentDay
+		then "durchgehend offen"
+		else ("offen %d-%d Uhr"):format(Config.Dealer.OpenHour, Config.Dealer.CloseHour),
 	Config.Theme.Amber,
 	4.5
 )
@@ -11407,7 +11684,7 @@ part(
 	"GarageBoden",
 	Vector3.new(26, 1, 22),
 	CFrame.new(garageBase + Vector3.new(0, 0.5, 0)),
-	Color3.fromRGB(22, 24, 30),
+	Config.Palette.InnenBoden,
 	Enum.Material.Concrete
 ).CanCollide = true
 
@@ -11415,7 +11692,7 @@ part(
 	"GarageDach",
 	Vector3.new(27, 1, 23),
 	CFrame.new(garageBase + Vector3.new(0, 12, 0)),
-	Color3.fromRGB(16, 18, 22),
+	Config.Palette.Dach,
 	Enum.Material.Metal
 ).CanCollide = true
 
@@ -11424,7 +11701,7 @@ for _, side in { -1, 1 } do
 		"GarageWand",
 		Vector3.new(1, 12, 22),
 		CFrame.new(garageBase + Vector3.new(side * 13, 6, 0)),
-		Color3.fromRGB(24, 26, 32),
+		Config.Palette.InnenBoden,
 		Enum.Material.Concrete
 	).CanCollide = true
 end
@@ -11607,7 +11884,7 @@ do
 		Name = "TerminalSockel",
 		Size = Vector3.new(3, 3, 2),
 		CFrame = CFrame.new(base + Vector3.new(0, 1.5, 0)),
-		Color = Color3.fromRGB(26, 30, 38),
+		Color = Config.Palette.MetallDunkel,
 		Material = Enum.Material.Metal,
 	})
 
@@ -11651,35 +11928,35 @@ do
 		Name = "LadenBoden",
 		Size = Vector3.new(24, 1, 18),
 		CFrame = CFrame.new(base + Vector3.new(0, 0.5, -2)),
-		Color = Color3.fromRGB(22, 25, 31),
+		Color = Config.Palette.InnenBoden,
 		Material = Enum.Material.Concrete,
 	})
 	makePart({
 		Name = "LadenRueckwand",
 		Size = Vector3.new(24, 12, 1),
 		CFrame = CFrame.new(base + Vector3.new(0, 6, -11)),
-		Color = Color3.fromRGB(28, 32, 40),
+		Color = Config.Palette.Beton,
 		Material = Enum.Material.Concrete,
 	})
 	makePart({
 		Name = "LadenWandLinks",
 		Size = Vector3.new(1, 12, 18),
 		CFrame = CFrame.new(base + Vector3.new(-12, 6, -2)),
-		Color = Color3.fromRGB(28, 32, 40),
+		Color = Config.Palette.Beton,
 		Material = Enum.Material.Concrete,
 	})
 	makePart({
 		Name = "LadenWandRechts",
 		Size = Vector3.new(1, 12, 18),
 		CFrame = CFrame.new(base + Vector3.new(12, 6, -2)),
-		Color = Color3.fromRGB(28, 32, 40),
+		Color = Config.Palette.Beton,
 		Material = Enum.Material.Concrete,
 	})
 	makePart({
 		Name = "LadenDach",
 		Size = Vector3.new(25, 0.8, 19),
 		CFrame = CFrame.new(base + Vector3.new(0, 12, -2)),
-		Color = Color3.fromRGB(18, 21, 27),
+		Color = Config.Palette.Dach,
 		Material = Enum.Material.Metal,
 	})
 	-- Front mit Tueroeffnung
@@ -11687,21 +11964,21 @@ do
 		Name = "LadenFrontLinks",
 		Size = Vector3.new(9, 12, 1),
 		CFrame = CFrame.new(base + Vector3.new(-7.5, 6, 7)),
-		Color = Color3.fromRGB(28, 32, 40),
+		Color = Config.Palette.Beton,
 		Material = Enum.Material.Concrete,
 	})
 	makePart({
 		Name = "LadenFrontRechts",
 		Size = Vector3.new(9, 12, 1),
 		CFrame = CFrame.new(base + Vector3.new(7.5, 6, 7)),
-		Color = Color3.fromRGB(28, 32, 40),
+		Color = Config.Palette.Beton,
 		Material = Enum.Material.Concrete,
 	})
 	makePart({
 		Name = "LadenSturz",
 		Size = Vector3.new(6, 3, 1),
 		CFrame = CFrame.new(base + Vector3.new(0, 10.5, 7)),
-		Color = Color3.fromRGB(28, 32, 40),
+		Color = Config.Palette.Beton,
 		Material = Enum.Material.Concrete,
 	})
 
@@ -11710,7 +11987,7 @@ do
 		Name = "Tuerschloss",
 		Size = Vector3.new(6, 9, 0.7),
 		CFrame = CFrame.new(base + Vector3.new(0, 4.5, 7)),
-		Color = Color3.fromRGB(20, 26, 34),
+		Color = Config.Palette.MetallDunkel,
 		Material = Enum.Material.Metal,
 	})
 	accentLight(lock, Config.Theme.Amber, 14)
@@ -11722,6 +11999,7 @@ do
 		RequiredLevel = 1,
 		OnSuccess = "DoorOpen",
 		DownTime = 45, -- lange genug offen, um wirklich reinzukommen
+		Exposed = true, -- Ladenfront zur Strasse
 		Cooldown = Config.Raid.StoreCooldown,
 		AlarmGroup = "STORE",
 		AlarmStarts = true,
@@ -11733,14 +12011,14 @@ do
 		Name = "TresorSockel",
 		Size = Vector3.new(6, 1, 4),
 		CFrame = CFrame.new(base + Vector3.new(0, 1.5, -9)),
-		Color = Color3.fromRGB(24, 28, 34),
+		Color = Config.Palette.BetonDunkel,
 		Material = Enum.Material.Concrete,
 	})
 	local safe = makePart({
 		Name = "Tresor",
 		Size = Vector3.new(5, 5, 3.4),
 		CFrame = CFrame.new(base + Vector3.new(0, 4.5, -9)),
-		Color = Color3.fromRGB(32, 38, 48),
+		Color = Config.Palette.Metall,
 		Material = Enum.Material.Metal,
 	})
 	accentLight(safe, Config.Theme.Magenta, 14)
@@ -11755,6 +12033,8 @@ do
 		Cooldown = Config.Raid.StoreCooldown,
 		AlarmGroup = "STORE",
 		AlarmEnds = true,
+		-- Kein Exposed: der Tresor steht im Laden. Wer erst reinkommt,
+		-- arbeitet dort in Ruhe.
 	})
 end
 
@@ -11771,56 +12051,56 @@ do
 		Name = "ApartmentBoden",
 		Size = Vector3.new(20, 1, 18),
 		CFrame = CFrame.new(base + Vector3.new(0, 0.5, 0)),
-		Color = Color3.fromRGB(26, 24, 30),
+		Color = Config.Palette.Holz,
 		Material = Enum.Material.WoodPlanks,
 	})
 	makePart({
 		Name = "ApartmentRueckwand",
 		Size = Vector3.new(20, 11, 1),
 		CFrame = CFrame.new(base + Vector3.new(0, 6, -9)),
-		Color = Color3.fromRGB(30, 28, 36),
+		Color = Config.Palette.Ziegel,
 		Material = Enum.Material.Brick,
 	})
 	makePart({
 		Name = "ApartmentWandLinks",
 		Size = Vector3.new(1, 11, 18),
 		CFrame = CFrame.new(base + Vector3.new(-10, 6, 0)),
-		Color = Color3.fromRGB(30, 28, 36),
+		Color = Config.Palette.Ziegel,
 		Material = Enum.Material.Brick,
 	})
 	makePart({
 		Name = "ApartmentWandRechts",
 		Size = Vector3.new(1, 11, 18),
 		CFrame = CFrame.new(base + Vector3.new(10, 6, 0)),
-		Color = Color3.fromRGB(30, 28, 36),
+		Color = Config.Palette.Ziegel,
 		Material = Enum.Material.Brick,
 	})
 	makePart({
 		Name = "ApartmentDach",
 		Size = Vector3.new(21, 0.8, 19),
 		CFrame = CFrame.new(base + Vector3.new(0, 11, 0)),
-		Color = Color3.fromRGB(18, 17, 22),
+		Color = Config.Palette.InnenDecke,
 		Material = Enum.Material.Concrete,
 	})
 	makePart({
 		Name = "ApartmentFrontLinks",
 		Size = Vector3.new(7, 11, 1),
 		CFrame = CFrame.new(base + Vector3.new(-6.5, 6, 9)),
-		Color = Color3.fromRGB(30, 28, 36),
+		Color = Config.Palette.Ziegel,
 		Material = Enum.Material.Brick,
 	})
 	makePart({
 		Name = "ApartmentFrontRechts",
 		Size = Vector3.new(7, 11, 1),
 		CFrame = CFrame.new(base + Vector3.new(6.5, 6, 9)),
-		Color = Color3.fromRGB(30, 28, 36),
+		Color = Config.Palette.Ziegel,
 		Material = Enum.Material.Brick,
 	})
 	makePart({
 		Name = "ApartmentSturz",
 		Size = Vector3.new(6, 4, 1),
 		CFrame = CFrame.new(base + Vector3.new(0, 9, 9)),
-		Color = Color3.fromRGB(30, 28, 36),
+		Color = Config.Palette.Ziegel,
 		Material = Enum.Material.Brick,
 	})
 
@@ -11830,7 +12110,7 @@ do
 		Name = "Schreibtisch",
 		Size = Vector3.new(8, 0.4, 3),
 		CFrame = CFrame.new(base + Vector3.new(0, 3.4, -7)),
-		Color = Color3.fromRGB(38, 34, 30),
+		Color = Config.Palette.Holz,
 		Material = Enum.Material.Wood,
 	})
 	local rig = makePart({
@@ -11868,56 +12148,56 @@ do
 		Name = "BankBoden",
 		Size = Vector3.new(34, 1, 30),
 		CFrame = CFrame.new(base + Vector3.new(0, 0.5, 0)),
-		Color = Color3.fromRGB(20, 22, 28),
+		Color = Config.Palette.InnenBoden,
 		Material = Enum.Material.Marble,
 	})
 	makePart({
 		Name = "BankRueckwand",
 		Size = Vector3.new(34, 18, 1),
 		CFrame = CFrame.new(base + Vector3.new(0, 9, -15)),
-		Color = Color3.fromRGB(26, 29, 36),
+		Color = Config.Palette.BetonHell,
 		Material = Enum.Material.Concrete,
 	})
 	makePart({
 		Name = "BankWandLinks",
 		Size = Vector3.new(1, 18, 30),
 		CFrame = CFrame.new(base + Vector3.new(-17, 9, 0)),
-		Color = Color3.fromRGB(26, 29, 36),
+		Color = Config.Palette.BetonHell,
 		Material = Enum.Material.Concrete,
 	})
 	makePart({
 		Name = "BankWandRechts",
 		Size = Vector3.new(1, 18, 30),
 		CFrame = CFrame.new(base + Vector3.new(17, 9, 0)),
-		Color = Color3.fromRGB(26, 29, 36),
+		Color = Config.Palette.BetonHell,
 		Material = Enum.Material.Concrete,
 	})
 	makePart({
 		Name = "BankDach",
 		Size = Vector3.new(35, 1, 31),
 		CFrame = CFrame.new(base + Vector3.new(0, 18, 0)),
-		Color = Color3.fromRGB(16, 18, 23),
+		Color = Config.Palette.Dach,
 		Material = Enum.Material.Concrete,
 	})
 	makePart({
 		Name = "BankFrontLinks",
 		Size = Vector3.new(14, 18, 1),
 		CFrame = CFrame.new(base + Vector3.new(-10, 9, 15)),
-		Color = Color3.fromRGB(26, 29, 36),
+		Color = Config.Palette.BetonHell,
 		Material = Enum.Material.Concrete,
 	})
 	makePart({
 		Name = "BankFrontRechts",
 		Size = Vector3.new(14, 18, 1),
 		CFrame = CFrame.new(base + Vector3.new(10, 9, 15)),
-		Color = Color3.fromRGB(26, 29, 36),
+		Color = Config.Palette.BetonHell,
 		Material = Enum.Material.Concrete,
 	})
 	makePart({
 		Name = "BankSturz",
 		Size = Vector3.new(6, 8, 1),
 		CFrame = CFrame.new(base + Vector3.new(0, 14, 15)),
-		Color = Color3.fromRGB(26, 29, 36),
+		Color = Config.Palette.BetonHell,
 		Material = Enum.Material.Concrete,
 	})
 
@@ -11926,14 +12206,14 @@ do
 		Name = "BankKameraArm",
 		Size = Vector3.new(0.5, 0.5, 3),
 		CFrame = CFrame.new(base + Vector3.new(-6, 15, 16.5)),
-		Color = Color3.fromRGB(38, 44, 54),
+		Color = Config.Palette.Metall,
 		Material = Enum.Material.Metal,
 	})
 	local cam = makePart({
 		Name = "Aussenkamera",
 		Size = Vector3.new(1.6, 1.6, 3),
 		CFrame = CFrame.new(base + Vector3.new(-6, 15, 18)) * CFrame.Angles(math.rad(-20), 0, 0),
-		Color = Color3.fromRGB(24, 30, 38),
+		Color = Config.Palette.MetallDunkel,
 		Material = Enum.Material.Metal,
 	})
 	accentLight(cam, Config.Theme.Magenta, 16)
@@ -11948,6 +12228,7 @@ do
 		Cooldown = Config.Raid.BankCooldown,
 		AlarmGroup = "BANK",
 		AlarmStarts = true,
+		Exposed = true, -- haengt aussen ueber dem Eingang
 	})
 	sign(cam, "NAKAMURA BANK", "drei Schichten, ein Alarm", Config.Theme.Magenta, 3.4)
 
@@ -11956,7 +12237,7 @@ do
 		Name = "BankSicherheitstuer",
 		Size = Vector3.new(6, 12, 0.9),
 		CFrame = CFrame.new(base + Vector3.new(0, 6, 15)),
-		Color = Color3.fromRGB(18, 24, 32),
+		Color = Config.Palette.MetallDunkel,
 		Material = Enum.Material.Metal,
 	})
 	accentLight(door, Config.Theme.Cyan, 14)
@@ -11970,6 +12251,7 @@ do
 		DownTime = 60,
 		Cooldown = Config.Raid.BankCooldown,
 		AlarmGroup = "BANK",
+		Exposed = true, -- Eingangstuer, direkt an der Strasse
 	})
 
 	-- Stufe 3: Tresorraum. Fehlschlag = sofort auffliegen. Zu zweit leichter.
@@ -11977,14 +12259,14 @@ do
 		Name = "TresorraumRahmen",
 		Size = Vector3.new(12, 12, 2),
 		CFrame = CFrame.new(base + Vector3.new(0, 6, -13)),
-		Color = Color3.fromRGB(22, 25, 32),
+		Color = Config.Palette.Metall,
 		Material = Enum.Material.Metal,
 	})
 	local vault = makePart({
 		Name = "Tresorraum",
 		Size = Vector3.new(8, 8, 2.6),
 		CFrame = CFrame.new(base + Vector3.new(0, 5, -12)),
-		Color = Color3.fromRGB(40, 46, 58),
+		Color = Config.Palette.Metall,
 		Material = Enum.Material.DiamondPlate,
 	})
 	accentLight(vault, Config.Theme.Amber, 20, 3)
@@ -12124,7 +12406,7 @@ do
 		Name = "KameraMast",
 		Size = Vector3.new(0.8, 12, 0.8),
 		CFrame = CFrame.new(base + Vector3.new(0, 6, 0)),
-		Color = Color3.fromRGB(38, 44, 54),
+		Color = Config.Palette.Metall,
 		Material = Enum.Material.Metal,
 	})
 
@@ -12132,7 +12414,7 @@ do
 		Name = "KameraArm",
 		Size = Vector3.new(3.4, 0.5, 0.5),
 		CFrame = CFrame.new(base + Vector3.new(1.7, 11.6, 0)),
-		Color = Color3.fromRGB(38, 44, 54),
+		Color = Config.Palette.Metall,
 		Material = Enum.Material.Metal,
 	})
 
@@ -12140,7 +12422,7 @@ do
 		Name = "Ueberwachungskamera",
 		Size = Vector3.new(1.6, 1.6, 3.2),
 		CFrame = CFrame.new(base + Vector3.new(3.4, 11.2, 0)) * CFrame.Angles(math.rad(-15), 0, 0),
-		Color = Color3.fromRGB(24, 30, 38),
+		Color = Config.Palette.MetallDunkel,
 		Material = Enum.Material.Metal,
 	})
 	accentLight(head, Config.Theme.Magenta, 14)
@@ -12152,6 +12434,8 @@ do
 		RequiredLevel = 1,
 		OnSuccess = "CameraOffline",
 		DownTime = 30,
+		-- Haengt an einer Fassade ueber dem Gehweg: jeder sieht einen dabei.
+		Exposed = true,
 	})
 end
 
@@ -12165,21 +12449,21 @@ do
 		Name = "WandLinks",
 		Size = Vector3.new(10, 12, 1.2),
 		CFrame = CFrame.new(base + Vector3.new(-8, 6, 0)),
-		Color = Color3.fromRGB(30, 34, 42),
+		Color = Config.Palette.Beton,
 		Material = Enum.Material.Concrete,
 	})
 	makePart({
 		Name = "WandRechts",
 		Size = Vector3.new(10, 12, 1.2),
 		CFrame = CFrame.new(base + Vector3.new(8, 6, 0)),
-		Color = Color3.fromRGB(30, 34, 42),
+		Color = Config.Palette.Beton,
 		Material = Enum.Material.Concrete,
 	})
 	makePart({
 		Name = "Sturz",
 		Size = Vector3.new(6, 2, 1.2),
 		CFrame = CFrame.new(base + Vector3.new(0, 11, 0)),
-		Color = Color3.fromRGB(30, 34, 42),
+		Color = Config.Palette.Beton,
 		Material = Enum.Material.Concrete,
 	})
 
@@ -12187,12 +12471,14 @@ do
 		Name = "Sicherheitstuer",
 		Size = Vector3.new(6, 10, 0.8),
 		CFrame = CFrame.new(base + Vector3.new(0, 5, 0)),
-		Color = Color3.fromRGB(20, 26, 34),
+		Color = Config.Palette.MetallDunkel,
 		Material = Enum.Material.Metal,
 	})
 	accentLight(door, Config.Theme.Cyan, 12)
 
 	makeHackable(door, {
+		-- Kein Exposed: die Tuer liegt an der Rueckseite der Halle. Weniger
+		-- Ertrag als der Automat, dafuer sieht einen dort niemand.
 		DisplayName = "SEC-DOOR // Lagerhalle B",
 		Difficulty = 4,
 		HackType = "NodeBreach",
@@ -12212,7 +12498,7 @@ do
 		Name = "AutomatSockel",
 		Size = Vector3.new(5, 1, 3),
 		CFrame = CFrame.new(base + Vector3.new(0, 0.5, 0)),
-		Color = Color3.fromRGB(26, 30, 38),
+		Color = Config.Palette.BetonDunkel,
 		Material = Enum.Material.Concrete,
 	})
 
@@ -12220,7 +12506,7 @@ do
 		Name = "Geldautomat",
 		Size = Vector3.new(4.4, 7, 2.4),
 		CFrame = CFrame.new(base + Vector3.new(0, 4.5, 0)),
-		Color = Color3.fromRGB(34, 40, 50),
+		Color = Config.Palette.Metall,
 		Material = Enum.Material.Metal,
 	})
 
@@ -12242,6 +12528,9 @@ do
 		OnSuccess = "AtmPayout",
 		Cooldown = 300,
 		DownTime = 20,
+		-- Steht offen am Gehweg. Das lohnendste Ziel der Uebungszone -
+		-- und das, bei dem der Trace am schnellsten hochgeht.
+		Exposed = true,
 	})
 end
 
@@ -12257,7 +12546,7 @@ do
 		Name = "HehlerRueckwand",
 		Size = Vector3.new(12, 9, 1),
 		CFrame = CFrame.new(base + Vector3.new(0, 4.5, 2.5)),
-		Color = Color3.fromRGB(24, 28, 36),
+		Color = Config.Palette.Beton,
 		Material = Enum.Material.Concrete,
 	})
 
@@ -12265,7 +12554,7 @@ do
 		Name = "HehlerDach",
 		Size = Vector3.new(13, 0.6, 6),
 		CFrame = CFrame.new(base + Vector3.new(0, 9, 0)),
-		Color = Color3.fromRGB(18, 22, 28),
+		Color = Config.Palette.Dach,
 		Material = Enum.Material.Metal,
 	})
 
@@ -12273,7 +12562,7 @@ do
 		Name = "Hehler",
 		Size = Vector3.new(10, 4, 2.4),
 		CFrame = CFrame.new(base + Vector3.new(0, 2, 0)),
-		Color = Color3.fromRGB(30, 36, 46),
+		Color = Config.Palette.Metall,
 		Material = Enum.Material.Metal,
 	})
 
@@ -12347,7 +12636,7 @@ local pad = Instance.new("Part")
 pad.Name = "Parkstreifen"
 pad.Size = Vector3.new(20, 1, 14 * Vehicles.Count())
 pad.CFrame = CFrame.new(base + Vector3.new(0, -2.5, 14 * Vehicles.Count() * 0.5 - 7))
-pad.Color = Color3.fromRGB(20, 22, 27)
+pad.Color = Config.Palette.Asphalt
 pad.Material = Enum.Material.Concrete
 pad.Anchored = true
 pad.CanQuery = false
@@ -12401,11 +12690,11 @@ print(("[GHOSTNET] %d Testfahrzeuge gebaut."):format(built))
 </Item>
 </Item>
 </Item>
-<Item class="StarterPlayer" referent="GN68">
+<Item class="StarterPlayer" referent="GN69">
 <Properties>
 <string name="Name">StarterPlayer</string>
 </Properties>
-<Item class="StarterPlayerScripts" referent="GN69">
+<Item class="StarterPlayerScripts" referent="GN70">
 <Properties>
 <string name="Name">StarterPlayerScripts</string>
 </Properties>

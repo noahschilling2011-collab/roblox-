@@ -1,6 +1,7 @@
 # GHOSTNET — Bauplan
 
-**Stand: Phase 0 bis G plus Open-World-Phase 1** (`Config.Version = "1.1.0"`).
+**Stand: alles abgearbeitet** — Phase 0 bis G, Open-World-Abschnitt 2 und
+Phase 1 bis 7, dazu v2.1.0 „Vantorra bei Tag" (`Config.Version = "2.1.0"`).
 Was jetzt ansteht, steht ganz unten unter „Offen".
 
 Reihenfolge war bindend. Eine Phase wurde komplett fertig, bevor die nächste
@@ -201,12 +202,16 @@ sondern ein Hacking-Spiel mit offener Stadt** — der Unterschied entscheidet
 jedes Detail: keine Schusswaffen, Autos sind Werkzeug statt Selbstzweck,
 NPCs sind Hindernis statt Gegner, Polizei ist Verfolgung statt Schießerei.
 
-## OW-Abschnitt 2 — Tag und Nacht ✅
+## OW-Abschnitt 2 — Tag und Nacht ✅ *(seit v2.1.0 abgeschaltet, siehe unten)*
 `TimeService`. Voller Zyklus in `Config.World.DayLengthMinutes` (24 min).
 Der Server ist die Uhr, `Lighting` wird weich interpoliert.
 **Mechanisch, nicht dekorativ:** nachts +35 % auf jeden Hack-Ertrag und
 kürzere NPC-Sichtweite, tagsüber ruhigere Darknet-Kurse und (ab OW-Phase 4)
 geöffnete Händler. `Lighting.Technology` ist über `Config.World` umschaltbar.
+
+Der Zyklus ist gebaut, geprüft und vollständig — er ist seit v2.1.0 nur nicht
+mehr eingeschaltet. `Config.World.PermanentDay = false` holt ihn zurück, ohne
+dass irgendwo Code angefasst werden muss.
 
 ## OW-Phase 1 — Fahrzeuge ✅
 `Shared/Vehicles.luau` (fünf Klassen als Daten) + `VehicleChassis`
@@ -275,6 +280,64 @@ härtere Fahndung) — als `Profile.Story.Allegiance` gespeichert und nach
 über `HackService.AddTraceModifier` / `AddRewardModifier` am Hack — genau
 andersherum, weil `HackService` `MissionService` sonst zurückrufen müsste
 und ein Require-Zyklus entstünde.
+
+---
+
+# v2.1.0 — Vantorra bei Tag ✅
+
+**Entscheidung von Noah:** die Stadt soll hell sein, dauerhaft Tag. Die
+Benutzeroberfläche bleibt ausdrücklich das dunkle Fake-OS — der Kontrast
+zwischen heller Stadt und schwarzem Terminal ist gewollt.
+
+## Was hell wurde
+Eine neue Palette `Config.Palette` hält sämtliche Weltfarben. **Kein einziges
+Skript unter `src/server/World/` enthält noch einen eigenen Farbwert** — der
+Testlauf lehnt jedes `Color3.fromRGB` dort ab. Die Stadt später wieder
+abzudunkeln ist damit eine Änderung an einer Tabelle, nicht an sieben Dateien.
+
+Dazu: helle Bezirks-Grundtöne (Putz, Sandstein, Glas, Beton statt fünf
+Grautönen knapp über Schwarz), spiegelnde Glasfenster statt leuchtender
+Neonfenster, matte statt nasser Fahrbahn, heller Untergrund in der
+Place-Datei.
+
+## Der Nachtbonus ist umgezogen — `Config.Cover`
+Der wichtigste Punkt, und kein rein optischer: Die Nacht **war** eine
+Mechanik (+35 % Ertrag, NPCs sehen kürzer). Ohne Ersatz wäre mit dem
+Zyklus die zentrale Risiko-Entscheidung ersatzlos verschwunden.
+
+Der Bonus hängt jetzt am **Ort** statt an der **Uhrzeit**:
+
+| | Ertrag | Trace | Beispiele |
+| --- | --- | --- | --- |
+| `Exposed = true` (offene Straße) | +35 % | ×1,3 | Geldautomat am Gehweg, Fassadenkamera, Ladenfront, Bankeingang |
+| gedeckt (Standard) | normal | normal | Tresor im Laden, Bankinnenraum, Lüftung, Rückseite der Lagerhalle |
+
+Bei dauerhaftem Tag ist das sogar der ehrlichere Ort dafür: Es gibt keine
+Dunkelheit mehr, in der man verschwinden könnte. Und ein *Wann* kann man
+aussitzen, ein *Wohin* nicht.
+
+Die zweite Hälfte des alten Nachtbonus — kürzere NPC-Sicht — ist genauso
+umgezogen: Wachen tragen ein Attribut `SightFactor` (Bankinnenraum 0,7).
+Ort statt Uhrzeit, Attribut statt Code.
+
+## Folgeänderungen
+- **Händler:** ohne Abend keine Sperrstunde — bei `PermanentDay` immer offen.
+  Das Schild am Autohaus sagt das auch, statt eine Uhrzeit zu nennen, die nie
+  eintritt.
+- **Darknet:** `MarketVolatilityFactor` gibt bei dauerhaftem Tag 1 zurück, nicht
+  `DayMarketCalm`. Der ruhige Tag war die Gegenseite einer bewegten Nacht —
+  ohne Nacht wäre daraus eine dauerhafte Drosselung geworden.
+- **Verkehr:** nachts lief die Stadt auf halber Dichte. Jetzt dauerhaft auf
+  `Traffic.MaxActive`. **Beim Messen beachten:** das ist die doppelte Last
+  gegenüber dem alten Standardzustand.
+- **PointLights** an Neonschildern entfallen bei Tag ganz — bei Tageslicht
+  praktisch unsichtbar und trotzdem teuer. Geschenkte Bildrate.
+
+## Nebenbei gefunden
+`HackService.AddRewardModifier` war angemeldet, wurde aber **nie eingerechnet** —
+die Endgame-Entscheidung aus Mission 10 hatte damit gar keine Wirkung auf den
+Ertrag. Behoben, und ein Testlauf-Eintrag verhindert jetzt, dass so etwas
+wieder stillschweigend passiert.
 
 ---
 

@@ -44,6 +44,17 @@ local function colourOf(name: string): Color3
 	return COLOURS[name] or COLOURS.Schwarz
 end
 
+-- Oeffnungszeiten. Bei dauerhaftem Tag gibt es keinen Abend mehr, an dem
+-- zugesperrt werden koennte - der Haendler hat dann immer auf. Schaltet man
+-- Config.World.PermanentDay wieder aus, gelten sofort wieder die Zeiten.
+local function dealerOpen(): boolean
+	if Config.World.PermanentDay then
+		return true
+	end
+	local clock = TimeService.GetClock()
+	return clock >= Config.Dealer.OpenHour and clock < Config.Dealer.CloseHour
+end
+
 --==========================================================================
 -- Lesen
 --==========================================================================
@@ -97,8 +108,7 @@ function VehicleService.Sync(player: Player)
 		Owned = owned,
 		Spawned = if current and current.Parent then current:GetAttribute("ClassId") else "",
 		MaxSpawned = Config.Vehicle.MaxSpawned,
-		DealerOpen = TimeService.GetClock() >= Config.Dealer.OpenHour
-			and TimeService.GetClock() < Config.Dealer.CloseHour,
+		DealerOpen = dealerOpen(),
 		Colours = Config.Dealer.ColourOptions,
 		RepaintCost = Config.Dealer.RepaintCost,
 	})
@@ -187,11 +197,6 @@ end
 --==========================================================================
 -- Kaufen und Lackieren
 --==========================================================================
-
-local function dealerOpen(): boolean
-	local clock = TimeService.GetClock()
-	return clock >= Config.Dealer.OpenHour and clock < Config.Dealer.CloseHour
-end
 
 local function nearDealer(player: Player): boolean
 	local position = Geometry.AlivePosition(player)
@@ -353,11 +358,17 @@ function VehicleService.Init()
 		end
 	end)
 
-	print(("[GHOSTNET] VehicleService bereit. %d gleichzeitig ausgeparkt, Haendler %d-%d Uhr."):format(
-		Config.Vehicle.MaxSpawned,
-		Config.Dealer.OpenHour,
-		Config.Dealer.CloseHour
-	))
+	if Config.World.PermanentDay then
+		print(("[GHOSTNET] VehicleService bereit. %d gleichzeitig ausgeparkt, Haendler durchgehend offen."):format(
+			Config.Vehicle.MaxSpawned
+		))
+	else
+		print(("[GHOSTNET] VehicleService bereit. %d gleichzeitig ausgeparkt, Haendler %d-%d Uhr."):format(
+			Config.Vehicle.MaxSpawned,
+			Config.Dealer.OpenHour,
+			Config.Dealer.CloseHour
+		))
+	end
 end
 
 return VehicleService

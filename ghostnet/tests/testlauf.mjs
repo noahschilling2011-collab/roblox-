@@ -328,6 +328,38 @@ try {
     );
   }
 
+  // --- Helle Stadt: Farben kommen aus der Palette, nicht aus dem Skript ---
+  for (const [file, src] of sources) {
+    const short = relative(ROOT, file);
+    if (!short.startsWith("src/server/World/")) continue;
+    check(
+      `keine eigene Farbe in ${short}`,
+      !/Color3\.(fromRGB|new)\s*\(/.test(codeOnly(src)),
+      "Weltfarben gehoeren in Config.Palette - sonst muss man zum Umfaerben jede Datei anfassen"
+    );
+  }
+
+  // Der Ertragsfaktor aus Mission 10 wurde einmal angemeldet und dann nie
+  // angewendet. Das faellt niemandem auf - also prueft es der Testlauf.
+  const hackSrc = sources.get(join(SRC, "server/Systems/HackService.luau"));
+  if (hackSrc) {
+    check(
+      "angemeldete Ertragsfaktoren werden auch angewendet",
+      /combined\(rewardModifiers, player\)/.test(codeOnly(hackSrc)),
+      "AddRewardModifier existiert, wird aber nie eingerechnet"
+    );
+    check(
+      "angemeldete Trace-Faktoren werden auch angewendet",
+      /combined\(traceModifiers, player\)/.test(codeOnly(hackSrc)),
+      "AddTraceModifier existiert, wird aber nie eingerechnet"
+    );
+    check(
+      "Deckung wirkt auf Ertrag UND Trace",
+      /ExposedRewardBonus/.test(codeOnly(hackSrc)) && /ExposedTraceFactor/.test(codeOnly(hackSrc)),
+      "eine der beiden Seiten des Tauschs fehlt im HackService"
+    );
+  }
+
   // --- Verkehr und Polizei (Open-World 3 und 6) ---
   const trafficSrc = sources.get(join(SRC, "server/Systems/TrafficService.luau"));
   if (trafficSrc) {
@@ -471,9 +503,24 @@ try {
   }
 
   const prelude = `
-local Color3 = {
-	fromRGB = function(r, g, b) return { r = r, g = g, b = b, kind = "Color3" } end,
-	new = function(r, g, b) return { r = r, g = g, b = b, kind = "Color3" } end,
+-- Color3 wie in Roblox: R/G/B liegen zwischen 0 und 1, fromRGB rechnet von
+-- 0..255 um. Der Unterschied ist wichtig, sobald ein Test rechnet statt nur
+-- zu vergleichen (z.B. die Helligkeit der Weltpalette).
+local Color3
+local function makeColour(r, g, b)
+	local colour = { R = r, G = g, B = b, kind = "Color3" }
+	function colour:Lerp(other, alpha)
+		return makeColour(
+			self.R + (other.R - self.R) * alpha,
+			self.G + (other.G - self.G) * alpha,
+			self.B + (other.B - self.B) * alpha
+		)
+	end
+	return colour
+end
+Color3 = {
+	fromRGB = function(r, g, b) return makeColour(r / 255, g / 255, b / 255) end,
+	new = function(r, g, b) return makeColour(r or 0, g or 0, b or 0) end,
 }
 local Vector3 = {
 	new = function(x, y, z) return { X = x or 0, Y = y or 0, Z = z or 0, kind = "Vector3" } end,
@@ -1027,15 +1074,69 @@ test("Motorrad hat kein Lager, Transporter das groesste", function()
 	end
 end)
 
---== Tag und Nacht =========================================================
+--== Licht, Deckung, Risiko ================================================
 
-test("Der Tageszyklus ist eine Mechanik, keine Kulisse", function()
-	expect(Config.World.NightRewardBonus > 0, "Nacht bringt keinen Vorteil")
-	expect(Config.World.NightSightFactor < 1, "NPCs sehen nachts genauso weit")
-	expect(Config.World.DayMarketCalm < 1, "Kurse sind tagsueber nicht ruhiger")
+test("Der Tageszyklus bleibt als Rueckfallebene vollstaendig", function()
+	-- PermanentDay schaltet ihn ab, loescht ihn aber nicht. Wer ihn wieder
+	-- anschaltet, darf keine halb gepflegten Werte vorfinden.
+	expect(Config.World.NightRewardBonus > 0, "Nacht braechte keinen Vorteil")
+	expect(Config.World.NightSightFactor < 1, "NPCs saehen nachts genauso weit")
+	expect(Config.World.DayMarketCalm < 1, "Kurse waeren tagsueber nicht ruhiger")
 	expect(Config.World.DayStartHour < Config.World.NightStartHour, "Tag und Nacht ueberschneiden sich")
 	expect(Config.World.DayLengthMinutes > 0, "ein Tag dauert null Minuten")
 	expect(Config.World.StartClock >= 0 and Config.World.StartClock < 24, "Startzeit ausserhalb der Uhr")
+	expect(Config.World.DayClock >= 0 and Config.World.DayClock < 24, "DayClock ausserhalb der Uhr")
+end)
+
+test("Der Risiko-Hebel existiert auch ohne Nacht", function()
+	-- Frueher war der Bonus die Nacht. Bei dauerhaftem Tag MUSS es einen
+	-- Ersatz geben, sonst ist jeder Hack gleich viel wert und die zentrale
+	-- Entscheidung des Spiels faellt ersatzlos weg.
+	if Config.World.PermanentDay then
+		expect(Config.Cover.ExposedRewardBonus > 0,
+			"kein Tag-/Nachtbonus UND kein Deckungsbonus - es gibt gar keinen Hebel mehr")
+	end
+end)
+
+test("Offene Ziele sind ein Tausch, kein Geschenk", function()
+	local C = Config.Cover
+	expect(C.ExposedRewardBonus > 0, "offene Ziele zahlen nicht mehr")
+	-- Ohne Aufpreis waere Exposed gratis Geld und jedes gedeckte Ziel tot.
+	expect(C.ExposedTraceFactor > 1, "offene Ziele kosten keinen zusaetzlichen Trace")
+	expect(C.DefaultGuardSight > 0, "Wachen waeren standardmaessig blind")
+	expect(C.MinGuardSight > 0 and C.MinGuardSight <= C.DefaultGuardSight,
+		"Untergrenze der Sichtweite unbrauchbar")
+	expect(Config.Bank.IndoorSightFactor <= 1, "drinnen sehen Wachen weiter als draussen")
+	expect(Config.TargetDefaults.Exposed == false,
+		"Ziele waeren standardmaessig offen - dann traegt der Aufschlag alles statt der Ausnahmen")
+end)
+
+test("Vantorra ist hell", function()
+	-- Die eigentliche Anforderung: die Stadt ist hell. Das ist pruefbar -
+	-- jeder Weltton muss deutlich ueber dem dunklen Fake-OS liegen.
+	local function luminance(colour)
+		return 0.299 * colour.R + 0.587 * colour.G + 0.114 * colour.B
+	end
+
+	local darkest, darkestName = 1, ""
+	local count = 0
+	for name, colour in Config.Palette do
+		local value = luminance(colour)
+		count += 1
+		if value < darkest then
+			darkest, darkestName = value, name
+		end
+	end
+
+	expect(count >= 10, "die Weltpalette ist unvollstaendig")
+	expect(darkest > 0.35,
+		("%s ist mit %.2f zu dunkel fuer eine helle Stadt"):format(darkestName, darkest))
+
+	-- Und der Kontrast zum Terminal muss erhalten bleiben: das Fake-OS ist
+	-- ausdruecklich NICHT hell geworden.
+	expect(luminance(Config.Theme.Background) < 0.15, "das Fake-OS ist nicht mehr dunkel")
+	expect(luminance(Config.Palette.Gehweg) - luminance(Config.Theme.Panel) > 0.4,
+		"Stadt und Terminal unterscheiden sich kaum noch")
 end)
 
 test("Streaming ist an und die Radien sind plausibel", function()

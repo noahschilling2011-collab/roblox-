@@ -2,6 +2,10 @@
 --!strict
 -- GHOSTNET :: Die Nakamura Bank von innen.
 --
+-- Alles hier drin ist GEDECKT (kein Attribut Exposed): drinnen zahlt normal
+-- und ist sicherer. Der Aufschlag fuer offene Ziele liegt draussen an der
+-- Fassade - siehe Config.Cover.
+--
 -- DREI EBENEN, DREI WEGE HINEIN. Ein Raubzug, der jedes Mal identisch
 -- ablaeuft, ist nach dem dritten Mal langweilig.
 --
@@ -74,7 +78,7 @@ part(
 	"HalleBoden",
 	Vector3.new(32, 1, 26),
 	CFrame.new(base + Vector3.new(0, 1, 2)),
-	Color3.fromRGB(26, 28, 34),
+	Config.Palette.InnenBoden,
 	Enum.Material.Marble
 )
 
@@ -82,7 +86,7 @@ part(
 	"Schaltertresen",
 	Vector3.new(22, 4, 2),
 	CFrame.new(base + Vector3.new(0, 3.5, -6)),
-	Color3.fromRGB(40, 44, 54),
+	Config.Palette.Holz,
 	Enum.Material.Wood
 )
 
@@ -92,7 +96,7 @@ for index, offset in { Vector3.new(-11, 15, 8), Vector3.new(11, 15, 8) } do
 		("HalleKamera%d"):format(index),
 		Vector3.new(1.4, 1.4, 2.6),
 		CFrame.new(base + offset) * CFrame.Angles(math.rad(-30), 0, 0),
-		Color3.fromRGB(24, 30, 38),
+		Config.Palette.MetallDunkel,
 		Enum.Material.Metal
 	)
 	light(cam, Config.Theme.Magenta, 12)
@@ -121,7 +125,7 @@ do
 	root.Name = "Root"
 	root.Size = Vector3.new(2, 5.6, 1.4)
 	root.CFrame = CFrame.new(route.A)
-	root.Color = Color3.fromRGB(30, 34, 44)
+	root.Color = Config.Palette.BetonDunkel
 	root.Material = Enum.Material.Fabric
 	root.Anchored = true
 	root.CanCollide = false
@@ -132,7 +136,7 @@ do
 	local head = Instance.new("Part")
 	head.Name = "Kopf"
 	head.Size = Vector3.new(1.2, 1.2, 1.2)
-	head.Color = Color3.fromRGB(180, 150, 130)
+	head.Color = Config.Palette.Haut
 	head.Anchored = true
 	head.CanCollide = false
 	head.CanQuery = false
@@ -148,6 +152,10 @@ do
 	guard:SetAttribute("PatrolA", route.A)
 	guard:SetAttribute("PatrolB", route.B)
 	guard:SetAttribute("AlarmGroup", "BANK")
+	-- Drinnen sieht man weniger weit als auf der Strasse. Frueher hat das die
+	-- Nacht erledigt; seit die Stadt dauerhaft hell ist, macht es der Ort -
+	-- und der Ort steht als Attribut am Objekt, nicht im Code.
+	guard:SetAttribute("SightFactor", Config.Bank.IndoorSightFactor)
 	guard.Parent = folder
 	CollectionService:AddTag(guard, Config.GuardTag)
 end
@@ -160,7 +168,7 @@ part(
 	"SchleusenWand",
 	Vector3.new(32, 16, 1.5),
 	CFrame.new(base + Vector3.new(0, 8, -9)),
-	Color3.fromRGB(22, 25, 32),
+	Config.Palette.Beton,
 	Enum.Material.Metal
 )
 
@@ -168,7 +176,7 @@ local sluice = part(
 	"Schleuse",
 	Vector3.new(7, 11, 1),
 	CFrame.new(base + Vector3.new(0, 6, -9)),
-	Color3.fromRGB(16, 22, 30),
+	Config.Palette.MetallDunkel,
 	Enum.Material.DiamondPlate
 )
 light(sluice, Config.Theme.Cyan, 14)
@@ -188,7 +196,7 @@ part(
 	"ServerraumBoden",
 	Vector3.new(32, 1, 14),
 	CFrame.new(base + Vector3.new(0, 1, -17)),
-	Color3.fromRGB(20, 23, 29),
+	Config.Palette.InnenBoden,
 	Enum.Material.Concrete
 )
 
@@ -197,7 +205,7 @@ for index = 1, 4 do
 		("Serverschrank%d"):format(index),
 		Vector3.new(3, 8, 2),
 		CFrame.new(base + Vector3.new(-11 + (index - 1) * 7, 5, -20)),
-		Color3.fromRGB(18, 20, 26),
+		Config.Palette.MetallDunkel,
 		Enum.Material.Metal
 	)
 	local strip = part(
@@ -219,7 +227,7 @@ local vent = part(
 	"Lueftungsgitter",
 	Vector3.new(5, 0.6, 5),
 	CFrame.new(base + Vector3.new(0, 18.5, -17)),
-	Color3.fromRGB(44, 48, 56),
+	Config.Palette.Metall,
 	Enum.Material.DiamondPlate
 )
 light(vent, Config.Theme.Amber, 10)
@@ -241,7 +249,7 @@ for y = 4, 18, 4 do
 		"DachLeiter",
 		Vector3.new(2.6, 0.4, 1.2),
 		CFrame.new(base + Vector3.new(18, y, 12)),
-		Color3.fromRGB(52, 54, 58),
+		Config.Palette.Metall,
 		Enum.Material.Metal
 	).CanCollide = true
 end
@@ -254,7 +262,7 @@ part(
 	"TresorraumBoden",
 	Vector3.new(24, 1, 14),
 	CFrame.new(base + Vector3.new(0, 1, -30)),
-	Color3.fromRGB(18, 20, 26),
+	Config.Palette.MetallDunkel,
 	Enum.Material.Metal
 )
 
@@ -267,7 +275,7 @@ for index = 1, Config.Bank.VaultBoxes do
 		("Schliessfach%d"):format(index),
 		Vector3.new(3, 3, 1),
 		CFrame.new(base + Vector3.new(-7 + column * 7, 4 + row * 4, -35)),
-		Color3.fromRGB(46, 50, 60),
+		Config.Palette.Metall,
 		Enum.Material.Metal
 	)
 	hackable(box, {

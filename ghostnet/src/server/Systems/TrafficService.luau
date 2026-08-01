@@ -524,8 +524,14 @@ function TrafficService.Init()
 		end
 	end)
 
-	-- Nachfuellen. Nachts duenner - das ist der zweite sichtbare Unterschied
-	-- zwischen Tag und Nacht.
+	-- Nachfuellen. Nachts duenner - greift nur, wenn der Tag-/Nachtzyklus
+	-- laeuft. Bei Config.World.PermanentDay ist IsNight() immer false, die
+	-- Stadt faehrt also dauerhaft am vollen Limit.
+	--
+	-- ACHTUNG BEIM MESSEN: frueher startete der Server nachts, also mit der
+	-- halben Menge. Wer jetzt zum ersten Mal in den MicroProfiler schaut,
+	-- sieht die doppelte Last gegenueber dem alten Standardzustand.
+	-- T.MaxActive ist und bleibt der wichtigste Regler.
 	task.spawn(function()
 		while true do
 			task.wait(T.SpawnTick)
