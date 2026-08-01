@@ -1,5 +1,5 @@
 <roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4">
-<Item class="Workspace" referent="GN55">
+<Item class="Workspace" referent="GN65">
 <Properties>
 <string name="Name">Workspace</string>
 <float name="Gravity">196.2</float>
@@ -7,7 +7,7 @@
 <int name="StreamingMinRadius">128</int>
 <int name="StreamingTargetRadius">512</int>
 </Properties>
-<Item class="Part" referent="GN50">
+<Item class="Part" referent="GN60">
 <Properties>
 <string name="Name">Baseplate</string>
 <bool name="Anchored">true</bool>
@@ -19,7 +19,7 @@
 <token name="BottomSurface">0</token>
 </Properties>
 </Item>
-<Item class="SpawnLocation" referent="GN51">
+<Item class="SpawnLocation" referent="GN61">
 <Properties>
 <string name="Name">SpawnLocation</string>
 <bool name="Anchored">true</bool>
@@ -32,7 +32,7 @@
 </Properties>
 </Item>
 </Item>
-<Item class="Lighting" referent="GN52">
+<Item class="Lighting" referent="GN62">
 <Properties>
 <string name="Name">Lighting</string>
 <token name="Technology">4</token>
@@ -47,7 +47,7 @@
 <Color3 name="FogColor"><R>0.03</R><G>0.04</G><B>0.07</B></Color3>
 <float name="FogEnd">420</float>
 </Properties>
-<Item class="BloomEffect" referent="GN53">
+<Item class="BloomEffect" referent="GN63">
 <Properties>
 <string name="Name">Bloom</string>
 <bool name="Enabled">true</bool>
@@ -56,7 +56,7 @@
 <float name="Threshold">0.9</float>
 </Properties>
 </Item>
-<Item class="ColorCorrectionEffect" referent="GN54">
+<Item class="ColorCorrectionEffect" referent="GN64">
 <Properties>
 <string name="Name">ColorCorrection</string>
 <bool name="Enabled">true</bool>
@@ -67,11 +67,11 @@
 </Properties>
 </Item>
 </Item>
-<Item class="ReplicatedStorage" referent="GN56">
+<Item class="ReplicatedStorage" referent="GN66">
 <Properties>
 <string name="Name">ReplicatedStorage</string>
 </Properties>
-<Item class="Folder" referent="GN10">
+<Item class="Folder" referent="GN11">
 <Properties>
 <string name="Name">Shared</string>
 </Properties>
@@ -86,7 +86,7 @@
 
 local Config = {}
 
-Config.Version = "1.1.0" -- Open-World: Tag/Nacht und Fahrzeuge
+Config.Version = "2.0.0" -- Open World komplett: Stadt, Verkehr, Bank, Polizei, Story
 
 -- CollectionService-Tags. Ein Part mit dem Tag ist ein Hack-Ziel, ein Hehler,
 -- ein Missions-Wegpunkt oder ein ansprechbarer Kontakt. Kein Code pro Objekt.
@@ -96,6 +96,8 @@ Config.WaypointTag = "GhostNetWaypoint"
 Config.ContactTag = "GhostNetContact"
 Config.VehicleTag = "GhostNetVehicle" -- fahrbares Fahrzeug
 Config.VehicleSpawnTag = "GhostNetVehicleSpawn" -- erlaubter Ausparkplatz
+Config.DealerTag = "GhostNetDealer" -- Autohaendler-Tresen
+Config.GuardTag = "GhostNetGuard" -- Wache mit Sichtkegel
 
 --==========================================================================
 -- 1. REICHWEITE (Netzwerkkarte)
@@ -303,7 +305,8 @@ Config.Save = {
 	--   2 = Phase A (Story-Block)
 	--   3 = Phase C (Darknet-Lager)
 	--   4 = Phase F (PurchaseLog gegen Doppelvergabe)
-	SchemaVersion = 4,
+	--   5 = Open World (Fahrzeugbesitz, Endgame-Entscheidung)
+	SchemaVersion = 5,
 	StoreName = "GhostNetPlayers_v1",
 	KeyFormat = "ghostnet_player_%d",
 
@@ -612,7 +615,132 @@ Config.Vehicle = {
 }
 
 --==========================================================================
--- 17. RATE-LIMITS (Token-Bucket pro Spieler und Remote)
+-- 17. STADT UND STRASSENNETZ
+-- Die Stadt wird aus Bezirken gebaut, jeder mit eigenem Charakter und
+-- eigener Schwierigkeit. Die Strassenmittellinien sind gleichzeitig der
+-- Graph, auf dem in Phase 3 der Verkehr und in Phase 6 die Polizei faehrt -
+-- deshalb werden sie mitgebaut und nicht spaeter nachgezogen.
+--==========================================================================
+Config.City = {
+	BlockSize = 120, -- Abstand zwischen zwei Strassenkreuzungen
+	Grid = 5, -- Kreuzungen je Achse. 5 = 4x4 Bloecke. Hoch = riesige leere Stadt.
+	RoadWidth = 34,
+	LaneOffset = 8, -- Abstand der Fahrspur von der Strassenmitte
+	SidewalkWidth = 8,
+
+	BuildingMinHeight = 26,
+	BuildingMaxHeight = 92,
+	BuildingInset = 14, -- Abstand der Haeuser zur Strasse
+	RoofAccessChance = 0.35, -- Anteil Haeuser mit Feuerleiter aufs Dach
+
+	-- Wenige, dafuer starke Lichter. PointLight ist teuer, Neonflaechen sind
+	-- gratis. Runterdrehen, wenn die Bildrate einbricht.
+	SignChance = 0.4,
+	LightChance = 0.25,
+}
+
+--==========================================================================
+-- 18. VERKEHR UND FUSSGAENGER
+-- Der performancekritischste Teil des Projekts. NIEDRIG starten und mit dem
+-- MicroProfiler hochtasten - nicht raten.
+--==========================================================================
+Config.Traffic = {
+	MaxActive = 20, -- harte Obergrenze fahrender Autos. Der wichtigste Regler.
+	MaxPedestrians = 16,
+	ActiveRadius = 320, -- ausserhalb davon wird angehalten und recycelt
+	Tick = 0.1, -- Bewegungstakt. Groesser = ruckeliger, kleiner = teurer.
+	SpawnTick = 2, -- wie oft nachgefuellt wird
+
+	Speed = 34, -- Studs/s
+	SpeedJitter = 8,
+	StopDistance = 22, -- Abstand, ab dem hinter einem anderen gebremst wird
+	PedestrianSpeed = 7,
+
+	-- Autodiebstahl. Haengt am Trace, damit er nicht neben der zentralen
+	-- Risiko-Mechanik herlaeuft.
+	StealHoldSeconds = 2.5,
+	StealTrace = 12,
+	StealRange = 12,
+}
+
+--==========================================================================
+-- 19. FAHRZEUGBESITZ UND HAENDLER
+--==========================================================================
+Config.Dealer = {
+	OpenHour = 8, -- Haendler haben nur tagsueber auf
+	CloseHour = 20,
+	TestDriveSeconds = 45, -- Probefahrt auf abgesperrtem Gelaende
+	ColourOptions = {
+		"Schwarz", "Anthrazit", "Weiss", "Rot", "Cyan", "Gold",
+	},
+	-- Kosmetik kostet, damit Geld auch spaet noch einen Zweck hat.
+	RepaintCost = 900,
+}
+
+--==========================================================================
+-- 20. BANK
+-- Drei Ebenen, drei Wege hinein. Die Wachen MELDEN, sie greifen nicht an -
+-- das haelt die Mechanik bei Flucht statt Kampf.
+--==========================================================================
+Config.Bank = {
+	GuardSightRange = 60,
+	GuardSightAngle = 70, -- Halbwinkel des Sichtkegels in Grad
+	GuardTick = 0.4, -- Sichtpruefung nur so oft, und nur wenn jemand im Raum ist
+	GuardPatrolSpeed = 9,
+	GuardSpotSeconds = 0.8, -- so lange muss man sichtbar sein, bevor Alarm kommt
+
+	VaultBoxes = 6, -- Schliessfaecher zusaetzlich zum Haupttresor
+	BoxReward = 900,
+	BoxCooldown = 1800,
+
+	-- Der Weg ueber das Dach umgeht die Schalterhalle, braucht aber ein
+	-- besseres Rig. Sonst waere er immer die beste Wahl.
+	VentRequiredTier = 3,
+}
+
+--==========================================================================
+-- 21. POLIZEI
+-- Verfolgung statt Schiesserei. Kein Schusswechsel, keine Waffen.
+--==========================================================================
+Config.Pursuit = {
+	MaxLevel = 5,
+	-- Ab welchem Trace welche Fahndungsstufe. Runter = die Polizei ist
+	-- staendig da, hoch = sie ist irrelevant.
+	-- 20 ist kein Zufall: 20 * MaxLevel = 100 = Config.Trace.Max. Sonst waere
+	-- die hoechste Stufe allein ueber den Trace nie erreichbar.
+	TracePerLevel = 20,
+	Decay = 0.15, -- Stufenabbau pro Sekunde ohne Sichtkontakt
+	EscapeSeconds = 12, -- so lange ausser Sicht, dann ist man raus
+	SpotRange = 220,
+	CatchRange = 14, -- so nah heisst gefasst
+	CatchSeconds = 2.5, -- und zwar so lange am Stueck
+
+	UnitsPerLevel = 1, -- Streifenwagen je Stufe
+	MaxUnits = 5,
+	UnitSpeed = 46,
+	RoadblockLevel = 4,
+	HelicopterLevel = 5,
+	Tick = 0.25,
+}
+
+--==========================================================================
+-- 22. ENDGAME-ENTSCHEIDUNG (Mission 10)
+--==========================================================================
+Config.Endgame = {
+	-- "CASH"  = bei Meridian anheuern: halber Trace, aber weniger Beute.
+	-- "BURN"  = alles veroeffentlichen: mehr Ertrag, haerteres Spiel.
+	CashTraceFactor = 0.5,
+	CashRewardFactor = 0.75,
+	BurnRewardFactor = 1.3,
+	BurnPursuitFactor = 1.4,
+	BurnMarketFactor = 1.2,
+	-- Einmal pro Woche umstellbar. Ohne das fuehlen sich Spieler eingesperrt
+	-- und hoeren auf.
+	SwitchCooldown = 604800,
+}
+
+--==========================================================================
+-- 23. RATE-LIMITS (Token-Bucket pro Spieler und Remote)
 -- Jede neue Remote braucht hier einen Eintrag, sonst wird sie verworfen.
 --==========================================================================
 Config.RateLimits = {
@@ -628,10 +756,13 @@ Config.RateLimits = {
 	Trade = { Rate = 2, Burst = 5 },
 	AdminCommand = { Rate = 4, Burst = 8 },
 	StorePrompt = { Rate = 1, Burst = 3 },
+	VehicleAction = { Rate = 1, Burst = 4 },
+	StealVehicle = { Rate = 1, Burst = 2 },
+	EndgameChoice = { Rate = 0.2, Burst = 2 },
 }
 
 --==========================================================================
--- 18. NODE-BREACH
+-- 24. NODE-BREACH
 --==========================================================================
 Config.NodeBreach = {
 	-- Pro Schwierigkeitsband: Gittergroesse, Anzahl Relays, Anteil sichtbares
@@ -648,7 +779,7 @@ Config.NodeBreach = {
 }
 
 --==========================================================================
--- 19. DEFAULTS FUER HACK-ZIELE
+-- 25. DEFAULTS FUER HACK-ZIELE
 -- Ein Part braucht KEIN einziges Attribut. Alles, was fehlt, kommt von hier.
 --==========================================================================
 Config.TargetDefaults = {
@@ -704,6 +835,195 @@ return Config
 </Properties>
 </Item>
 <Item class="ModuleScript" referent="GN2">
+<Properties>
+<string name="Name">Districts</string>
+<ProtectedString name="Source">-- ReplicatedStorage/Shared/Districts.luau
+--!strict
+-- GHOSTNET :: Die Bezirke von Vantorra.
+--
+-- LEITREGEL AUS DEM BAUPLAN
+--   Erst EIN Bezirk fertig und dicht, dann der naechste. Eine grosse leere
+--   Stadt ist schlimmer als ein kleiner voller Block. Deshalb hat jeder
+--   Bezirk hier eine "Dense"-Angabe: nur die dichten werden voll ausgebaut,
+--   die anderen bleiben Rohbau, bis sie dran sind.
+--
+-- Bezirke sind Daten. Ein neuer Stadtteil = ein Eintrag, kein neues Skript.
+
+local Districts = {}
+
+export type District = {
+	Id: string,
+	Name: string,
+	Character: string,
+	-- Mittelpunkt in Gitterkoordinaten (Kreuzungen), nicht in Studs.
+	GridX: number,
+	GridZ: number,
+	Radius: number, -- in Bloecken
+	MinDifficulty: number,
+	MaxDifficulty: number,
+	Tint: Color3, -- Grundton der Haeuser
+	Neon: Color3, -- Leitfarbe der Schilder
+	Dense: boolean, -- true = voll ausgebaut
+}
+
+Districts.List = {
+	{
+		Id = "OLDTOWN",
+		Name = "Altstadt",
+		Character = "Enge Gassen, Neon, Marktstaende.",
+		GridX = 0,
+		GridZ = 0,
+		Radius = 1,
+		MinDifficulty = 1,
+		MaxDifficulty = 3,
+		Tint = Color3.fromRGB(34, 30, 36),
+		Neon = Color3.fromRGB(255, 45, 149),
+		Dense = true, -- der erste fertige Bezirk
+	},
+	{
+		Id = "DOCKS",
+		Name = "Hafen",
+		Character = "Container, Lagerhallen, wenig Licht.",
+		GridX = -2,
+		GridZ = 1,
+		Radius = 1,
+		MinDifficulty = 3,
+		MaxDifficulty = 5,
+		Tint = Color3.fromRGB(26, 30, 34),
+		Neon = Color3.fromRGB(0, 229, 255),
+		Dense = false,
+	},
+	{
+		Id = "FINANCE",
+		Name = "Finanzviertel",
+		Character = "Glas, Kameras ueberall, hell.",
+		GridX = 2,
+		GridZ = -1,
+		Radius = 1,
+		MinDifficulty = 5,
+		MaxDifficulty = 7,
+		Tint = Color3.fromRGB(30, 36, 46),
+		Neon = Color3.fromRGB(198, 214, 226),
+		Dense = false,
+	},
+	{
+		Id = "HEIGHTS",
+		Name = "Hoehenzug",
+		Character = "Villen, Serpentinen, wenig Verkehr.",
+		GridX = 1,
+		GridZ = 2,
+		Radius = 1,
+		MinDifficulty = 6,
+		MaxDifficulty = 8,
+		Tint = Color3.fromRGB(38, 36, 32),
+		Neon = Color3.fromRGB(255, 176, 0),
+		Dense = false,
+	},
+	{
+		Id = "INDUSTRY",
+		Name = "Industriegebiet",
+		Character = "Weite Flaechen, Zaeune.",
+		GridX = -1,
+		GridZ = -2,
+		Radius = 1,
+		MinDifficulty = 4,
+		MaxDifficulty = 6,
+		Tint = Color3.fromRGB(28, 28, 30),
+		Neon = Color3.fromRGB(0, 230, 118),
+		Dense = false,
+	},
+} :: { District }
+
+--==========================================================================
+
+function Districts.Get(id: string): District?
+	for _, district in Districts.List do
+		if district.Id == id then
+			return district
+		end
+	end
+	return nil
+end
+
+function Districts.Count(): number
+	return #Districts.List
+end
+
+-- Welcher Bezirk liegt auf diesen Gitterkoordinaten? nil = Niemandsland.
+function Districts.At(gridX: number, gridZ: number): District?
+	local best: District? = nil
+	local bestDistance = math.huge
+	for _, district in Districts.List do
+		local dx = gridX - district.GridX
+		local dz = gridZ - district.GridZ
+		local distance = math.max(math.abs(dx), math.abs(dz))
+		if distance &lt;= district.Radius and distance &lt; bestDistance then
+			best, bestDistance = district, distance
+		end
+	end
+	return best
+end
+
+function Districts.Validate(list: { District }?): (boolean, { string })
+	local districts = list or Districts.List
+	local errors: { string } = {}
+	local seen: { [string]: boolean } = {}
+	local occupied: { [string]: string } = {}
+
+	for _, district in districts do
+		local label = if typeof(district.Id) == "string" and district.Id ~= "" then district.Id else "#?"
+
+		if typeof(district.Id) ~= "string" or district.Id == "" then
+			table.insert(errors, "Id fehlt")
+		elseif seen[district.Id] then
+			table.insert(errors, ("%s: Id doppelt vergeben"):format(label))
+		else
+			seen[district.Id] = true
+		end
+
+		if typeof(district.Name) ~= "string" or district.Name == "" then
+			table.insert(errors, ("%s: Name fehlt"):format(label))
+		end
+		if district.MinDifficulty &lt; 1 or district.MaxDifficulty &gt; 10 then
+			table.insert(errors, ("%s: Schwierigkeit ausserhalb 1-10"):format(label))
+		end
+		if district.MinDifficulty &gt; district.MaxDifficulty then
+			table.insert(errors, ("%s: Min groesser als Max"):format(label))
+		end
+		if district.Radius &lt; 1 then
+			table.insert(errors, ("%s: Radius unter 1"):format(label))
+		end
+
+		-- Zwei Bezirke duerfen nicht auf demselben Block liegen, sonst
+		-- ueberschreibt einer den anderen beim Bauen.
+		local key = ("%d,%d"):format(district.GridX, district.GridZ)
+		if occupied[key] then
+			table.insert(errors, ("%s ueberlappt %s"):format(label, occupied[key]))
+		else
+			occupied[key] = label
+		end
+	end
+
+	-- Genau ein dichter Bezirk zum Start: mehr gleichzeitig anzufangen ist
+	-- laut Bauplan ausdruecklich verboten.
+	local dense = 0
+	for _, district in districts do
+		if district.Dense then
+			dense += 1
+		end
+	end
+	if dense == 0 then
+		table.insert(errors, "kein einziger Bezirk ist ausgebaut")
+	end
+
+	return #errors == 0, errors
+end
+
+return Districts
+</ProtectedString>
+</Properties>
+</Item>
+<Item class="ModuleScript" referent="GN3">
 <Properties>
 <string name="Name">Geometry</string>
 <ProtectedString name="Source">-- ReplicatedStorage/Shared/Geometry.luau
@@ -774,7 +1094,7 @@ return Geometry
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN3">
+<Item class="ModuleScript" referent="GN4">
 <Properties>
 <string name="Name">Goods</string>
 <ProtectedString name="Source">-- ReplicatedStorage/Shared/Goods.luau
@@ -912,7 +1232,7 @@ return Goods
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN4">
+<Item class="ModuleScript" referent="GN5">
 <Properties>
 <string name="Name">Missions</string>
 <ProtectedString name="Source">-- ReplicatedStorage/Shared/Missions.luau
@@ -977,35 +1297,34 @@ export type Mission = {
 
 -- LEITREGEL, die jede dieser Missionen einhaelt:
 --   Sie ist gleichzeitig das Tutorial fuer ein System UND schaltet dieses
---   System dauerhaft frei. Nach M05 hat der Spieler kein "durchgespielt",
---   sondern fuenf Systeme, die alle noch laufen.
+--   System dauerhaft frei. Nach M10 hat der Spieler kein "durchgespielt",
+--   sondern zehn Systeme, die alle noch laufen.
 --
---   M01 lehrt Hacken/Trace/Verkauf  -&gt; FREE_HACKING
---   M02 lehrt mehrstufige Ziele     -&gt; STORE_RAIDS   (Laeden wiederholbar)
---   M03 lehrt die Basis             -&gt; DARKNET       (der eigentliche Loop)
---   M04 lehrt Handel                -&gt; TRADING       (freier Handel)
---   M05 lehrt das Grossziel         -&gt; BANK_RAIDS    (Endgame mit Cooldown)
+-- SCHREIBREGELN
+--   Nie mehr als drei Saetze am Stueck. Briefings sind Nachrichten auf dem
+--   Telefon, keine Zwischensequenzen. Wren schreibt knapp, nie freundlich,
+--   nie erklaerend. Die Story erklaert NIE eine Mechanik - das macht die
+--   Mission selbst.
 --
 -- Die TargetIds hier muessen zu den Attributen der Parts in
 -- ServerScriptService/World passen. Waypoints und Kontakte ebenso.
 Missions.List = {
 	{
 		Id = "M01_FIRSTHACK",
-		Title = "Erstes Geraet",
-		Briefing = "Ein altes Wartungsterminal, das keiner mehr vermisst. Guter Ort zum Ueben.",
+		Title = "Erster Kontakt",
+		Briefing = "Ich habe dich beobachtet, und ich kann dich brauchen.\nDa drueben steht ein Wartungsterminal, das keiner vermisst.\n- W",
 		Requires = {},
 		Steps = {
 			{ Type = "HACK", TargetId = "TUT_TERMINAL", Text = "Naeher ran. Dann [E]." },
 			{ Type = "SELL", Amount = 1, Text = "Beute zum Hehler bringen" },
 		},
 		-- ToBank, damit direkt nach dem Tutorial das erste Upgrade drin ist.
-		-- Ohne das haette der Spieler nach dem Verkauf wieder nur heisses Geld.
 		Reward = { Crypto = 200, Unlock = "FREE_HACKING", ToBank = true },
 	},
 	{
 		Id = "M02_STORE",
 		Title = "Kalter Anlauf",
-		Briefing = "Der Laden an der Kreuzung Nord faehrt nachts auf Notstrom. Schloss zuerst, dann der Tresor - und zwar zuegig.",
+		Briefing = "Der Laden an der Kreuzung Nord faehrt nachts auf Notstrom.\nSchloss zuerst, dann der Tresor. Zuegig.",
 		Requires = { "M01_FIRSTHACK" },
 		Steps = {
 			{ Type = "GOTO", Target = "STORE_FRONT", Text = "Geh zum Laden an der Kreuzung Nord" },
@@ -1017,8 +1336,8 @@ Missions.List = {
 	},
 	{
 		Id = "M03_HOME",
-		Title = "Nach Hause",
-		Briefing = "Genug Strasse fuer heute. Zeit, den eigenen Rechner hochzufahren.",
+		Title = "Vier Waende",
+		Briefing = "Du kannst nicht ewig auf der Strasse arbeiten.\nIch habe dir was besorgt. Fahr den Rechner hoch.",
 		Requires = { "M02_STORE" },
 		Steps = {
 			{ Type = "GOTO", Target = "APARTMENT_DOOR", Text = "Geh nach Hause" },
@@ -1027,30 +1346,89 @@ Missions.List = {
 		Reward = { Crypto = 250, Unlock = "DARKNET", ToBank = true },
 	},
 	{
-		Id = "M04_FIRSTGOODS",
-		Title = "Erste Ware",
-		Briefing = "Im Darknet zaehlt nicht, was etwas kostet, sondern wann. Kauf billig, warte, verkauf teuer.",
+		Id = "M04_HOTWIRE",
+		Title = "Kurzschluss",
+		Briefing = "Zu Fuss bist du zu langsam. Nimm dir eins von der Strasse.\nUnd ja, das sehen sie.",
 		Requires = { "M03_HOME" },
 		Steps = {
-			{ Type = "BUY", Amount = 3, Text = "Kauf drei Einheiten irgendeiner Ware" },
-			{ Type = "WAIT", Seconds = 60, Text = "Beobachte den Kurs - Preise bewegen sich" },
-			{ Type = "TALK", ContactId = "HOME_RIG", Text = "Zurueck an den Rechner und verkaufen" },
+			{ Type = "HACK", TargetId = "TUT_TERMINAL", Text = "Uebungsterminal fuer die Zuendung anzapfen" },
+			{ Type = "GOTO", Target = "GARAGE", Text = "Auto klauen und zur Garage fahren" },
 		},
-		Reward = { Crypto = 300, Unlock = "TRADING", ToBank = true },
+		Reward = { Crypto = 500, Unlock = "VEHICLES" },
 	},
 	{
-		Id = "M05_BANK",
-		Title = "Die Bank",
-		Briefing = "Nakamura Bank. Drei Schichten, ein Alarm ueber allem. Wer hier patzt, fliegt sofort auf.",
-		Requires = { "M04_FIRSTGOODS" },
+		Id = "M05_WHEELS",
+		Title = "Auf Raedern",
+		Briefing = "Geklaut ist geklaut. Kauf dir eins, das dir gehoert.\nDer Haendler hat tagsueber auf.",
+		Requires = { "M04_HOTWIRE" },
+		Steps = {
+			{ Type = "GOTO", Target = "DEALER", Text = "Geh zum Autohaendler" },
+			{ Type = "SELL", Amount = 2, Text = "Zweimal abliefern - Autos kosten Geld" },
+		},
+		Reward = { Crypto = 800, Unlock = "DEALERS", ToBank = true },
+	},
+	{
+		Id = "M06_DOCKS",
+		Title = "Der Hafen",
+		Briefing = "Container 14, Nordkai. Grosse Ware, viel davon.\nNimm was mit Ladeflaeche.",
+		Requires = { "M05_WHEELS" },
+		Steps = {
+			{ Type = "GOTO", Target = "DOCKS", Text = "Fahr zum Nordkai" },
+			{ Type = "BUY", Amount = 5, Text = "Fuenf Einheiten Ware aufnehmen" },
+			{ Type = "TALK", ContactId = "HOME_RIG", Text = "Zurueck an den Rechner und verkaufen" },
+		},
+		Reward = { Crypto = 900, Unlock = "DOCKS_ZONE" },
+	},
+	{
+		Id = "M07_BLUELIGHT",
+		Title = "Blaulicht",
+		Briefing = "Frueher oder spaeter haengen sie dir am Auspuff.\nLern jetzt, wie man sie abschuettelt. Nicht spaeter.",
+		Requires = { "M06_DOCKS" },
+		Steps = {
+			{ Type = "HACK", TargetId = "ATM", Text = "Zieh dir genug Aufmerksamkeit zu" },
+			{ Type = "GOTO", Target = "HEIGHTS", Text = "Verschwinde Richtung Hoehenzug" },
+			{ Type = "SELL", Amount = 1, Text = "Erst abliefern, wenn du sie los bist" },
+		},
+		Reward = { Crypto = 1200, Unlock = "HEIGHTS_ZONE" },
+	},
+	{
+		Id = "M08_GLASSHOUSE",
+		Title = "Glashaus",
+		Briefing = "Vor dem Tresor kommt das Hinsehen. Kameras in der Halle,\nzwei Wachen, eine Schleuse. Fass nichts an.",
+		Requires = { "M07_BLUELIGHT" },
 		Steps = {
 			{ Type = "GOTO", Target = "BANK_FRONT", Text = "Geh zur Nakamura Bank" },
-			{ Type = "HACK", TargetId = "BANK_CAM", Text = "Aussenkamera abschalten" },
-			{ Type = "HACK", TargetId = "BANK_DOOR", Text = "Sicherheitstuer oeffnen" },
+			{ Type = "HACK", TargetId = "BANK_HALL_CAM1", Text = "Erste Hallenkamera abschalten" },
+			{ Type = "HACK", TargetId = "BANK_HALL_CAM2", Text = "Zweite Hallenkamera abschalten" },
+			{ Type = "WAIT", Seconds = 20, Text = "Warte, bis die Wachen vorbei sind" },
+		},
+		-- Hier findet der Spieler die Protokolle. Die Wendung steht im
+		-- Briefing der naechsten Mission, nicht in einer Zwischensequenz.
+		Reward = { Crypto = 1500, Unlock = "FINANCE_ZONE" },
+	},
+	{
+		Id = "M09_VAULT",
+		Title = "Der Tresor",
+		Briefing = "In den Protokollen stand dein Name, Abteilung Sicherheitsforschung.\nJeder Hack von dir ist verbucht und laengst geschlossen.\nWren hat nie fuer dich gearbeitet - du hast fuer sie gearbeitet.",
+		Requires = { "M08_GLASSHOUSE" },
+		Steps = {
+			{ Type = "HACK", TargetId = "BANK_SLUICE", Text = "Schleuse oeffnen - ab jetzt laeuft die Uhr" },
+			{ Type = "HACK", TargetId = "BANK_BOX1", Text = "Schliessfach knacken" },
 			{ Type = "HACK", TargetId = "BANK_VAULT", Text = "Tresorraum - zu zweit deutlich leichter" },
 			{ Type = "SELL", Amount = 1, Text = "Alles zum Hehler, sofort" },
 		},
-		Reward = { Crypto = 2500, Unlock = "BANK_RAIDS" },
+		Reward = { Crypto = 3500, Unlock = "BANK_RAIDS" },
+	},
+	{
+		Id = "M10_WREN",
+		Title = "Wren",
+		Briefing = "Sie will dich treffen, am Rechner wie immer.\nDu warst nie ein Krimineller, sondern ein unbezahlter Test.\nJetzt entscheidest du, was du damit machst.",
+		Requires = { "M09_VAULT" },
+		Steps = {
+			{ Type = "TALK", ContactId = "HOME_RIG", Text = "Antworte ihr" },
+		},
+		-- Keine Crypto: die Belohnung ist die Entscheidung selbst.
+		Reward = { Unlock = "ENDGAME" },
 	},
 } :: { Mission }
 
@@ -1339,7 +1717,7 @@ return Missions
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN5">
+<Item class="ModuleScript" referent="GN6">
 <Properties>
 <string name="Name">Remotes</string>
 <ProtectedString name="Source">-- ReplicatedStorage/Shared/Remotes.luau
@@ -1380,12 +1758,17 @@ local EVENT_NAMES = {
 	"StoreSync", -- S-&gt;C  { passes, products }
 	"StorePrompt", -- C-&gt;S  { kind, key }   bittet um den Kaufdialog
 	"TimeSync", -- S-&gt;C  { clock, isNight, rewardBonus }
+	"GarageSync", -- S-&gt;C  { owned, spawned, slots }
+	"StealVehicle", -- C-&gt;S  { }            Verkehrsauto kurzschliessen
+	"PursuitSync", -- S-&gt;C  { level, escaping, seconds }
+	"EndgameChoice", -- C-&gt;S  { choice }    Kassieren oder Verbrennen
 }
 
 local FUNCTION_NAMES: { string } = {
 	"ShopPurchase", -- C-&gt;S-&gt;C  { component } -&gt; { ok, reason, level, cost, ... }
 	"Trade", -- C-&gt;S-&gt;C  { action, goodId, amount } -&gt; { ok, reason, unit, total, ... }
 	"AdminCommand", -- C-&gt;S-&gt;C  { command, ... } -&gt; { ok, text, ... }
+	"VehicleAction", -- C-&gt;S-&gt;C  { action, classId, colour } -&gt; { ok, reason, ... }
 }
 
 local Remotes = {}
@@ -1442,7 +1825,7 @@ return Remotes
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN6">
+<Item class="ModuleScript" referent="GN7">
 <Properties>
 <string name="Name">SoundCatalog</string>
 <ProtectedString name="Source">-- ReplicatedStorage/Shared/SoundCatalog.luau
@@ -1566,7 +1949,7 @@ return SoundCatalog
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN7">
+<Item class="ModuleScript" referent="GN8">
 <Properties>
 <string name="Name">Types</string>
 <ProtectedString name="Source">-- ReplicatedStorage/Shared/Types.luau
@@ -1592,6 +1975,13 @@ export type Stats = {
 	GoodsSold: number, -- im Darknet verkaufte Einheiten
 }
 
+-- Ein gekauftes Fahrzeug. Rein kosmetische Anpassung - keine Leistungsteile,
+-- sonst muesste das Fahrverhalten mehrfach ausbalanciert werden.
+export type OwnedVehicle = {
+	ClassId: string,
+	Colour: string,
+}
+
 -- Story-Fortschritt im Profil. Der Client bekommt davon nur eine Abschrift
 -- ueber MissionSync und meldet nie selbst, dass ein Schritt fertig ist.
 export type Story = {
@@ -1601,6 +1991,8 @@ export type Story = {
 	StepStartedAt: number, -- Unix-Zeit, gebraucht fuer WAIT-Schritte
 	Completed: { string }, -- abgeschlossene Missions-Ids
 	Unlocks: { string }, -- dauerhaft freigeschaltete Systeme
+	Allegiance: string, -- "" | "CASH" | "BURN"  (Mission 10, seit Schema 5)
+	AllegianceAt: number, -- Unix-Zeit der letzten Umstellung
 }
 
 -- Das gespeicherte Spielerprofil. Einzige Wahrheit fuer alles, was einen
@@ -1616,6 +2008,7 @@ export type Profile = {
 	Story: Story, -- seit SchemaVersion 2
 	Stash: { [string]: number }, -- Darknet-Lager, seit SchemaVersion 3
 	PurchaseLog: { string }, -- verarbeitete PurchaseIds, seit SchemaVersion 4
+	Garage: { OwnedVehicle }, -- gekaufte Fahrzeuge, seit SchemaVersion 5
 	LastSeen: number, -- Unix-Zeit des letzten Speicherns
 	SessionId: string, -- Session-Lock gegen Doppel-Sitzungen
 }
@@ -1691,7 +2084,7 @@ return {}
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN8">
+<Item class="ModuleScript" referent="GN9">
 <Properties>
 <string name="Name">UITheme</string>
 <ProtectedString name="Source">-- ReplicatedStorage/Shared/UITheme.luau
@@ -1893,7 +2286,7 @@ return UITheme
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN9">
+<Item class="ModuleScript" referent="GN10">
 <Properties>
 <string name="Name">Vehicles</string>
 <ProtectedString name="Source">-- ReplicatedStorage/Shared/Vehicles.luau
@@ -2142,11 +2535,11 @@ return Vehicles
 </Item>
 </Item>
 </Item>
-<Item class="ServerScriptService" referent="GN57">
+<Item class="ServerScriptService" referent="GN67">
 <Properties>
 <string name="Name">ServerScriptService</string>
 </Properties>
-<Item class="ModuleScript" referent="GN11">
+<Item class="ModuleScript" referent="GN12">
 <Properties>
 <string name="Name">AdminList</string>
 <ProtectedString name="Source">-- ServerScriptService/AdminList.luau
@@ -2212,7 +2605,7 @@ return AdminList
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="Script" referent="GN12">
+<Item class="Script" referent="GN13">
 <Properties>
 <string name="Name">GhostNetServer</string>
 <ProtectedString name="Source">-- ServerScriptService/GhostNetServer.server.luau
@@ -2242,7 +2635,12 @@ local RaidService = require(Systems.RaidService)
 local MissionService = require(Systems.MissionService)
 local MarketService = require(Systems.MarketService)
 local InventoryService = require(Systems.InventoryService)
+local RoadNetwork = require(Systems.RoadNetwork)
 local VehicleChassis = require(Systems.VehicleChassis)
+local VehicleService = require(Systems.VehicleService)
+local PursuitService = require(Systems.PursuitService)
+local TrafficService = require(Systems.TrafficService)
+local GuardService = require(Systems.GuardService)
 local MonetizationService = require(Systems.MonetizationService)
 local AdminService = require(Systems.AdminService)
 
@@ -2260,7 +2658,12 @@ RaidService.Init()
 MissionService.Init()
 MarketService.Init() -- Kurse laufen unabhaengig von Spielern
 InventoryService.Init() -- braucht Markt und Missionen (Unlock-Pruefung)
+RoadNetwork.Init() -- Strassengraph, den Verkehr und Polizei teilen
 VehicleChassis.Init()
+VehicleService.Init() -- Besitz und Haendler
+PursuitService.Init() -- vor dem Verkehr: der meldet Diebstaehle dorthin
+TrafficService.Init()
+GuardService.Init() -- meldet Alarme an den RaidService
 MonetizationService.Init()
 AdminService.Init() -- zuletzt: greift auf alle anderen zu
 
@@ -2268,11 +2671,11 @@ print(("[GHOSTNET] Server hochgefahren - Version %s"):format(Config.Version))
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="Folder" referent="GN32">
+<Item class="Folder" referent="GN38">
 <Properties>
 <string name="Name">Systems</string>
 </Properties>
-<Item class="ModuleScript" referent="GN13">
+<Item class="ModuleScript" referent="GN14">
 <Properties>
 <string name="Name">AdminService</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/AdminService.luau
@@ -2844,7 +3247,7 @@ return AdminService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN14">
+<Item class="ModuleScript" referent="GN15">
 <Properties>
 <string name="Name">EconomyService</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/EconomyService.luau
@@ -3106,7 +3509,205 @@ return EconomyService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN15">
+<Item class="ModuleScript" referent="GN16">
+<Properties>
+<string name="Name">GuardService</string>
+<ProtectedString name="Source">-- ServerScriptService/Systems/GuardService.luau
+--!strict
+-- GHOSTNET :: Wachen in der Bank.
+--
+-- SIE MELDEN, SIE GREIFEN NICHT AN. Das haelt die Mechanik bei Flucht statt
+-- Kampf - und es ist der Grund, warum es in diesem Spiel keine Waffen gibt.
+-- Eine Wache, die dich sieht, loest den Alarm aus. Dann rennst du.
+--
+-- LEISTUNG
+--   Sichtkegel werden NUR geprueft, wenn ueberhaupt ein Spieler in der Naehe
+--   ist, und nur alle Config.Bank.GuardTick Sekunden. Ein Raycast pro Wache
+--   und Takt, nicht pro Frame.
+--
+-- Eine Wache ist ein Modell mit Tag "GhostNetGuard" und Attributen:
+--   PatrolA / PatrolB   Weltpositionen als Vector3-Attribute
+--   AlarmGroup          welche Alarm-Gruppe sie ausloest
+
+local CollectionService = game:GetService("CollectionService")
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Config = require(ReplicatedStorage.Shared.Config)
+local Geometry = require(ReplicatedStorage.Shared.Geometry)
+
+local RaidService = require(script.Parent.RaidService)
+local TimeService = require(script.Parent.TimeService)
+
+local GuardService = {}
+
+local B = Config.Bank
+
+type Guard = {
+	Model: Model,
+	Root: BasePart,
+	A: Vector3,
+	B: Vector3,
+	Alpha: number,
+	Direction: number,
+	Seen: { [Player]: number },
+}
+
+local guards: { Guard } = {}
+
+--==========================================================================
+
+local function register(inst: Instance)
+	if not inst:IsA("Model") then
+		return
+	end
+	local root = inst.PrimaryPart or inst:FindFirstChild("Root")
+	if not root or not root:IsA("BasePart") then
+		warn(("[GHOSTNET] Wache '%s' hat keinen Root-Part."):format(inst:GetFullName()))
+		return
+	end
+
+	local a = inst:GetAttribute("PatrolA")
+	local b = inst:GetAttribute("PatrolB")
+	table.insert(guards, {
+		Model = inst,
+		Root = root,
+		A = if typeof(a) == "Vector3" then a else root.Position,
+		B = if typeof(b) == "Vector3" then b else root.Position,
+		Alpha = 0,
+		Direction = 1,
+		Seen = {},
+	})
+end
+
+local function unregister(inst: Instance)
+	for index = #guards, 1, -1 do
+		if guards[index].Model == inst then
+			table.remove(guards, index)
+		end
+	end
+end
+
+--==========================================================================
+-- Sicht
+--==========================================================================
+
+local rayParams = RaycastParams.new()
+rayParams.FilterType = Enum.RaycastFilterType.Exclude
+rayParams.IgnoreWater = true
+
+-- Sieht diese Wache den Spieler? Winkel UND freie Sichtlinie - Waende
+-- blockieren, sonst sieht die Wache durch den halben Tresorraum.
+local function canSee(guard: Guard, player: Player, position: Vector3): boolean
+	local toPlayer = position - guard.Root.Position
+	local distance = toPlayer.Magnitude
+	local range = B.GuardSightRange * TimeService.SightFactor()
+	if distance &gt; range or distance &lt; 0.1 then
+		return false
+	end
+
+	local forward = guard.Root.CFrame.LookVector
+	local angle = math.deg(math.acos(math.clamp(forward:Dot(toPlayer.Unit), -1, 1)))
+	if angle &gt; B.GuardSightAngle then
+		return false
+	end
+
+	local character = player.Character
+	rayParams.FilterDescendantsInstances = { guard.Model, if character then character else guard.Model }
+	local hit = workspace:Raycast(guard.Root.Position, toPlayer, rayParams)
+	return hit == nil
+end
+
+local function patrol(guard: Guard, dt: number)
+	if (guard.A - guard.B).Magnitude &lt; 1 then
+		return
+	end
+	guard.Alpha += guard.Direction * (B.GuardPatrolSpeed * dt) / math.max(1, (guard.A - guard.B).Magnitude)
+	if guard.Alpha &gt;= 1 then
+		guard.Alpha = 1
+		guard.Direction = -1
+	elseif guard.Alpha &lt;= 0 then
+		guard.Alpha = 0
+		guard.Direction = 1
+	end
+
+	local target = guard.A:Lerp(guard.B, guard.Alpha)
+	local look = if guard.Direction &gt; 0 then guard.B else guard.A
+	guard.Root.CFrame = CFrame.lookAt(target, Vector3.new(look.X, target.Y, look.Z))
+end
+
+--==========================================================================
+
+function GuardService.Init()
+	for _, inst in CollectionService:GetTagged(Config.GuardTag) do
+		register(inst)
+	end
+	CollectionService:GetInstanceAddedSignal(Config.GuardTag):Connect(register)
+	CollectionService:GetInstanceRemovedSignal(Config.GuardTag):Connect(unregister)
+
+	task.spawn(function()
+		local last = os.clock()
+		while true do
+			task.wait(B.GuardTick)
+			local now = os.clock()
+			local dt = now - last
+			last = now
+
+			if #guards == 0 then
+				continue
+			end
+
+			-- Sammle einmal alle lebenden Spieler, statt pro Wache erneut.
+			local present: { { Player: Player, Position: Vector3 } } = {}
+			for _, player in Players:GetPlayers() do
+				local position = Geometry.AlivePosition(player)
+				if position then
+					table.insert(present, { Player = player, Position = position })
+				end
+			end
+
+			for _, guard in guards do
+				patrol(guard, dt)
+
+				-- Sichtpruefung NUR, wenn ueberhaupt jemand in Reichweite ist.
+				for _, entry in present do
+					if (entry.Position - guard.Root.Position).Magnitude &gt; B.GuardSightRange then
+						guard.Seen[entry.Player] = nil
+						continue
+					end
+
+					if canSee(guard, entry.Player, entry.Position) then
+						local seenFor = (guard.Seen[entry.Player] or 0) + dt
+						guard.Seen[entry.Player] = seenFor
+						if seenFor &gt;= B.GuardSpotSeconds then
+							guard.Seen[entry.Player] = 0
+							local group = guard.Model:GetAttribute("AlarmGroup")
+							warn(("[GHOSTNET] Wache hat %s entdeckt - Alarm."):format(entry.Player.Name))
+							RaidService.RaiseAlarm(
+								entry.Player,
+								if typeof(group) == "string" then group else "BANK",
+								"Wache"
+							)
+						end
+					else
+						guard.Seen[entry.Player] = nil
+					end
+				end
+			end
+		end
+	end)
+
+	print(("[GHOSTNET] GuardService bereit. Sicht %d Studs, %d Grad - Wachen melden, sie greifen nicht an."):format(
+		B.GuardSightRange,
+		B.GuardSightAngle
+	))
+end
+
+return GuardService
+</ProtectedString>
+</Properties>
+</Item>
+<Item class="ModuleScript" referent="GN17">
 <Properties>
 <string name="Name">HackEffects</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/HackEffects.luau
@@ -3295,7 +3896,7 @@ return HackEffects
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN16">
+<Item class="ModuleScript" referent="GN18">
 <Properties>
 <string name="Name">HackService</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/HackService.luau
@@ -3350,6 +3951,32 @@ local resolvedCallbacks: { (Player, { [string]: any }) -&gt; () } = {}
 
 function HackService.OnHackResolved(callback: (Player, { [string]: any }) -&gt; ())
 	table.insert(resolvedCallbacks, callback)
+end
+
+-- Faktoren auf Ertrag und Trace, die von aussen kommen (Endgame-Entscheidung
+-- aus Mission 10). Bewusst als Registrierung statt als Require: sonst
+-- braeuchte der HackService den MissionService, der ihn schon kennt - und
+-- damit haetten wir einen Kreis.
+local rewardModifiers: { (Player) -&gt; number } = {}
+local traceModifiers: { (Player) -&gt; number } = {}
+
+function HackService.AddRewardModifier(fn: (Player) -&gt; number)
+	table.insert(rewardModifiers, fn)
+end
+
+function HackService.AddTraceModifier(fn: (Player) -&gt; number)
+	table.insert(traceModifiers, fn)
+end
+
+local function combined(list: { (Player) -&gt; number }, player: Player): number
+	local factor = 1
+	for _, fn in list do
+		local ok, value = pcall(fn, player)
+		if ok and typeof(value) == "number" and value &gt; 0 then
+			factor *= value
+		end
+	end
+	return factor
 end
 
 --==========================================================================
@@ -3412,6 +4039,9 @@ local function resolve(session: Session, success: boolean, reason: string)
 		-- Gamepass ColdRig: dauerhaft weniger Trace. Zeitersparnis, kein
 		-- Raetselvorteil - die Aufgabe selbst bleibt gleich schwer.
 		traceDelta *= MonetizationService.TraceFactor(player)
+
+		-- Endgame-Entscheidung und alles andere von aussen Angemeldete.
+		traceDelta *= combined(traceModifiers, player)
 
 		-- Co-Op: ein zweiter Spieler in Reichweite eines RequiresTwo-Ziels
 		-- halbiert den Trace-Anstieg. Das ist der Grund, einen Freund
@@ -3826,7 +4456,7 @@ return HackService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN17">
+<Item class="ModuleScript" referent="GN19">
 <Properties>
 <string name="Name">HackTargets</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/HackTargets.luau
@@ -4076,7 +4706,7 @@ return HackTargets
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN18">
+<Item class="ModuleScript" referent="GN20">
 <Properties>
 <string name="Name">InventoryService</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/InventoryService.luau
@@ -4109,6 +4739,7 @@ local EconomyService = require(script.Parent.EconomyService)
 local MarketService = require(script.Parent.MarketService)
 local MissionService = require(script.Parent.MissionService)
 local MonetizationService = require(script.Parent.MonetizationService)
+local VehicleService = require(script.Parent.VehicleService)
 local RateLimiter = require(script.Parent.RateLimiter)
 local SaveService = require(script.Parent.SaveService)
 local TraceService = require(script.Parent.TraceService)
@@ -4136,7 +4767,10 @@ end
 function InventoryService.Slots(player: Player): number
 	local base = Config.GetStashSlots(EconomyService.GetTier(player))
 	-- Gamepass BigStash: reine Kapazitaet, kein Spielvorteil beim Raetsel.
-	return math.floor(base * (1 + MonetizationService.StashBonus(player)))
+	local slots = math.floor(base * (1 + MonetizationService.StashBonus(player)))
+	-- Das ausgeparkte Fahrzeug zaehlt mit. Genau das ist der mechanische
+	-- Grund fuer den Transporter.
+	return slots + VehicleService.StashBonus(player)
 end
 
 function InventoryService.Snapshot(player: Player): { [string]: any }
@@ -4390,7 +5024,7 @@ return InventoryService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN19">
+<Item class="ModuleScript" referent="GN21">
 <Properties>
 <string name="Name">MarketService</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/MarketService.luau
@@ -4680,11 +5314,11 @@ return MarketService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="Folder" referent="GN21">
+<Item class="Folder" referent="GN23">
 <Properties>
 <string name="Name">Minigames</string>
 </Properties>
-<Item class="ModuleScript" referent="GN20">
+<Item class="ModuleScript" referent="GN22">
 <Properties>
 <string name="Name">NodeBreach</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/Minigames/NodeBreach.luau
@@ -5059,7 +5693,7 @@ return NodeBreach
 </Properties>
 </Item>
 </Item>
-<Item class="ModuleScript" referent="GN22">
+<Item class="ModuleScript" referent="GN24">
 <Properties>
 <string name="Name">MissionService</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/MissionService.luau
@@ -5140,6 +5774,75 @@ end
 
 local function currentStep(mission: Mission, story: Story): Step?
 	return mission.Steps[story.Step]
+end
+
+--==========================================================================
+-- Die Entscheidung aus Mission 10
+--
+-- "CASH"  = bei Meridian anheuern. Halber Trace-Anstieg, aber weniger Beute.
+-- "BURN"  = alles veroeffentlichen. Mehr Ertrag, haerteres Spiel.
+--
+-- Einmal pro Woche umstellbar. Ohne das fuehlen sich Spieler eingesperrt und
+-- hoeren auf.
+--==========================================================================
+
+function MissionService.GetAllegiance(player: Player): string
+	local story = storyOf(player)
+	return if story then story.Allegiance else ""
+end
+
+-- Faktoren, die andere Services abfragen. Sie liegen hier, weil die
+-- Entscheidung Teil der Story ist.
+function MissionService.TraceFactor(player: Player): number
+	return if MissionService.GetAllegiance(player) == "CASH" then Config.Endgame.CashTraceFactor else 1
+end
+
+function MissionService.RewardFactor(player: Player): number
+	local choice = MissionService.GetAllegiance(player)
+	if choice == "CASH" then
+		return Config.Endgame.CashRewardFactor
+	elseif choice == "BURN" then
+		return Config.Endgame.BurnRewardFactor
+	end
+	return 1
+end
+
+function MissionService.PursuitFactor(player: Player): number
+	return if MissionService.GetAllegiance(player) == "BURN" then Config.Endgame.BurnPursuitFactor else 1
+end
+
+local function onEndgameChoice(player: Player, payload: any)
+	if not RateLimiter.Check(player, "EndgameChoice") then
+		return
+	end
+	if typeof(payload) ~= "table" then
+		return
+	end
+	local choice = (payload :: any).Choice
+	if choice ~= "CASH" and choice ~= "BURN" then
+		return
+	end
+
+	local story = storyOf(player)
+	if not story then
+		return
+	end
+	-- Erst nach Mission 10 waehlbar.
+	if not Missions.HasUnlock(story, "ENDGAME") then
+		return
+	end
+
+	local now = os.time()
+	if story.Allegiance ~= "" and now - story.AllegianceAt &lt; Config.Endgame.SwitchCooldown then
+		MissionService.Sync(player)
+		return
+	end
+
+	story.Allegiance = choice
+	story.AllegianceAt = now
+	SaveService.RequestSave(player)
+	MissionService.Sync(player)
+	print(("[GHOSTNET] %s hat sich fuer '%s' entschieden."):format(player.Name, choice))
 end
 
 -- Fuer Phase B und C: "darf der Spieler Ladenueberfaelle / das Darknet?"
@@ -5244,6 +5947,11 @@ function MissionService.Sync(player: Player)
 			Unlocks = table.clone(story.Unlocks),
 			Available = if available then available.Id else "",
 			AvailableTitle = if available then available.Title else "",
+			Allegiance = story.Allegiance,
+			AllegianceSwitchIn = math.max(
+				0,
+				Config.Endgame.SwitchCooldown - (os.time() - story.AllegianceAt)
+			),
 		})
 		syncWaypoint(player, nil)
 		return
@@ -5271,6 +5979,11 @@ function MissionService.Sync(player: Player)
 		Steps = texts,
 		Completed = table.clone(story.Completed),
 		Unlocks = table.clone(story.Unlocks),
+		Allegiance = story.Allegiance,
+		AllegianceSwitchIn = math.max(
+			0,
+			Config.Endgame.SwitchCooldown - (os.time() - story.AllegianceAt)
+		),
 	})
 
 	syncWaypoint(player, step)
@@ -5617,6 +6330,12 @@ function MissionService.Init()
 	Remotes.MissionAbandon.OnServerEvent:Connect(onAbandon)
 	Remotes.MissionInteract.OnServerEvent:Connect(onInteract)
 	Remotes.MissionSkip.OnServerEvent:Connect(onSkip)
+	Remotes.EndgameChoice.OnServerEvent:Connect(onEndgameChoice)
+
+	-- Die Endgame-Faktoren melden sich beim HackService AN, statt dass der
+	-- HackService hier nachfragt. Sonst haetten die beiden einen Kreis.
+	HackService.AddTraceModifier(MissionService.TraceFactor)
+	HackService.AddRewardModifier(MissionService.RewardFactor)
 
 	SaveService.OnReady(function(player, profile)
 		lastMarker[player] = nil
@@ -5661,7 +6380,7 @@ return MissionService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN23">
+<Item class="ModuleScript" referent="GN25">
 <Properties>
 <string name="Name">MonetizationService</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/MonetizationService.luau
@@ -6080,7 +6799,363 @@ return MonetizationService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN24">
+<Item class="ModuleScript" referent="GN26">
+<Properties>
+<string name="Name">PursuitService</string>
+<ProtectedString name="Source">-- ServerScriptService/Systems/PursuitService.luau
+--!strict
+-- GHOSTNET :: Die Polizei.
+--
+-- KEIN SCHUSSWECHSEL, KEINE WAFFEN. Das ist eine bewusste Design-Entscheidung
+-- und kein Rueckstand: Ein Spiel ohne Waffen macht die FLUCHT interessant,
+-- unterscheidet sich sofort von jedem GTA-Klon, und erspart die gesamte
+-- Kampf-Balance, die man als Einzelner nie sauber hinbekommt.
+--
+-- Die Polizei rammt, blockiert und verfolgt. Mehr nicht.
+--
+-- WIE ES ANS BESTEHENDE SYSTEM HAENGT
+--   Die Fahndungsstufe kommt aus dem Trace. Gefasstwerden ist ein Bust ueber
+--   die vorhandene Kette - kein zweites Straf-System daneben.
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Config = require(ReplicatedStorage.Shared.Config)
+local Geometry = require(ReplicatedStorage.Shared.Geometry)
+local Remotes = require(ReplicatedStorage.Shared.Remotes)
+
+local RoadNetwork = require(script.Parent.RoadNetwork)
+local SaveService = require(script.Parent.SaveService)
+local TraceService = require(script.Parent.TraceService)
+
+local PursuitService = {}
+
+local P = Config.Pursuit
+local rng = Random.new()
+
+type Unit = {
+	Model: Model,
+	Body: BasePart,
+	From: number,
+	To: number,
+	Alpha: number,
+	Active: boolean,
+}
+
+type Chase = {
+	Level: number,
+	Bonus: number, -- Stufen aus Taten (Diebstahl, Alarm), nicht aus dem Trace
+	OutOfSight: number, -- Sekunden ohne Sichtkontakt
+	InRange: number, -- Sekunden dicht dran am Streifenwagen
+	Units: { Unit },
+}
+
+local chases: { [Player]: Chase } = {}
+local container: Folder? = nil
+
+local function ensureContainer(): Folder
+	if container and container.Parent then
+		return container
+	end
+	local folder = Instance.new("Folder")
+	folder.Name = "GhostNet_Police"
+	folder.Parent = workspace
+	container = folder
+	return folder
+end
+
+--==========================================================================
+-- Streifenwagen
+--==========================================================================
+
+local function buildUnit(): Unit
+	local model = Instance.new("Model")
+	model.Name = "Streifenwagen"
+
+	local body = Instance.new("Part")
+	body.Name = "Body"
+	body.Size = Vector3.new(6.4, 2.9, 13)
+	body.Color = Color3.fromRGB(18, 20, 28)
+	body.Material = Enum.Material.SmoothPlastic
+	body.Anchored = true
+	body.CanCollide = true
+	body.CanTouch = false
+	body.Parent = model
+	model.PrimaryPart = body
+
+	-- Blaulicht. Neon statt PointLight fuer die Flaeche, EIN Licht fuer den
+	-- Schein - mehr braucht es nicht und mehr kostet zu viel.
+	for _, side in { -1, 1 } do
+		local bar = Instance.new("Part")
+		bar.Name = "Blaulicht"
+		bar.Size = Vector3.new(1.6, 0.5, 1.2)
+		bar.Color = if side &lt; 0 then Color3.fromRGB(40, 90, 255) else Color3.fromRGB(255, 40, 60)
+		bar.Material = Enum.Material.Neon
+		bar.Anchored = true
+		bar.CanCollide = false
+		bar.CanQuery = false
+		bar.CanTouch = false
+		bar.CastShadow = false
+		bar.CFrame = body.CFrame * CFrame.new(side * 1.4, 1.9, 0)
+		bar.Parent = model
+
+		local weld = Instance.new("WeldConstraint")
+		weld.Part0 = body
+		weld.Part1 = bar
+		weld.Parent = body
+	end
+
+	local light = Instance.new("PointLight")
+	light.Color = Color3.fromRGB(60, 110, 255)
+	light.Brightness = 4
+	light.Range = 30
+	light.Parent = body
+
+	model.Parent = ensureContainer()
+	return { Model = model, Body = body, From = 1, To = 1, Alpha = 0, Active = true }
+end
+
+local function releaseUnit(unit: Unit)
+	unit.Active = false
+	if unit.Model.Parent then
+		unit.Model:Destroy()
+	end
+end
+
+--==========================================================================
+-- Fahndungsstufe
+--==========================================================================
+
+function PursuitService.GetLevel(player: Player): number
+	local chase = chases[player]
+	return if chase then chase.Level else 0
+end
+
+-- Taten erhoehen die Stufe direkt, unabhaengig vom Trace: Autodiebstahl,
+-- ausgeloester Alarm, spaeter Unfaelle.
+function PursuitService.AddHeat(player: Player, amount: number)
+	local chase = chases[player]
+	if not chase then
+		chase = { Level = 0, Bonus = 0, OutOfSight = 0, InRange = 0, Units = {} }
+		chases[player] = chase
+	end
+	chase.Bonus = math.clamp(chase.Bonus + amount, 0, P.MaxLevel)
+end
+
+local function computeLevel(player: Player, chase: Chase): number
+	local trace = TraceService.Get(player)
+	local fromTrace = math.floor(trace / P.TracePerLevel)
+	return math.clamp(math.floor(fromTrace + chase.Bonus), 0, P.MaxLevel)
+end
+
+--==========================================================================
+-- Verfolgung
+--==========================================================================
+
+local function sees(unit: Unit, position: Vector3): boolean
+	return (unit.Body.Position - position).Magnitude &lt;= P.SpotRange
+end
+
+local function moveUnit(unit: Unit, target: Vector3, dt: number)
+	-- Streifenwagen fahren auf demselben Graphen wie der Verkehr. Kein
+	-- Pathfinding: ein Schritt Richtung Ziel reicht auf einem Gitter.
+	local position, direction = RoadNetwork.LanePosition(unit.From, unit.To, unit.Alpha)
+	if not position or not direction then
+		local node = RoadNetwork.NearestNode(target)
+		if node then
+			unit.From = node.Id
+			unit.To = RoadNetwork.StepToward(node.Id, target) or node.Id
+			unit.Alpha = 0
+		end
+		return
+	end
+
+	unit.Body.CFrame = CFrame.lookAt(position + Vector3.new(0, 2.5, 0), position + direction + Vector3.new(0, 2.5, 0))
+
+	unit.Alpha += (P.UnitSpeed * dt) / Config.City.BlockSize
+	if unit.Alpha &gt;= 1 then
+		unit.From = unit.To
+		unit.To = RoadNetwork.StepToward(unit.From, target) or unit.From
+		unit.Alpha = 0
+	end
+end
+
+local function syncChase(player: Player, chase: Chase)
+	if not player.Parent then
+		return
+	end
+	Remotes.PursuitSync:FireClient(player, {
+		Level = chase.Level,
+		MaxLevel = P.MaxLevel,
+		Escaping = chase.OutOfSight &gt; 0 and chase.Level &gt; 0,
+		EscapeSeconds = math.max(0, P.EscapeSeconds - chase.OutOfSight),
+		Roadblock = chase.Level &gt;= P.RoadblockLevel,
+		Helicopter = chase.Level &gt;= P.HelicopterLevel,
+	})
+end
+
+local function clearChase(player: Player)
+	local chase = chases[player]
+	if not chase then
+		return
+	end
+	for _, unit in chase.Units do
+		releaseUnit(unit)
+	end
+	table.clear(chase.Units)
+	chase.Level = 0
+	chase.Bonus = 0
+	chase.OutOfSight = 0
+	chase.InRange = 0
+	syncChase(player, chase)
+end
+
+function PursuitService.Clear(player: Player)
+	clearChase(player)
+end
+
+local function step(dt: number)
+	for _, player in Players:GetPlayers() do
+		local chase = chases[player]
+		if not chase then
+			continue
+		end
+
+		local position = Geometry.AlivePosition(player)
+		if not position then
+			-- Tot oder nicht geladen: keine Verfolgung, aber die Stufe bleibt.
+			for _, unit in chase.Units do
+				releaseUnit(unit)
+			end
+			table.clear(chase.Units)
+			continue
+		end
+
+		chase.Level = computeLevel(player, chase)
+
+		if chase.Level &lt;= 0 then
+			if #chase.Units &gt; 0 then
+				clearChase(player)
+			end
+			continue
+		end
+
+		-- Anzahl der Wagen aus der Stufe.
+		local wanted = math.clamp(chase.Level * P.UnitsPerLevel, 0, P.MaxUnits)
+		while #chase.Units &lt; wanted do
+			local unit = buildUnit()
+			local node = RoadNetwork.NearestNode(position)
+			if node then
+				-- Startet eine Kreuzung entfernt, damit er nicht im Spieler steht.
+				local links = RoadNetwork.Links(node.Id)
+				unit.From = if #links &gt; 0 then links[rng:NextInteger(1, #links)] else node.Id
+				unit.To = RoadNetwork.StepToward(unit.From, position) or unit.From
+			end
+			table.insert(chase.Units, unit)
+		end
+		while #chase.Units &gt; wanted do
+			local unit = table.remove(chase.Units)
+			if unit then
+				releaseUnit(unit)
+			end
+		end
+
+		local spotted = false
+		local closest = math.huge
+		for _, unit in chase.Units do
+			moveUnit(unit, position, dt)
+			local distance = (unit.Body.Position - position).Magnitude
+			closest = math.min(closest, distance)
+			if sees(unit, position) then
+				spotted = true
+			end
+		end
+
+		if spotted then
+			chase.OutOfSight = 0
+		else
+			chase.OutOfSight += dt
+			-- Entkommen: lange genug ausser Sicht, dann faellt die Stufe.
+			if chase.OutOfSight &gt;= P.EscapeSeconds then
+				chase.Bonus = math.max(0, chase.Bonus - 1)
+				chase.OutOfSight = 0
+				if computeLevel(player, chase) &lt;= 0 then
+					print(("[GHOSTNET] %s ist entkommen."):format(player.Name))
+					clearChase(player)
+					continue
+				end
+			end
+		end
+
+		-- Gefasst: lange genug dicht dran. Das ist ein Bust ueber die
+		-- bestehende Kette, kein neues Straf-System.
+		if closest &lt;= P.CatchRange then
+			chase.InRange += dt
+			if chase.InRange &gt;= P.CatchSeconds then
+				warn(("[GHOSTNET] %s wurde gefasst."):format(player.Name))
+				local profile = SaveService.Get(player)
+				if profile then
+					profile.Trace = 0
+				end
+				TraceService.Add(player, Config.Trace.Max)
+				clearChase(player)
+				continue
+			end
+		else
+			chase.InRange = math.max(0, chase.InRange - dt)
+		end
+
+		-- Passiver Abbau, damit eine alte Tat nicht ewig nachhaengt.
+		chase.Bonus = math.max(0, chase.Bonus - P.Decay * dt)
+
+		syncChase(player, chase)
+	end
+end
+
+--==========================================================================
+
+function PursuitService.Init()
+	RoadNetwork.Build()
+
+	SaveService.OnReady(function(player)
+		chases[player] = { Level = 0, Bonus = 0, OutOfSight = 0, InRange = 0, Units = {} }
+	end)
+
+	Players.PlayerRemoving:Connect(function(player)
+		clearChase(player)
+		chases[player] = nil
+	end)
+
+	-- Nach einem Bust ist die Fahndung vorbei - man ist ja schon dran gewesen.
+	TraceService.OnBust(function(player)
+		clearChase(player)
+	end)
+
+	task.spawn(function()
+		local last = os.clock()
+		while true do
+			task.wait(P.Tick)
+			local now = os.clock()
+			local dt = now - last
+			last = now
+			local ok, err = pcall(step, dt)
+			if not ok then
+				warn(("[GHOSTNET] Verfolgungstakt fehlgeschlagen: %s"):format(tostring(err)))
+			end
+		end
+	end)
+
+	print(("[GHOSTNET] PursuitService bereit. Stufen 1-%d, Entkommen nach %d s ausser Sicht."):format(
+		P.MaxLevel,
+		P.EscapeSeconds
+	))
+end
+
+return PursuitService
+</ProtectedString>
+</Properties>
+</Item>
+<Item class="ModuleScript" referent="GN27">
 <Properties>
 <string name="Name">RaidService</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/RaidService.luau
@@ -6112,6 +7187,7 @@ local Geometry = require(ReplicatedStorage.Shared.Geometry)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 
 local HackService = require(script.Parent.HackService)
+local PursuitService = require(script.Parent.PursuitService)
 local HackTargets = require(script.Parent.HackTargets)
 local TraceService = require(script.Parent.TraceService)
 
@@ -6220,6 +7296,9 @@ local function triggerAlarm(player: Player)
 	warn(("[GHOSTNET] ALARM ausgeloest: %s in Gruppe '%s'."):format(player.Name, alarm.Group))
 	HackService.AbortFor(player, "ALARM")
 	TraceService.Add(player, Config.Raid.AlarmTracePenalty)
+	-- Ein durchgelaufener Alarm ruft die Polizei. Genau dafuer ist die
+	-- Fahndungsstufe da.
+	PursuitService.AddHeat(player, 2)
 
 	if player.Parent then
 		Remotes.AlarmSync:FireClient(player, {
@@ -6229,6 +7308,15 @@ local function triggerAlarm(player: Player)
 			TracePenalty = Config.Raid.AlarmTracePenalty,
 		})
 	end
+end
+
+-- Von aussen ausgeloester Alarm (Wache hat jemanden gesehen). Startet
+-- dieselbe Uhr wie ein geknacktes Ziel - kein zweites Alarm-System daneben.
+function RaidService.RaiseAlarm(player: Player, group: string, label: string)
+	if alarms[player] then
+		return
+	end
+	startAlarm(player, group, label)
 end
 
 function RaidService.IsAlarmed(player: Player): boolean
@@ -6343,7 +7431,7 @@ return RaidService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN25">
+<Item class="ModuleScript" referent="GN28">
 <Properties>
 <string name="Name">RateLimiter</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/RateLimiter.luau
@@ -6423,7 +7511,222 @@ return RateLimiter
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN26">
+<Item class="ModuleScript" referent="GN29">
+<Properties>
+<string name="Name">RoadNetwork</string>
+<ProtectedString name="Source">-- ServerScriptService/Systems/RoadNetwork.luau
+--!strict
+-- GHOSTNET :: Der Strassengraph.
+--
+-- WARUM DAS EIN GRAPH IST UND KEINE PATHFINDING-ABFRAGE
+--   Ein Pfad pro Auto, mehrfach pro Sekunde neu berechnet, frisst den Server
+--   bei zweistelliger Fahrzeugzahl auf. Stattdessen liegt hier ein fester
+--   Graph aus Kreuzungen und gerichteten Kanten. Ein Verkehrsauto folgt
+--   Kante fuer Kante und wuerfelt an jeder Kreuzung - das kostet praktisch
+--   nichts und sieht trotzdem lebendig aus.
+--
+--   Derselbe Graph traegt in Phase 6 die Streifenwagen. Deshalb liegt er
+--   hier und nicht im TrafficService.
+--
+-- Der Graph wird BERECHNET, nicht aus der Welt gelesen. Kein Suchen nach
+-- getaggten Parts, keine Instanzen fuer Wegpunkte - nur Zahlen.
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Config = require(ReplicatedStorage.Shared.Config)
+local Districts = require(ReplicatedStorage.Shared.Districts)
+
+local RoadNetwork = {}
+
+export type Node = {
+	Id: number,
+	GridX: number,
+	GridZ: number,
+	Position: Vector3,
+	Links: { number }, -- Ids der erreichbaren Nachbarkreuzungen
+}
+
+local nodes: { Node } = {}
+local byGrid: { [string]: number } = {}
+local half = 0
+
+local function key(gridX: number, gridZ: number): string
+	return ("%d,%d"):format(gridX, gridZ)
+end
+
+--==========================================================================
+-- Aufbau
+--==========================================================================
+
+function RoadNetwork.Build()
+	if #nodes &gt; 0 then
+		return
+	end
+
+	local grid = Config.City.Grid
+	local block = Config.City.BlockSize
+	half = math.floor(grid / 2)
+
+	-- Kreuzungen als Gitter. Die Mitte liegt bei (0,0), damit der Spawn im
+	-- Zentrum der Altstadt steht.
+	for gz = -half, half do
+		for gx = -half, half do
+			local node: Node = {
+				Id = #nodes + 1,
+				GridX = gx,
+				GridZ = gz,
+				Position = Vector3.new(gx * block, 0, gz * block),
+				Links = {},
+			}
+			table.insert(nodes, node)
+			byGrid[key(gx, gz)] = node.Id
+		end
+	end
+
+	-- Kanten zu den vier direkten Nachbarn. Beide Richtungen, damit der
+	-- Verkehr an einer Kreuzung immer weiterkommt und nie feststeckt.
+	for _, node in nodes do
+		for _, offset in { { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 } } do
+			local neighbour = byGrid[key(node.GridX + offset[1], node.GridZ + offset[2])]
+			if neighbour then
+				table.insert(node.Links, neighbour)
+			end
+		end
+	end
+end
+
+--==========================================================================
+-- Abfragen
+--==========================================================================
+
+function RoadNetwork.Count(): number
+	return #nodes
+end
+
+function RoadNetwork.Get(id: number): Node?
+	return nodes[id]
+end
+
+function RoadNetwork.All(): { Node }
+	return nodes
+end
+
+function RoadNetwork.Links(id: number): { number }
+	local node = nodes[id]
+	return if node then node.Links else {}
+end
+
+-- Naechste Kreuzung zu einer Weltposition. Ueber das Gitter gerechnet statt
+-- durch Durchsuchen aller Knoten - das laeuft im Verkehrstakt.
+function RoadNetwork.NearestNode(position: Vector3): Node?
+	if #nodes == 0 then
+		return nil
+	end
+	local block = Config.City.BlockSize
+	local gx = math.clamp(math.round(position.X / block), -half, half)
+	local gz = math.clamp(math.round(position.Z / block), -half, half)
+	local id = byGrid[key(gx, gz)]
+	return if id then nodes[id] else nil
+end
+
+function RoadNetwork.RandomNode(rng: Random): Node?
+	if #nodes == 0 then
+		return nil
+	end
+	return nodes[rng:NextInteger(1, #nodes)]
+end
+
+-- Ein zufaelliger Nachbar, moeglichst nicht der, aus dem man gerade kam.
+-- Ohne das drehen die Autos an jeder Kreuzung um und der Verkehr wirkt kaputt.
+function RoadNetwork.NextNode(fromId: number, cameFrom: number?, rng: Random): number?
+	local links = RoadNetwork.Links(fromId)
+	if #links == 0 then
+		return nil
+	end
+	if #links == 1 then
+		return links[1]
+	end
+
+	local options: { number } = {}
+	for _, id in links do
+		if id ~= cameFrom then
+			table.insert(options, id)
+		end
+	end
+	if #options == 0 then
+		return links[rng:NextInteger(1, #links)]
+	end
+	return options[rng:NextInteger(1, #options)]
+end
+
+-- Ein Schritt Richtung Ziel. Kein A*, nur "welcher Nachbar liegt naeher" -
+-- das reicht auf einem Gitter voellig und kostet nichts. Damit fahren die
+-- Streifenwagen in Phase 6 zum Spieler.
+function RoadNetwork.StepToward(fromId: number, target: Vector3): number?
+	local links = RoadNetwork.Links(fromId)
+	local best: number? = nil
+	local bestDistance = math.huge
+	for _, id in links do
+		local node = nodes[id]
+		if node then
+			local distance = (node.Position - target).Magnitude
+			if distance &lt; bestDistance then
+				best, bestDistance = id, distance
+			end
+		end
+	end
+	return best
+end
+
+-- Fahrspur: rechts der Mitte, damit Gegenverkehr nicht ineinander faehrt.
+function RoadNetwork.LanePosition(fromId: number, toId: number, alpha: number): (Vector3?, Vector3?)
+	local a = nodes[fromId]
+	local b = nodes[toId]
+	if not a or not b then
+		return nil, nil
+	end
+	local direction = (b.Position - a.Position)
+	local length = direction.Magnitude
+	if length &lt; 0.01 then
+		return nil, nil
+	end
+	local unit = direction / length
+	local right = Vector3.new(-unit.Z, 0, unit.X)
+	local offset = right * Config.City.LaneOffset
+	return a.Position + offset + unit * (length * alpha), unit
+end
+
+-- In welchem Bezirk liegt diese Position?
+function RoadNetwork.DistrictAt(position: Vector3): Districts.District?
+	local block = Config.City.BlockSize
+	return Districts.At(math.round(position.X / block), math.round(position.Z / block))
+end
+
+function RoadNetwork.Init()
+	local valid, errors = Districts.Validate()
+	if not valid then
+		for _, message in errors do
+			warn(("[GHOSTNET] Bezirke: %s"):format(message))
+		end
+	end
+
+	RoadNetwork.Build()
+	local edges = 0
+	for _, node in nodes do
+		edges += #node.Links
+	end
+	print(("[GHOSTNET] RoadNetwork bereit. %d Kreuzungen, %d Kanten, %d Bezirke."):format(
+		#nodes,
+		edges,
+		Districts.Count()
+	))
+end
+
+return RoadNetwork
+</ProtectedString>
+</Properties>
+</Item>
+<Item class="ModuleScript" referent="GN30">
 <Properties>
 <string name="Name">SaveService</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/SaveService.luau
@@ -6490,6 +7793,8 @@ local function defaultStory(): Types.Story
 		StepStartedAt = 0,
 		Completed = {},
 		Unlocks = {},
+		Allegiance = "",
+		AllegianceAt = 0,
 	}
 end
 
@@ -6506,6 +7811,7 @@ function SaveService.DefaultProfile(): Profile
 		Story = defaultStory(),
 		Stash = {},
 		PurchaseLog = {},
+		Garage = {},
 		LastSeen = os.time(),
 		SessionId = "",
 	}
@@ -6596,6 +7902,27 @@ local function sanitize(raw: any): (Profile, number)
 		p.Story.StepStartedAt = toCount(story.StepStartedAt) or 0
 		p.Story.Completed = cleanIdList(story.Completed, 128)
 		p.Story.Unlocks = cleanIdList(story.Unlocks, 128)
+		if story.Allegiance == "CASH" or story.Allegiance == "BURN" then
+			p.Story.Allegiance = story.Allegiance
+		end
+		p.Story.AllegianceAt = toCount(story.AllegianceAt) or 0
+	end
+
+	-- Garage. Nur bekannte Klassen und eine harte Obergrenze, damit ein
+	-- kaputtes Profil den Server nicht mit tausend Fahrzeugen flutet.
+	if typeof(raw.Garage) == "table" then
+		for _, entry in raw.Garage do
+			if typeof(entry) == "table" and typeof(entry.ClassId) == "string" and #entry.ClassId &lt;= 32 then
+				if #p.Garage &lt; 32 then
+					table.insert(p.Garage, {
+						ClassId = entry.ClassId,
+						Colour = if typeof(entry.Colour) == "string" and #entry.Colour &lt;= 24
+							then entry.Colour
+							else "Schwarz",
+					})
+				end
+			end
+		end
 	end
 
 	if typeof(raw.Stash) == "table" then
@@ -6647,6 +7974,15 @@ local MIGRATIONS: { [number]: (Profile) -&gt; () } = {
 	-- ist unkritisch, weil vor Phase F gar nichts gekauft werden konnte.
 	[4] = function(profile: Profile)
 		profile.PurchaseLog = {}
+	end,
+
+	-- 4 -&gt; 5: Fahrzeugbesitz und die Endgame-Entscheidung kamen dazu. Alte
+	-- Profile starten ohne Auto und ohne getroffene Wahl; alles andere
+	-- bleibt unangetastet.
+	[5] = function(profile: Profile)
+		profile.Garage = {}
+		profile.Story.Allegiance = ""
+		profile.Story.AllegianceAt = 0
 	end,
 }
 
@@ -7021,7 +8357,7 @@ return SaveService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN27">
+<Item class="ModuleScript" referent="GN31">
 <Properties>
 <string name="Name">SellService</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/SellService.luau
@@ -7187,7 +8523,7 @@ return SellService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN28">
+<Item class="ModuleScript" referent="GN32">
 <Properties>
 <string name="Name">ShopService</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/ShopService.luau
@@ -7313,7 +8649,7 @@ return ShopService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN29">
+<Item class="ModuleScript" referent="GN33">
 <Properties>
 <string name="Name">TimeService</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/TimeService.luau
@@ -7572,7 +8908,7 @@ return TimeService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN30">
+<Item class="ModuleScript" referent="GN34">
 <Properties>
 <string name="Name">TraceService</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/TraceService.luau
@@ -7810,7 +9146,570 @@ return TraceService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN31">
+<Item class="ModuleScript" referent="GN35">
+<Properties>
+<string name="Name">TrafficService</string>
+<ProtectedString name="Source">-- ServerScriptService/Systems/TrafficService.luau
+--!strict
+-- GHOSTNET :: Verkehr und Fussgaenger.
+--
+-- DER PERFORMANCEKRITISCHSTE TEIL DES PROJEKTS. Falsch gebaut ruiniert er
+-- die Bildrate und damit das Spiel. Deshalb vier harte Entscheidungen:
+--
+--   1. KEIN PathfindingService. Die Autos folgen dem festen Graphen aus
+--      RoadNetwork, Kante fuer Kante. Ein Pfad pro Auto, mehrfach pro
+--      Sekunde neu berechnet, frisst den Server auf.
+--   2. KEINE Physik. Verkehrsautos sind Anchored und bewegen sich per
+--      CFrame. Sie kollidieren nicht echt - sie bremsen, wenn auf ihrer
+--      eigenen Kante jemand vor ihnen ist.
+--   3. KEIN Humanoid fuer Fussgaenger. Humanoids sind teuer. Hintergrund-
+--      leute sind bewegte Modelle ohne Humanoid.
+--   4. POOL statt Instance.new/Destroy im Sekundentakt, harte Obergrenze,
+--      und nur im Radius um Spieler aktiv.
+--
+-- Abstandspruefung laeuft NUR gegen die eigene Kante, nicht gegen alle Autos.
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Config = require(ReplicatedStorage.Shared.Config)
+local Geometry = require(ReplicatedStorage.Shared.Geometry)
+local Remotes = require(ReplicatedStorage.Shared.Remotes)
+
+local RateLimiter = require(script.Parent.RateLimiter)
+local RoadNetwork = require(script.Parent.RoadNetwork)
+local TimeService = require(script.Parent.TimeService)
+local PursuitService = require(script.Parent.PursuitService)
+local TraceService = require(script.Parent.TraceService)
+local VehicleChassis = require(script.Parent.VehicleChassis)
+
+local TrafficService = {}
+
+local T = Config.Traffic
+local rng = Random.new()
+
+type Car = {
+	Model: Model,
+	Body: BasePart,
+	From: number,
+	To: number,
+	Alpha: number,
+	Speed: number,
+	Active: boolean,
+	ClassId: string,
+}
+
+type Walker = {
+	Model: Model,
+	Body: BasePart,
+	From: number,
+	To: number,
+	Alpha: number,
+	Side: number,
+	Active: boolean,
+}
+
+local cars: { Car } = {}
+local walkers: { Walker } = {}
+local container: Folder? = nil
+
+-- Belegung pro Kante, damit die Abstandspruefung nicht jedes Auto gegen
+-- jedes andere testen muss.
+local laneOccupancy: { [string]: { number } } = {}
+
+local function laneKey(from: number, to: number): string
+	return ("%d&gt;%d"):format(from, to)
+end
+
+--==========================================================================
+-- Bauteile aus dem Pool
+--==========================================================================
+
+local function ensureContainer(): Folder
+	if container and container.Parent then
+		return container
+	end
+	local folder = Instance.new("Folder")
+	folder.Name = "GhostNet_Traffic"
+	folder.Parent = workspace
+	container = folder
+	return folder
+end
+
+local TRAFFIC_COLOURS = {
+	Color3.fromRGB(52, 58, 70),
+	Color3.fromRGB(84, 88, 96),
+	Color3.fromRGB(36, 40, 48),
+	Color3.fromRGB(70, 60, 58),
+	Color3.fromRGB(44, 56, 66),
+}
+
+local function buildCarShell(): (Model, BasePart)
+	local model = Instance.new("Model")
+	model.Name = "TrafficCar"
+
+	local body = Instance.new("Part")
+	body.Name = "Body"
+	body.Size = Vector3.new(6.2, 2.8, 12.5)
+	body.Color = TRAFFIC_COLOURS[rng:NextInteger(1, #TRAFFIC_COLOURS)]
+	body.Material = Enum.Material.SmoothPlastic
+	body.Anchored = true
+	body.CanCollide = true
+	body.CanTouch = false
+	body.Parent = model
+	model.PrimaryPart = body
+
+	local roof = Instance.new("Part")
+	roof.Name = "Roof"
+	roof.Size = Vector3.new(5.4, 2, 6)
+	roof.Color = body.Color:Lerp(Color3.new(0, 0, 0), 0.4)
+	roof.Material = Enum.Material.Glass
+	roof.Transparency = 0.4
+	roof.Anchored = true
+	roof.CanCollide = false
+	roof.CanQuery = false
+	roof.CanTouch = false
+	roof.CastShadow = false
+	roof.Parent = model
+
+	local weld = Instance.new("WeldConstraint")
+	weld.Part0 = body
+	weld.Part1 = roof
+	weld.Parent = body
+	roof.CFrame = body.CFrame * CFrame.new(0, 2.2, -0.6)
+
+	-- Der Diebstahl-Prompt. Halten statt tippen, damit es nicht aus Versehen
+	-- passiert.
+	local prompt = Instance.new("ProximityPrompt")
+	prompt.Name = "StealPrompt"
+	prompt.ActionText = "Kurzschliessen"
+	prompt.ObjectText = "Fremdes Auto"
+	prompt.HoldDuration = T.StealHoldSeconds
+	prompt.MaxActivationDistance = T.StealRange
+	prompt.RequiresLineOfSight = false
+	prompt.Parent = body
+
+	-- Der Prompt feuert direkt serverseitig. Der Client meldet nichts, was
+	-- geprueft werden muesste - er tippt nur.
+	prompt.Triggered:Connect(function(player)
+		TrafficService.HandleSteal(player)
+	end)
+
+	model.Parent = ensureContainer()
+	return model, body
+end
+
+local function buildWalkerShell(): (Model, BasePart)
+	local model = Instance.new("Model")
+	model.Name = "Pedestrian"
+
+	-- Bewusst KEIN Humanoid: ein Humanoid pro Fussgaenger kostet mehr als
+	-- der gesamte restliche Fussgaenger zusammen.
+	local body = Instance.new("Part")
+	body.Name = "Body"
+	body.Size = Vector3.new(1.8, 4, 1)
+	body.Color = Color3.fromRGB(rng:NextInteger(30, 70), rng:NextInteger(30, 70), rng:NextInteger(40, 80))
+	body.Material = Enum.Material.SmoothPlastic
+	body.Anchored = true
+	body.CanCollide = false
+	body.CanQuery = false
+	body.CanTouch = false
+	body.CastShadow = false
+	body.Parent = model
+	model.PrimaryPart = body
+
+	local head = Instance.new("Part")
+	head.Name = "Head"
+	head.Size = Vector3.new(1.1, 1.1, 1.1)
+	head.Color = Color3.fromRGB(180, 150, 130)
+	head.Anchored = true
+	head.CanCollide = false
+	head.CanQuery = false
+	head.CanTouch = false
+	head.CastShadow = false
+	head.Parent = model
+
+	model.Parent = ensureContainer()
+	return model, head
+end
+
+--==========================================================================
+-- Spieler in der Naehe?
+--==========================================================================
+
+local function nearAnyPlayer(position: Vector3, radius: number): boolean
+	for _, player in Players:GetPlayers() do
+		local at = Geometry.AlivePosition(player)
+		if at and (at - position).Magnitude &lt;= radius then
+			return true
+		end
+	end
+	return false
+end
+
+local function randomActiveNode(): number?
+	-- Eine Kreuzung in der Naehe irgendeines Spielers - sonst spawnt Verkehr
+	-- am anderen Ende der Stadt, wo ihn keiner sieht.
+	local candidates: { number } = {}
+	for _, player in Players:GetPlayers() do
+		local at = Geometry.AlivePosition(player)
+		if at then
+			local node = RoadNetwork.NearestNode(at)
+			if node then
+				for _, linkId in node.Links do
+					table.insert(candidates, linkId)
+				end
+			end
+		end
+	end
+	if #candidates == 0 then
+		return nil
+	end
+	return candidates[rng:NextInteger(1, #candidates)]
+end
+
+--==========================================================================
+-- Verkehr
+--==========================================================================
+
+local function placeCar(car: Car)
+	local position, direction = RoadNetwork.LanePosition(car.From, car.To, car.Alpha)
+	if not position or not direction then
+		car.Active = false
+		return
+	end
+	car.Body.CFrame = CFrame.lookAt(position + Vector3.new(0, 2.4, 0), position + direction + Vector3.new(0, 2.4, 0))
+end
+
+local function spawnCar()
+	local startId = randomActiveNode()
+	if not startId then
+		return
+	end
+	local toId = RoadNetwork.NextNode(startId, nil, rng)
+	if not toId then
+		return
+	end
+
+	local free: Car? = nil
+	for _, car in cars do
+		if not car.Active then
+			free = car
+			break
+		end
+	end
+
+	if not free then
+		if #cars &gt;= T.MaxActive then
+			return
+		end
+		local model, body = buildCarShell()
+		free = {
+			Model = model,
+			Body = body,
+			From = startId,
+			To = toId,
+			Alpha = 0,
+			Speed = T.Speed,
+			Active = true,
+			ClassId = "SEDAN",
+		}
+		table.insert(cars, free :: Car)
+	end
+
+	local car = free :: Car
+	car.From = startId
+	car.To = toId
+	car.Alpha = rng:NextNumber(0, 0.4)
+	car.Speed = T.Speed + rng:NextNumber(-T.SpeedJitter, T.SpeedJitter)
+	car.Active = true
+	car.Model.Parent = ensureContainer()
+	placeCar(car)
+end
+
+local function recycle(car: Car)
+	car.Active = false
+	car.Model.Parent = nil
+end
+
+-- Bremsen, wenn auf der eigenen Kante jemand kurz vor einem faehrt.
+local function blockedAhead(car: Car, index: number): boolean
+	local ids = laneOccupancy[laneKey(car.From, car.To)]
+	if not ids then
+		return false
+	end
+	for _, otherIndex in ids do
+		if otherIndex == index then
+			continue
+		end
+		local other = cars[otherIndex]
+		if other and other.Active then
+			local gap = (other.Alpha - car.Alpha) * Config.City.BlockSize
+			if gap &gt; 0 and gap &lt; T.StopDistance then
+				return true
+			end
+		end
+	end
+	return false
+end
+
+local function stepTraffic(dt: number)
+	table.clear(laneOccupancy)
+	for index, car in cars do
+		if car.Active then
+			local key = laneKey(car.From, car.To)
+			local list = laneOccupancy[key]
+			if not list then
+				list = {}
+				laneOccupancy[key] = list
+			end
+			table.insert(list, index)
+		end
+	end
+
+	for index, car in cars do
+		if not car.Active then
+			continue
+		end
+
+		-- Ausserhalb des Radius: anhalten und recyceln statt weiterrechnen.
+		if not nearAnyPlayer(car.Body.Position, T.ActiveRadius) then
+			recycle(car)
+			continue
+		end
+
+		if blockedAhead(car, index) then
+			continue -- steht, faehrt aber nicht rueckwaerts oder verschwindet
+		end
+
+		car.Alpha += (car.Speed * dt) / Config.City.BlockSize
+		if car.Alpha &gt;= 1 then
+			local nextId = RoadNetwork.NextNode(car.To, car.From, rng)
+			if not nextId then
+				recycle(car)
+				continue
+			end
+			car.From = car.To
+			car.To = nextId
+			car.Alpha = 0
+		end
+
+		placeCar(car)
+	end
+end
+
+--==========================================================================
+-- Fussgaenger
+--==========================================================================
+
+local function placeWalker(walker: Walker)
+	local position, direction = RoadNetwork.LanePosition(walker.From, walker.To, walker.Alpha)
+	if not position or not direction then
+		walker.Active = false
+		return
+	end
+	local right = Vector3.new(-direction.Z, 0, direction.X)
+	local offset = right * (walker.Side * (Config.City.RoadWidth * 0.5 + Config.City.SidewalkWidth * 0.4))
+	local at = position + offset + Vector3.new(0, 3, 0)
+	walker.Body.CFrame = CFrame.lookAt(at, at + direction)
+	local torso = walker.Model:FindFirstChild("Body")
+	if torso and torso:IsA("BasePart") then
+		torso.CFrame = walker.Body.CFrame * CFrame.new(0, -2.4, 0)
+	end
+end
+
+local function spawnWalker()
+	local startId = randomActiveNode()
+	if not startId then
+		return
+	end
+	local toId = RoadNetwork.NextNode(startId, nil, rng)
+	if not toId then
+		return
+	end
+
+	local free: Walker? = nil
+	for _, walker in walkers do
+		if not walker.Active then
+			free = walker
+			break
+		end
+	end
+
+	if not free then
+		if #walkers &gt;= T.MaxPedestrians then
+			return
+		end
+		local model, head = buildWalkerShell()
+		free = {
+			Model = model,
+			Body = head,
+			From = startId,
+			To = toId,
+			Alpha = 0,
+			Side = 1,
+			Active = true,
+		}
+		table.insert(walkers, free :: Walker)
+	end
+
+	local walker = free :: Walker
+	walker.From = startId
+	walker.To = toId
+	walker.Alpha = rng:NextNumber(0, 1)
+	walker.Side = if rng:NextNumber() &lt; 0.5 then -1 else 1
+	walker.Active = true
+	walker.Model.Parent = ensureContainer()
+	placeWalker(walker)
+end
+
+local function stepWalkers(dt: number)
+	for _, walker in walkers do
+		if not walker.Active then
+			continue
+		end
+		if not nearAnyPlayer(walker.Body.Position, T.ActiveRadius) then
+			walker.Active = false
+			walker.Model.Parent = nil
+			continue
+		end
+
+		walker.Alpha += (T.PedestrianSpeed * dt) / Config.City.BlockSize
+		if walker.Alpha &gt;= 1 then
+			local nextId = RoadNetwork.NextNode(walker.To, walker.From, rng)
+			if not nextId then
+				walker.Active = false
+				walker.Model.Parent = nil
+				continue
+			end
+			walker.From = walker.To
+			walker.To = nextId
+			walker.Alpha = 0
+		end
+		placeWalker(walker)
+	end
+end
+
+--==========================================================================
+-- Diebstahl
+-- Aus einem Kulissenauto wird ein echtes Physikfahrzeug. Danach faehrt es
+-- sich exakt wie ein gekauftes - es IST dieselbe Klasse.
+--==========================================================================
+
+function TrafficService.HandleSteal(player: Player)
+	if not RateLimiter.Check(player, "StealVehicle") then
+		return
+	end
+	local position = Geometry.AlivePosition(player)
+	if not position then
+		return
+	end
+
+	-- Naechstes aktives Verkehrsauto in Reichweite. Distanz serverseitig.
+	local target: Car? = nil
+	local bestDistance = math.huge
+	for _, car in cars do
+		if not car.Active then
+			continue
+		end
+		local distance = (car.Body.Position - position).Magnitude
+		if distance &lt;= T.StealRange + Config.Range.Tolerance and distance &lt; bestDistance then
+			target, bestDistance = car, distance
+		end
+	end
+	if not target then
+		return
+	end
+
+	local cframe = CFrame.new(target.Body.Position + Vector3.new(0, 1, 0)) * (target.Body.CFrame - target.Body.Position)
+	recycle(target)
+
+	local model = VehicleChassis.Build(target.ClassId, cframe, target.Body.Color)
+	if not model then
+		return
+	end
+
+	-- Autodiebstahl haengt am Trace, statt danebenherzulaufen.
+	TraceService.Add(player, T.StealTrace)
+	PursuitService.AddHeat(player, 1)
+	print(("[GHOSTNET] %s hat ein Auto kurzgeschlossen (+%d Trace)."):format(player.Name, T.StealTrace))
+end
+
+--==========================================================================
+
+function TrafficService.ActiveCount(): (number, number)
+	local carCount, walkerCount = 0, 0
+	for _, car in cars do
+		if car.Active then
+			carCount += 1
+		end
+	end
+	for _, walker in walkers do
+		if walker.Active then
+			walkerCount += 1
+		end
+	end
+	return carCount, walkerCount
+end
+
+function TrafficService.Init()
+	RoadNetwork.Build()
+	Remotes.StealVehicle.OnServerEvent:Connect(TrafficService.HandleSteal)
+
+	-- Bewegungstakt. Bewusst ein eigener, gestaffelter Tick statt eines
+	-- Heartbeat-Handlers, der ueber alles laeuft.
+	task.spawn(function()
+		local last = os.clock()
+		while true do
+			task.wait(T.Tick)
+			local now = os.clock()
+			local dt = now - last
+			last = now
+			local ok, err = pcall(function()
+				stepTraffic(dt)
+				stepWalkers(dt)
+			end)
+			if not ok then
+				warn(("[GHOSTNET] Verkehrstakt fehlgeschlagen: %s"):format(tostring(err)))
+			end
+		end
+	end)
+
+	-- Nachfuellen. Nachts duenner - das ist der zweite sichtbare Unterschied
+	-- zwischen Tag und Nacht.
+	task.spawn(function()
+		while true do
+			task.wait(T.SpawnTick)
+			if #Players:GetPlayers() == 0 then
+				continue
+			end
+			local carCount, walkerCount = TrafficService.ActiveCount()
+			local carTarget = if TimeService.IsNight() then math.floor(T.MaxActive * 0.5) else T.MaxActive
+			local walkerTarget = if TimeService.IsNight()
+				then math.floor(T.MaxPedestrians * 0.4)
+				else T.MaxPedestrians
+
+			if carCount &lt; carTarget then
+				spawnCar()
+			end
+			if walkerCount &lt; walkerTarget then
+				spawnWalker()
+			end
+		end
+	end)
+
+	print(("[GHOSTNET] TrafficService bereit. Max %d Autos, %d Fussgaenger, Radius %d."):format(
+		T.MaxActive,
+		T.MaxPedestrians,
+		T.ActiveRadius
+	))
+end
+
+return TrafficService
+</ProtectedString>
+</Properties>
+</Item>
+<Item class="ModuleScript" referent="GN36">
 <Properties>
 <string name="Name">VehicleChassis</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/VehicleChassis.luau
@@ -8216,12 +10115,963 @@ return VehicleChassis
 </ProtectedString>
 </Properties>
 </Item>
+<Item class="ModuleScript" referent="GN37">
+<Properties>
+<string name="Name">VehicleService</string>
+<ProtectedString name="Source">-- ServerScriptService/Systems/VehicleService.luau
+--!strict
+-- GHOSTNET :: Fahrzeugbesitz, Garage und Haendler.
+--
+-- BESITZ LIEGT IM PROFIL, NICHT IN DER WELT. Ein Fahrzeug in der Stadt ist
+-- nur eine Ausleihe: es verschwindet nach Config.Vehicle.IdleDespawn ohne
+-- Fahrer, und beim naechsten Join parkt man es neu aus.
+--
+-- NUR EIN FAHRZEUG GLEICHZEITIG AUSGEPARKT. Ohne diese Grenze stellt jeder
+-- Spieler zehn Autos in die Stadt und der Server erstickt.
+--
+-- PREISE HOLT DER SERVER SELBST. Der Client schickt nur { Action, ClassId }.
+
+local CollectionService = game:GetService("CollectionService")
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Config = require(ReplicatedStorage.Shared.Config)
+local Geometry = require(ReplicatedStorage.Shared.Geometry)
+local Remotes = require(ReplicatedStorage.Shared.Remotes)
+local Types = require(ReplicatedStorage.Shared.Types)
+local Vehicles = require(ReplicatedStorage.Shared.Vehicles)
+
+local EconomyService = require(script.Parent.EconomyService)
+local RateLimiter = require(script.Parent.RateLimiter)
+local SaveService = require(script.Parent.SaveService)
+local TimeService = require(script.Parent.TimeService)
+local VehicleChassis = require(script.Parent.VehicleChassis)
+
+local VehicleService = {}
+
+local spawned: { [Player]: Model } = {}
+
+local COLOURS: { [string]: Color3 } = {
+	Schwarz = Color3.fromRGB(22, 23, 26),
+	Anthrazit = Color3.fromRGB(58, 62, 70),
+	Weiss = Color3.fromRGB(214, 218, 224),
+	Rot = Color3.fromRGB(168, 34, 48),
+	Cyan = Color3.fromRGB(0, 168, 190),
+	Gold = Color3.fromRGB(186, 150, 62),
+}
+
+local function colourOf(name: string): Color3
+	return COLOURS[name] or COLOURS.Schwarz
+end
+
+--==========================================================================
+-- Lesen
+--==========================================================================
+
+function VehicleService.Owns(player: Player, classId: string): boolean
+	local profile = SaveService.Get(player)
+	if not profile then
+		return false
+	end
+	for _, entry in profile.Garage do
+		if entry.ClassId == classId then
+			return true
+		end
+	end
+	return false
+end
+
+-- Zusaetzlicher Darknet-Lagerplatz durch das gerade ausgeparkte Fahrzeug.
+-- Genau das ist der mechanische Grund fuer den Transporter.
+function VehicleService.StashBonus(player: Player): number
+	local model = spawned[player]
+	if not model or not model.Parent then
+		return 0
+	end
+	local classId = model:GetAttribute("ClassId")
+	if typeof(classId) ~= "string" then
+		return 0
+	end
+	return Vehicles.StashBonus(classId)
+end
+
+function VehicleService.Sync(player: Player)
+	if not player.Parent then
+		return
+	end
+	local profile = SaveService.Get(player)
+	local owned: { { [string]: any } } = {}
+	if profile then
+		for _, entry in profile.Garage do
+			local class = Vehicles.Get(entry.ClassId)
+			table.insert(owned, {
+				ClassId = entry.ClassId,
+				Name = if class then class.Name else entry.ClassId,
+				Colour = entry.Colour,
+			})
+		end
+	end
+
+	local current = spawned[player]
+	Remotes.GarageSync:FireClient(player, {
+		Owned = owned,
+		Spawned = if current and current.Parent then current:GetAttribute("ClassId") else "",
+		MaxSpawned = Config.Vehicle.MaxSpawned,
+		DealerOpen = TimeService.GetClock() &gt;= Config.Dealer.OpenHour
+			and TimeService.GetClock() &lt; Config.Dealer.CloseHour,
+		Colours = Config.Dealer.ColourOptions,
+		RepaintCost = Config.Dealer.RepaintCost,
+	})
+end
+
+--==========================================================================
+-- Ausparken
+--==========================================================================
+
+local function nearestSpawnPoint(player: Player): (BasePart?, number)
+	local position = Geometry.AlivePosition(player)
+	if not position then
+		return nil, math.huge
+	end
+	local best: BasePart? = nil
+	local bestDistance = math.huge
+	for _, inst in CollectionService:GetTagged(Config.VehicleSpawnTag) do
+		if inst:IsA("BasePart") and inst:IsDescendantOf(workspace) then
+			local distance = Geometry.SurfaceDistance(inst, position)
+			if distance &lt; bestDistance then
+				best, bestDistance = inst, distance
+			end
+		end
+	end
+	return best, bestDistance
+end
+
+function VehicleService.Despawn(player: Player)
+	local model = spawned[player]
+	spawned[player] = nil
+	if model and model.Parent then
+		VehicleChassis.Despawn(model)
+	end
+end
+
+local function result(ok: boolean, reason: string, extra: { [string]: any }?): { [string]: any }
+	local payload: { [string]: any } = { Ok = ok, Reason = reason }
+	if extra then
+		for key, value in extra do
+			payload[key] = value
+		end
+	end
+	return payload
+end
+
+local function spawnVehicle(player: Player, classId: string): { [string]: any }
+	local profile = SaveService.Get(player)
+	if not profile then
+		return result(false, "LOADING")
+	end
+	if not VehicleService.Owns(player, classId) then
+		return result(false, "NOT_OWNED")
+	end
+
+	local point, distance = nearestSpawnPoint(player)
+	if not point then
+		return result(false, "NO_SPAWN")
+	end
+	if distance &gt; Config.Vehicle.SpawnRange then
+		return result(false, "TOO_FAR", { Distance = math.floor(distance), Range = Config.Vehicle.SpawnRange })
+	end
+
+	-- Nur eins gleichzeitig: das alte weg, bevor das neue kommt.
+	VehicleService.Despawn(player)
+
+	local colour = "Schwarz"
+	for _, entry in profile.Garage do
+		if entry.ClassId == classId then
+			colour = entry.Colour
+			break
+		end
+	end
+
+	local cframe = point.CFrame * CFrame.new(0, point.Size.Y * 0.5 + 4, 0)
+	local model = VehicleChassis.Build(classId, cframe, colourOf(colour))
+	if not model then
+		return result(false, "INTERNAL")
+	end
+	model:SetAttribute("OwnerUserId", player.UserId)
+	spawned[player] = model
+
+	VehicleService.Sync(player)
+	return result(true, "OK", { ClassId = classId })
+end
+
+--==========================================================================
+-- Kaufen und Lackieren
+--==========================================================================
+
+local function dealerOpen(): boolean
+	local clock = TimeService.GetClock()
+	return clock &gt;= Config.Dealer.OpenHour and clock &lt; Config.Dealer.CloseHour
+end
+
+local function nearDealer(player: Player): boolean
+	local position = Geometry.AlivePosition(player)
+	if not position then
+		return false
+	end
+	for _, inst in CollectionService:GetTagged(Config.DealerTag) do
+		if inst:IsA("BasePart") and inst:IsDescendantOf(workspace) then
+			if Geometry.SurfaceDistance(inst, position) &lt;= Config.Vehicle.SpawnRange then
+				return true
+			end
+		end
+	end
+	return false
+end
+
+local function buyVehicle(player: Player, classId: string, colour: string): { [string]: any }
+	local profile = SaveService.Get(player)
+	if not profile then
+		return result(false, "LOADING")
+	end
+	local class = Vehicles.Get(classId)
+	if not class then
+		return result(false, "UNKNOWN_CLASS")
+	end
+	if not nearDealer(player) then
+		return result(false, "NO_DEALER")
+	end
+	if not dealerOpen() then
+		return result(false, "CLOSED", { Open = Config.Dealer.OpenHour, Close = Config.Dealer.CloseHour })
+	end
+	if VehicleService.Owns(player, classId) then
+		return result(false, "ALREADY_OWNED")
+	end
+
+	-- Preis kommt aus den Daten, nicht aus dem Paket.
+	local price = class.Price
+	if profile.Banked &lt; price then
+		return result(false, "FUNDS", { Cost = price, Missing = price - profile.Banked })
+	end
+	if not EconomyService.SpendBanked(player, price) then
+		return result(false, "FUNDS", { Cost = price })
+	end
+
+	table.insert(profile.Garage, {
+		ClassId = classId,
+		Colour = if COLOURS[colour] then colour else "Schwarz",
+	})
+
+	EconomyService.Sync(player)
+	SaveService.RequestSave(player)
+	VehicleService.Sync(player)
+
+	print(("[GHOSTNET] %s kauft %s fuer %d CRY."):format(player.Name, classId, price))
+	return result(true, "OK", { ClassId = classId, Cost = price })
+end
+
+local function repaint(player: Player, classId: string, colour: string): { [string]: any }
+	local profile = SaveService.Get(player)
+	if not profile then
+		return result(false, "LOADING")
+	end
+	if not COLOURS[colour] then
+		return result(false, "BAD_PAYLOAD")
+	end
+	if not nearDealer(player) then
+		return result(false, "NO_DEALER")
+	end
+
+	local entry: Types.OwnedVehicle? = nil
+	for _, owned in profile.Garage do
+		if owned.ClassId == classId then
+			entry = owned
+			break
+		end
+	end
+	if not entry then
+		return result(false, "NOT_OWNED")
+	end
+
+	local cost = Config.Dealer.RepaintCost
+	if profile.Banked &lt; cost then
+		return result(false, "FUNDS", { Cost = cost, Missing = cost - profile.Banked })
+	end
+	if not EconomyService.SpendBanked(player, cost) then
+		return result(false, "FUNDS", { Cost = cost })
+	end
+
+	entry.Colour = colour
+	EconomyService.Sync(player)
+	SaveService.RequestSave(player)
+	VehicleService.Sync(player)
+	return result(true, "OK", { Colour = colour, Cost = cost })
+end
+
+--==========================================================================
+-- Remote
+--==========================================================================
+
+local function onAction(player: Player, payload: any): { [string]: any }
+	if not RateLimiter.Check(player, "VehicleAction") then
+		return result(false, "RATE")
+	end
+	if typeof(payload) ~= "table" then
+		return result(false, "BAD_PAYLOAD")
+	end
+
+	local action = (payload :: any).Action
+	local classId = (payload :: any).ClassId
+	local colour = (payload :: any).Colour
+
+	if action == "DESPAWN" then
+		VehicleService.Despawn(player)
+		VehicleService.Sync(player)
+		return result(true, "OK")
+	end
+
+	if typeof(classId) ~= "string" or not Vehicles.Exists(classId) then
+		return result(false, "UNKNOWN_CLASS")
+	end
+
+	if action == "SPAWN" then
+		return spawnVehicle(player, classId)
+	elseif action == "BUY" then
+		return buyVehicle(player, classId, if typeof(colour) == "string" then colour else "Schwarz")
+	elseif action == "REPAINT" then
+		return repaint(player, classId, if typeof(colour) == "string" then colour else "Schwarz")
+	end
+
+	return result(false, "BAD_PAYLOAD")
+end
+
+--==========================================================================
+
+function VehicleService.Init()
+	Remotes.VehicleAction.OnServerInvoke = function(player: Player, payload: any): { [string]: any }
+		local ok, response = pcall(onAction, player, payload)
+		if not ok then
+			warn(("[GHOSTNET] VehicleAction ist abgestuerzt: %s"):format(tostring(response)))
+			return result(false, "INTERNAL")
+		end
+		return response
+	end
+
+	SaveService.OnReady(function(player)
+		VehicleService.Sync(player)
+	end)
+
+	Players.PlayerRemoving:Connect(function(player)
+		VehicleService.Despawn(player)
+	end)
+
+	-- Haendler auf und zu: die Anzeige muss mitbekommen, wenn es Abend wird.
+	TimeService.OnPhaseChanged(function()
+		for _, player in Players:GetPlayers() do
+			if SaveService.IsReady(player) then
+				VehicleService.Sync(player)
+			end
+		end
+	end)
+
+	print(("[GHOSTNET] VehicleService bereit. %d gleichzeitig ausgeparkt, Haendler %d-%d Uhr."):format(
+		Config.Vehicle.MaxSpawned,
+		Config.Dealer.OpenHour,
+		Config.Dealer.CloseHour
+	))
+end
+
+return VehicleService
+</ProtectedString>
+</Properties>
 </Item>
-<Item class="Folder" referent="GN37">
+</Item>
+<Item class="Folder" referent="GN46">
 <Properties>
 <string name="Name">World</string>
 </Properties>
-<Item class="Script" referent="GN33">
+<Item class="Script" referent="GN39">
+<Properties>
+<string name="Name">BankInterior</string>
+<ProtectedString name="Source">-- ServerScriptService/World/BankInterior.server.luau
+--!strict
+-- GHOSTNET :: Die Nakamura Bank von innen.
+--
+-- DREI EBENEN, DREI WEGE HINEIN. Ein Raubzug, der jedes Mal identisch
+-- ablaeuft, ist nach dem dritten Mal langweilig.
+--
+--   1. Schalterhalle    oeffentlich, Wachen mit Sichtkegel, Deckenkameras
+--   2. Sicherheitsbereich  nur ueber die gehackte Schleuse
+--   3. Tresorraum       Schliessfaecher plus Haupttresor
+--
+--   Leise    Kameras vorher hacken, Wachen umgehen -&gt; wenig Trace, volle Beute
+--   Schnell  direkt zur Schleuse, Alarm sofort -&gt; Wettlauf gegen die Uhr
+--   Von oben ueber Dach und Lueftung, umgeht die Halle -&gt; braucht Tier 3
+--
+-- Wie ueberall: nur Parts, Tags und Attribute. Die Logik liegt in
+-- HackService, RaidService und GuardService.
+
+local CollectionService = game:GetService("CollectionService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Config = require(ReplicatedStorage.Shared.Config)
+
+local FOLDER_NAME = "GhostNet_BankInterior"
+
+if workspace:FindFirstChild(FOLDER_NAME) then
+	return
+end
+
+local folder = Instance.new("Folder")
+folder.Name = FOLDER_NAME
+folder.Parent = workspace
+
+-- Liegt hinter der bestehenden Bankfassade aus StoryWorld.
+local base = Vector3.new(78, 0, -86)
+
+local function part(name: string, size: Vector3, cframe: CFrame, colour: Color3, material: Enum.Material): Part
+	local p = Instance.new("Part")
+	p.Name = name
+	p.Size = size
+	p.CFrame = cframe
+	p.Color = colour
+	p.Material = material
+	p.Anchored = true
+	p.CanQuery = false
+	p.TopSurface = Enum.SurfaceType.Smooth
+	p.BottomSurface = Enum.SurfaceType.Smooth
+	p.Parent = folder
+	return p
+end
+
+local function hackable(target: BasePart, attributes: { [string]: any })
+	for key, value in attributes do
+		target:SetAttribute(key, value)
+	end
+	target:SetAttribute("Offline", false)
+	target.CanQuery = true
+	CollectionService:AddTag(target, Config.HackableTag)
+end
+
+local function light(target: BasePart, colour: Color3, range: number)
+	local l = Instance.new("PointLight")
+	l.Color = colour
+	l.Brightness = 2.5
+	l.Range = range
+	l.Parent = target
+end
+
+--==========================================================================
+-- 1) SCHALTERHALLE  -  oeffentlich, zwei Wachen, Deckenkameras
+--==========================================================================
+
+part(
+	"HalleBoden",
+	Vector3.new(32, 1, 26),
+	CFrame.new(base + Vector3.new(0, 1, 2)),
+	Color3.fromRGB(26, 28, 34),
+	Enum.Material.Marble
+)
+
+part(
+	"Schaltertresen",
+	Vector3.new(22, 4, 2),
+	CFrame.new(base + Vector3.new(0, 3.5, -6)),
+	Color3.fromRGB(40, 44, 54),
+	Enum.Material.Wood
+)
+
+-- Zwei Deckenkameras. Wer sie vorher knackt, geht den leisen Weg.
+for index, offset in { Vector3.new(-11, 15, 8), Vector3.new(11, 15, 8) } do
+	local cam = part(
+		("HalleKamera%d"):format(index),
+		Vector3.new(1.4, 1.4, 2.6),
+		CFrame.new(base + offset) * CFrame.Angles(math.rad(-30), 0, 0),
+		Color3.fromRGB(24, 30, 38),
+		Enum.Material.Metal
+	)
+	light(cam, Config.Theme.Magenta, 12)
+	hackable(cam, {
+		TargetId = ("BANK_HALL_CAM%d"):format(index),
+		DisplayName = ("HALLENKAMERA %d // Nakamura"):format(index),
+		Difficulty = 3,
+		RequiredLevel = 2,
+		OnSuccess = "CameraOffline",
+		DownTime = 120, -- lange genug, um in Ruhe weiterzuarbeiten
+		Cooldown = Config.Raid.BankCooldown,
+	})
+end
+
+-- Zwei Wachen mit Patrouille. Sie melden, sie greifen nicht an.
+for index, route in
+	{
+		{ A = base + Vector3.new(-12, 3, 10), B = base + Vector3.new(-12, 3, -4) },
+		{ A = base + Vector3.new(12, 3, -4), B = base + Vector3.new(12, 3, 10) },
+	}
+do
+	local guard = Instance.new("Model")
+	guard.Name = ("Wache%d"):format(index)
+
+	local root = Instance.new("Part")
+	root.Name = "Root"
+	root.Size = Vector3.new(2, 5.6, 1.4)
+	root.CFrame = CFrame.new(route.A)
+	root.Color = Color3.fromRGB(30, 34, 44)
+	root.Material = Enum.Material.Fabric
+	root.Anchored = true
+	root.CanCollide = false
+	root.CanQuery = false
+	root.Parent = guard
+	guard.PrimaryPart = root
+
+	local head = Instance.new("Part")
+	head.Name = "Kopf"
+	head.Size = Vector3.new(1.2, 1.2, 1.2)
+	head.Color = Color3.fromRGB(180, 150, 130)
+	head.Anchored = true
+	head.CanCollide = false
+	head.CanQuery = false
+	head.CastShadow = false
+	head.CFrame = root.CFrame * CFrame.new(0, 3.4, 0)
+	head.Parent = guard
+
+	local weld = Instance.new("WeldConstraint")
+	weld.Part0 = root
+	weld.Part1 = head
+	weld.Parent = root
+
+	guard:SetAttribute("PatrolA", route.A)
+	guard:SetAttribute("PatrolB", route.B)
+	guard:SetAttribute("AlarmGroup", "BANK")
+	guard.Parent = folder
+	CollectionService:AddTag(guard, Config.GuardTag)
+end
+
+--==========================================================================
+-- 2) SICHERHEITSBEREICH  -  nur ueber die Schleuse
+--==========================================================================
+
+part(
+	"SchleusenWand",
+	Vector3.new(32, 16, 1.5),
+	CFrame.new(base + Vector3.new(0, 8, -9)),
+	Color3.fromRGB(22, 25, 32),
+	Enum.Material.Metal
+)
+
+local sluice = part(
+	"Schleuse",
+	Vector3.new(7, 11, 1),
+	CFrame.new(base + Vector3.new(0, 6, -9)),
+	Color3.fromRGB(16, 22, 30),
+	Enum.Material.DiamondPlate
+)
+light(sluice, Config.Theme.Cyan, 14)
+hackable(sluice, {
+	TargetId = "BANK_SLUICE",
+	DisplayName = "SCHLEUSE // Sicherheitsbereich",
+	Difficulty = 6,
+	RequiredLevel = 2,
+	OnSuccess = "DoorOpen",
+	DownTime = 90,
+	Cooldown = Config.Raid.BankCooldown,
+	AlarmGroup = "BANK",
+	AlarmStarts = true, -- ab hier laeuft die Uhr
+})
+
+part(
+	"ServerraumBoden",
+	Vector3.new(32, 1, 14),
+	CFrame.new(base + Vector3.new(0, 1, -17)),
+	Color3.fromRGB(20, 23, 29),
+	Enum.Material.Concrete
+)
+
+for index = 1, 4 do
+	local rack = part(
+		("Serverschrank%d"):format(index),
+		Vector3.new(3, 8, 2),
+		CFrame.new(base + Vector3.new(-11 + (index - 1) * 7, 5, -20)),
+		Color3.fromRGB(18, 20, 26),
+		Enum.Material.Metal
+	)
+	local strip = part(
+		("ServerLicht%d"):format(index),
+		Vector3.new(2.4, 0.3, 0.2),
+		CFrame.new(base + Vector3.new(-11 + (index - 1) * 7, 7.5, -18.9)),
+		Config.Theme.Cyan,
+		Enum.Material.Neon
+	)
+	strip.CanCollide = false
+	local _ = rack
+end
+
+--==========================================================================
+-- 3) DER WEG VON OBEN  -  Lueftungsschacht, braucht ein besseres Rig
+--==========================================================================
+
+local vent = part(
+	"Lueftungsgitter",
+	Vector3.new(5, 0.6, 5),
+	CFrame.new(base + Vector3.new(0, 18.5, -17)),
+	Color3.fromRGB(44, 48, 56),
+	Enum.Material.DiamondPlate
+)
+light(vent, Config.Theme.Amber, 10)
+hackable(vent, {
+	TargetId = "BANK_VENT",
+	DisplayName = "LUEFTUNGSGITTER // Dach",
+	Difficulty = 5,
+	-- Hoeheres Rig noetig, sonst waere der Weg von oben immer die beste Wahl.
+	RequiredLevel = Config.Bank.VentRequiredTier,
+	OnSuccess = "DoorOpen",
+	DownTime = 120,
+	Cooldown = Config.Raid.BankCooldown,
+	-- Bewusst OHNE AlarmStarts: das ist der Sinn des leisen Wegs.
+})
+
+-- Leiter vom Boden aufs Bankdach, damit der obere Weg erreichbar ist.
+for y = 4, 18, 4 do
+	part(
+		"DachLeiter",
+		Vector3.new(2.6, 0.4, 1.2),
+		CFrame.new(base + Vector3.new(18, y, 12)),
+		Color3.fromRGB(52, 54, 58),
+		Enum.Material.Metal
+	).CanCollide = true
+end
+
+--==========================================================================
+-- 4) TRESORRAUM  -  Schliessfaecher plus Haupttresor
+--==========================================================================
+
+part(
+	"TresorraumBoden",
+	Vector3.new(24, 1, 14),
+	CFrame.new(base + Vector3.new(0, 1, -30)),
+	Color3.fromRGB(18, 20, 26),
+	Enum.Material.Metal
+)
+
+-- Mehrere Schliessfaecher: beim schnellen Weg entscheidet die Uhr, wie viele
+-- man noch schafft. Genau das macht "schnell" zu einer echten Option.
+for index = 1, Config.Bank.VaultBoxes do
+	local column = (index - 1) % 3
+	local row = math.floor((index - 1) / 3)
+	local box = part(
+		("Schliessfach%d"):format(index),
+		Vector3.new(3, 3, 1),
+		CFrame.new(base + Vector3.new(-7 + column * 7, 4 + row * 4, -35)),
+		Color3.fromRGB(46, 50, 60),
+		Enum.Material.Metal
+	)
+	hackable(box, {
+		TargetId = ("BANK_BOX%d"):format(index),
+		DisplayName = ("SCHLIESSFACH %d"):format(index),
+		Difficulty = 4,
+		RequiredLevel = 2,
+		Reward = Config.Bank.BoxReward,
+		OnSuccess = "AtmPayout",
+		DownTime = 20,
+		Cooldown = Config.Bank.BoxCooldown,
+		AlarmGroup = "BANK",
+	})
+end
+
+print("[GHOSTNET] Bank-Innenraum gebaut: Halle, Sicherheitsbereich, Tresorraum, Lueftung.")
+</ProtectedString>
+</Properties>
+</Item>
+<Item class="Script" referent="GN40">
+<Properties>
+<string name="Name">City</string>
+<ProtectedString name="Source">-- ServerScriptService/World/City.server.luau
+--!strict
+-- GHOSTNET :: Vantorra.
+--
+-- Baut Strassen, Gehwege und Haeuser entlang des Graphen aus RoadNetwork.
+-- Reine Geometrie - kein Objekt hier traegt Spiellogik.
+--
+-- LEISTUNGSBUDGET (verbindlich, nicht optional)
+--   Alles Dekorative: Anchored, CanQuery = false, CanTouch = false,
+--   CastShadow = false bei kleinen Teilen. Fenster sind Neon-FLAECHEN, keine
+--   Lichtquellen - hunderte PointLights waeren auf dem Handy nicht bezahlbar.
+--
+--   Nur der als "Dense" markierte Bezirk wird voll ausgebaut. Der Rest bleibt
+--   Rohbau, bis er dran ist: eine grosse leere Stadt ist schlimmer als ein
+--   kleiner voller Block.
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local ServerScriptService = game:GetService("ServerScriptService")
+
+local Config = require(ReplicatedStorage.Shared.Config)
+local Districts = require(ReplicatedStorage.Shared.Districts)
+
+local RoadNetwork = require(ServerScriptService:WaitForChild("Systems"):WaitForChild("RoadNetwork"))
+
+local FOLDER_NAME = "GhostNet_City"
+
+if workspace:FindFirstChild(FOLDER_NAME) then
+	return
+end
+
+RoadNetwork.Build()
+
+local folder = Instance.new("Folder")
+folder.Name = FOLDER_NAME
+folder.Parent = workspace
+
+local rng = Random.new(Config.World.Seed)
+local C = Config.City
+
+local function decor(name: string, size: Vector3, cframe: CFrame, colour: Color3, material: Enum.Material, parent: Instance?): Part
+	local p = Instance.new("Part")
+	p.Name = name
+	p.Size = size
+	p.CFrame = cframe
+	p.Color = colour
+	p.Material = material
+	p.Anchored = true
+	p.CanQuery = false
+	p.CanTouch = false
+	p.TopSurface = Enum.SurfaceType.Smooth
+	p.BottomSurface = Enum.SurfaceType.Smooth
+	if size.X &lt; 6 and size.Y &lt; 6 and size.Z &lt; 6 then
+		p.CastShadow = false
+	end
+	p.Parent = parent or folder
+	return p
+end
+
+--==========================================================================
+-- Strassen
+--==========================================================================
+
+local roads = Instance.new("Folder")
+roads.Name = "Strassen"
+roads.Parent = folder
+
+local built: { [string]: boolean } = {}
+
+for _, node in RoadNetwork.All() do
+	for _, linkId in node.Links do
+		-- Jede Kante nur einmal bauen.
+		local edgeKey = if node.Id &lt; linkId
+			then ("%d-%d"):format(node.Id, linkId)
+			else ("%d-%d"):format(linkId, node.Id)
+		if built[edgeKey] then
+			continue
+		end
+		built[edgeKey] = true
+
+		local other = RoadNetwork.Get(linkId)
+		if not other then
+			continue
+		end
+
+		local mid = (node.Position + other.Position) * 0.5
+		local delta = other.Position - node.Position
+		local length = delta.Magnitude
+		local horizontal = math.abs(delta.X) &gt; math.abs(delta.Z)
+		local size = if horizontal
+			then Vector3.new(length, 1, C.RoadWidth)
+			else Vector3.new(C.RoadWidth, 1, length)
+
+		local road = decor("Fahrbahn", size, CFrame.new(mid), Color3.fromRGB(14, 15, 19), Enum.Material.Slate, roads)
+		road.Reflectance = Config.World.RoadReflectance
+		road.CanCollide = true
+
+		-- Gehwege links und rechts.
+		local sidewalkSize = if horizontal
+			then Vector3.new(length, 1.4, C.SidewalkWidth)
+			else Vector3.new(C.SidewalkWidth, 1.4, length)
+		for _, side in { -1, 1 } do
+			local offset = if horizontal
+				then Vector3.new(0, 0.3, side * (C.RoadWidth * 0.5 + C.SidewalkWidth * 0.5))
+				else Vector3.new(side * (C.RoadWidth * 0.5 + C.SidewalkWidth * 0.5), 0.3, 0)
+			local walk = decor(
+				"Gehweg",
+				sidewalkSize,
+				CFrame.new(mid + offset),
+				Color3.fromRGB(26, 27, 32),
+				Enum.Material.Concrete,
+				roads
+			)
+			walk.CanCollide = true
+		end
+
+		-- Mittelmarkierung, matt. Gibt der Strasse eine Richtung.
+		local step = 24
+		local count = math.floor(length / step)
+		for i = 1, count - 1 do
+			local along = node.Position:Lerp(other.Position, i / count)
+			decor(
+				"Markierung",
+				if horizontal then Vector3.new(6, 0.06, 0.6) else Vector3.new(0.6, 0.06, 6),
+				CFrame.new(along + Vector3.new(0, 0.55, 0)),
+				Color3.fromRGB(92, 90, 76),
+				Enum.Material.SmoothPlastic,
+				roads
+			)
+		end
+	end
+end
+
+--==========================================================================
+-- Haeuser aus wiederverwendbaren Modulen
+-- Erdgeschoss, Standardetagen, Dachabschluss. Vielfalt ueber Farbe, Hoehe
+-- und Schilder - nicht ueber Einzelbauten.
+--==========================================================================
+
+local blocks = Instance.new("Folder")
+blocks.Name = "Bloecke"
+blocks.Parent = folder
+
+local function building(centre: Vector3, footprint: Vector3, district: Districts.District, dense: boolean)
+	local height = rng:NextInteger(C.BuildingMinHeight, if dense then C.BuildingMaxHeight else C.BuildingMinHeight + 20)
+	local tint = district.Tint
+
+	-- Erdgeschoss: dunkler, mit Schaufensterband.
+	decor(
+		"Erdgeschoss",
+		Vector3.new(footprint.X, 12, footprint.Z),
+		CFrame.new(centre + Vector3.new(0, 6, 0)),
+		tint:Lerp(Color3.new(0, 0, 0), 0.35),
+		Enum.Material.Concrete,
+		blocks
+	).CanCollide = true
+
+	-- Standardetagen als ein Block; Fenster als Neonflaechen aufgeklebt.
+	decor(
+		"Etagen",
+		Vector3.new(footprint.X, height - 12, footprint.Z),
+		CFrame.new(centre + Vector3.new(0, 12 + (height - 12) * 0.5, 0)),
+		tint,
+		Enum.Material.Concrete,
+		blocks
+	).CanCollide = true
+
+	if dense then
+		local rows = math.floor((height - 14) / 10)
+		for row = 1, rows do
+			if rng:NextNumber() &gt; Config.World.WindowChance then
+				continue
+			end
+			for _, face in { 1, -1 } do
+				local lit = decor(
+					"Fenster",
+					Vector3.new(footprint.X * 0.7, 2.4, 0.3),
+					CFrame.new(centre + Vector3.new(0, 12 + row * 10, face * (footprint.Z * 0.5 + 0.2))),
+					Color3.fromRGB(rng:NextInteger(40, 95), rng:NextInteger(60, 125), rng:NextInteger(95, 165)),
+					Enum.Material.Neon,
+					blocks
+				)
+				lit.Transparency = 0.2
+			end
+		end
+	end
+
+	-- Dachabschluss plus begehbares Dach mit Bruestung. Vertikalitaet macht
+	-- ein Hacking-Spiel deutlich besser: man kommt von oben an Ziele.
+	decor(
+		"Dach",
+		Vector3.new(footprint.X + 1.5, 1.2, footprint.Z + 1.5),
+		CFrame.new(centre + Vector3.new(0, height, 0)),
+		tint:Lerp(Color3.new(0, 0, 0), 0.5),
+		Enum.Material.Metal,
+		blocks
+	).CanCollide = true
+
+	for _, side in { { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 } } do
+		local size = if side[1] ~= 0
+			then Vector3.new(0.6, 3, footprint.Z + 1.5)
+			else Vector3.new(footprint.X + 1.5, 3, 0.6)
+		decor(
+			"Bruestung",
+			size,
+			CFrame.new(centre + Vector3.new(side[1] * footprint.X * 0.5, height + 2, side[2] * footprint.Z * 0.5)),
+			tint:Lerp(Color3.new(0, 0, 0), 0.5),
+			Enum.Material.Metal,
+			blocks
+		).CanCollide = true
+	end
+
+	-- Feuerleiter: der Weg nach oben. Ohne den ist das Dach Deko.
+	if rng:NextNumber() &lt; C.RoofAccessChance then
+		local x = centre.X + footprint.X * 0.5 + 1
+		for y = 4, height, 4 do
+			decor(
+				"Sprosse",
+				Vector3.new(2.6, 0.4, 1.2),
+				CFrame.new(x, y, centre.Z),
+				Color3.fromRGB(52, 54, 58),
+				Enum.Material.Metal,
+				blocks
+			).CanCollide = true
+		end
+	end
+
+	-- Genau ein Neonschild je Haus, mit echtem Licht. Sparsam.
+	if dense and rng:NextNumber() &lt; C.SignChance then
+		local sign = decor(
+			"Neonschild",
+			Vector3.new(0.7, rng:NextInteger(6, 14), 4),
+			CFrame.new(centre + Vector3.new(footprint.X * 0.5 + 0.5, height * 0.5, footprint.Z * 0.25)),
+			district.Neon,
+			Enum.Material.Neon,
+			blocks
+		)
+		if rng:NextNumber() &lt; C.LightChance then
+			local light = Instance.new("PointLight")
+			light.Color = district.Neon
+			light.Brightness = Config.World.SignBrightness
+			light.Range = Config.World.SignRange
+			light.Parent = sign
+		end
+	end
+end
+
+-- Ein Baublock liegt zwischen vier Kreuzungen.
+local grid = C.Grid
+local half = math.floor(grid / 2)
+local inner = C.BlockSize - C.RoadWidth - C.SidewalkWidth * 2 - C.BuildingInset
+
+local denseBlocks, roughBlocks = 0, 0
+
+for gz = -half, half - 1 do
+	for gx = -half, half - 1 do
+		local district = Districts.At(gx, gz)
+		if not district then
+			continue
+		end
+
+		local centre = Vector3.new((gx + 0.5) * C.BlockSize, 0, (gz + 0.5) * C.BlockSize)
+		local dense = district.Dense
+
+		-- Ein Block traegt vier Haeuser statt eines Klotzes: das gibt
+		-- Gassen, und Gassen sind fuer Motorrad und Flucht wichtig.
+		local size = inner * 0.44
+		for _, corner in { { -1, -1 }, { 1, -1 }, { -1, 1 }, { 1, 1 } } do
+			building(
+				centre + Vector3.new(corner[1] * inner * 0.25, 0, corner[2] * inner * 0.25),
+				Vector3.new(size, 0, size),
+				district,
+				dense
+			)
+		end
+
+		if dense then
+			denseBlocks += 1
+		else
+			roughBlocks += 1
+		end
+	end
+end
+
+print(("[GHOSTNET] Vantorra gebaut: %d ausgebaute Bloecke, %d im Rohbau."):format(denseBlocks, roughBlocks))
+</ProtectedString>
+</Properties>
+</Item>
+<Item class="Script" referent="GN41">
 <Properties>
 <string name="Name">Cityscape</string>
 <ProtectedString name="Source">-- ServerScriptService/World/Cityscape.server.luau
@@ -8386,7 +11236,235 @@ print("[GHOSTNET] Stadtkulisse gebaut.")
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="Script" referent="GN34">
+<Item class="Script" referent="GN42">
+<Properties>
+<string name="Name">Dealership</string>
+<ProtectedString name="Source">-- ServerScriptService/World/Dealership.server.luau
+--!strict
+-- GHOSTNET :: Autohaendler, Garage und die Bezirks-Wegpunkte.
+--
+-- Der Showroom stellt die Fahrzeuge PHYSISCH aus. Der Spieler geht hin,
+-- sieht sie, steigt ein und faehrt eine Runde auf dem abgesperrten Gelaende -
+-- das ist deutlich besser als ein Menue mit Bildern und kostet kaum mehr.
+--
+-- Wie ueberall: nur Parts, Tags und Attribute.
+
+local CollectionService = game:GetService("CollectionService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local ServerScriptService = game:GetService("ServerScriptService")
+
+local Config = require(ReplicatedStorage.Shared.Config)
+local Districts = require(ReplicatedStorage.Shared.Districts)
+local Vehicles = require(ReplicatedStorage.Shared.Vehicles)
+
+local VehicleChassis = require(ServerScriptService:WaitForChild("Systems"):WaitForChild("VehicleChassis"))
+
+local FOLDER_NAME = "GhostNet_Dealership"
+
+if workspace:FindFirstChild(FOLDER_NAME) then
+	return
+end
+
+local folder = Instance.new("Folder")
+folder.Name = FOLDER_NAME
+folder.Parent = workspace
+
+local function part(name: string, size: Vector3, cframe: CFrame, colour: Color3, material: Enum.Material): Part
+	local p = Instance.new("Part")
+	p.Name = name
+	p.Size = size
+	p.CFrame = cframe
+	p.Color = colour
+	p.Material = material
+	p.Anchored = true
+	p.CanQuery = false
+	p.TopSurface = Enum.SurfaceType.Smooth
+	p.BottomSurface = Enum.SurfaceType.Smooth
+	p.Parent = folder
+	return p
+end
+
+local function waypoint(id: string, position: Vector3)
+	local p = part("WP_" .. id, Vector3.new(14, 16, 14), CFrame.new(position), Config.Theme.Cyan, Enum.Material.Neon)
+	p.Transparency = 1
+	p.CanCollide = false
+	p.CanTouch = false
+	p:SetAttribute("WaypointId", id)
+	CollectionService:AddTag(p, Config.WaypointTag)
+end
+
+local function sign(target: BasePart, title: string, subtitle: string, colour: Color3, height: number)
+	local gui = Instance.new("BillboardGui")
+	gui.Name = "Sign"
+	gui.Size = UDim2.fromOffset(260, 48)
+	gui.StudsOffsetWorldSpace = Vector3.new(0, height, 0)
+	gui.MaxDistance = 200
+
+	local head = Instance.new("TextLabel")
+	head.BackgroundTransparency = 1
+	head.Font = Enum.Font.Code
+	head.Text = title
+	head.TextColor3 = colour
+	head.TextSize = 18
+	head.Size = UDim2.new(1, 0, 0.6, 0)
+	head.Parent = gui
+
+	local sub = Instance.new("TextLabel")
+	sub.BackgroundTransparency = 1
+	sub.Font = Enum.Font.Code
+	sub.Text = subtitle
+	sub.TextColor3 = Config.Theme.TextDim
+	sub.TextSize = 12
+	sub.Position = UDim2.new(0, 0, 0.6, 0)
+	sub.Size = UDim2.new(1, 0, 0.4, 0)
+	sub.Parent = gui
+
+	gui.Parent = target
+end
+
+--==========================================================================
+-- Autohaendler mit Showroom
+--==========================================================================
+
+local dealerBase = Vector3.new(-96, 0, 40)
+
+part(
+	"ShowroomBoden",
+	Vector3.new(74, 1, 40),
+	CFrame.new(dealerBase + Vector3.new(0, 0.5, 0)),
+	Color3.fromRGB(24, 26, 32),
+	Enum.Material.Concrete
+).CanCollide = true
+
+part(
+	"ShowroomRueckwand",
+	Vector3.new(74, 18, 1),
+	CFrame.new(dealerBase + Vector3.new(0, 9, -20)),
+	Color3.fromRGB(20, 22, 28),
+	Enum.Material.Concrete
+).CanCollide = true
+
+part(
+	"ShowroomDach",
+	Vector3.new(75, 1, 41),
+	CFrame.new(dealerBase + Vector3.new(0, 18, 0)),
+	Color3.fromRGB(16, 18, 23),
+	Enum.Material.Metal
+).CanCollide = true
+
+local counter = part(
+	"HaendlerTresen",
+	Vector3.new(12, 4, 3),
+	CFrame.new(dealerBase + Vector3.new(0, 2.5, -16)),
+	Color3.fromRGB(40, 44, 54),
+	Enum.Material.Metal
+)
+counter.CanCollide = true
+counter.CanQuery = true
+counter:SetAttribute("DisplayName", "AUTOHAUS VANTORRA")
+CollectionService:AddTag(counter, Config.DealerTag)
+sign(
+	counter,
+	"AUTOHAUS",
+	("offen %d-%d Uhr"):format(Config.Dealer.OpenHour, Config.Dealer.CloseHour),
+	Config.Theme.Amber,
+	4.5
+)
+
+local band = part(
+	"HaendlerLeuchtband",
+	Vector3.new(74, 0.4, 1.2),
+	CFrame.new(dealerBase + Vector3.new(0, 17, -19.4)),
+	Config.Theme.Amber,
+	Enum.Material.Neon
+)
+band.CanCollide = false
+
+-- Ausstellungsfahrzeuge: physisch da, einsteigbar, Probefahrt auf dem
+-- abgesperrten Gelaende. "Permanent", damit der Aufraeumer sie stehen laesst.
+for index, class in Vehicles.List do
+	local slot = dealerBase + Vector3.new(-30 + (index - 1) * 15, 3.5, 4)
+	local model = VehicleChassis.Build(class.Id, CFrame.new(slot) * CFrame.Angles(0, math.rad(180), 0))
+	if model then
+		model:SetAttribute("Permanent", true)
+		model:SetAttribute("Showroom", true)
+		local body = model.PrimaryPart
+		if body then
+			sign(body, class.Name, ("%d CRY  //  %s"):format(class.Price, class.Blurb), Config.Theme.Cyan, 4)
+		end
+	end
+end
+
+waypoint("DEALER", dealerBase + Vector3.new(0, 6, -10))
+
+--==========================================================================
+-- Garage: der eigene Ausparkplatz
+--==========================================================================
+
+local garageBase = Vector3.new(46, 0, 44)
+
+part(
+	"GarageBoden",
+	Vector3.new(26, 1, 22),
+	CFrame.new(garageBase + Vector3.new(0, 0.5, 0)),
+	Color3.fromRGB(22, 24, 30),
+	Enum.Material.Concrete
+).CanCollide = true
+
+part(
+	"GarageDach",
+	Vector3.new(27, 1, 23),
+	CFrame.new(garageBase + Vector3.new(0, 12, 0)),
+	Color3.fromRGB(16, 18, 22),
+	Enum.Material.Metal
+).CanCollide = true
+
+for _, side in { -1, 1 } do
+	part(
+		"GarageWand",
+		Vector3.new(1, 12, 22),
+		CFrame.new(garageBase + Vector3.new(side * 13, 6, 0)),
+		Color3.fromRGB(24, 26, 32),
+		Enum.Material.Concrete
+	).CanCollide = true
+end
+
+local spawnPad = part(
+	"Ausparkplatz",
+	Vector3.new(16, 0.4, 16),
+	CFrame.new(garageBase + Vector3.new(0, 1.2, 0)),
+	Config.Theme.Cyan,
+	Enum.Material.Neon
+)
+spawnPad.CanCollide = false
+spawnPad.Transparency = 0.65
+spawnPad.CanQuery = true
+CollectionService:AddTag(spawnPad, Config.VehicleSpawnTag)
+sign(spawnPad, "GARAGE", "[G] - Fahrzeug ausparken", Config.Theme.Cyan, 5)
+
+waypoint("GARAGE", garageBase + Vector3.new(0, 6, 0))
+
+--==========================================================================
+-- Wegpunkte der Bezirke, damit die Story dorthin zeigen kann
+--==========================================================================
+
+local block = Config.City.BlockSize
+for _, district in Districts.List do
+	local position = Vector3.new(district.GridX * block, 6, district.GridZ * block)
+	if district.Id == "DOCKS" then
+		waypoint("DOCKS", position)
+	elseif district.Id == "HEIGHTS" then
+		waypoint("HEIGHTS", position)
+	elseif district.Id == "FINANCE" then
+		waypoint("FINANCE", position)
+	end
+end
+
+print("[GHOSTNET] Autohaus, Garage und Bezirks-Wegpunkte gebaut.")
+</ProtectedString>
+</Properties>
+</Item>
+<Item class="Script" referent="GN43">
 <Properties>
 <string name="Name">StoryWorld</string>
 <ProtectedString name="Source">-- ServerScriptService/World/StoryWorld.server.luau
@@ -8931,7 +12009,7 @@ print("[GHOSTNET] Story-Welt gebaut: Uebungsterminal, Laden, Apartment, Nakamura
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="Script" referent="GN35">
+<Item class="Script" referent="GN44">
 <Properties>
 <string name="Name">TestTargets</string>
 <ProtectedString name="Source">-- ServerScriptService/World/TestTargets.server.luau
@@ -9230,7 +12308,7 @@ print("[GHOSTNET] Testwelt gebaut: Kamera (D2), Sicherheitstuer (D4), Geldautoma
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="Script" referent="GN36">
+<Item class="Script" referent="GN45">
 <Properties>
 <string name="Name">TestVehicles</string>
 <ProtectedString name="Source">-- ServerScriptService/World/TestVehicles.server.luau
@@ -9323,19 +12401,19 @@ print(("[GHOSTNET] %d Testfahrzeuge gebaut."):format(built))
 </Item>
 </Item>
 </Item>
-<Item class="StarterPlayer" referent="GN58">
+<Item class="StarterPlayer" referent="GN68">
 <Properties>
 <string name="Name">StarterPlayer</string>
 </Properties>
-<Item class="StarterPlayerScripts" referent="GN59">
+<Item class="StarterPlayerScripts" referent="GN69">
 <Properties>
 <string name="Name">StarterPlayerScripts</string>
 </Properties>
-<Item class="Folder" referent="GN49">
+<Item class="Folder" referent="GN59">
 <Properties>
 <string name="Name">UI</string>
 </Properties>
-<Item class="LocalScript" referent="GN38">
+<Item class="LocalScript" referent="GN47">
 <Properties>
 <string name="Name">AdminUI</string>
 <ProtectedString name="Source">-- StarterPlayer/StarterPlayerScripts/UI/AdminUI.client.luau
@@ -9698,7 +12776,621 @@ end)
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="LocalScript" referent="GN39">
+<Item class="LocalScript" referent="GN48">
+<Properties>
+<string name="Name">CityUI</string>
+<ProtectedString name="Source">-- StarterPlayer/StarterPlayerScripts/UI/CityUI.client.luau
+--!strict
+-- GHOSTNET :: Garage, Fahndungsstufe und die Endgame-Entscheidung.
+--
+-- Reine Anzeige. Ob ein Fahrzeug ausgeparkt werden darf, was es kostet und
+-- welche Fahndungsstufe gilt, entscheidet ausschliesslich der Server.
+--
+-- Garage mit [G], die Entscheidung erscheint erst, wenn Mission 10 durch ist.
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+
+local Config = require(ReplicatedStorage.Shared.Config)
+local Remotes = require(ReplicatedStorage.Shared.Remotes)
+local UITheme = require(ReplicatedStorage.Shared.UITheme)
+local Vehicles = require(ReplicatedStorage.Shared.Vehicles)
+
+local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+
+local C = UITheme.Color
+
+local garage = { Owned = {}, Spawned = "", DealerOpen = false, Colours = {}, RepaintCost = 0 }
+local pursuit = { Level = 0, Escaping = false, Seconds = 0 }
+local endgame = { Unlocked = false, Choice = "", SwitchIn = 0 }
+local banked = 0
+local busy = false
+local selectedColour = "Schwarz"
+
+--==========================================================================
+-- Fahndungsstufe: Sterne oben Mitte
+--==========================================================================
+
+local gui = UITheme.Screen("GhostNetCity", 13)
+gui.Parent = playerGui
+
+local starHolder = UITheme.Frame({
+	Name = "Wanted",
+	AnchorPoint = Vector2.new(0.5, 0),
+	Position = UDim2.new(0.5, 0, 0, 160),
+	Size = UDim2.fromOffset(240, 40),
+	BackgroundTransparency = 1,
+	Visible = false,
+	Parent = gui,
+})
+local starLayout = Instance.new("UIListLayout")
+starLayout.FillDirection = Enum.FillDirection.Horizontal
+starLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+starLayout.Padding = UDim.new(0, 6)
+starLayout.Parent = starHolder
+
+local stars: { TextLabel } = {}
+for index = 1, Config.Pursuit.MaxLevel do
+	local star = UITheme.Label({
+		Name = "Star",
+		Text = "\u{2605}",
+		TextColor3 = C.Line,
+		TextSize = 26,
+		TextXAlignment = Enum.TextXAlignment.Center,
+		Size = UDim2.fromOffset(28, 32),
+		LayoutOrder = index,
+		Parent = starHolder,
+	})
+	table.insert(stars, star)
+end
+
+local escapeLabel = UITheme.Label({
+	Name = "Escape",
+	Text = "",
+	TextColor3 = C.Amber,
+	TextSize = 13,
+	TextXAlignment = Enum.TextXAlignment.Center,
+	AnchorPoint = Vector2.new(0.5, 0),
+	Position = UDim2.new(0.5, 0, 0, 200),
+	Size = UDim2.fromOffset(320, 18),
+	Visible = false,
+	Parent = gui,
+})
+
+local function refreshPursuit()
+	starHolder.Visible = pursuit.Level &gt; 0
+	escapeLabel.Visible = pursuit.Escaping
+
+	for index, star in stars do
+		if index &lt;= pursuit.Level then
+			local pulse = 0.5 + 0.5 * math.sin(os.clock() * 6 + index)
+			star.TextColor3 = C.Magenta:Lerp(C.Amber, pulse * 0.4)
+		else
+			star.TextColor3 = C.Line
+		end
+	end
+
+	if pursuit.Escaping then
+		escapeLabel.Text = ("AUSSER SICHT - noch %d s, dann bist du raus"):format(math.ceil(pursuit.Seconds))
+	end
+end
+
+--==========================================================================
+-- Garage
+--==========================================================================
+
+local backdrop = UITheme.Frame({
+	Name = "Backdrop",
+	Size = UDim2.fromScale(1, 1),
+	BackgroundColor3 = Color3.new(0, 0, 0),
+	BackgroundTransparency = 1,
+	Visible = false,
+	Parent = gui,
+})
+
+local window = UITheme.Frame({
+	Name = "Window",
+	AnchorPoint = Vector2.new(0.5, 0.5),
+	Position = UDim2.fromScale(0.5, 0.5),
+	Size = UDim2.new(0.9, 0, 0.82, 0),
+	BackgroundColor3 = C.Background,
+	ClipsDescendants = true,
+	Parent = backdrop,
+})
+UITheme.Corner(window, 5)
+UITheme.Stroke(window, C.CyanDim)
+
+local sizeConstraint = Instance.new("UISizeConstraint")
+sizeConstraint.MaxSize = Vector2.new(700, 520)
+sizeConstraint.MinSize = Vector2.new(300, 300)
+sizeConstraint.Parent = window
+
+local titleBar = UITheme.Frame({
+	Name = "TitleBar",
+	Size = UDim2.new(1, 0, 0, 34),
+	BackgroundColor3 = C.Panel,
+	Parent = window,
+})
+
+UITheme.Label({
+	Name = "Title",
+	Text = "GHOSTNET // GARAGE",
+	TextColor3 = C.Cyan,
+	TextSize = 14,
+	Position = UDim2.new(0, 12, 0, 0),
+	Size = UDim2.new(0.5, 0, 1, 0),
+	Parent = titleBar,
+})
+
+local statusLabel = UITheme.Label({
+	Name = "Status",
+	Text = "",
+	TextColor3 = C.TextDim,
+	TextSize = 12,
+	TextXAlignment = Enum.TextXAlignment.Right,
+	AnchorPoint = Vector2.new(1, 0),
+	Position = UDim2.new(1, -104, 0, 0),
+	Size = UDim2.new(0.5, 0, 1, 0),
+	Parent = titleBar,
+})
+
+local closeButton = UITheme.Button({
+	Name = "Close",
+	Text = "SCHLIESSEN",
+	TextSize = 11,
+	TextColor3 = C.Magenta,
+	BackgroundColor3 = C.PanelLight,
+	AnchorPoint = Vector2.new(1, 0.5),
+	Position = UDim2.new(1, -8, 0.5, 0),
+	Size = UDim2.fromOffset(88, 24),
+	Parent = titleBar,
+})
+UITheme.Corner(closeButton, 3)
+UITheme.Stroke(closeButton, C.Magenta)
+
+local hintLabel = UITheme.Label({
+	Name = "Hint",
+	Text = "",
+	TextColor3 = C.TextDim,
+	TextSize = 12,
+	Position = UDim2.new(0, 14, 0, 40),
+	Size = UDim2.new(1, -28, 0, 16),
+	Parent = window,
+})
+
+local list = Instance.new("ScrollingFrame")
+list.Name = "List"
+list.BackgroundTransparency = 1
+list.BorderSizePixel = 0
+list.Position = UDim2.new(0, 14, 0, 60)
+list.Size = UDim2.new(1, -28, 1, -110)
+list.CanvasSize = UDim2.new()
+list.AutomaticCanvasSize = Enum.AutomaticSize.Y
+list.ScrollBarThickness = 4
+list.ScrollBarImageColor3 = C.Line
+list.Parent = window
+
+local listLayout = Instance.new("UIListLayout")
+listLayout.SortOrder = Enum.SortOrder.LayoutOrder
+listLayout.Padding = UDim.new(0, 8)
+listLayout.Parent = list
+
+local footer = UITheme.Label({
+	Name = "Footer",
+	Text = "",
+	TextColor3 = C.TextDim,
+	TextSize = 12,
+	Position = UDim2.new(0, 14, 1, -34),
+	Size = UDim2.new(1, -28, 0, 18),
+	Parent = window,
+})
+
+local function say(text: string, colour: Color3)
+	footer.Text = text
+	footer.TextColor3 = colour
+end
+
+local function send(payload: { [string]: any })
+	if busy then
+		return
+	end
+	busy = true
+	task.spawn(function()
+		local ok, response = pcall(function()
+			return Remotes.VehicleAction:InvokeServer(payload)
+		end)
+		busy = false
+
+		if not ok or typeof(response) ~= "table" then
+			say("Aktion fehlgeschlagen.", C.Magenta)
+			return
+		end
+		if response.Ok then
+			say("Erledigt.", C.Green)
+			return
+		end
+
+		-- Klartext mit Zahl, wo es eine gibt.
+		local reason = response.Reason
+		if reason == "FUNDS" then
+			say(("Zu wenig auf der Bank - es fehlen %d CRY."):format(response.Missing or 0), C.Amber)
+		elseif reason == "TOO_FAR" then
+			say(("Zu weit vom Ausparkplatz - %d Studs, erlaubt sind %d."):format(
+				response.Distance or 0,
+				response.Range or 0
+			), C.Amber)
+		elseif reason == "CLOSED" then
+			say(("Haendler hat zu - offen von %d bis %d Uhr."):format(response.Open or 0, response.Close or 0), C.Amber)
+		elseif reason == "NO_DEALER" then
+			say("Du stehst nicht beim Haendler.", C.Amber)
+		elseif reason == "NO_SPAWN" then
+			say("Kein Ausparkplatz in der Naehe.", C.Amber)
+		elseif reason == "NOT_OWNED" then
+			say("Das Fahrzeug gehoert dir nicht.", C.Amber)
+		elseif reason == "ALREADY_OWNED" then
+			say("Hast du schon.", C.TextDim)
+		else
+			say("Abgelehnt.", C.Amber)
+		end
+	end)
+end
+
+local function clearList()
+	for _, child in list:GetChildren() do
+		if child:IsA("GuiObject") then
+			child:Destroy()
+		end
+	end
+end
+
+local function refreshGarage()
+	statusLabel.Text = ("BANK %d CRY"):format(banked)
+	hintLabel.Text = if garage.DealerOpen
+		then "Haendler offen. Kaufen geht nur am Tresen, Ausparken nur in der Garage."
+		else ("Haendler geschlossen (%d-%d Uhr). Ausparken geht trotzdem."):format(
+			Config.Dealer.OpenHour,
+			Config.Dealer.CloseHour
+		)
+
+	if not backdrop.Visible then
+		return
+	end
+	clearList()
+
+	local order = 0
+	local ownedIds: { [string]: string } = {}
+	for _, entry in garage.Owned do
+		ownedIds[entry.ClassId] = entry.Colour
+	end
+
+	for _, class in Vehicles.List do
+		order += 1
+		local owned = ownedIds[class.Id] ~= nil
+		local isOut = garage.Spawned == class.Id
+
+		local frame = UITheme.Frame({
+			Name = class.Id,
+			Size = UDim2.new(1, -8, 0, 78),
+			BackgroundColor3 = C.Panel,
+			LayoutOrder = order,
+			Parent = list,
+		})
+		UITheme.Corner(frame, 4)
+		UITheme.Stroke(frame, if isOut then C.Cyan else C.Line)
+		UITheme.Padding(frame, 10)
+
+		UITheme.Label({
+			Name = "Name",
+			Text = class.Name,
+			TextColor3 = if owned then C.Cyan else C.TextDim,
+			TextSize = 15,
+			Size = UDim2.new(1, -150, 0, 18),
+			Parent = frame,
+		})
+		UITheme.Label({
+			Name = "Blurb",
+			Text = class.Blurb,
+			TextColor3 = C.TextDim,
+			TextSize = 11,
+			TextWrapped = true,
+			Position = UDim2.new(0, 0, 0, 19),
+			Size = UDim2.new(1, -150, 0, 26),
+			Parent = frame,
+		})
+		UITheme.Label({
+			Name = "Stats",
+			Text = ("%d km/h  //  Lager +%d  //  Auffaelligkeit %.1fx"):format(
+				math.floor(class.MaxSpeed * 1.1),
+				Vehicles.StashBonus(class.Id),
+				class.HeatFactor
+			),
+			TextColor3 = C.Amber,
+			TextSize = 11,
+			Position = UDim2.new(0, 0, 1, -14),
+			Size = UDim2.new(1, 0, 0, 14),
+			Parent = frame,
+		})
+
+		local button = UITheme.Button({
+			Name = "Action",
+			Text = "",
+			AnchorPoint = Vector2.new(1, 0),
+			Position = UDim2.new(1, 0, 0, 4),
+			Size = UDim2.fromOffset(132, 44),
+			BackgroundColor3 = C.PanelLight,
+			Parent = frame,
+		})
+		UITheme.Corner(button, 4)
+		local stroke = UITheme.Stroke(button, C.Line)
+
+		local caption = UITheme.Label({
+			Name = "Caption",
+			Text = "",
+			TextColor3 = C.TextDim,
+			TextSize = 13,
+			TextXAlignment = Enum.TextXAlignment.Center,
+			Size = UDim2.fromScale(1, 1),
+			Parent = button,
+		})
+
+		if isOut then
+			caption.Text = "EINPARKEN"
+			caption.TextColor3 = C.Magenta
+			stroke.Color = C.Magenta
+			button.Activated:Connect(function()
+				send({ Action = "DESPAWN" })
+			end)
+		elseif owned then
+			caption.Text = "AUSPARKEN"
+			caption.TextColor3 = C.Cyan
+			stroke.Color = C.Cyan
+			button.Activated:Connect(function()
+				send({ Action = "SPAWN", ClassId = class.Id })
+			end)
+		else
+			caption.Text = ("%d CRY"):format(class.Price)
+			caption.TextColor3 = if banked &gt;= class.Price then C.Amber else C.TextDim
+			stroke.Color = if banked &gt;= class.Price then C.Amber else C.Line
+			button.Activated:Connect(function()
+				send({ Action = "BUY", ClassId = class.Id, Colour = selectedColour })
+			end)
+		end
+	end
+
+	-- Lackfarbe. Rein kosmetisch - keine Leistungsteile, sonst muesste das
+	-- Fahrverhalten mehrfach ausbalanciert werden.
+	order += 1
+	local paint = UITheme.Frame({
+		Name = "Paint",
+		Size = UDim2.new(1, -8, 0, 60),
+		BackgroundColor3 = C.Panel,
+		LayoutOrder = order,
+		Parent = list,
+	})
+	UITheme.Corner(paint, 4)
+	UITheme.Stroke(paint, C.Line)
+	UITheme.Padding(paint, 10)
+
+	UITheme.Label({
+		Name = "Title",
+		Text = ("LACK  //  %d CRY  //  gewaehlt: %s"):format(garage.RepaintCost, selectedColour),
+		TextColor3 = C.TextDim,
+		TextSize = 12,
+		Size = UDim2.new(1, 0, 0, 14),
+		Parent = paint,
+	})
+
+	local x = 0
+	for _, name in Config.Dealer.ColourOptions do
+		local swatch = UITheme.Button({
+			Name = name,
+			Text = name,
+			TextSize = 11,
+			TextColor3 = if name == selectedColour then C.Cyan else C.TextDim,
+			BackgroundColor3 = C.PanelLight,
+			Position = UDim2.new(0, x, 0, 20),
+			Size = UDim2.fromOffset(84, 26),
+			Parent = paint,
+		})
+		UITheme.Corner(swatch, 3)
+		UITheme.Stroke(swatch, if name == selectedColour then C.Cyan else C.Line)
+		swatch.Activated:Connect(function()
+			selectedColour = name
+			refreshGarage()
+		end)
+		x += 88
+	end
+end
+
+local function setOpen(open: boolean)
+	backdrop.Visible = open
+	if open then
+		say("", C.TextDim)
+		refreshGarage()
+		backdrop.BackgroundTransparency = 1
+		window.Size = UDim2.new(0.9, 0, 0.3, 0)
+		TweenService:Create(backdrop, UITheme.Tween.Normal, { BackgroundTransparency = 0.45 }):Play()
+		TweenService:Create(window, UITheme.Tween.Slow, { Size = UDim2.new(0.9, 0, 0.82, 0) }):Play()
+	end
+end
+
+closeButton.Activated:Connect(function()
+	setOpen(false)
+end)
+
+--==========================================================================
+-- Endgame-Entscheidung
+--==========================================================================
+
+local choicePanel = UITheme.Frame({
+	Name = "Endgame",
+	AnchorPoint = Vector2.new(0.5, 1),
+	Position = UDim2.new(0.5, 0, 1, -200),
+	Size = UDim2.fromOffset(460, 118),
+	BackgroundColor3 = C.Panel,
+	BackgroundTransparency = 0.05,
+	Visible = false,
+	Parent = gui,
+})
+UITheme.Corner(choicePanel, 4)
+UITheme.Stroke(choicePanel, C.Magenta)
+UITheme.Padding(choicePanel, 12)
+
+UITheme.Label({
+	Name = "Title",
+	Text = "DU WARST NIE EIN KRIMINELLER. DU WARST EIN TEST.",
+	TextColor3 = C.Magenta,
+	TextSize = 13,
+	Size = UDim2.new(1, 0, 0, 16),
+	Parent = choicePanel,
+})
+
+local choiceHint = UITheme.Label({
+	Name = "Hint",
+	Text = "",
+	TextColor3 = C.TextDim,
+	TextSize = 11,
+	TextWrapped = true,
+	Position = UDim2.new(0, 0, 0, 18),
+	Size = UDim2.new(1, 0, 0, 28),
+	Parent = choicePanel,
+})
+
+local function choiceButton(text: string, sub: string, colour: Color3, x: number, choice: string)
+	local button = UITheme.Button({
+		Name = choice,
+		Text = "",
+		Position = UDim2.new(0, x, 0, 50),
+		Size = UDim2.fromOffset(210, 44),
+		BackgroundColor3 = C.PanelLight,
+		Parent = choicePanel,
+	})
+	UITheme.Corner(button, 4)
+	UITheme.Stroke(button, colour)
+
+	UITheme.Label({
+		Name = "Caption",
+		Text = text,
+		TextColor3 = colour,
+		TextSize = 14,
+		TextXAlignment = Enum.TextXAlignment.Center,
+		Size = UDim2.new(1, 0, 0, 18),
+		Position = UDim2.new(0, 0, 0, 4),
+		Parent = button,
+	})
+	UITheme.Label({
+		Name = "Sub",
+		Text = sub,
+		TextColor3 = C.TextDim,
+		TextSize = 10,
+		TextXAlignment = Enum.TextXAlignment.Center,
+		Size = UDim2.new(1, 0, 0, 14),
+		Position = UDim2.new(0, 0, 0, 24),
+		Parent = button,
+	})
+
+	button.Activated:Connect(function()
+		Remotes.EndgameChoice:FireServer({ Choice = choice })
+	end)
+end
+
+choiceButton("KASSIEREN", "halber Trace, weniger Beute", C.Cyan, 0, "CASH")
+choiceButton("VERBRENNEN", "mehr Ertrag, haerteres Spiel", C.Magenta, 222, "BURN")
+
+local function refreshEndgame()
+	choicePanel.Visible = endgame.Unlocked
+	if not endgame.Unlocked then
+		return
+	end
+	if endgame.Choice == "" then
+		choiceHint.Text = "Entscheide dich. Umstellen geht spaeter einmal pro Woche."
+	elseif endgame.SwitchIn &gt; 0 then
+		choiceHint.Text = ("Aktuell: %s. Umstellbar in %d Stunden."):format(
+			if endgame.Choice == "CASH" then "Kassieren" else "Verbrennen",
+			math.ceil(endgame.SwitchIn / 3600)
+		)
+	else
+		choiceHint.Text = ("Aktuell: %s. Du kannst jetzt umstellen."):format(
+			if endgame.Choice == "CASH" then "Kassieren" else "Verbrennen"
+		)
+	end
+end
+
+--==========================================================================
+-- Eingabe und Server-Meldungen
+--==========================================================================
+
+UserInputService.InputBegan:Connect(function(input, processed)
+	if processed then
+		return
+	end
+	if input.KeyCode == Enum.KeyCode.G then
+		setOpen(not backdrop.Visible)
+	elseif input.KeyCode == Enum.KeyCode.Escape and backdrop.Visible then
+		setOpen(false)
+	end
+end)
+
+Remotes.GarageSync.OnClientEvent:Connect(function(data: any)
+	if typeof(data) ~= "table" then
+		return
+	end
+	garage.Owned = if typeof(data.Owned) == "table" then data.Owned else {}
+	garage.Spawned = if typeof(data.Spawned) == "string" then data.Spawned else ""
+	garage.DealerOpen = data.DealerOpen == true
+	garage.RepaintCost = tonumber(data.RepaintCost) or 0
+	refreshGarage()
+end)
+
+Remotes.PursuitSync.OnClientEvent:Connect(function(data: any)
+	if typeof(data) ~= "table" then
+		return
+	end
+	pursuit.Level = tonumber(data.Level) or 0
+	pursuit.Escaping = data.Escaping == true
+	pursuit.Seconds = tonumber(data.EscapeSeconds) or 0
+	refreshPursuit()
+end)
+
+Remotes.EconomySync.OnClientEvent:Connect(function(snapshot: any)
+	if typeof(snapshot) ~= "table" then
+		return
+	end
+	banked = snapshot.Banked or 0
+	refreshGarage()
+end)
+
+Remotes.MissionSync.OnClientEvent:Connect(function(data: any)
+	if typeof(data) ~= "table" then
+		return
+	end
+	endgame.Choice = if typeof(data.Allegiance) == "string" then data.Allegiance else ""
+	endgame.SwitchIn = tonumber(data.AllegianceSwitchIn) or 0
+	endgame.Unlocked = false
+	if typeof(data.Unlocks) == "table" then
+		for _, key in data.Unlocks do
+			if key == "ENDGAME" then
+				endgame.Unlocked = true
+				break
+			end
+		end
+	end
+	refreshEndgame()
+end)
+
+Remotes.HackSessionStarted.OnClientEvent:Connect(function()
+	setOpen(false)
+end)
+
+refreshPursuit()
+refreshEndgame()
+</ProtectedString>
+</Properties>
+</Item>
+<Item class="LocalScript" referent="GN49">
 <Properties>
 <string name="Name">DarknetUI</string>
 <ProtectedString name="Source">-- StarterPlayer/StarterPlayerScripts/UI/DarknetUI.client.luau
@@ -10391,7 +14083,7 @@ end)
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="LocalScript" referent="GN40">
+<Item class="LocalScript" referent="GN50">
 <Properties>
 <string name="Name">HUD</string>
 <ProtectedString name="Source">-- StarterPlayer/StarterPlayerScripts/UI/HUD.client.luau
@@ -11089,7 +14781,7 @@ UITheme.Scanlines(walletPanel, 4)
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="LocalScript" referent="GN41">
+<Item class="LocalScript" referent="GN51">
 <Properties>
 <string name="Name">HackUI</string>
 <ProtectedString name="Source">-- StarterPlayer/StarterPlayerScripts/UI/HackUI.client.luau
@@ -11941,7 +15633,7 @@ end)
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="LocalScript" referent="GN42">
+<Item class="LocalScript" referent="GN52">
 <Properties>
 <string name="Name">MissionUI</string>
 <ProtectedString name="Source">-- StarterPlayer/StarterPlayerScripts/UI/MissionUI.client.luau
@@ -12309,7 +16001,7 @@ refresh()
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="LocalScript" referent="GN43">
+<Item class="LocalScript" referent="GN53">
 <Properties>
 <string name="Name">ShopUI</string>
 <ProtectedString name="Source">-- StarterPlayer/StarterPlayerScripts/UI/ShopUI.client.luau
@@ -12785,7 +16477,7 @@ refresh()
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="LocalScript" referent="GN44">
+<Item class="LocalScript" referent="GN54">
 <Properties>
 <string name="Name">SoundController</string>
 <ProtectedString name="Source">-- StarterPlayer/StarterPlayerScripts/UI/SoundController.client.luau
@@ -13096,7 +16788,7 @@ local _ = player
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="LocalScript" referent="GN45">
+<Item class="LocalScript" referent="GN55">
 <Properties>
 <string name="Name">StoreUI</string>
 <ProtectedString name="Source">-- StarterPlayer/StarterPlayerScripts/UI/StoreUI.client.luau
@@ -13422,7 +17114,7 @@ refresh()
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="LocalScript" referent="GN46">
+<Item class="LocalScript" referent="GN56">
 <Properties>
 <string name="Name">TargetBeacons</string>
 <ProtectedString name="Source">-- StarterPlayer/StarterPlayerScripts/UI/TargetBeacons.client.luau
@@ -13524,7 +17216,7 @@ end)
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="LocalScript" referent="GN47">
+<Item class="LocalScript" referent="GN57">
 <Properties>
 <string name="Name">TutorialUI</string>
 <ProtectedString name="Source">-- StarterPlayer/StarterPlayerScripts/UI/TutorialUI.client.luau
@@ -13859,7 +17551,7 @@ end)
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="LocalScript" referent="GN48">
+<Item class="LocalScript" referent="GN58">
 <Properties>
 <string name="Name">VehicleController</string>
 <ProtectedString name="Source">-- StarterPlayer/StarterPlayerScripts/UI/VehicleController.client.luau

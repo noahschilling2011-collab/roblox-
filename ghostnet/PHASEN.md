@@ -214,43 +214,67 @@ geöffnete Händler. `Lighting.Technology` ist über `Config.World` umschaltbar.
 SpringConstraint für die Federung, CylindricalConstraint für Antrieb und
 Lenkung, `SetNetworkOwner` beim Einsteigen und zurück beim Aussteigen.
 
-## OW-Phase 2 — Die Stadt
-`StreamingEnabled` ist Pflicht (steht schon in `Config.World`, Radien noch
-ungetestet). Bezirke statt einer großen Fläche — **erst einen fertig und
-dicht, dann den nächsten**: Altstadt (D1–3), Hafen (3–5), Finanzviertel (5–7),
-Höhenzug (6–8), Industriegebiet (4–6). Straßenmittellinien gleich als
-unsichtbare Wegpunkt-Kette mitlegen, sonst muss man sie für Phase 3 nachziehen.
-Häuserfronten aus wiederverwendbaren Modulen. Dächer begehbar.
+## OW-Phase 2 — Die Stadt ✅
+`Shared/Districts.luau` (fünf Bezirke als Daten) + `World/City.server.luau`
+(baut sie aus `Config.City`) + `Systems/RoadNetwork.luau`. Nur **Altstadt**
+hat `Dense = true` — die anderen vier sind angelegt, aber bewusst dünn, weil
+die Regel „erst einen fertig, dann den nächsten" sonst gebrochen wäre.
+Das Straßenraster ist gleichzeitig der Wegpunkt-Graph: `RoadNetwork` rechnet
+Kreuzungen, Kanten und `LanePosition(from, to, alpha)` aus `Config.City`
+aus — kein einziger von Hand gesetzter Wegpunkt. Häuser aus einem Modul,
+`RoofAccessChance` der Häuser bekommt eine Feuerleiter aufs Dach.
+`StreamingEnabled` an, Radien in `Config.World` **noch nicht gemessen**.
 
-## OW-Phase 3 — Verkehr und Fußgänger
-Der performancekritischste Teil. **Kein `PathfindingService` für Verkehr** —
-Wegpunkt-Graph, `CFrame`-Interpolation, `Anchored`, Objekt-Pool, harte
-Obergrenze, nur im Radius um Spieler aktiv. Fußgänger **ohne `Humanoid`**.
-Verkehrsautos lassen sich stehlen ([E] halten) — das erhöht den Trace.
+## OW-Phase 3 — Verkehr und Fußgänger ✅
+`Systems/TrafficService.luau`. **Kein `PathfindingService`, kein `Humanoid`** —
+beides wird vom Testlauf strukturell erzwungen. Autos und Fußgänger sind
+`Anchored` und werden per `CFrame` zwischen zwei Graph-Knoten interpoliert,
+Takt `Config.Traffic.Tick`, harte Obergrenzen `MaxActive` / `MaxPedestrians`,
+Objekt-Pool statt `Instance.new` im Sekundentakt, alles außerhalb von
+`ActiveRadius` wird angehalten und recycelt. Stehlen: [E] halten für
+`StealHoldSeconds`, kostet `StealTrace` und gibt sofort eine Fahndungsstufe.
 
-## OW-Phase 4 — Autohändler, Besitz, Garage
-`VehicleService`: Besitz im Profil (Schema-Migration!), ein Fahrzeug
-gleichzeitig ausgeparkt, Ausparken nur an markierten Punkten. Händler als
-Modell mit Tag `GhostNetDealer`, ausgestellte Fahrzeuge stehen physisch im
-Showroom mit Testrunde. Preis serverseitig. Anpassung rein kosmetisch —
-**keine Leistungsteile**.
+## OW-Phase 4 — Autohändler, Besitz, Garage ✅
+`Systems/VehicleService.luau` + `World/Dealership.server.luau`.
+**Schema-Migration 4 → 5**: `Profile.Garage` (Liste besessener Fahrzeuge) und
+`Profile.Story.Allegiance`. Besitz liegt im Profil, `MaxSpawned` begrenzt auf
+ein ausgeparktes Fahrzeug, Ausparken nur auf einem Part mit Tag
+`GhostNetVehicleSpawn`. Der Händler hat Öffnungszeiten (`Config.Dealer`), die
+an `TimeService` hängen. Die Ausstellungsstücke stehen **physisch** im
+Showroom und sind fahrbar. Anpassung ist nur Lackierung — keine Leistungsteile.
+Ein eigener Transporter erhöht über `VehicleService.StashBonus` die
+Darknet-Lagerplätze; das ist der einzige Weg, auf dem ein Auto Werte anfasst.
 
-## OW-Phase 5 — Die Bank
-Drei Ebenen (Schalterhalle, Sicherheitsbereich, Tresorraum), drei Wege hinein
-(leise / schnell / von oben). Wachen mit Sichtkegel per Raycast, die
-**melden statt anzugreifen**. Beute landet als Unsold — das bestehende
-Trace-System trägt den ganzen Raub.
+## OW-Phase 5 — Die Bank ✅
+`World/BankInterior.server.luau` + `Systems/GuardService.luau`.
+Drei Ebenen, drei Wege: **leise** (Kameras vorher aus, volle Beute),
+**schnell** (direkt an die Schleuse, `AlarmStarts = true`, Wettlauf gegen die
+Uhr um die `VaultBoxes` Schließfächer), **von oben** (Lüftung, ohne Alarm,
+braucht aber `Config.Bank.VentRequiredTier` — sonst wäre er immer richtig).
+Wachen patrouillieren und prüfen Sicht per `workspace:Raycast` innerhalb
+`GuardSightAngle`; sie **melden an `RaidService.RaiseAlarm` und greifen nie
+an**. Die Beute ist normales Unsold — der Raub hängt komplett am Trace-System.
 
-## OW-Phase 6 — Polizei statt Kampf
-`PursuitService`. Fahndungsstufe 1–5 aus Trace plus aktuellen Taten.
-Streifenwagen auf dem Verkehrsgraphen. Entkommen durch Sichtverlust,
-Gefasstwerden = Bust über die bestehende `TraceService.OnBust`-Kette.
-**Kein Schusswechsel.**
+## OW-Phase 6 — Polizei statt Kampf ✅
+`Systems/PursuitService.luau`. Stufe = `floor(Trace / TracePerLevel)` plus
+Aufschlag für frische Taten, gedeckelt auf `MaxLevel` (5).
+`TracePerLevel = 20`, damit `20 × 5 = 100 = Config.Trace.Max` — die höchste
+Stufe ist damit überhaupt erreichbar. Streifenwagen fahren auf dem
+`RoadNetwork`-Graphen, ab Stufe 4 Straßensperren, ab 5 ein Hubschrauber.
+Entkommen: `EscapeSeconds` außer Sicht. Gefasst: `TraceService.Add(player,
+Config.Trace.Max)` — also exakt die bestehende Bust-Kette, kein zweites
+Strafsystem daneben. **Keine Waffe, kein Schaden** — auch das prüft der Testlauf.
 
-## OW-Phase 7 — Die Story
-Neue Story in Vantorra, 10 Missionen, Wendung in Mission 8 (Wren arbeitet für
-Meridian), Entscheidung in Mission 10 (Kassieren / Verbrennen), im Profil
-gespeichert und einmal pro Woche umstellbar.
+## OW-Phase 7 — Die Story ✅
+Zehn Missionen in Vantorra (`M01_FIRSTHACK` … `M10_WREN`), eine Kette ohne
+Verzweigung, jede mit dauerhaftem Unlock. Die Wendung steht in M09: Wren hat
+nie für dich gearbeitet, du hast für sie gearbeitet. M10 ist die Entscheidung
+**Kassieren** (halber Trace, weniger Ertrag) oder **Verbrennen** (mehr Ertrag,
+härtere Fahndung) — als `Profile.Story.Allegiance` gespeichert und nach
+`Config.Endgame.SwitchCooldown` (eine Woche) umstellbar. Technisch hängt sie
+über `HackService.AddTraceModifier` / `AddRewardModifier` am Hack — genau
+andersherum, weil `HackService` `MissionService` sonst zurückrufen müsste
+und ein Require-Zyklus entstünde.
 
 ---
 
@@ -259,6 +283,14 @@ gespeichert und einmal pro Woche umstellbar.
 Der Bauplan aus dem Prompt ist abgearbeitet. Nichts davon ist mehr blockiert,
 also gilt jetzt: **erst mit echten Spielern testen, dann weiterbauen.**
 
+0. **Bildrate messen** — der einzige Punkt, der hier nicht abgehakt werden
+   kann. Ein Luau-Testlauf kennt keine Physik und kein Rendering; die Zahl
+   muss aus dem MicroProfiler in Studio kommen. Zu drehen ist dann, in dieser
+   Reihenfolge: `Config.Traffic.MaxActive` (20), `MaxPedestrians` (16),
+   `ActiveRadius` (320), `Config.City.LightChance` (0.25), danach erst
+   `Config.World`-Streamingradien. Fahrgefühl und Physik-Stabilität sind
+   genauso ungetestet — `Config.Vehicle` und die Grip-Werte in
+   `Shared/Vehicles.luau` sind Startwerte, keine gemessenen.
 1. **IDs eintragen** (manuell, außerhalb des Codes): Sound-Assets in
    `SoundCatalog.luau`, Gamepässe und Produkte in `MonetizationService.luau`,
    die eigene UserId in `AdminList.luau`.

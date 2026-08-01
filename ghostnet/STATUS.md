@@ -3,23 +3,128 @@
 > Wird am Ende jeder Session aktualisiert. Erstes, was eine neue Session liest.
 
 ## Aktuelle Phase
-**Phase 0 bis G plus Open-World-Abschnitt 2 und Phase 1**
-(`Config.Version = "1.1.0"`). Das Spiel hat jetzt einen Tag-/Nachtzyklus, der
-Mechanik ist, und fünf fahrbare Fahrzeugklassen. Alles Bisherige läuft
-unverändert darunter weiter.
+**Alles abgearbeitet: Phase 0–G plus Open-World-Abschnitt 2 und Phase 1–7**
+(`Config.Version = "2.0.0"`). Aus dem Hacking-Spiel ist ein Hacking-Spiel mit
+offener Stadt geworden — Bezirke, Verkehr, Autobesitz, ein Bankraub mit drei
+Wegen, eine Polizei ohne Waffen und eine 10-Missionen-Story mit Entscheidung
+am Ende. Alles Bisherige läuft unverändert darunter weiter.
 
-**Nächster Schritt: Open-World-Phase 2 (die Stadt).** Erst *ein* Bezirk fertig
-und dicht, dann der nächste — eine große leere Stadt ist schlimmer als ein
-kleiner voller Block.
+**Nächster Schritt: kein Code, sondern Messen und Spielen.** Siehe die
+Warnung direkt darunter und Punkt 0 am Ende von `PHASEN.md`.
 
 ## ⚠️ Was ich NICHT prüfen konnte
 Der Bauplan verlangt nach jeder Phase eine **gemessene Bildrate**. Das kann ich
-nicht liefern: Ich habe keine Roblox-Laufzeit, nur eine Luau-VM für Syntax und
-Logik. Die 462 Prüfungen sagen nichts über Bildrate, Fahrverhalten oder
-Physikstabilität aus. Beides muss Noah im MicroProfiler messen —
-besonders vor Open-World-Phase 3 (Verkehr), wo genau das entscheidet.
+nicht liefern und erfinde die Zahl auch nicht: Ich habe keine Roblox-Laufzeit,
+nur eine Luau-VM für Syntax und Logik. Die 569 Prüfungen sagen **nichts** über
+Bildrate, Fahrverhalten oder Physikstabilität aus. Das muss Noah im
+MicroProfiler messen, und zwar besonders jetzt — Verkehr, Fußgänger,
+Streifenwagen und eine gebaute Stadt sind zusammen der teuerste Teil des
+Projekts.
+
+Die Regler dafür stehen alle in `Config.luau` und sind bewusst niedrig
+gesetzt. In dieser Reihenfolge drehen, wenn es ruckelt:
+`Traffic.MaxActive` (20) → `Traffic.MaxPedestrians` (16) →
+`Traffic.ActiveRadius` (320) → `City.LightChance` (0.25) →
+`World`-Streamingradien.
 
 ## Fertig ✅
+
+### Open-World Phase 2 — Die Stadt
+- **`Shared/Districts.luau`** (neu) — fünf Bezirke als Daten: Altstadt, Hafen,
+  Finanzviertel, Höhenzug, Industriegebiet, jeder mit Schwierigkeitsspanne
+  und Gitterplatz. **Nur die Altstadt hat `Dense = true`.** Der Testlauf prüft
+  das ausdrücklich: eine große leere Stadt ist schlimmer als ein voller Block,
+  also darf nicht versehentlich ein zweiter Bezirk ausgebaut werden.
+- **`Systems/RoadNetwork.luau`** (neu) — das Straßenraster wird aus
+  `Config.City` *gerechnet*, nicht von Hand gesetzt. Kreuzungen, Kanten,
+  Nachbarn und `LanePosition(fromId, toId, alpha)` (gibt Position **und**
+  Fahrtrichtung zurück). Damit ist dieselbe Datenstruktur die Straße für den
+  Spieler, die Spur für den Verkehr und die Route für die Polizei — es gibt
+  keine zweite Version, die auseinanderlaufen könnte.
+- **`World/City.server.luau`** (neu) — baut Fahrbahnen, Gehwege, Häuser,
+  Leuchtreklamen und Feuerleitern aus diesem Graphen. `RoofAccessChance` der
+  Häuser bekommt eine Leiter aufs Dach, damit „von oben" ein echter Weg ist.
+- `StreamingEnabled` ist an; die Radien sind plausibel gesetzt, aber
+  **ungemessen**.
+
+### Open-World Phase 3 — Verkehr und Fußgänger
+- **`Systems/TrafficService.luau`** (neu). Die drei harten Regeln aus dem
+  Auftrag sind im Testlauf verdrahtet, nicht nur im Kommentar:
+  **kein `PathfindingService`**, **kein `Humanoid`** für Hintergrund-NPCs,
+  **kein `Heartbeat`** über die ganze Stadt.
+- Autos und Fußgänger sind `Anchored` und werden alle `Config.Traffic.Tick`
+  Sekunden per `CFrame` zwischen zwei Graph-Knoten interpoliert. Wer aus dem
+  `ActiveRadius` fällt, wird angehalten und in den Pool zurückgelegt —
+  `Instance.new` läuft nur beim Auffüllen des Pools, nie im Sekundentakt.
+- Hinter einem langsameren Auto wird ab `StopDistance` gebremst, sonst fahren
+  sie ineinander und es sieht kaputt aus.
+- **Autodiebstahl:** [E] halten für `StealHoldSeconds`. Kostet `StealTrace`
+  und gibt sofort eine Fahndungsstufe — der Diebstahl hängt damit an der
+  zentralen Risiko-Mechanik statt daneben zu stehen.
+
+### Open-World Phase 4 — Händler, Besitz, Garage
+- **`Systems/VehicleService.luau`** (neu) — Besitz steht im Profil
+  (`Profile.Garage`), Kauf und Preis ausschließlich serverseitig,
+  `Config.Vehicle.MaxSpawned` erlaubt genau ein ausgeparktes Fahrzeug,
+  Ausparken nur auf einem Part mit Tag `GhostNetVehicleSpawn`.
+- **`World/Dealership.server.luau`** (neu) — Showroom mit **physisch
+  ausgestellten**, fahrbaren Fahrzeugen statt eines Menüs mit Bildern, plus
+  Garage mit Ausparkplatz. Öffnungszeiten
+  (`Config.Dealer.OpenHour`/`CloseHour`) hängen am Tag-/Nachtzyklus — damit
+  bekommt der Tag zum ersten Mal einen eigenen Zweck.
+- Anpassung ist **nur Lackierung**. Keine Leistungsteile, sonst wäre die
+  Klassenwahl aus Phase 1 sofort entwertet.
+- Einziger Punkt, an dem ein Auto Werte anfasst: ein eigener Transporter gibt
+  über `VehicleService.StashBonus` zusätzliche Darknet-Lagerplätze.
+
+### Open-World Phase 5 — Die Bank
+- **`World/BankInterior.server.luau`** (neu) — drei Ebenen (Schalterhalle,
+  Sicherheitsbereich, Tresorraum) und **drei Wege hinein**:
+  *leise* (Kameras vorher aus, wenig Trace, volle Beute),
+  *schnell* (direkt an die Schleuse, `AlarmStarts = true`, die Uhr entscheidet,
+  wie viele der `Config.Bank.VaultBoxes` Fächer man noch schafft),
+  *von oben* (Lüftung, ohne Alarm — kostet dafür
+  `Config.Bank.VentRequiredTier`, sonst wäre er immer die beste Wahl und die
+  anderen zwei Wege tot).
+- **`Systems/GuardService.luau`** (neu) — Wachen patrouillieren zwischen zwei
+  Attribut-Punkten und prüfen Sicht per `workspace:Raycast` innerhalb
+  `GuardSightAngle`. Sie **melden über `RaidService.RaiseAlarm` und greifen
+  nie an**; nachts sehen sie über `TimeService.SightFactor` kürzer.
+- Die Beute ist normales Unsold. Der Raub braucht kein eigenes Regelwerk —
+  Trace und Hehler tragen ihn komplett.
+
+### Open-World Phase 6 — Polizei statt Kampf
+- **`Systems/PursuitService.luau`** (neu). Stufe = `floor(Trace /
+  TracePerLevel)` plus Aufschlag für frische Taten, gedeckelt auf 5.
+  `TracePerLevel = 20`, weil `20 × 5 = 100 = Config.Trace.Max` — mit 22 wäre
+  Stufe 5 aus dem Trace allein nie erreichbar gewesen (hat der Testlauf
+  gefunden).
+- Streifenwagen fahren auf dem `RoadNetwork`-Graphen, ab `RoadblockLevel` (4)
+  kommen Straßensperren, ab `HelicopterLevel` (5) ein Hubschrauber.
+  Entkommen: `EscapeSeconds` außer Sicht. Abbau: `Decay` pro Sekunde.
+- Gefasst zu werden ruft `TraceService.Add(player, Config.Trace.Max)` auf —
+  also **exakt die bestehende Bust-Kette**. Kein zweites Strafsystem daneben,
+  keine doppelte Buchführung.
+- **Keine Waffe, kein Schaden, kein Kampf.** Der Testlauf lehnt jedes
+  `Tool`/`Damage`/`Fire(` in dieser Datei ab.
+
+### Open-World Phase 7 — Die Story
+- Zehn Missionen (`M01_FIRSTHACK` … `M10_WREN`) als **Kette ohne
+  Verzweigung**, jede mit dauerhaftem Unlock — der Testlauf prüft beides.
+  Briefings höchstens drei Sätze; M01, M09 und M10 mussten dafür gekürzt
+  werden.
+- Die Wendung steht in M09: In den Protokollen steht dein eigener Name.
+  Wren hat nie für dich gearbeitet — du hast für sie gearbeitet.
+- **M10 ist eine Entscheidung, keine Mission:** *Kassieren* (halber Trace,
+  25 % weniger Ertrag) oder *Verbrennen* (30 % mehr Ertrag, 40 % härtere
+  Fahndung, bessere Kurse). Als `Profile.Story.Allegiance` gespeichert und
+  nach `Config.Endgame.SwitchCooldown` (eine Woche) umstellbar — ohne das
+  fühlen sich Spieler eingesperrt.
+- Technisch hängt die Entscheidung über
+  `HackService.AddTraceModifier` / `AddRewardModifier` am Hack. Andersherum
+  gebaut, weil `HackService` sonst `MissionService` aufrufen müsste und
+  dadurch ein Require-Kreis entstünde — den hat der Testlauf gefunden, bevor
+  Studio ihn hätte finden können.
 
 ### Open-World Abschnitt 2 — Tag und Nacht
 - **`TimeService`** (neu) — voller Zyklus in 24 Minuten, Server ist die Uhr.
@@ -147,14 +252,18 @@ M05 → `BANK_RAIDS`. Nichts davon verschwindet nach der Mission.
   Story-Geld ist heiß und muss erst zum Hehler, damit der Verkaufs-Loop
   relevant bleibt.
 
-### ⚠️ Schema-Migrationen 1 → 4
-`Config.Save.SchemaVersion = 4`. `SaveService.MIGRATIONS` zieht Altprofile beim
+### ⚠️ Schema-Migrationen 1 → 5
+`Config.Save.SchemaVersion = 5`. `SaveService.MIGRATIONS` zieht Altprofile beim
 Laden nach, **bevor** geschrieben wird — ein Altprofil wird nie verworfen.
 | Version | Neu | Für Altprofile |
 |---|---|---|
 | 2 | `Story` (Missionsfortschritt) | Story startet bei null |
 | 3 | `Stash` (Darknet-Lager) | Lager startet leer |
 | 4 | `PurchaseLog` (gegen Doppelvergabe) | Log startet leer |
+| 5 | `Garage` (Fahrzeugbesitz) + `Story.Allegiance` | Garage leer, Allegiance `""` |
+**Migration 4 → 5 ist neu in dieser Session** und gehört zu Open-World-Phase 4.
+Ein Profil aus Version 1.1.0 lädt weiter, bekommt eine leere Garage und keine
+Entscheidung — es verliert nichts.
 Bank, Rig, Trace, Cooldowns und Statistik bleiben in allen Fällen erhalten.
 Jede weitere Version braucht einen eigenen Eintrag in `MIGRATIONS` — der
 Testlauf prüft das.
@@ -217,7 +326,7 @@ Testlauf prüft das.
   Hack kostet — auch das wird geprüft.
 
 ## Tests
-`cd ghostnet/tests && npm install && node testlauf.mjs` → **462/462 grün**.
+`cd ghostnet/tests && npm install && node testlauf.mjs` → **569/569 grün**.
 Drei Stufen:
 1. **Syntax** — `luau-compile` über jede `.luau`-Datei.
 2. **Struktur** — `--!strict` überall, keine veralteten APIs, jede Remote
@@ -229,12 +338,31 @@ Drei Stufen:
    Befehle StudioOnly, kein Preis aus dem Client-Paket, alle Gamepass- und
    Produkt-IDs auf 0, alle Sound-IDs leer, nirgends eine erfundene Asset-Id,
    `ProcessReceipt` speichert vor dem Bestätigen.
+   Neu für die offene Welt: kein `PathfindingService` und kein `Humanoid` im
+   Verkehr, kein `Heartbeat` in Verkehr/Polizei/Wachen, Objekt-Pool und
+   Aktivradius vorhanden, keine Waffen in `PursuitService`, Wachen ohne
+   `TakeDamage`, Netzwerkbesitz geht beim Aussteigen zurück, das Chassis
+   bewegt kein Geld. Diese Prüfungen sehen nur echten Code — Kommentare
+   werden vorher entfernt, sonst fällt ein Test über seinen eigenen
+   Kopfkommentar („benutzt KEIN PathfindingService").
 3. **Logik** — echte Module in der Luau-VM: Config-Formeln, Balancing-Vorgaben,
    das komplette Missions-Regelwerk (Validierung inkl. Kreiserkennung,
    Verfügbarkeit, jeder Schritt-Typ, eine ganze Mission durchgespielt), der
    Markt (Kauf immer über Verkauf, Mean Reversion holt einen entgleisten Kurs
    zurück, Lager wächst und Risiko sinkt mit dem Rig) und das Node-Breach-
    Minispiel (lösbar auf jeder Schwierigkeit, Lösung leckt nie).
+   Für die offene Welt zusätzlich: Bezirksdaten überlappen nicht und nur einer
+   ist dicht, die Verkehrsgrenzen sind konservativ, jede Fahndungsstufe ist
+   erreichbar und man kann entkommen, jede Fahrzeugklasse ist in genau einem
+   Wert die beste, die Missionskette ist geschlossen und jedes Briefing hat
+   höchstens drei Sätze, und die Endgame-Entscheidung ist in beide Richtungen
+   ein echter Tausch statt einer offensichtlich richtigen Wahl.
+
+Drei dieser Prüfungen sind beim ersten Durchlauf durchgefallen und haben je
+einen echten Fehler gefunden: eine unerreichbare Fahndungsstufe
+(`TracePerLevel` 22 statt 20), zu lange Briefings (M01/M09/M10) und einen
+Require-Kreis `HackService → MissionService → HackService`. Alle drei sind
+behoben — an der *Ursache*, nicht am Test.
 
 ## Build
 `node ghostnet/tools/build-rbxlx.mjs` → `ghostnet/GhostNet.rbxlx`,
@@ -245,11 +373,14 @@ Der Bauplan aus dem Prompt ist abgearbeitet. Was fehlt, fehlt mit Absicht:
 - **Alle IDs sind Platzhalter** (Sounds `""`, Gamepässe und Produkte `0`,
   Admin-Liste leer). Erfundene IDs schlagen stumm fehl — deshalb keine.
   Das Spiel läuft ohne sie, es ist nur stumm und der Store leer.
+- **Vier von fünf Bezirken sind absichtlich dünn.** Nur die Altstadt ist
+  ausgebaut. Das ist keine unfertige Arbeit, sondern die Regel „erst einen
+  fertig, dann den nächsten" — und der Testlauf hält sie fest.
 - **Zwei weitere Minispiele**, **prozeduraler Weltgenerator**, **Tagesziele**
   und **Ranglisten** — Details am Ende von `PHASEN.md`.
-- **Kein echter Spielertest.** Alles unten in „So testest du das" ist im Code
-  umgesetzt und durch 392 automatische Prüfungen abgesichert, aber noch nicht
-  von einem Menschen in Studio durchgespielt.
+- **Kein echter Spielertest.** Alles ist im Code umgesetzt und durch 569
+  automatische Prüfungen abgesichert, aber noch nicht von einem Menschen in
+  Studio durchgespielt.
 
 ## Bekannte Einschränkungen ⚠️
 - **Studio-Notbetrieb:** Ist „Studio Access to API Services" aus, kann kein
@@ -260,6 +391,15 @@ Der Bauplan aus dem Prompt ist abgearbeitet. Was fehlt, fehlt mit Absicht:
   muss der API-Zugriff an sein.
 - Session-Lock nach dem Prinzip „die jüngere Sitzung gewinnt": wechselt jemand
   sehr schnell den Server, können bis zu 60 Sekunden (ein Autosave-Takt) fehlen.
+- **Bildrate, Fahrgefühl und Physikstabilität sind ungemessen.** Siehe oben.
+  Die Startwerte in `Config.Traffic`, `Config.City` und `Config.Vehicle` sind
+  geschätzt und bewusst niedrig — nicht gemessen.
+- **Die Stadt wird beim Serverstart gebaut**, nicht in der Place-Datei
+  gespeichert. Vorteil: eine Änderung an `Config.City` ändert sofort die ganze
+  Stadt. Nachteil: der Startvorgang dauert etwas länger, und man kann die
+  Häuser in Studio nicht von Hand verschieben. Soll die Stadt später von Hand
+  gebaut werden, ersetzt man `City.server.luau` durch echte Parts — Tags und
+  Attribute bleiben identisch, der Rest des Codes merkt nichts davon.
 
 ## Manuelle Schritte außerhalb des Codes (Noah) 🔑
 1. **Studio:** Game Settings → Security → *Enable Studio Access to API Services*
@@ -285,3 +425,12 @@ Der Bauplan aus dem Prompt ist abgearbeitet. Was fehlt, fehlt mit Absicht:
 - Leitregel für jede künftige Mission: sie ist gleichzeitig das Tutorial für
   ein System **und** schaltet dieses System dauerhaft frei. Keine Mission
   bauen, deren Inhalt danach verschwindet.
+- **Identität der offenen Welt:** kein GTA-Klon mit Hacking, sondern ein
+  Hacking-Spiel mit offener Stadt. Daraus folgt alles Weitere: keine
+  Schusswaffen, kein Kampfsystem, Autos sind Werkzeug (schneller da, mehr
+  Lager) statt Selbstzweck, NPCs sind Hindernis statt Gegner, und die Polizei
+  ist eine Verfolgung, die im bestehenden Bust endet. Wer das später aufweicht,
+  baut ein anderes Spiel.
+- Verkehr, Fußgänger und Streifenwagen laufen alle auf demselben
+  `RoadNetwork`-Graphen, der aus `Config.City` gerechnet wird. Es gibt keine
+  zweite Karte und keine handgesetzten Wegpunkte, die auseinanderlaufen können.

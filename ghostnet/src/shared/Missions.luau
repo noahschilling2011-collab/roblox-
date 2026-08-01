@@ -60,35 +60,34 @@ export type Mission = {
 
 -- LEITREGEL, die jede dieser Missionen einhaelt:
 --   Sie ist gleichzeitig das Tutorial fuer ein System UND schaltet dieses
---   System dauerhaft frei. Nach M05 hat der Spieler kein "durchgespielt",
---   sondern fuenf Systeme, die alle noch laufen.
+--   System dauerhaft frei. Nach M10 hat der Spieler kein "durchgespielt",
+--   sondern zehn Systeme, die alle noch laufen.
 --
---   M01 lehrt Hacken/Trace/Verkauf  -> FREE_HACKING
---   M02 lehrt mehrstufige Ziele     -> STORE_RAIDS   (Laeden wiederholbar)
---   M03 lehrt die Basis             -> DARKNET       (der eigentliche Loop)
---   M04 lehrt Handel                -> TRADING       (freier Handel)
---   M05 lehrt das Grossziel         -> BANK_RAIDS    (Endgame mit Cooldown)
+-- SCHREIBREGELN
+--   Nie mehr als drei Saetze am Stueck. Briefings sind Nachrichten auf dem
+--   Telefon, keine Zwischensequenzen. Wren schreibt knapp, nie freundlich,
+--   nie erklaerend. Die Story erklaert NIE eine Mechanik - das macht die
+--   Mission selbst.
 --
 -- Die TargetIds hier muessen zu den Attributen der Parts in
 -- ServerScriptService/World passen. Waypoints und Kontakte ebenso.
 Missions.List = {
 	{
 		Id = "M01_FIRSTHACK",
-		Title = "Erstes Geraet",
-		Briefing = "Ein altes Wartungsterminal, das keiner mehr vermisst. Guter Ort zum Ueben.",
+		Title = "Erster Kontakt",
+		Briefing = "Ich habe dich beobachtet, und ich kann dich brauchen.\nDa drueben steht ein Wartungsterminal, das keiner vermisst.\n- W",
 		Requires = {},
 		Steps = {
 			{ Type = "HACK", TargetId = "TUT_TERMINAL", Text = "Naeher ran. Dann [E]." },
 			{ Type = "SELL", Amount = 1, Text = "Beute zum Hehler bringen" },
 		},
 		-- ToBank, damit direkt nach dem Tutorial das erste Upgrade drin ist.
-		-- Ohne das haette der Spieler nach dem Verkauf wieder nur heisses Geld.
 		Reward = { Crypto = 200, Unlock = "FREE_HACKING", ToBank = true },
 	},
 	{
 		Id = "M02_STORE",
 		Title = "Kalter Anlauf",
-		Briefing = "Der Laden an der Kreuzung Nord faehrt nachts auf Notstrom. Schloss zuerst, dann der Tresor - und zwar zuegig.",
+		Briefing = "Der Laden an der Kreuzung Nord faehrt nachts auf Notstrom.\nSchloss zuerst, dann der Tresor. Zuegig.",
 		Requires = { "M01_FIRSTHACK" },
 		Steps = {
 			{ Type = "GOTO", Target = "STORE_FRONT", Text = "Geh zum Laden an der Kreuzung Nord" },
@@ -100,8 +99,8 @@ Missions.List = {
 	},
 	{
 		Id = "M03_HOME",
-		Title = "Nach Hause",
-		Briefing = "Genug Strasse fuer heute. Zeit, den eigenen Rechner hochzufahren.",
+		Title = "Vier Waende",
+		Briefing = "Du kannst nicht ewig auf der Strasse arbeiten.\nIch habe dir was besorgt. Fahr den Rechner hoch.",
 		Requires = { "M02_STORE" },
 		Steps = {
 			{ Type = "GOTO", Target = "APARTMENT_DOOR", Text = "Geh nach Hause" },
@@ -110,30 +109,89 @@ Missions.List = {
 		Reward = { Crypto = 250, Unlock = "DARKNET", ToBank = true },
 	},
 	{
-		Id = "M04_FIRSTGOODS",
-		Title = "Erste Ware",
-		Briefing = "Im Darknet zaehlt nicht, was etwas kostet, sondern wann. Kauf billig, warte, verkauf teuer.",
+		Id = "M04_HOTWIRE",
+		Title = "Kurzschluss",
+		Briefing = "Zu Fuss bist du zu langsam. Nimm dir eins von der Strasse.\nUnd ja, das sehen sie.",
 		Requires = { "M03_HOME" },
 		Steps = {
-			{ Type = "BUY", Amount = 3, Text = "Kauf drei Einheiten irgendeiner Ware" },
-			{ Type = "WAIT", Seconds = 60, Text = "Beobachte den Kurs - Preise bewegen sich" },
-			{ Type = "TALK", ContactId = "HOME_RIG", Text = "Zurueck an den Rechner und verkaufen" },
+			{ Type = "HACK", TargetId = "TUT_TERMINAL", Text = "Uebungsterminal fuer die Zuendung anzapfen" },
+			{ Type = "GOTO", Target = "GARAGE", Text = "Auto klauen und zur Garage fahren" },
 		},
-		Reward = { Crypto = 300, Unlock = "TRADING", ToBank = true },
+		Reward = { Crypto = 500, Unlock = "VEHICLES" },
 	},
 	{
-		Id = "M05_BANK",
-		Title = "Die Bank",
-		Briefing = "Nakamura Bank. Drei Schichten, ein Alarm ueber allem. Wer hier patzt, fliegt sofort auf.",
-		Requires = { "M04_FIRSTGOODS" },
+		Id = "M05_WHEELS",
+		Title = "Auf Raedern",
+		Briefing = "Geklaut ist geklaut. Kauf dir eins, das dir gehoert.\nDer Haendler hat tagsueber auf.",
+		Requires = { "M04_HOTWIRE" },
+		Steps = {
+			{ Type = "GOTO", Target = "DEALER", Text = "Geh zum Autohaendler" },
+			{ Type = "SELL", Amount = 2, Text = "Zweimal abliefern - Autos kosten Geld" },
+		},
+		Reward = { Crypto = 800, Unlock = "DEALERS", ToBank = true },
+	},
+	{
+		Id = "M06_DOCKS",
+		Title = "Der Hafen",
+		Briefing = "Container 14, Nordkai. Grosse Ware, viel davon.\nNimm was mit Ladeflaeche.",
+		Requires = { "M05_WHEELS" },
+		Steps = {
+			{ Type = "GOTO", Target = "DOCKS", Text = "Fahr zum Nordkai" },
+			{ Type = "BUY", Amount = 5, Text = "Fuenf Einheiten Ware aufnehmen" },
+			{ Type = "TALK", ContactId = "HOME_RIG", Text = "Zurueck an den Rechner und verkaufen" },
+		},
+		Reward = { Crypto = 900, Unlock = "DOCKS_ZONE" },
+	},
+	{
+		Id = "M07_BLUELIGHT",
+		Title = "Blaulicht",
+		Briefing = "Frueher oder spaeter haengen sie dir am Auspuff.\nLern jetzt, wie man sie abschuettelt. Nicht spaeter.",
+		Requires = { "M06_DOCKS" },
+		Steps = {
+			{ Type = "HACK", TargetId = "ATM", Text = "Zieh dir genug Aufmerksamkeit zu" },
+			{ Type = "GOTO", Target = "HEIGHTS", Text = "Verschwinde Richtung Hoehenzug" },
+			{ Type = "SELL", Amount = 1, Text = "Erst abliefern, wenn du sie los bist" },
+		},
+		Reward = { Crypto = 1200, Unlock = "HEIGHTS_ZONE" },
+	},
+	{
+		Id = "M08_GLASSHOUSE",
+		Title = "Glashaus",
+		Briefing = "Vor dem Tresor kommt das Hinsehen. Kameras in der Halle,\nzwei Wachen, eine Schleuse. Fass nichts an.",
+		Requires = { "M07_BLUELIGHT" },
 		Steps = {
 			{ Type = "GOTO", Target = "BANK_FRONT", Text = "Geh zur Nakamura Bank" },
-			{ Type = "HACK", TargetId = "BANK_CAM", Text = "Aussenkamera abschalten" },
-			{ Type = "HACK", TargetId = "BANK_DOOR", Text = "Sicherheitstuer oeffnen" },
+			{ Type = "HACK", TargetId = "BANK_HALL_CAM1", Text = "Erste Hallenkamera abschalten" },
+			{ Type = "HACK", TargetId = "BANK_HALL_CAM2", Text = "Zweite Hallenkamera abschalten" },
+			{ Type = "WAIT", Seconds = 20, Text = "Warte, bis die Wachen vorbei sind" },
+		},
+		-- Hier findet der Spieler die Protokolle. Die Wendung steht im
+		-- Briefing der naechsten Mission, nicht in einer Zwischensequenz.
+		Reward = { Crypto = 1500, Unlock = "FINANCE_ZONE" },
+	},
+	{
+		Id = "M09_VAULT",
+		Title = "Der Tresor",
+		Briefing = "In den Protokollen stand dein Name, Abteilung Sicherheitsforschung.\nJeder Hack von dir ist verbucht und laengst geschlossen.\nWren hat nie fuer dich gearbeitet - du hast fuer sie gearbeitet.",
+		Requires = { "M08_GLASSHOUSE" },
+		Steps = {
+			{ Type = "HACK", TargetId = "BANK_SLUICE", Text = "Schleuse oeffnen - ab jetzt laeuft die Uhr" },
+			{ Type = "HACK", TargetId = "BANK_BOX1", Text = "Schliessfach knacken" },
 			{ Type = "HACK", TargetId = "BANK_VAULT", Text = "Tresorraum - zu zweit deutlich leichter" },
 			{ Type = "SELL", Amount = 1, Text = "Alles zum Hehler, sofort" },
 		},
-		Reward = { Crypto = 2500, Unlock = "BANK_RAIDS" },
+		Reward = { Crypto = 3500, Unlock = "BANK_RAIDS" },
+	},
+	{
+		Id = "M10_WREN",
+		Title = "Wren",
+		Briefing = "Sie will dich treffen, am Rechner wie immer.\nDu warst nie ein Krimineller, sondern ein unbezahlter Test.\nJetzt entscheidest du, was du damit machst.",
+		Requires = { "M09_VAULT" },
+		Steps = {
+			{ Type = "TALK", ContactId = "HOME_RIG", Text = "Antworte ihr" },
+		},
+		-- Keine Crypto: die Belohnung ist die Entscheidung selbst.
+		Reward = { Unlock = "ENDGAME" },
 	},
 } :: { Mission }
 

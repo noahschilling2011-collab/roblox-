@@ -36,12 +36,17 @@ local EVENT_NAMES = {
 	"StoreSync", -- S->C  { passes, products }
 	"StorePrompt", -- C->S  { kind, key }   bittet um den Kaufdialog
 	"TimeSync", -- S->C  { clock, isNight, rewardBonus }
+	"GarageSync", -- S->C  { owned, spawned, slots }
+	"StealVehicle", -- C->S  { }            Verkehrsauto kurzschliessen
+	"PursuitSync", -- S->C  { level, escaping, seconds }
+	"EndgameChoice", -- C->S  { choice }    Kassieren oder Verbrennen
 }
 
 local FUNCTION_NAMES: { string } = {
 	"ShopPurchase", -- C->S->C  { component } -> { ok, reason, level, cost, ... }
 	"Trade", -- C->S->C  { action, goodId, amount } -> { ok, reason, unit, total, ... }
 	"AdminCommand", -- C->S->C  { command, ... } -> { ok, text, ... }
+	"VehicleAction", -- C->S->C  { action, classId, colour } -> { ok, reason, ... }
 }
 
 local Remotes = {}

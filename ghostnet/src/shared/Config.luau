@@ -6,7 +6,7 @@
 
 local Config = {}
 
-Config.Version = "1.1.0" -- Open-World: Tag/Nacht und Fahrzeuge
+Config.Version = "2.0.0" -- Open World komplett: Stadt, Verkehr, Bank, Polizei, Story
 
 -- CollectionService-Tags. Ein Part mit dem Tag ist ein Hack-Ziel, ein Hehler,
 -- ein Missions-Wegpunkt oder ein ansprechbarer Kontakt. Kein Code pro Objekt.
@@ -16,6 +16,8 @@ Config.WaypointTag = "GhostNetWaypoint"
 Config.ContactTag = "GhostNetContact"
 Config.VehicleTag = "GhostNetVehicle" -- fahrbares Fahrzeug
 Config.VehicleSpawnTag = "GhostNetVehicleSpawn" -- erlaubter Ausparkplatz
+Config.DealerTag = "GhostNetDealer" -- Autohaendler-Tresen
+Config.GuardTag = "GhostNetGuard" -- Wache mit Sichtkegel
 
 --==========================================================================
 -- 1. REICHWEITE (Netzwerkkarte)
@@ -223,7 +225,8 @@ Config.Save = {
 	--   2 = Phase A (Story-Block)
 	--   3 = Phase C (Darknet-Lager)
 	--   4 = Phase F (PurchaseLog gegen Doppelvergabe)
-	SchemaVersion = 4,
+	--   5 = Open World (Fahrzeugbesitz, Endgame-Entscheidung)
+	SchemaVersion = 5,
 	StoreName = "GhostNetPlayers_v1",
 	KeyFormat = "ghostnet_player_%d",
 
@@ -532,7 +535,132 @@ Config.Vehicle = {
 }
 
 --==========================================================================
--- 17. RATE-LIMITS (Token-Bucket pro Spieler und Remote)
+-- 17. STADT UND STRASSENNETZ
+-- Die Stadt wird aus Bezirken gebaut, jeder mit eigenem Charakter und
+-- eigener Schwierigkeit. Die Strassenmittellinien sind gleichzeitig der
+-- Graph, auf dem in Phase 3 der Verkehr und in Phase 6 die Polizei faehrt -
+-- deshalb werden sie mitgebaut und nicht spaeter nachgezogen.
+--==========================================================================
+Config.City = {
+	BlockSize = 120, -- Abstand zwischen zwei Strassenkreuzungen
+	Grid = 5, -- Kreuzungen je Achse. 5 = 4x4 Bloecke. Hoch = riesige leere Stadt.
+	RoadWidth = 34,
+	LaneOffset = 8, -- Abstand der Fahrspur von der Strassenmitte
+	SidewalkWidth = 8,
+
+	BuildingMinHeight = 26,
+	BuildingMaxHeight = 92,
+	BuildingInset = 14, -- Abstand der Haeuser zur Strasse
+	RoofAccessChance = 0.35, -- Anteil Haeuser mit Feuerleiter aufs Dach
+
+	-- Wenige, dafuer starke Lichter. PointLight ist teuer, Neonflaechen sind
+	-- gratis. Runterdrehen, wenn die Bildrate einbricht.
+	SignChance = 0.4,
+	LightChance = 0.25,
+}
+
+--==========================================================================
+-- 18. VERKEHR UND FUSSGAENGER
+-- Der performancekritischste Teil des Projekts. NIEDRIG starten und mit dem
+-- MicroProfiler hochtasten - nicht raten.
+--==========================================================================
+Config.Traffic = {
+	MaxActive = 20, -- harte Obergrenze fahrender Autos. Der wichtigste Regler.
+	MaxPedestrians = 16,
+	ActiveRadius = 320, -- ausserhalb davon wird angehalten und recycelt
+	Tick = 0.1, -- Bewegungstakt. Groesser = ruckeliger, kleiner = teurer.
+	SpawnTick = 2, -- wie oft nachgefuellt wird
+
+	Speed = 34, -- Studs/s
+	SpeedJitter = 8,
+	StopDistance = 22, -- Abstand, ab dem hinter einem anderen gebremst wird
+	PedestrianSpeed = 7,
+
+	-- Autodiebstahl. Haengt am Trace, damit er nicht neben der zentralen
+	-- Risiko-Mechanik herlaeuft.
+	StealHoldSeconds = 2.5,
+	StealTrace = 12,
+	StealRange = 12,
+}
+
+--==========================================================================
+-- 19. FAHRZEUGBESITZ UND HAENDLER
+--==========================================================================
+Config.Dealer = {
+	OpenHour = 8, -- Haendler haben nur tagsueber auf
+	CloseHour = 20,
+	TestDriveSeconds = 45, -- Probefahrt auf abgesperrtem Gelaende
+	ColourOptions = {
+		"Schwarz", "Anthrazit", "Weiss", "Rot", "Cyan", "Gold",
+	},
+	-- Kosmetik kostet, damit Geld auch spaet noch einen Zweck hat.
+	RepaintCost = 900,
+}
+
+--==========================================================================
+-- 20. BANK
+-- Drei Ebenen, drei Wege hinein. Die Wachen MELDEN, sie greifen nicht an -
+-- das haelt die Mechanik bei Flucht statt Kampf.
+--==========================================================================
+Config.Bank = {
+	GuardSightRange = 60,
+	GuardSightAngle = 70, -- Halbwinkel des Sichtkegels in Grad
+	GuardTick = 0.4, -- Sichtpruefung nur so oft, und nur wenn jemand im Raum ist
+	GuardPatrolSpeed = 9,
+	GuardSpotSeconds = 0.8, -- so lange muss man sichtbar sein, bevor Alarm kommt
+
+	VaultBoxes = 6, -- Schliessfaecher zusaetzlich zum Haupttresor
+	BoxReward = 900,
+	BoxCooldown = 1800,
+
+	-- Der Weg ueber das Dach umgeht die Schalterhalle, braucht aber ein
+	-- besseres Rig. Sonst waere er immer die beste Wahl.
+	VentRequiredTier = 3,
+}
+
+--==========================================================================
+-- 21. POLIZEI
+-- Verfolgung statt Schiesserei. Kein Schusswechsel, keine Waffen.
+--==========================================================================
+Config.Pursuit = {
+	MaxLevel = 5,
+	-- Ab welchem Trace welche Fahndungsstufe. Runter = die Polizei ist
+	-- staendig da, hoch = sie ist irrelevant.
+	-- 20 ist kein Zufall: 20 * MaxLevel = 100 = Config.Trace.Max. Sonst waere
+	-- die hoechste Stufe allein ueber den Trace nie erreichbar.
+	TracePerLevel = 20,
+	Decay = 0.15, -- Stufenabbau pro Sekunde ohne Sichtkontakt
+	EscapeSeconds = 12, -- so lange ausser Sicht, dann ist man raus
+	SpotRange = 220,
+	CatchRange = 14, -- so nah heisst gefasst
+	CatchSeconds = 2.5, -- und zwar so lange am Stueck
+
+	UnitsPerLevel = 1, -- Streifenwagen je Stufe
+	MaxUnits = 5,
+	UnitSpeed = 46,
+	RoadblockLevel = 4,
+	HelicopterLevel = 5,
+	Tick = 0.25,
+}
+
+--==========================================================================
+-- 22. ENDGAME-ENTSCHEIDUNG (Mission 10)
+--==========================================================================
+Config.Endgame = {
+	-- "CASH"  = bei Meridian anheuern: halber Trace, aber weniger Beute.
+	-- "BURN"  = alles veroeffentlichen: mehr Ertrag, haerteres Spiel.
+	CashTraceFactor = 0.5,
+	CashRewardFactor = 0.75,
+	BurnRewardFactor = 1.3,
+	BurnPursuitFactor = 1.4,
+	BurnMarketFactor = 1.2,
+	-- Einmal pro Woche umstellbar. Ohne das fuehlen sich Spieler eingesperrt
+	-- und hoeren auf.
+	SwitchCooldown = 604800,
+}
+
+--==========================================================================
+-- 23. RATE-LIMITS (Token-Bucket pro Spieler und Remote)
 -- Jede neue Remote braucht hier einen Eintrag, sonst wird sie verworfen.
 --==========================================================================
 Config.RateLimits = {
@@ -548,10 +676,13 @@ Config.RateLimits = {
 	Trade = { Rate = 2, Burst = 5 },
 	AdminCommand = { Rate = 4, Burst = 8 },
 	StorePrompt = { Rate = 1, Burst = 3 },
+	VehicleAction = { Rate = 1, Burst = 4 },
+	StealVehicle = { Rate = 1, Burst = 2 },
+	EndgameChoice = { Rate = 0.2, Burst = 2 },
 }
 
 --==========================================================================
--- 18. NODE-BREACH
+-- 24. NODE-BREACH
 --==========================================================================
 Config.NodeBreach = {
 	-- Pro Schwierigkeitsband: Gittergroesse, Anzahl Relays, Anteil sichtbares
@@ -568,7 +699,7 @@ Config.NodeBreach = {
 }
 
 --==========================================================================
--- 19. DEFAULTS FUER HACK-ZIELE
+-- 25. DEFAULTS FUER HACK-ZIELE
 -- Ein Part braucht KEIN einziges Attribut. Alles, was fehlt, kommt von hier.
 --==========================================================================
 Config.TargetDefaults = {

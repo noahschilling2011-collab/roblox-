@@ -59,8 +59,14 @@ Sie haben eigene `CLAUDE.md`/`PHASEN.md`/`STATUS.md` in ihrem Ordner — die gel
 vor dieser Datei.
 - `turmfall/` — TURMFALL, physik-basiertes Rundenspiel, eigene `Turmfall.rbxlx`.
 - `ghostnet/` — GHOSTNET, Hacking-Spiel (dunkles Fake-OS), eigene `GhostNet.rbxlx`.
-  Stand: v1.0.0 — Loop, 5 Story-Missionen, Darknet-Handel, Admin-Panel, Store,
-  Stadtkulisse. Alle Asset-/Produkt-IDs sind noch Platzhalter.
+  Stand: v2.0.0 — Umbau zur offenen Stadt abgeschlossen: Bezirke mit gerechnetem
+  Straßengraph, Verkehr und Fußgänger (gepoolt, ohne PathfindingService),
+  Fahrzeugbesitz mit Autohaus und Garage, Bankraub mit drei Wegen, Polizei-
+  Verfolgung ohne Waffen und eine 10-Missionen-Story mit Entscheidung am Ende.
+  Profil-Schema steht auf Version 5 (Migration 4 → 5: Garage + Allegiance).
+  Testlauf 569/569 grün. **Bildrate ist ungemessen** — dafür braucht es den
+  MicroProfiler in Studio, nicht die Luau-VM des Testlaufs.
+  Alle Asset-/Produkt-IDs sind noch Platzhalter.
 
 ## Manuelle Schritte außerhalb des Codes (Noah) 🔑
 - Publishing + Creator Dashboard: Gamepässe/Produkte anlegen, echte IDs in

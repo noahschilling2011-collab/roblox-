@@ -62,6 +62,8 @@ local function defaultStory(): Types.Story
 		StepStartedAt = 0,
 		Completed = {},
 		Unlocks = {},
+		Allegiance = "",
+		AllegianceAt = 0,
 	}
 end
 
@@ -78,6 +80,7 @@ function SaveService.DefaultProfile(): Profile
 		Story = defaultStory(),
 		Stash = {},
 		PurchaseLog = {},
+		Garage = {},
 		LastSeen = os.time(),
 		SessionId = "",
 	}
@@ -168,6 +171,27 @@ local function sanitize(raw: any): (Profile, number)
 		p.Story.StepStartedAt = toCount(story.StepStartedAt) or 0
 		p.Story.Completed = cleanIdList(story.Completed, 128)
 		p.Story.Unlocks = cleanIdList(story.Unlocks, 128)
+		if story.Allegiance == "CASH" or story.Allegiance == "BURN" then
+			p.Story.Allegiance = story.Allegiance
+		end
+		p.Story.AllegianceAt = toCount(story.AllegianceAt) or 0
+	end
+
+	-- Garage. Nur bekannte Klassen und eine harte Obergrenze, damit ein
+	-- kaputtes Profil den Server nicht mit tausend Fahrzeugen flutet.
+	if typeof(raw.Garage) == "table" then
+		for _, entry in raw.Garage do
+			if typeof(entry) == "table" and typeof(entry.ClassId) == "string" and #entry.ClassId <= 32 then
+				if #p.Garage < 32 then
+					table.insert(p.Garage, {
+						ClassId = entry.ClassId,
+						Colour = if typeof(entry.Colour) == "string" and #entry.Colour <= 24
+							then entry.Colour
+							else "Schwarz",
+					})
+				end
+			end
+		end
 	end
 
 	if typeof(raw.Stash) == "table" then
@@ -219,6 +243,15 @@ local MIGRATIONS: { [number]: (Profile) -> () } = {
 	-- ist unkritisch, weil vor Phase F gar nichts gekauft werden konnte.
 	[4] = function(profile: Profile)
 		profile.PurchaseLog = {}
+	end,
+
+	-- 4 -> 5: Fahrzeugbesitz und die Endgame-Entscheidung kamen dazu. Alte
+	-- Profile starten ohne Auto und ohne getroffene Wahl; alles andere
+	-- bleibt unangetastet.
+	[5] = function(profile: Profile)
+		profile.Garage = {}
+		profile.Story.Allegiance = ""
+		profile.Story.AllegianceAt = 0
 	end,
 }
 

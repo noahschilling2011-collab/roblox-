@@ -21,6 +21,13 @@ export type Stats = {
 	GoodsSold: number, -- im Darknet verkaufte Einheiten
 }
 
+-- Ein gekauftes Fahrzeug. Rein kosmetische Anpassung - keine Leistungsteile,
+-- sonst muesste das Fahrverhalten mehrfach ausbalanciert werden.
+export type OwnedVehicle = {
+	ClassId: string,
+	Colour: string,
+}
+
 -- Story-Fortschritt im Profil. Der Client bekommt davon nur eine Abschrift
 -- ueber MissionSync und meldet nie selbst, dass ein Schritt fertig ist.
 export type Story = {
@@ -30,6 +37,8 @@ export type Story = {
 	StepStartedAt: number, -- Unix-Zeit, gebraucht fuer WAIT-Schritte
 	Completed: { string }, -- abgeschlossene Missions-Ids
 	Unlocks: { string }, -- dauerhaft freigeschaltete Systeme
+	Allegiance: string, -- "" | "CASH" | "BURN"  (Mission 10, seit Schema 5)
+	AllegianceAt: number, -- Unix-Zeit der letzten Umstellung
 }
 
 -- Das gespeicherte Spielerprofil. Einzige Wahrheit fuer alles, was einen
@@ -45,6 +54,7 @@ export type Profile = {
 	Story: Story, -- seit SchemaVersion 2
 	Stash: { [string]: number }, -- Darknet-Lager, seit SchemaVersion 3
 	PurchaseLog: { string }, -- verarbeitete PurchaseIds, seit SchemaVersion 4
+	Garage: { OwnedVehicle }, -- gekaufte Fahrzeuge, seit SchemaVersion 5
 	LastSeen: number, -- Unix-Zeit des letzten Speicherns
 	SessionId: string, -- Session-Lock gegen Doppel-Sitzungen
 }

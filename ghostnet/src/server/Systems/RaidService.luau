@@ -27,6 +27,7 @@ local Geometry = require(ReplicatedStorage.Shared.Geometry)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 
 local HackService = require(script.Parent.HackService)
+local PursuitService = require(script.Parent.PursuitService)
 local HackTargets = require(script.Parent.HackTargets)
 local TraceService = require(script.Parent.TraceService)
 
@@ -135,6 +136,9 @@ local function triggerAlarm(player: Player)
 	warn(("[GHOSTNET] ALARM ausgeloest: %s in Gruppe '%s'."):format(player.Name, alarm.Group))
 	HackService.AbortFor(player, "ALARM")
 	TraceService.Add(player, Config.Raid.AlarmTracePenalty)
+	-- Ein durchgelaufener Alarm ruft die Polizei. Genau dafuer ist die
+	-- Fahndungsstufe da.
+	PursuitService.AddHeat(player, 2)
 
 	if player.Parent then
 		Remotes.AlarmSync:FireClient(player, {
@@ -144,6 +148,15 @@ local function triggerAlarm(player: Player)
 			TracePenalty = Config.Raid.AlarmTracePenalty,
 		})
 	end
+end
+
+-- Von aussen ausgeloester Alarm (Wache hat jemanden gesehen). Startet
+-- dieselbe Uhr wie ein geknacktes Ziel - kein zweites Alarm-System daneben.
+function RaidService.RaiseAlarm(player: Player, group: string, label: string)
+	if alarms[player] then
+		return
+	end
+	startAlarm(player, group, label)
 end
 
 function RaidService.IsAlarmed(player: Player): boolean

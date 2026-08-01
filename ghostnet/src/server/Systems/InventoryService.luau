@@ -28,6 +28,7 @@ local EconomyService = require(script.Parent.EconomyService)
 local MarketService = require(script.Parent.MarketService)
 local MissionService = require(script.Parent.MissionService)
 local MonetizationService = require(script.Parent.MonetizationService)
+local VehicleService = require(script.Parent.VehicleService)
 local RateLimiter = require(script.Parent.RateLimiter)
 local SaveService = require(script.Parent.SaveService)
 local TraceService = require(script.Parent.TraceService)
@@ -55,7 +56,10 @@ end
 function InventoryService.Slots(player: Player): number
 	local base = Config.GetStashSlots(EconomyService.GetTier(player))
 	-- Gamepass BigStash: reine Kapazitaet, kein Spielvorteil beim Raetsel.
-	return math.floor(base * (1 + MonetizationService.StashBonus(player)))
+	local slots = math.floor(base * (1 + MonetizationService.StashBonus(player)))
+	-- Das ausgeparkte Fahrzeug zaehlt mit. Genau das ist der mechanische
+	-- Grund fuer den Transporter.
+	return slots + VehicleService.StashBonus(player)
 end
 
 function InventoryService.Snapshot(player: Player): { [string]: any }

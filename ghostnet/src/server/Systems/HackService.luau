@@ -52,6 +52,32 @@ function HackService.OnHackResolved(callback: (Player, { [string]: any }) -> ())
 	table.insert(resolvedCallbacks, callback)
 end
 
+-- Faktoren auf Ertrag und Trace, die von aussen kommen (Endgame-Entscheidung
+-- aus Mission 10). Bewusst als Registrierung statt als Require: sonst
+-- braeuchte der HackService den MissionService, der ihn schon kennt - und
+-- damit haetten wir einen Kreis.
+local rewardModifiers: { (Player) -> number } = {}
+local traceModifiers: { (Player) -> number } = {}
+
+function HackService.AddRewardModifier(fn: (Player) -> number)
+	table.insert(rewardModifiers, fn)
+end
+
+function HackService.AddTraceModifier(fn: (Player) -> number)
+	table.insert(traceModifiers, fn)
+end
+
+local function combined(list: { (Player) -> number }, player: Player): number
+	local factor = 1
+	for _, fn in list do
+		local ok, value = pcall(fn, player)
+		if ok and typeof(value) == "number" and value > 0 then
+			factor *= value
+		end
+	end
+	return factor
+end
+
 --==========================================================================
 -- Hilfsfunktionen
 --==========================================================================
@@ -112,6 +138,9 @@ local function resolve(session: Session, success: boolean, reason: string)
 		-- Gamepass ColdRig: dauerhaft weniger Trace. Zeitersparnis, kein
 		-- Raetselvorteil - die Aufgabe selbst bleibt gleich schwer.
 		traceDelta *= MonetizationService.TraceFactor(player)
+
+		-- Endgame-Entscheidung und alles andere von aussen Angemeldete.
+		traceDelta *= combined(traceModifiers, player)
 
 		-- Co-Op: ein zweiter Spieler in Reichweite eines RequiresTwo-Ziels
 		-- halbiert den Trace-Anstieg. Das ist der Grund, einen Freund

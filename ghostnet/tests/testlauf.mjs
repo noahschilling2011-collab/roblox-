@@ -36,6 +36,15 @@ function check(name, condition, detail) {
   else bad(name, detail ?? "Bedingung nicht erfuellt");
 }
 
+// Strukturpruefungen sollen den ECHTEN Code sehen, nicht die Kommentare.
+// Sonst faellt ein Test ueber seinen eigenen Kopfkommentar
+// ("benutzt KEIN PathfindingService" enthaelt das verbotene Wort).
+function codeOnly(src) {
+  return src
+    .replace(/--\[(=*)\[[\s\S]*?\]\1\]/g, "")
+    .replace(/--[^\n]*/g, "");
+}
+
 function allLuauFiles(dir) {
   const out = [];
   for (const entry of readdirSync(dir).sort()) {
@@ -221,7 +230,7 @@ try {
     if (!short.startsWith("src/shared/") && !short.startsWith("src/client/")) continue;
     check(
       `keine Admin-Liste in ${short}`,
-      !/AdminList/.test(sources.get(file)),
+      !/AdminList/.test(codeOnly(sources.get(file))),
       "Client oder Shared kennt die Admin-Liste - die kann dann jeder lesen"
     );
   }
@@ -304,7 +313,7 @@ try {
     );
     check(
       "Chassis vergibt selbst keine Belohnung",
-      !/AwardBanked|AwardUnsold|SpendBanked/.test(chassisSrc),
+      !/AwardBanked|AwardUnsold|SpendBanked/.test(codeOnly(chassisSrc)),
       "Fahrzeugcode darf kein Geld bewegen"
     );
     check(
@@ -316,6 +325,70 @@ try {
       "Antrieb und Lenkung ueber CylindricalConstraint",
       (chassisSrc.match(/Instance\.new\("CylindricalConstraint"\)/g) ?? []).length >= 2,
       "es fehlt eine der beiden Achsen"
+    );
+  }
+
+  // --- Verkehr und Polizei (Open-World 3 und 6) ---
+  const trafficSrc = sources.get(join(SRC, "server/Systems/TrafficService.luau"));
+  if (trafficSrc) {
+    check(
+      "Verkehr benutzt KEIN PathfindingService",
+      !/PathfindingService/.test(codeOnly(trafficSrc)),
+      "ein Pfad pro Auto frisst den Server auf"
+    );
+    check(
+      "Verkehr benutzt keine Humanoids",
+      !/Instance\.new\("Humanoid"\)/.test(codeOnly(trafficSrc)),
+      "Humanoids sind fuer Hintergrund-Fussgaenger zu teuer"
+    );
+    check(
+      "Verkehr laeuft ueber einen Pool",
+      /not car\.Active/.test(trafficSrc) && /recycle\(/.test(trafficSrc),
+      "kein Recycling - Instance.new im Sekundentakt"
+    );
+    check(
+      "Verkehr ist auf einen Radius begrenzt",
+      /nearAnyPlayer\([^)]*ActiveRadius\)/.test(trafficSrc),
+      "Autos ausserhalb des Radius werden weiterberechnet"
+    );
+  }
+
+  const pursuitSrc = sources.get(join(SRC, "server/Systems/PursuitService.luau"));
+  if (pursuitSrc) {
+    check(
+      "Polizei benutzt die bestehende Bust-Kette",
+      /TraceService\.Add\(player, Config\.Trace\.Max\)/.test(pursuitSrc),
+      "es gibt ein zweites Straf-System daneben"
+    );
+    check(
+      "Keine Waffen in der Verfolgung",
+      !/Tool|Weapon|Damage|TakeDamage|Fire\(/i.test(codeOnly(pursuitSrc)),
+      "bewusste Design-Entscheidung: kein Kampf"
+    );
+  }
+
+  const guardSrc = sources.get(join(SRC, "server/Systems/GuardService.luau"));
+  if (guardSrc) {
+    check(
+      "Wachen melden statt anzugreifen",
+      /RaidService\.RaiseAlarm/.test(guardSrc) && !/TakeDamage/.test(codeOnly(guardSrc)),
+      "eine Wache greift an"
+    );
+    check(
+      "Sichtlinie wird per Raycast geprueft",
+      /workspace:Raycast/.test(guardSrc),
+      "Waende blockieren die Sicht nicht"
+    );
+  }
+
+  // Kein Heartbeat-Handler, der ueber die ganze Stadt laeuft.
+  for (const name of ["TrafficService", "PursuitService", "GuardService"]) {
+    const src = sources.get(join(SRC, `server/Systems/${name}.luau`));
+    if (!src) continue;
+    check(
+      `${name} benutzt einen gestaffelten Tick statt Heartbeat`,
+      !/RunService\.Heartbeat/.test(codeOnly(src)),
+      "laeuft jeden Frame ueber alle Objekte"
     );
   }
 
@@ -356,7 +429,7 @@ try {
   // Es darf nirgends eine erfundene Asset-Id stehen.
   for (const [file, src] of sources) {
     const short = relative(ROOT, file);
-    check(`keine erfundene Asset-Id in ${short}`, !/rbxassetid:\/\/\d/.test(src), "enthaelt eine konkrete Asset-Id");
+    check(`keine erfundene Asset-Id in ${short}`, !/rbxassetid:\/\/\d/.test(codeOnly(src)), "enthaelt eine konkrete Asset-Id");
   }
 
   // Sound-IDs bleiben leer, bis Noah sie eintraegt.
@@ -438,6 +511,7 @@ local __deps = {}
     ["Missions", "shared/Missions.luau"],
     ["Goods", "shared/Goods.luau"],
     ["Vehicles", "shared/Vehicles.luau"],
+    ["Districts", "shared/Districts.luau"],
     ["NodeBreach", "server/Systems/Minigames/NodeBreach.luau"],
   ]) {
     body += `\n__deps["${name}"] = (function()\n${loadModule(path)}\nend)()\n`;
@@ -448,6 +522,7 @@ local Config = __deps["Config"]
 local Missions = __deps["Missions"]
 local Goods = __deps["Goods"]
 local Vehicles = __deps["Vehicles"]
+local Districts = __deps["Districts"]
 local NodeBreach = __deps["NodeBreach"]
 
 -- Ergebnis geht als eine Zeichenkette zurueck ("OK|name" / "FAIL|name|grund"),
@@ -968,6 +1043,128 @@ test("Streaming ist an und die Radien sind plausibel", function()
 	expect(Config.World.StreamingMinRadius > 0, "MinRadius unbrauchbar")
 	expect(Config.World.StreamingTargetRadius > Config.World.StreamingMinRadius,
 		"TargetRadius muss groesser sein als MinRadius")
+end)
+
+--== Stadt, Verkehr, Polizei (Open World 2, 3, 6) ==========================
+
+test("Bezirke sind gueltig und nur einer ist ausgebaut", function()
+	local valid, errors = Districts.Validate()
+	expect(valid, "Bezirke kaputt: " .. table.concat(errors, " | "))
+	local dense = 0
+	for _, district in Districts.List do
+		if district.Dense then
+			dense += 1
+		end
+	end
+	-- Der Bauplan verbietet ausdruecklich, mehrere Bezirke gleichzeitig
+	-- anzufangen: eine grosse leere Stadt ist schlimmer als ein voller Block.
+	expect(dense == 1, dense .. " Bezirke gleichzeitig ausgebaut - erlaubt ist einer")
+end)
+
+test("Validate findet ueberlappende oder kaputte Bezirke", function()
+	local base = { Id = "A", Name = "A", Character = "", GridX = 0, GridZ = 0, Radius = 1,
+		MinDifficulty = 1, MaxDifficulty = 3, Tint = nil, Neon = nil, Dense = true }
+	local function broken(list)
+		local valid = Districts.Validate(list)
+		return not valid
+	end
+	local copy = table.clone(base)
+	copy.Id = "B"
+	expect(broken({ base, copy }), "zwei Bezirke auf demselben Block durchgelassen")
+
+	local badRange = table.clone(base)
+	badRange.MinDifficulty = 8
+	badRange.MaxDifficulty = 2
+	expect(broken({ badRange }), "Min groesser als Max durchgelassen")
+
+	local noneDense = table.clone(base)
+	noneDense.Dense = false
+	expect(broken({ noneDense }), "kein ausgebauter Bezirk durchgelassen")
+	expect(Districts.Validate({ base }), "gueltiger Bezirk abgelehnt")
+end)
+
+test("Verkehrsgrenzen sind konservativ gesetzt", function()
+	-- Der Bauplan verlangt ausdruecklich: niedrig starten, mit dem
+	-- MicroProfiler hochtasten. Diese Pruefung verhindert, dass jemand
+	-- versehentlich 200 Autos einstellt.
+	expect(Config.Traffic.MaxActive <= 40, "MaxActive zu hoch fuer den Start")
+	expect(Config.Traffic.MaxPedestrians <= 40, "zu viele Fussgaenger fuer den Start")
+	expect(Config.Traffic.ActiveRadius > 0, "ActiveRadius unbrauchbar")
+	expect(Config.Traffic.Tick >= 0.05, "Verkehrstakt schneller als 20 Hz - zu teuer")
+	expect(Config.Traffic.StealTrace > 0, "Autodiebstahl haengt nicht am Trace")
+end)
+
+test("Fahndung ist erreichbar und man kann entkommen", function()
+	local P = Config.Pursuit
+	expect(P.TracePerLevel * P.MaxLevel <= Config.Trace.Max,
+		"die hoechste Stufe ist mit dem Trace-Maximum gar nicht erreichbar")
+	expect(P.CatchRange < P.SpotRange, "gefasst werden ist weiter als gesehen werden")
+	expect(P.EscapeSeconds > 0, "man kann nie entkommen")
+	expect(P.Decay > 0, "die Fahndung baut sich nie ab")
+	expect(P.MaxUnits >= P.MaxLevel * P.UnitsPerLevel or P.MaxUnits >= 1, "keine Streifenwagen moeglich")
+	expect(P.RoadblockLevel <= P.MaxLevel and P.HelicopterLevel <= P.MaxLevel,
+		"Strassensperre oder Hubschrauber sind unerreichbar")
+end)
+
+test("Der Weg ueber das Dach kostet ein besseres Rig", function()
+	-- Sonst waere er immer die beste Wahl und die anderen zwei Wege tot.
+	expect(Config.Bank.VentRequiredTier >= 3, "Lueftungsweg ist zu billig")
+	expect(Config.Bank.VaultBoxes >= 2, "zu wenige Schliessfaecher fuer den schnellen Weg")
+	expect(Config.Bank.GuardSightAngle < 180, "Wachen sehen rundum")
+	expect(Config.Bank.GuardSpotSeconds > 0, "Alarm kommt sofort beim Blickkontakt")
+end)
+
+--== Die Story (Open World 7) ==============================================
+
+test("Zehn Missionen, sauber verkettet", function()
+	expect(#Missions.List == 10, "es sind " .. #Missions.List .. " Missionen statt 10")
+	local valid, errors = Missions.Validate(nil, Config.Mission.MaxSteps)
+	expect(valid, "Missionsdaten kaputt: " .. table.concat(errors, " | "))
+
+	-- Jede Mission ausser der ersten hat genau einen Vorgaenger: die Story
+	-- ist eine Kette, keine Verzweigung.
+	for index, mission in Missions.List do
+		if index == 1 then
+			expect(#mission.Requires == 0, "die erste Mission hat einen Vorgaenger")
+		else
+			expect(#mission.Requires == 1, mission.Id .. " hat " .. #mission.Requires .. " Vorgaenger")
+			expect(mission.Requires[1] == Missions.List[index - 1].Id, mission.Id .. " haengt an der falschen Mission")
+		end
+	end
+end)
+
+test("Jede Mission schaltet etwas dauerhaft frei", function()
+	-- Die Leitregel: nie eine Mission bauen, deren Inhalt danach verschwindet.
+	local seen = {}
+	for _, mission in Missions.List do
+		local unlock = mission.Reward.Unlock
+		expect(typeof(unlock) == "string" and unlock ~= "", mission.Id .. " schaltet nichts frei")
+		expect(not seen[unlock], "Unlock doppelt vergeben: " .. tostring(unlock))
+		seen[unlock] = true
+	end
+end)
+
+test("Briefings sind kurz - hoechstens drei Saetze", function()
+	for _, mission in Missions.List do
+		local sentences = 0
+		for _ in string.gmatch(mission.Briefing, "[%.%!%?]") do
+			sentences += 1
+		end
+		expect(sentences <= 3, mission.Id .. " hat " .. sentences .. " Saetze im Briefing")
+		expect(#mission.Briefing <= 220, mission.Id .. ": Briefing zu lang (" .. #mission.Briefing .. " Zeichen)")
+	end
+end)
+
+test("Die Endgame-Entscheidung ist ein echter Tausch", function()
+	local E = Config.Endgame
+	-- Kassieren: weniger Risiko, weniger Ertrag. Verbrennen: umgekehrt.
+	-- Ohne diesen Tausch waere eine der beiden Seiten immer richtig.
+	expect(E.CashTraceFactor < 1, "Kassieren senkt den Trace nicht")
+	expect(E.CashRewardFactor < 1, "Kassieren kostet nichts - dann waehlt es jeder")
+	expect(E.BurnRewardFactor > 1, "Verbrennen bringt nichts")
+	expect(E.BurnPursuitFactor > 1, "Verbrennen ist nicht haerter")
+	expect(E.SwitchCooldown > 0, "man koennte beliebig oft umschalten")
+	expect(E.SwitchCooldown <= 7 * 24 * 3600, "laenger als eine Woche fuehlt sich wie eingesperrt an")
 end)
 
 --== Node-Breach ===========================================================

@@ -78,6 +78,75 @@ local function currentStep(mission: Mission, story: Story): Step?
 	return mission.Steps[story.Step]
 end
 
+--==========================================================================
+-- Die Entscheidung aus Mission 10
+--
+-- "CASH"  = bei Meridian anheuern. Halber Trace-Anstieg, aber weniger Beute.
+-- "BURN"  = alles veroeffentlichen. Mehr Ertrag, haerteres Spiel.
+--
+-- Einmal pro Woche umstellbar. Ohne das fuehlen sich Spieler eingesperrt und
+-- hoeren auf.
+--==========================================================================
+
+function MissionService.GetAllegiance(player: Player): string
+	local story = storyOf(player)
+	return if story then story.Allegiance else ""
+end
+
+-- Faktoren, die andere Services abfragen. Sie liegen hier, weil die
+-- Entscheidung Teil der Story ist.
+function MissionService.TraceFactor(player: Player): number
+	return if MissionService.GetAllegiance(player) == "CASH" then Config.Endgame.CashTraceFactor else 1
+end
+
+function MissionService.RewardFactor(player: Player): number
+	local choice = MissionService.GetAllegiance(player)
+	if choice == "CASH" then
+		return Config.Endgame.CashRewardFactor
+	elseif choice == "BURN" then
+		return Config.Endgame.BurnRewardFactor
+	end
+	return 1
+end
+
+function MissionService.PursuitFactor(player: Player): number
+	return if MissionService.GetAllegiance(player) == "BURN" then Config.Endgame.BurnPursuitFactor else 1
+end
+
+local function onEndgameChoice(player: Player, payload: any)
+	if not RateLimiter.Check(player, "EndgameChoice") then
+		return
+	end
+	if typeof(payload) ~= "table" then
+		return
+	end
+	local choice = (payload :: any).Choice
+	if choice ~= "CASH" and choice ~= "BURN" then
+		return
+	end
+
+	local story = storyOf(player)
+	if not story then
+		return
+	end
+	-- Erst nach Mission 10 waehlbar.
+	if not Missions.HasUnlock(story, "ENDGAME") then
+		return
+	end
+
+	local now = os.time()
+	if story.Allegiance ~= "" and now - story.AllegianceAt < Config.Endgame.SwitchCooldown then
+		MissionService.Sync(player)
+		return
+	end
+
+	story.Allegiance = choice
+	story.AllegianceAt = now
+	SaveService.RequestSave(player)
+	MissionService.Sync(player)
+	print(("[GHOSTNET] %s hat sich fuer '%s' entschieden."):format(player.Name, choice))
+end
+
 -- Fuer Phase B und C: "darf der Spieler Ladenueberfaelle / das Darknet?"
 function MissionService.HasUnlock(player: Player, key: string): boolean
 	local story = storyOf(player)
@@ -180,6 +249,11 @@ function MissionService.Sync(player: Player)
 			Unlocks = table.clone(story.Unlocks),
 			Available = if available then available.Id else "",
 			AvailableTitle = if available then available.Title else "",
+			Allegiance = story.Allegiance,
+			AllegianceSwitchIn = math.max(
+				0,
+				Config.Endgame.SwitchCooldown - (os.time() - story.AllegianceAt)
+			),
 		})
 		syncWaypoint(player, nil)
 		return
@@ -207,6 +281,11 @@ function MissionService.Sync(player: Player)
 		Steps = texts,
 		Completed = table.clone(story.Completed),
 		Unlocks = table.clone(story.Unlocks),
+		Allegiance = story.Allegiance,
+		AllegianceSwitchIn = math.max(
+			0,
+			Config.Endgame.SwitchCooldown - (os.time() - story.AllegianceAt)
+		),
 	})
 
 	syncWaypoint(player, step)
@@ -553,6 +632,12 @@ function MissionService.Init()
 	Remotes.MissionAbandon.OnServerEvent:Connect(onAbandon)
 	Remotes.MissionInteract.OnServerEvent:Connect(onInteract)
 	Remotes.MissionSkip.OnServerEvent:Connect(onSkip)
+	Remotes.EndgameChoice.OnServerEvent:Connect(onEndgameChoice)
+
+	-- Die Endgame-Faktoren melden sich beim HackService AN, statt dass der
+	-- HackService hier nachfragt. Sonst haetten die beiden einen Kreis.
+	HackService.AddTraceModifier(MissionService.TraceFactor)
+	HackService.AddRewardModifier(MissionService.RewardFactor)
 
 	SaveService.OnReady(function(player, profile)
 		lastMarker[player] = nil
