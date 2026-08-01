@@ -6,11 +6,14 @@
 
 local Config = {}
 
-Config.Version = "0.2.0" -- Phase 1: Loop geschlossen (Save, Trace, Verkauf, Shop)
+Config.Version = "0.3.0" -- Phase A: Missions-Rueckgrat
 
--- CollectionService-Tags. Ein Part mit dem Tag ist ein Hack-Ziel bzw. ein Hehler.
+-- CollectionService-Tags. Ein Part mit dem Tag ist ein Hack-Ziel, ein Hehler,
+-- ein Missions-Wegpunkt oder ein ansprechbarer Kontakt. Kein Code pro Objekt.
 Config.HackableTag = "GhostNetHackable"
 Config.FenceTag = "GhostNetFence"
+Config.WaypointTag = "GhostNetWaypoint"
+Config.ContactTag = "GhostNetContact"
 
 --==========================================================================
 -- 1. REICHWEITE (Netzwerkkarte)
@@ -212,7 +215,11 @@ end
 -- 10. SPEICHERN
 --==========================================================================
 Config.Save = {
-	SchemaVersion = 1, -- hochzaehlen, wenn sich das Profil-Schema aendert
+	-- Hochzaehlen, wenn sich das Profil-Schema aendert. Zu JEDER neuen Version
+	-- gehoert ein Eintrag in SaveService.MIGRATIONS.
+	--   1 = Phase 1 (Bank, Unsold, Rig, Trace, Cooldowns, Stats)
+	--   2 = Phase A (Story-Block)
+	SchemaVersion = 2,
 	StoreName = "GhostNetPlayers_v1",
 	KeyFormat = "ghostnet_player_%d",
 
@@ -238,7 +245,36 @@ Config.Save = {
 }
 
 --==========================================================================
--- 11. RATE-LIMITS (Token-Bucket pro Spieler und Remote)
+-- 11. MISSIONEN (Story-Rueckgrat)
+-- Die Missionsdaten selbst stehen in Shared/Missions.luau. Hier steht nur,
+-- wie sich das System verhaelt.
+--==========================================================================
+Config.Mission = {
+	-- true = die erste verfuegbare Mission startet von selbst, sobald das
+	-- Profil geladen ist. Auf false gestellt muss der Spieler jede Mission
+	-- ueber MissionAccept annehmen.
+	AutoStart = true,
+
+	TickSeconds = 0.5, -- Takt fuer GOTO-Distanz und WAIT-Timer (reine Performance)
+
+	-- Reichweiten fuer GOTO- und TALK-Schritte. Beides wird serverseitig
+	-- geprueft, genau wie beim Hacken. Groesser = grosszuegiger, aber ein
+	-- Wegpunkt gilt dann schon aus der Ferne als erreicht.
+	WaypointRange = 10,
+	WaypointTolerance = 4,
+	ContactRange = 10,
+	ContactTolerance = 4,
+
+	-- false = die Belohnung landet im heissen Wallet und muss erst zum Hehler.
+	-- Das haelt den Verkaufs-Loop auch bei Story-Geld relevant. true zahlt
+	-- direkt auf die Bank - bequemer, nimmt der Mission aber die Spannung.
+	RewardToBank = false,
+
+	MaxSteps = 24, -- Sicherheitsgrenze; groessere Missionen gelten als Datenfehler
+}
+
+--==========================================================================
+-- 12. RATE-LIMITS (Token-Bucket pro Spieler und Remote)
 -- Jede neue Remote braucht hier einen Eintrag, sonst wird sie verworfen.
 --==========================================================================
 Config.RateLimits = {
@@ -247,10 +283,13 @@ Config.RateLimits = {
 	HackAbort = { Rate = 4, Burst = 6 },
 	SellRequest = { Rate = 1, Burst = 3 },
 	ShopPurchase = { Rate = 2, Burst = 4 },
+	MissionAccept = { Rate = 1, Burst = 3 },
+	MissionAbandon = { Rate = 1, Burst = 2 },
+	MissionInteract = { Rate = 2, Burst = 4 },
 }
 
 --==========================================================================
--- 12. NODE-BREACH
+-- 13. NODE-BREACH
 --==========================================================================
 Config.NodeBreach = {
 	-- Pro Schwierigkeitsband: Gittergroesse, Anzahl Relays, Anteil sichtbares
@@ -267,7 +306,7 @@ Config.NodeBreach = {
 }
 
 --==========================================================================
--- 13. DEFAULTS FUER HACK-ZIELE
+-- 14. DEFAULTS FUER HACK-ZIELE
 -- Ein Part braucht KEIN einziges Attribut. Alles, was fehlt, kommt von hier.
 --==========================================================================
 Config.TargetDefaults = {

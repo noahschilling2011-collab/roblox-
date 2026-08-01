@@ -22,6 +22,11 @@ local EVENT_NAMES = {
 	"SellRequest", -- C->S  { }            Verkauf beim Hehler
 	"SellResult", -- S->C  { ok, reason, gross, fee, net, seconds }
 	"TraceSync", -- S->C  { trace, max, locked, lockSeconds, bust? }
+	"MissionSync", -- S->C  { active, title, briefing, stepIndex, stepText, steps, progress }
+	"MissionAccept", -- C->S  { missionId }
+	"MissionAbandon", -- C->S  { }
+	"MissionInteract", -- C->S  { contactId }   loest TALK-Schritte aus
+	"WaypointSync", -- S->C  { position, label }  Marker fuer GOTO/HACK/TALK
 }
 
 local FUNCTION_NAMES: { string } = {

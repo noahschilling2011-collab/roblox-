@@ -40,6 +40,15 @@ local Minigames = {
 
 local sessions: { [Player]: Session } = {}
 
+-- Wer mitbekommen will, dass ein Hack ausgegangen ist, meldet sich hier an -
+-- genau wie bei TraceService.OnBust. Dadurch bleibt die Richtung
+-- MissionService -> HackService und kein Modul requiret rueckwaerts.
+local resolvedCallbacks: { (Player, { [string]: any }) -> () } = {}
+
+function HackService.OnHackResolved(callback: (Player, { [string]: any }) -> ())
+	table.insert(resolvedCallbacks, callback)
+end
+
 --==========================================================================
 -- Hilfsfunktionen
 --==========================================================================
@@ -128,6 +137,22 @@ local function resolve(session: Session, success: boolean, reason: string)
 
 	if target then
 		SaveService.RequestSave(player)
+	end
+
+	for _, callback in resolvedCallbacks do
+		task.spawn(function()
+			local ok, err = pcall(callback, player, {
+				TargetId = session.TargetId,
+				Success = success,
+				Reason = reason,
+				Reward = reward,
+				Difficulty = session.Difficulty,
+				HackType = session.HackType,
+			})
+			if not ok then
+				warn(("[GHOSTNET] OnHackResolved-Callback fehlgeschlagen: %s"):format(tostring(err)))
+			end
+		end)
 	end
 end
 

@@ -19,6 +19,17 @@ export type Stats = {
 	Upgrades: number, -- gekaufte Rig-Stufen
 }
 
+-- Story-Fortschritt im Profil. Der Client bekommt davon nur eine Abschrift
+-- ueber MissionSync und meldet nie selbst, dass ein Schritt fertig ist.
+export type Story = {
+	Active: string, -- "" = gerade keine Mission
+	Step: number, -- 1-basierter Index in Mission.Steps
+	StepProgress: number, -- fuer Schritte mit Amount > 1
+	StepStartedAt: number, -- Unix-Zeit, gebraucht fuer WAIT-Schritte
+	Completed: { string }, -- abgeschlossene Missions-Ids
+	Unlocks: { string }, -- dauerhaft freigeschaltete Systeme
+}
+
 -- Das gespeicherte Spielerprofil. Einzige Wahrheit fuer alles, was einen
 -- Serverwechsel ueberleben muss. Alle Zeitstempel sind os.time() (Unix-Zeit).
 export type Profile = {
@@ -29,6 +40,7 @@ export type Profile = {
 	Trace: number, -- 0 .. Config.Trace.Max
 	Cooldowns: { [string]: number }, -- [targetId] = Unix-Zeit, ab der wieder erlaubt
 	Stats: Stats,
+	Story: Story, -- seit SchemaVersion 2
 	LastSeen: number, -- Unix-Zeit des letzten Speicherns
 	SessionId: string, -- Session-Lock gegen Doppel-Sitzungen
 }

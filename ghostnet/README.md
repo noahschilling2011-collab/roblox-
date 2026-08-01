@@ -98,6 +98,30 @@ Kein Code nötig:
   `RequiredLevel`, `OnSuccess`, `DownTime`, `DisplayName`). Was fehlt, kommt aus
   `Config.TargetDefaults`.
 - **Hehler:** BasePart mit Tag `GhostNetFence`, optional Attribut `DisplayName`.
+- **Missions-Wegpunkt:** BasePart mit Tag `GhostNetWaypoint` und Attribut
+  `WaypointId`. Löst `GOTO`-Schritte aus, wenn der Spieler nah genug ist.
+- **Kontakt:** BasePart mit Tag `GhostNetContact` und Attribut `ContactId`.
+  Löst `TALK`-Schritte aus, wenn der Spieler `[E]` drückt.
+
+## Eine Mission schreiben
+
+Missionen sind **Daten**, keine Skripte. Neue Mission = ein Eintrag in
+`src/shared/Missions.luau` unter `Missions.List`, sonst nichts. Das Schema
+steht in derselben Datei als `Missions.Example` und zeigt jeden Schritt-Typ
+genau einmal:
+
+| Typ | Feld | Fertig, wenn … |
+| --- | --- | --- |
+| `GOTO` | `Target` = WaypointId | der Spieler nah genug am Wegpunkt steht |
+| `HACK` | `TargetId` | dieses Ziel **erfolgreich** geknackt wurde |
+| `SELL` | `Amount` (Verkäufe) | so oft beim Hehler verkauft wurde |
+| `BUY`  | `GoodId?`, `Amount` (Stück) | so viel gekauft wurde (ab Phase C) |
+| `WAIT` | `Seconds` | die Zeit abgelaufen ist |
+| `TALK` | `ContactId` | der Spieler den Kontakt angesprochen hat |
+
+Der Testlauf prüft die Registry beim Start mit: doppelte Ids, unbekannte
+Schritt-Typen, fehlende Pflichtfelder, Vorgänger, die es nicht gibt, und Kreise
+in den Vorbedingungen. Fehler tauchen beim Serverstart als `warn()` auf.
 
 ## Steuerung
 

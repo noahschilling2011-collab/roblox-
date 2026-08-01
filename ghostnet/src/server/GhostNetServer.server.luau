@@ -20,6 +20,7 @@ local HackTargets = require(Systems.HackTargets)
 local HackService = require(Systems.HackService)
 local SellService = require(Systems.SellService)
 local ShopService = require(Systems.ShopService)
+local MissionService = require(Systems.MissionService)
 
 SaveService.Init() -- zuerst: haelt das Profil
 EconomyService.Init() -- liest aus dem Profil
@@ -28,5 +29,7 @@ HackTargets.Init() -- braucht das Profil fuer Cooldowns
 HackService.Init() -- meldet sich beim TraceService fuer den Bust an
 SellService.Init()
 ShopService.Init()
+-- Zuletzt: haengt sich per OnHackResolved / OnSell an die fertigen Services.
+MissionService.Init()
 
 print(("[GHOSTNET] Server hochgefahren - Version %s"):format(Config.Version))

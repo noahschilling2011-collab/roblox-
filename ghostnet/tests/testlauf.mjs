@@ -161,6 +161,60 @@ try {
     "nextFreeId zaehlt nicht bis zur freien Id hoch"
   );
 
+  // Kein Modul darf ein anderes im Kreis requiren. Der MissionService haengt
+  // sich per Callback an HackService/SellService - nicht umgekehrt.
+  const serverModules = new Map();
+  for (const [file, src] of sources) {
+    const short = relative(ROOT, file);
+    if (!short.startsWith("src/server/Systems/")) continue;
+    const name = short.split("/").pop().replace(/\.luau$/, "");
+    const deps = [...src.matchAll(/require\(script\.Parent\.(\w+)\)/g)].map((m) => m[1]);
+    serverModules.set(name, deps);
+  }
+  const cycle = (() => {
+    const state = new Map();
+    const walk = (name, trail) => {
+      if (state.get(name) === 1) return [...trail, name];
+      if (state.get(name) === 2) return null;
+      state.set(name, 1);
+      for (const dep of serverModules.get(name) ?? []) {
+        const found = walk(dep, [...trail, name]);
+        if (found) return found;
+      }
+      state.set(name, 2);
+      return null;
+    };
+    for (const name of serverModules.keys()) {
+      const found = walk(name, []);
+      if (found) return found;
+    }
+    return null;
+  })();
+  check("kein Require-Kreis zwischen den Services", cycle === null, cycle ? cycle.join(" -> ") : "");
+
+  // Der MissionService darf nirgendwo rueckwaerts requiret werden.
+  for (const [name, deps] of serverModules) {
+    if (name === "MissionService") continue;
+    check(
+      `${name} requiret den MissionService nicht`,
+      !deps.includes("MissionService"),
+      "rueckwaerts-Abhaengigkeit"
+    );
+  }
+
+  // Jede Schema-Version braucht eine Migration.
+  const schemaVersion = Number(/SchemaVersion = (\d+)/.exec(configSrc)?.[1] ?? 0);
+  check("Schema-Version ist gesetzt", schemaVersion >= 1, `gelesen: ${schemaVersion}`);
+  const migrationKeys = [...saveSrc.matchAll(/\[(\d+)\]\s*=\s*function\(profile/g)].map((m) => Number(m[1]));
+  for (let version = 2; version <= schemaVersion; version++) {
+    check(`Migration auf Schema ${version} vorhanden`, migrationKeys.includes(version), "fehlt in MIGRATIONS");
+  }
+  check(
+    "Story-Block ist im Default-Profil",
+    /Story = defaultStory\(\)/.test(saveSrc),
+    "DefaultProfile hat keinen Story-Block"
+  );
+
   //========================================================================
   // 3. LOGIK  (echte Module in der Luau-VM)
   //========================================================================
@@ -199,6 +253,7 @@ local __deps = {}
   for (const [name, path] of [
     ["Types", "shared/Types.luau"],
     ["Config", "shared/Config.luau"],
+    ["Missions", "shared/Missions.luau"],
     ["NodeBreach", "server/Systems/Minigames/NodeBreach.luau"],
   ]) {
     body += `\n__deps["${name}"] = (function()\n${loadModule(path)}\nend)()\n`;
@@ -206,6 +261,7 @@ local __deps = {}
 
   const luaTests = `
 local Config = __deps["Config"]
+local Missions = __deps["Missions"]
 local NodeBreach = __deps["NodeBreach"]
 
 -- Ergebnis geht als eine Zeichenkette zurueck ("OK|name" / "FAIL|name|grund"),
@@ -331,6 +387,202 @@ test("Rig-Anzeigetexte sind fuer jedes Bauteil und jede Stufe da", function()
 			expect(typeof(text) == "string" and text ~= "-" and #text > 0, "Effekttext fehlt: " .. component)
 		end
 	end
+end)
+
+--== Missionen (Phase A) ===================================================
+
+local function story(completed, unlocks, active)
+	return { Active = active or "", Completed = completed or {}, Unlocks = unlocks or {} }
+end
+
+test("Registry der echten Missionen ist gueltig", function()
+	local valid, errors = Missions.Validate(nil, Config.Mission.MaxSteps)
+	expect(valid, "Missionsdaten kaputt: " .. table.concat(errors, " | "))
+end)
+
+test("Das dokumentierte Beispiel haelt das eigene Schema ein", function()
+	local valid, errors = Missions.Validate({ Missions.Example }, Config.Mission.MaxSteps)
+	expect(valid, "Missions.Example ist selbst ungueltig: " .. table.concat(errors, " | "))
+	-- Es soll jeden Schritt-Typ genau einmal zeigen.
+	local seen = {}
+	for _, step in Missions.Example.Steps do
+		seen[step.Type] = true
+	end
+	for stepType in Missions.StepTypes do
+		expect(seen[stepType], "Beispiel zeigt den Typ " .. stepType .. " nicht")
+	end
+end)
+
+test("Validate findet kaputte Missionsdaten", function()
+	local function broken(list)
+		local valid = Missions.Validate(list, Config.Mission.MaxSteps)
+		return not valid
+	end
+
+	local goodStep = { Type = "SELL", Amount = 1, Text = "verkaufen" }
+	local function mission(id, steps, requires)
+		return { Id = id, Title = "T", Briefing = "B", Requires = requires or {}, Steps = steps, Reward = {} }
+	end
+
+	expect(broken({ mission("A", { goodStep }), mission("A", { goodStep }) }), "doppelte Id durchgelassen")
+	expect(broken({ mission("A", { { Type = "NOPE", Text = "x" } }) }), "unbekannter Typ durchgelassen")
+	expect(broken({ mission("A", { { Type = "HACK", Text = "x" } }) }), "HACK ohne TargetId durchgelassen")
+	expect(broken({ mission("A", { { Type = "GOTO", Text = "x" } }) }), "GOTO ohne Target durchgelassen")
+	expect(broken({ mission("A", { { Type = "WAIT", Text = "x" } }) }), "WAIT ohne Seconds durchgelassen")
+	expect(broken({ mission("A", { goodStep }, { "GIBTSNICHT" }) }), "unbekannter Vorgaenger durchgelassen")
+	expect(broken({ mission("A", {}) }), "Mission ohne Schritte durchgelassen")
+	expect(
+		broken({ mission("A", { goodStep }, { "B" }), mission("B", { goodStep }, { "A" }) }),
+		"Kreis in den Vorbedingungen durchgelassen"
+	)
+	-- Und die saubere Variante muss durchgehen.
+	local valid = Missions.Validate({ mission("A", { goodStep }), mission("B", { goodStep }, { "A" }) })
+	expect(valid, "gueltige Kette abgelehnt")
+end)
+
+test("Verfuegbarkeit haengt an den Vorgaengern", function()
+	local goodStep = { Type = "SELL", Amount = 1, Text = "verkaufen" }
+	local list = {
+		{ Id = "M1", Title = "1", Briefing = "", Requires = {}, Steps = { goodStep }, Reward = {} },
+		{ Id = "M2", Title = "2", Briefing = "", Requires = { "M1" }, Steps = { goodStep }, Reward = {} },
+	}
+
+	local fresh = story()
+	expect(Missions.IsAvailable(fresh, "M1", list), "M1 nicht verfuegbar")
+	expect(not Missions.IsAvailable(fresh, "M2", list), "M2 ohne Vorgaenger verfuegbar")
+	expect(Missions.FirstAvailable(fresh, list).Id == "M1", "falsche erste Mission")
+
+	local after = story({ "M1" })
+	expect(not Missions.IsAvailable(after, "M1", list), "abgeschlossene Mission nochmal verfuegbar")
+	expect(Missions.IsAvailable(after, "M2", list), "M2 nach Vorgaenger nicht verfuegbar")
+	expect(Missions.FirstAvailable(after, list).Id == "M2", "falsche Folgemission")
+
+	local done = story({ "M1", "M2" })
+	expect(Missions.FirstAvailable(done, list) == nil, "nach allen Missionen kommt noch eine")
+end)
+
+test("Unlocks werden korrekt gelesen", function()
+	local s = story({}, { "STORE_RAIDS" })
+	expect(Missions.HasUnlock(s, "STORE_RAIDS"), "Unlock nicht erkannt")
+	expect(not Missions.HasUnlock(s, "DARKNET"), "unbekannter Unlock als vorhanden gemeldet")
+end)
+
+test("Progress: jeder Schritt-Typ reagiert nur auf sein eigenes Ereignis", function()
+	local steps = {
+		GOTO = { Type = "GOTO", Target = "WP", Text = "x" },
+		HACK = { Type = "HACK", TargetId = "T1", Text = "x" },
+		TALK = { Type = "TALK", ContactId = "C1", Text = "x" },
+		SELL = { Type = "SELL", Text = "x" },
+		WAIT = { Type = "WAIT", Seconds = 3, Text = "x" },
+		BUY = { Type = "BUY", GoodId = "G1", Amount = 2, Text = "x" },
+	}
+	local events = {
+		GOTO = { Type = "GOTO", WaypointId = "WP" },
+		HACK = { Type = "HACK", TargetId = "T1", Success = true },
+		TALK = { Type = "TALK", ContactId = "C1" },
+		SELL = { Type = "SELL" },
+		WAIT = { Type = "WAIT" },
+		BUY = { Type = "BUY", GoodId = "G1", Amount = 1 },
+	}
+
+	for stepType, step in steps do
+		expect(Missions.Progress(step, events[stepType]) > 0, stepType .. ": passendes Ereignis zaehlt nicht")
+		for otherType, event in events do
+			if otherType ~= stepType then
+				expect(
+					Missions.Progress(step, event) == 0,
+					stepType .. ": reagiert faelschlich auf " .. otherType
+				)
+			end
+		end
+	end
+end)
+
+test("Progress: falsche Ziele und Fehlschlaege zaehlen nicht", function()
+	local hack = { Type = "HACK", TargetId = "T1", Text = "x" }
+	expect(Missions.Progress(hack, { Type = "HACK", TargetId = "T2", Success = true }) == 0, "falsches Ziel zaehlt")
+	expect(Missions.Progress(hack, { Type = "HACK", TargetId = "T1", Success = false }) == 0, "Fehlschlag zaehlt")
+	expect(Missions.Progress(hack, { Type = "HACK", TargetId = "T1" }) == 0, "Hack ohne Success-Flag zaehlt")
+
+	local goto_ = { Type = "GOTO", Target = "WP", Text = "x" }
+	expect(Missions.Progress(goto_, { Type = "GOTO", WaypointId = "ANDERS" }) == 0, "falscher Wegpunkt zaehlt")
+
+	local talk = { Type = "TALK", ContactId = "C1", Text = "x" }
+	expect(Missions.Progress(talk, { Type = "TALK", ContactId = "C2" }) == 0, "falscher Kontakt zaehlt")
+
+	expect(Missions.Progress(hack, nil) == 0, "nil-Ereignis zaehlt")
+	expect(Missions.Progress(hack, "kaputt") == 0, "String-Ereignis zaehlt")
+end)
+
+test("Progress: BUY zaehlt Stueckzahlen, SELL zaehlt Verkaeufe", function()
+	local buy = { Type = "BUY", GoodId = "G1", Amount = 5, Text = "x" }
+	expect(Missions.Required(buy) == 5, "Required liest Amount nicht")
+	expect(Missions.Progress(buy, { Type = "BUY", GoodId = "G1", Amount = 3 }) == 3, "Stueckzahl falsch")
+	expect(Missions.Progress(buy, { Type = "BUY", GoodId = "G2", Amount = 3 }) == 0, "falsche Ware zaehlt")
+	expect(Missions.Progress(buy, { Type = "BUY", GoodId = "G1", Amount = -2 }) == 0, "negative Menge zaehlt")
+	expect(Missions.Progress(buy, { Type = "BUY", GoodId = "G1" }) == 0, "Kauf ohne Menge zaehlt")
+
+	-- Ohne GoodId zaehlt jede Ware.
+	local anyBuy = { Type = "BUY", Amount = 2, Text = "x" }
+	expect(Missions.Progress(anyBuy, { Type = "BUY", GoodId = "EGAL", Amount = 2 }) == 2, "offener Kauf zaehlt nicht")
+
+	local sell = { Type = "SELL", Amount = 3, Text = "x" }
+	expect(Missions.Required(sell) == 3, "SELL-Required falsch")
+	expect(Missions.Progress(sell, { Type = "SELL", Net = 9999 }) == 1, "ein Verkauf zaehlt nicht als 1")
+
+	local plain = { Type = "SELL", Text = "x" }
+	expect(Missions.Required(plain) == 1, "Standard-Required ist nicht 1")
+end)
+
+test("Eine ganze Mission laesst sich Schritt fuer Schritt durchspielen", function()
+	-- Simuliert genau das, was der MissionService mit den puren Regeln macht.
+	local mission = {
+		Id = "M",
+		Title = "T",
+		Briefing = "",
+		Requires = {},
+		Steps = {
+			{ Type = "GOTO", Target = "WP", Text = "hin" },
+			{ Type = "HACK", TargetId = "T1", Text = "knacken" },
+			{ Type = "SELL", Amount = 2, Text = "zweimal abliefern" },
+		},
+		Reward = { Crypto = 400, Unlock = "STORE_RAIDS" },
+	}
+	local valid, errors = Missions.Validate({ mission }, Config.Mission.MaxSteps)
+	expect(valid, "Testmission ungueltig: " .. table.concat(errors, " | "))
+
+	local index, progress = 1, 0
+	local function feed(event)
+		local step = mission.Steps[index]
+		if not step then
+			return
+		end
+		local gain = Missions.Progress(step, event)
+		if gain <= 0 then
+			return
+		end
+		progress += gain
+		if progress >= Missions.Required(step) then
+			index += 1
+			progress = 0
+		end
+	end
+
+	feed({ Type = "SELL" }) -- falsche Reihenfolge: darf nichts tun
+	expect(index == 1, "SELL hat den GOTO-Schritt vorgezogen")
+
+	feed({ Type = "GOTO", WaypointId = "WP" })
+	expect(index == 2, "GOTO nicht abgeschlossen")
+
+	feed({ Type = "HACK", TargetId = "T1", Success = false })
+	expect(index == 2, "Fehlschlag hat den Schritt beendet")
+	feed({ Type = "HACK", TargetId = "T1", Success = true })
+	expect(index == 3, "HACK nicht abgeschlossen")
+
+	feed({ Type = "SELL" })
+	expect(index == 3 and progress == 1, "erster von zwei Verkaeufen falsch gezaehlt")
+	feed({ Type = "SELL" })
+	expect(index == 4, "Mission nicht abgeschlossen")
 end)
 
 --== Node-Breach ===========================================================

@@ -54,6 +54,17 @@ local function defaultStats(): Types.Stats
 	return { Hacks = 0, Fails = 0, Busts = 0, Sales = 0, Earned = 0, Upgrades = 0 }
 end
 
+local function defaultStory(): Types.Story
+	return {
+		Active = "",
+		Step = 1,
+		StepProgress = 0,
+		StepStartedAt = 0,
+		Completed = {},
+		Unlocks = {},
+	}
+end
+
 function SaveService.DefaultProfile(): Profile
 	local start = Config.Rig.StartLevels
 	return {
@@ -64,6 +75,7 @@ function SaveService.DefaultProfile(): Profile
 		Trace = 0,
 		Cooldowns = {},
 		Stats = defaultStats(),
+		Story = defaultStory(),
 		LastSeen = os.time(),
 		SessionId = "",
 	}
@@ -76,13 +88,37 @@ local function toCount(value: any): number?
 	return math.max(0, math.floor(value))
 end
 
+-- Nur Strings, die als Id taugen. Haelt Muell aus dem Profil, falls jemals
+-- kaputte Daten im Store landen.
+local function cleanIdList(raw: any, limit: number): { string }
+	local out: { string } = {}
+	if typeof(raw) ~= "table" then
+		return out
+	end
+	for _, value in raw do
+		if typeof(value) == "string" and value ~= "" and #value <= 48 and #out < limit then
+			if not table.find(out, value) then
+				table.insert(out, value)
+			end
+		end
+	end
+	return out
+end
+
 -- Migration und Missbrauchsschutz in einem: alles, was fehlt, kommt aus dem
 -- Default, alles was da ist, wird auf Typ und Wertebereich geprueft. Neue
 -- Felder in kuenftigen Schema-Versionen brauchen deshalb nur hier eine Zeile.
-local function sanitize(raw: any): Profile
+-- Liefert zusaetzlich die Schema-Version, die im Store STAND - die braucht
+-- runMigrations, um zu wissen, was noch nachzuziehen ist.
+local function sanitize(raw: any): (Profile, number)
 	local p = SaveService.DefaultProfile()
 	if typeof(raw) ~= "table" then
-		return p
+		return p, Config.Save.SchemaVersion -- frisches Profil, nichts zu migrieren
+	end
+
+	local rawVersion = 1
+	if typeof(raw.SchemaVersion) == "number" and raw.SchemaVersion >= 1 then
+		rawVersion = math.floor(raw.SchemaVersion)
 	end
 
 	p.Banked = toCount(raw.Banked) or p.Banked
@@ -120,13 +156,69 @@ local function sanitize(raw: any): Profile
 		end
 	end
 
+	if typeof(raw.Story) == "table" then
+		local story = raw.Story
+		if typeof(story.Active) == "string" and #story.Active <= 48 then
+			p.Story.Active = story.Active
+		end
+		p.Story.Step = math.max(1, toCount(story.Step) or 1)
+		p.Story.StepProgress = toCount(story.StepProgress) or 0
+		p.Story.StepStartedAt = toCount(story.StepStartedAt) or 0
+		p.Story.Completed = cleanIdList(story.Completed, 128)
+		p.Story.Unlocks = cleanIdList(story.Unlocks, 128)
+	end
+
 	p.LastSeen = toCount(raw.LastSeen) or p.LastSeen
 	if typeof(raw.SessionId) == "string" then
 		p.SessionId = raw.SessionId
 	end
 
 	p.SchemaVersion = Config.Save.SchemaVersion
-	return p
+	return p, rawVersion
+end
+
+--==========================================================================
+-- Migrationen
+--
+-- sanitize() fuellt fehlende Felder bereits mit Defaults - das allein reicht
+-- fuer reine Feld-Ergaenzungen. Hier steht, was DARUEBER HINAUS noetig ist,
+-- wenn sich die Bedeutung vorhandener Daten aendert. Schluessel = Zielversion.
+-- Ein Altprofil wird nie verworfen und darf nie zum Absturz fuehren.
+--==========================================================================
+
+local MIGRATIONS: { [number]: (Profile) -> () } = {
+	-- 1 -> 2: Der Story-Block kam dazu. Alte Profile haben ihn nicht; sie
+	-- starten bei der ersten Mission, behalten aber Bank, Rig und Cooldowns.
+	[2] = function(profile: Profile)
+		profile.Story.Active = ""
+		profile.Story.Step = 1
+		profile.Story.StepProgress = 0
+		profile.Story.StepStartedAt = 0
+	end,
+}
+
+local function runMigrations(profile: Profile, fromVersion: number, playerName: string)
+	if fromVersion >= Config.Save.SchemaVersion then
+		return
+	end
+	for version = fromVersion + 1, Config.Save.SchemaVersion do
+		local migrate = MIGRATIONS[version]
+		if migrate then
+			local ok, err = pcall(migrate, profile)
+			if not ok then
+				warn(("[GHOSTNET] Migration auf Schema %d fuer %s fehlgeschlagen: %s"):format(
+					version,
+					playerName,
+					tostring(err)
+				))
+			end
+		end
+	end
+	print(("[GHOSTNET] Profil von %s auf Schema %d -> %d migriert."):format(
+		playerName,
+		fromVersion,
+		Config.Save.SchemaVersion
+	))
 end
 
 -- Alte Cooldowns wegwerfen, bevor gespeichert wird.
@@ -237,7 +329,10 @@ local function loadProfile(player: Player)
 
 	local ok, loaded = withRetry("Profil laden", player.Name, function()
 		return dataStore:UpdateAsync(key, function(raw: any): Profile
-			local profile = sanitize(raw)
+			local profile, rawVersion = sanitize(raw)
+			-- Altprofile nachziehen, BEVOR geschrieben wird. Ein Profil wird
+			-- dabei nie verworfen.
+			runMigrations(profile, rawVersion, player.Name)
 
 			-- Abkuehlung fuer die Zeit, in der der Spieler offline war. Der
 			-- Trace laeuft also nicht "eingefroren" weiter - wer eine Woche

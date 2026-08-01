@@ -119,6 +119,21 @@ function EconomyService.AwardUnsold(player: Player, amount: number)
 	EconomyService.Sync(player)
 end
 
+-- Direkt auf die Bank, ohne Umweg ueber den Hehler. Nur fuer Belohnungen,
+-- die bewusst sicher sein sollen (Missionen mit Config.Mission.RewardToBank).
+function EconomyService.AwardBanked(player: Player, amount: number)
+	if amount <= 0 then
+		return
+	end
+	local profile = SaveService.Get(player)
+	if not profile then
+		return
+	end
+	profile.Banked += math.floor(amount)
+	profile.Stats.Earned += math.floor(amount)
+	EconomyService.Sync(player)
+end
+
 -- Wird beim Bust gebraucht. Liefert, wie viel verloren ging.
 function EconomyService.WipeUnsold(player: Player): number
 	local profile = SaveService.Get(player)

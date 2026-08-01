@@ -3,16 +3,52 @@
 > Wird am Ende jeder Session aktualisiert. Erstes, was eine neue Session liest.
 
 ## Aktuelle Phase
-**Phase 1 abgeschlossen** (`Config.Version = "0.2.0"`). Der Spielkreislauf ist
-zum ersten Mal geschlossen: hacken → Trace steigt → verkaufen → aufrüsten →
-schwereres Ziel — und alles überlebt einen Rejoin.
+**Phase A abgeschlossen** (`Config.Version = "0.3.0"`). Das Missions-Rückgrat
+steht. Der Spielkreislauf aus Phase 1 läuft unverändert weiter.
 
-**Nächster Schritt: Phase 2 (Die ersten 60 Sekunden).** Vorher nichts aus
-Phase 3–5 anfangen.
+**Nächster Schritt: Phase B (Mission 1 bis 3).** Erst dort entstehen
+Missionsinhalte — die Registry in `Shared/Missions.luau` ist absichtlich leer.
+Vorher nichts aus Phase C–G anfangen.
 
 ## Fertig ✅
 
-### Bugfixes aus dem Prototyp
+### Phase A — Missions-Rückgrat
+- **`Shared/Missions.luau`** (neu) — eine Mission ist ein Tabelleneintrag, kein
+  Skript. Enthält die Registry (aktuell leer), das dokumentierte Schema
+  `Missions.Example` und die **puren** Regeln: `Validate`, `IsAvailable`,
+  `FirstAvailable`, `Progress`, `Required`, `HasUnlock`. Kennt weder Spieler
+  noch Remotes noch die Welt — deshalb komplett im Testlauf prüfbar.
+- **`MissionService`** (neu) — aktive Mission und Schritt-Index liegen **im
+  Profil**. Der Server leitet den Fortschritt aus dem ab, was ohnehin passiert:
+  gelöste Hacks, Verkäufe, Distanz zu Wegpunkten, abgelaufene Wartezeiten.
+  Der Client meldet **nie** „Schritt fertig".
+- **Schritt-Typen:** `GOTO` (Part mit Tag `GhostNetWaypoint` + Attribut
+  `WaypointId`), `HACK` (`TargetId`), `SELL` (Anzahl Verkäufe), `BUY`
+  (Ware + Stückzahl, Haken für Phase C), `WAIT` (Sekunden über `os.time()`),
+  `TALK` (Part mit Tag `GhostNetContact` + Attribut `ContactId`).
+- **Kein Require-Kreis:** `HackService.OnHackResolved` und `SellService.OnSell`
+  sind Callback-Register nach dem Vorbild von `TraceService.OnBust`. Der
+  MissionService hängt sich dort an; keiner der beiden kennt ihn.
+  Der Testlauf prüft das Abhängigkeitsdiagramm auf Kreise.
+- **Neue Remotes:** `MissionSync`, `MissionAccept`, `MissionAbandon`,
+  `MissionInteract` (TALK), `WaypointSync` — alle mit Rate-Limit.
+- **`MissionUI`** (neu) — Auftragsanzeige oben links, Wegpunkt-Marker mit
+  Entfernung, Countdown bei `WAIT`, `[E]`-Prompt bei `TALK`. Reine Anzeige.
+- **`EconomyService.AwardBanked`** (neu) — für Missionsbelohnungen, die
+  bewusst sicher sein sollen. Standard ist `Config.Mission.RewardToBank = false`:
+  Story-Geld ist heiß und muss erst zum Hehler, damit der Verkaufs-Loop
+  relevant bleibt.
+
+### ⚠️ Schema-Migration 1 → 2
+Das Profil hat einen `Story`-Block bekommen (`Config.Save.SchemaVersion = 2`).
+`SaveService.MIGRATIONS` zieht Altprofile beim Laden nach, **bevor** geschrieben
+wird. Bank, Rig, Trace, Cooldowns und Statistik bleiben erhalten; nur die Story
+startet bei null. Ein Altprofil wird nie verworfen. Jede weitere Schema-Version
+braucht einen eigenen Eintrag in `MIGRATIONS` — der Testlauf prüft das.
+
+### Phase 1 — Loop geschlossen
+
+#### Bugfixes aus dem Prototyp
 - **Ziel-Id-Kollision** — `HackTargets.nextFreeId()` zählt jetzt hoch, bis die Id
   wirklich frei ist. Vorher konnte ein Part ohne `TargetId`-Attribut die Id eines
   Parts mit gespeichertem Attribut überschreiben; das erste Ziel war dann tot.
@@ -24,7 +60,7 @@ Phase 3–5 anfangen.
   nur bei serverinternen Kurzzeit-Timern: `DownUntil`, Rate-Limits, Bust-Sperre,
   Sync-Drosselung.
 
-### Phase 1
+#### Systeme
 - **`SaveService`** — ein DataStore, Key `ghostnet_player_%d`, Profil-Schema mit
   `SchemaVersion`. Session-Lock über eine `SessionId` im Profil: die jüngere
   Sitzung übernimmt, die ältere merkt es beim nächsten Schreiben, schreibt nicht
@@ -68,23 +104,33 @@ Phase 3–5 anfangen.
   Hack kostet — auch das wird geprüft.
 
 ## Tests
-`cd ghostnet/tests && npm install && node testlauf.mjs` → **117/117 grün**.
-Drei Stufen: `luau-compile` über jede Datei · Projektregeln (`--!strict`, keine
-veralteten APIs, jede Remote angemeldet, jedes Rate-Limit konfiguriert, nur
-SaveService am DataStore) · echte Logik in der Luau-VM (Config-Formeln,
-Balancing-Vorgaben, komplettes Node-Breach-Minispiel inkl. Lösbarkeit auf jeder
-Schwierigkeit und "der Client bekommt die Lösung nie").
+`cd ghostnet/tests && npm install && node testlauf.mjs` → **160/160 grün**.
+Drei Stufen:
+1. **Syntax** — `luau-compile` über jede `.luau`-Datei.
+2. **Struktur** — `--!strict` überall, keine veralteten APIs, jede Remote
+   angemeldet, jedes Rate-Limit konfiguriert, nur SaveService am DataStore,
+   Cooldowns auf `os.time()`, **kein Require-Kreis zwischen den Services**,
+   zu jeder Schema-Version eine Migration.
+3. **Logik** — echte Module in der Luau-VM: Config-Formeln, Balancing-Vorgaben,
+   das komplette Missions-Regelwerk (Validierung inkl. Kreiserkennung,
+   Verfügbarkeit, jeder Schritt-Typ, eine ganze Mission durchgespielt) und das
+   Node-Breach-Minispiel (lösbar auf jeder Schwierigkeit, Lösung leckt nie).
 
 ## Build
 `node ghostnet/tools/build-rbxlx.mjs` → `ghostnet/GhostNet.rbxlx`,
 direkt in Studio öffenbar. Alternativ Rojo mit `ghostnet/default.project.json`.
 
 ## Offen / bewusst nicht gebaut ➡️
-- **Phase 2** komplett (Onboarding, Klartext-Fehlermeldungen, Sound).
+- **Missionsinhalte.** Die Registry ist leer, das ist die Definition of Done
+  von Phase A („MissionService läuft, ohne dass eine einzige Mission
+  existiert"). M01–M03 sind Phase B, M04–M05 Phase D.
+- **Phase C** (Darknet, Markt, Lager) — `MissionService.NotifyBuy` steht als
+  Haken bereit und wird bis dahin von niemandem aufgerufen.
+- **Phase E–G** (Admin-Panel, Robux-Store, Optik und Sound).
 - Der HUD zeigt Ablehnungen noch in Kurzform. Die ausführlichen Sätze mit
-  konkreten Zahlen („Braucht Rig-Tier 3 — dein schwächstes Bauteil ist RAM 1")
-  gehören zu Phase 2.
-- Es gibt **keine Sounds**. Bewusst: `SoundCatalog` ist Phase 2, und Asset-IDs
+  konkreten Zahlen („Braucht Tier 3 — dein schwächstes Bauteil ist RAM 1")
+  gehören zu Phase C.
+- Es gibt **keine Sounds**. Bewusst: `SoundCatalog` ist Phase G, und Asset-IDs
   werden nicht erfunden.
 
 ## Bekannte Einschränkungen ⚠️
@@ -109,3 +155,8 @@ direkt in Studio öffenbar. Alternativ Rojo mit `ghostnet/default.project.json`.
 - Der Shop ist von überall aus erreichbar, nicht an den Hehler gebunden — das
   Rig ist die eigene Ausrüstung, kein Ladenregal. Bezahlt wird trotzdem nur von
   der Bank, man muss also vorher zum Hehler.
+- Missionen sind Daten, keine Skripte. Wer eine neue schreibt, fasst nur
+  `Shared/Missions.luau` an. Das Schema steht dort als `Missions.Example`.
+- Leitregel für jede künftige Mission: sie ist gleichzeitig das Tutorial für
+  ein System **und** schaltet dieses System dauerhaft frei. Keine Mission
+  bauen, deren Inhalt danach verschwindet.

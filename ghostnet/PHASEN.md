@@ -30,7 +30,106 @@ und der Trace wurde zwar berechnet, aber nie angewendet.
 
 ---
 
-## Phase 2 — Die ersten 60 Sekunden
+## Phase A — Das Missions-Rückgrat ✅
+Zuerst das System, dann die Missionen.
+
+- `Shared/Missions.luau` — Missionen sind **Daten**, kein Skript. Enthält
+  Registry, Schema (`Missions.Example`) und die *puren* Regeln:
+  `Validate`, `IsAvailable`, `FirstAvailable`, `Progress`, `Required`.
+- `MissionService` — hält aktive Mission und Schritt im Profil, prüft
+  serverseitig, schaltet Unlocks frei. Hängt sich per `HackService.OnHackResolved`
+  und `SellService.OnSell` an, damit kein Modul rückwärts requiret.
+- Schritt-Typen: `GOTO`, `HACK`, `SELL`, `BUY`, `WAIT`, `TALK`. Mehr nicht.
+- Profil-Schema 1 → 2 (`Story`-Block) mit Migration für Altprofile.
+- Remotes: `MissionSync`, `MissionAccept`, `MissionAbandon`, `MissionInteract`,
+  `WaypointSync`.
+- `MissionUI` — Auftragsanzeige und Wegpunkt-Marker.
+
+Die Registry ist absichtlich **leer**: Missionsinhalte gehören in Phase B und D.
+
+---
+
+## Phase B — Mission 1 bis 3: der Einstieg
+Leitregel für jede Mission: *sie ist gleichzeitig das Tutorial für ein System
+UND schaltet dieses System dauerhaft frei.* Nie eine Mission bauen, deren
+Inhalt danach verschwindet.
+
+- **M01 „Erstes Gerät"** — Tutorial durch Tun. Übungsterminal (Difficulty 1,
+  kein Trace-Risiko), HackUI erklärt sich beim ersten Öffnen im Spiel,
+  Trace-Balken wird nach dem Erfolg einmalig hervorgehoben, Waypoint zum
+  Hehler, Shop öffnet einmal von selbst. Skip-Button, Zustand im Profil.
+  Jeder Schritt durch eine **Handlung** ausgelöst, nie durch einen Timer,
+  nie zwei Hinweise gleichzeitig. → schaltet freies Hacken frei.
+- **M02 „Der Laden"** — Koordinaten statt fertigem Weg, Kompass-Marker mit
+  Entfernung. Begehbares Gebäude, zwei gestaffelte Ziele (Schloss D3 → Tresor
+  D5), Alarm-Timer (`Config.Raid.AlarmSeconds`) ab dem Schloss.
+  → `Unlock = "STORE_RAIDS"`, Läden werden wiederholbarer Zieltyp.
+- **M03 „Nach Hause"** — Apartment als echter Hub (Darknet, Lager, Rig,
+  Missionsübersicht), nicht als Kulisse. → schaltet den Darknet-Zugang frei.
+
+---
+
+## Phase C — Das Darknet: der eigentliche Loop
+- `MarketService` — Preise bewegen sich **serverweit** je
+  `Config.Market.TickSeconds`, mit Mean Reversion (ohne die driften Preise nach
+  Stunden ins Absurde). Preisverlauf als Mini-Chart, sonst ist jeder Kauf ein
+  Münzwurf. Gelegentliche Events („Razzia: Ausweise +60 %"), serverweit
+  angekündigt.
+- `Shared/Goods.luau` — je Ware Basispreis, Volatilität, Risikowert.
+- Risiko: begrenzter Lagerplatz, Ware ist **heiß** (Bust kostet einen Teil des
+  Lagers, nicht nur Bargeld), Fälschungsrisiko sinkt mit dem Analyse-Modul.
+- `InventoryService` — Bestand im Profil, Kauf/Verkauf **ausschließlich**
+  serverseitig gerechnet. Nie einen vom Client geschickten Preis annehmen.
+- Klartext-Fehlermeldungen mit konkreten Zahlen für alle `deny`-Gründe, alle
+  NodeBreach-Rückmeldungen und alle Handels-Fehler.
+
+---
+
+## Phase D — Mission 4 und 5
+- **M04 „Erste Ware"** — geführter erster Handel: kaufen, Preis beobachten,
+  mit Gewinn verkaufen. Danach freier Handel.
+- **M05 „Die Bank"** — Außenkamera → Sicherheitstür → Tresorraum, steigender
+  Trace pro Stufe, Alarm-Timer über das Ganze, Fehlschlag = sofortiger Bust.
+  Danach wiederholbar mit langem Cooldown. Attribut `RequiresTwo` am Tresorraum
+  vorsehen, damit ein zweiter Spieler den Alarm verlangsamen kann.
+
+---
+
+## Phase E — Admin-Panel
+Sicherheit zuerst: UserId-Liste in einem ModuleScript in `ServerScriptService`
+(**nie** in `ReplicatedStorage`), Prüfung als **erste Zeile** jedes Handlers,
+zusätzlich `RunService:IsStudio()` für Geld/Trace/Profil-Reset, jede Aktion mit
+`warn()` geloggt, eigener Rate-Limit-Eintrag. F2 öffnet das Panel.
+Umfang: Wirtschaft, Missionen, Welt, Markt, Debug — wichtigster Punkt ist
+„Profil als JSON ausgeben", ohne das debuggt man Speicherfehler blind.
+
+---
+
+## Phase F — Robux-Store
+Erst wenn A bis D laufen. `MonetizationService` mit **allen IDs auf 0**.
+`UserOwnsGamePassAsync` beim Join, Ergebnis cachen; bei Fehler **nicht**
+annehmen, der Spieler besitze nichts. `PromptGamePassPurchaseFinished` für
+Live-Aktivierung. `ProcessReceipt` gibt `PurchaseGranted` erst zurück, **nachdem**
+der Effekt gespeichert wurde; verarbeitete `PurchaseId` im Profil merken.
+Nichts verkaufen, das ein Rätsel löst oder anderen schadet.
+
+---
+
+## Phase G — Optik
+Ein Stil überall über `UITheme`, Monospace für alles Technische, dezente
+Scanlines, Bewegung mit Bedeutung (0,15–0,3 s, `Quart`), Touch-Ziele ≥ 44 px.
+Welt: nächtliche Straßenzeile statt Baseplate, nasse Fahrbahn, Neonschilder,
+Nebel. Hack-Ziele auf Distanz an pulsierendem Akzentlicht erkennbar.
+`SoundCatalog` mit **leeren IDs** — Tonhöhe der Knoten-Klicks steigt mit der
+Pfadlänge, Ambience wird während eines Hacks leiser.
+
+---
+
+## Ältere Planung (Phase 2/3 aus dem ersten Bauplan)
+
+Diese Punkte sind in A–G aufgegangen und stehen hier nur noch als Referenz.
+
+### Phase 2 — Die ersten 60 Sekunden
 Auf Roblox entscheidet sich in unter einer Minute, ob jemand bleibt.
 
 - `OnboardingService` — gescriptetes erstes Ziel statt Textwall. Übungs-Kamera
@@ -50,7 +149,7 @@ Auf Roblox entscheidet sich in unter einer Minute, ob jemand bleibt.
 
 ---
 
-## Phase 3 — Gründe wiederzukommen
+### Phase 3 — Gründe wiederzukommen
 - `WorldGenerator` statt fest verdrahteter `TestTargets`: 25+ Ziele in vier
   Schwierigkeitszonen (1–2, 3–4, 5–6, 7+), räumlich getrennt, sodass
   Rig-Fortschritt neue Stadtteile aufschließt.
@@ -64,7 +163,7 @@ Auf Roblox entscheidet sich in unter einer Minute, ob jemand bleibt.
 
 ---
 
-## Phase 4 — Warum zu zweit
+### Phase 4 — Warum zu zweit
 GhostNet ist bisher ein Solo-Puzzle in einer sozialen Engine. **Eine** Option
 bauen, nicht beide:
 
@@ -77,7 +176,7 @@ bauen, nicht beide:
 
 ---
 
-## Phase 5 — Monetarisierung (zuletzt)
+### Phase 5 — Monetarisierung (zuletzt)
 Erst bauen, wenn Phase 1–3 laufen. Monetarisierung vor Retention verdient nichts.
 
 - `MonetizationService` mit Konstantentabelle, **alle IDs `0`**.

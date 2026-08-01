@@ -24,6 +24,14 @@ local TraceService = require(script.Parent.TraceService)
 
 local SellService = {}
 
+-- Wer mitbekommen will, dass verkauft wurde, meldet sich hier an - gleiches
+-- Muster wie TraceService.OnBust und HackService.OnHackResolved.
+local sellCallbacks: { (Player, { [string]: any }) -> () } = {}
+
+function SellService.OnSell(callback: (Player, { [string]: any }) -> ())
+	table.insert(sellCallbacks, callback)
+end
+
 --==========================================================================
 -- Hehler finden
 --==========================================================================
@@ -119,6 +127,15 @@ local function onSellRequest(player: Player, payload: any)
 		Relief = Config.Sell.TraceRelief,
 		FenceName = fence:GetAttribute("DisplayName") or fence.Name,
 	})
+
+	for _, callback in sellCallbacks do
+		task.spawn(function()
+			local ok, err = pcall(callback, player, { Gross = gross, Fee = fee, Net = net })
+			if not ok then
+				warn(("[GHOSTNET] OnSell-Callback fehlgeschlagen: %s"):format(tostring(err)))
+			end
+		end)
+	end
 end
 
 --==========================================================================

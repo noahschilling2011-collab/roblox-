@@ -1,10 +1,10 @@
 <roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4">
-<Item class="Workspace" referent="GN31">
+<Item class="Workspace" referent="GN34">
 <Properties>
 <string name="Name">Workspace</string>
 <float name="Gravity">196.2</float>
 </Properties>
-<Item class="Part" referent="GN26">
+<Item class="Part" referent="GN29">
 <Properties>
 <string name="Name">Baseplate</string>
 <bool name="Anchored">true</bool>
@@ -16,7 +16,7 @@
 <token name="BottomSurface">0</token>
 </Properties>
 </Item>
-<Item class="SpawnLocation" referent="GN27">
+<Item class="SpawnLocation" referent="GN30">
 <Properties>
 <string name="Name">SpawnLocation</string>
 <bool name="Anchored">true</bool>
@@ -29,7 +29,7 @@
 </Properties>
 </Item>
 </Item>
-<Item class="Lighting" referent="GN28">
+<Item class="Lighting" referent="GN31">
 <Properties>
 <string name="Name">Lighting</string>
 <token name="Technology">4</token>
@@ -44,7 +44,7 @@
 <Color3 name="FogColor"><R>0.03</R><G>0.04</G><B>0.07</B></Color3>
 <float name="FogEnd">420</float>
 </Properties>
-<Item class="BloomEffect" referent="GN29">
+<Item class="BloomEffect" referent="GN32">
 <Properties>
 <string name="Name">Bloom</string>
 <bool name="Enabled">true</bool>
@@ -53,7 +53,7 @@
 <float name="Threshold">0.9</float>
 </Properties>
 </Item>
-<Item class="ColorCorrectionEffect" referent="GN30">
+<Item class="ColorCorrectionEffect" referent="GN33">
 <Properties>
 <string name="Name">ColorCorrection</string>
 <bool name="Enabled">true</bool>
@@ -64,11 +64,11 @@
 </Properties>
 </Item>
 </Item>
-<Item class="ReplicatedStorage" referent="GN32">
+<Item class="ReplicatedStorage" referent="GN35">
 <Properties>
 <string name="Name">ReplicatedStorage</string>
 </Properties>
-<Item class="Folder" referent="GN6">
+<Item class="Folder" referent="GN7">
 <Properties>
 <string name="Name">Shared</string>
 </Properties>
@@ -83,11 +83,14 @@
 
 local Config = {}
 
-Config.Version = "0.2.0" -- Phase 1: Loop geschlossen (Save, Trace, Verkauf, Shop)
+Config.Version = "0.3.0" -- Phase A: Missions-Rueckgrat
 
--- CollectionService-Tags. Ein Part mit dem Tag ist ein Hack-Ziel bzw. ein Hehler.
+-- CollectionService-Tags. Ein Part mit dem Tag ist ein Hack-Ziel, ein Hehler,
+-- ein Missions-Wegpunkt oder ein ansprechbarer Kontakt. Kein Code pro Objekt.
 Config.HackableTag = "GhostNetHackable"
 Config.FenceTag = "GhostNetFence"
+Config.WaypointTag = "GhostNetWaypoint"
+Config.ContactTag = "GhostNetContact"
 
 --==========================================================================
 -- 1. REICHWEITE (Netzwerkkarte)
@@ -289,7 +292,11 @@ end
 -- 10. SPEICHERN
 --==========================================================================
 Config.Save = {
-	SchemaVersion = 1, -- hochzaehlen, wenn sich das Profil-Schema aendert
+	-- Hochzaehlen, wenn sich das Profil-Schema aendert. Zu JEDER neuen Version
+	-- gehoert ein Eintrag in SaveService.MIGRATIONS.
+	--   1 = Phase 1 (Bank, Unsold, Rig, Trace, Cooldowns, Stats)
+	--   2 = Phase A (Story-Block)
+	SchemaVersion = 2,
 	StoreName = "GhostNetPlayers_v1",
 	KeyFormat = "ghostnet_player_%d",
 
@@ -315,7 +322,36 @@ Config.Save = {
 }
 
 --==========================================================================
--- 11. RATE-LIMITS (Token-Bucket pro Spieler und Remote)
+-- 11. MISSIONEN (Story-Rueckgrat)
+-- Die Missionsdaten selbst stehen in Shared/Missions.luau. Hier steht nur,
+-- wie sich das System verhaelt.
+--==========================================================================
+Config.Mission = {
+	-- true = die erste verfuegbare Mission startet von selbst, sobald das
+	-- Profil geladen ist. Auf false gestellt muss der Spieler jede Mission
+	-- ueber MissionAccept annehmen.
+	AutoStart = true,
+
+	TickSeconds = 0.5, -- Takt fuer GOTO-Distanz und WAIT-Timer (reine Performance)
+
+	-- Reichweiten fuer GOTO- und TALK-Schritte. Beides wird serverseitig
+	-- geprueft, genau wie beim Hacken. Groesser = grosszuegiger, aber ein
+	-- Wegpunkt gilt dann schon aus der Ferne als erreicht.
+	WaypointRange = 10,
+	WaypointTolerance = 4,
+	ContactRange = 10,
+	ContactTolerance = 4,
+
+	-- false = die Belohnung landet im heissen Wallet und muss erst zum Hehler.
+	-- Das haelt den Verkaufs-Loop auch bei Story-Geld relevant. true zahlt
+	-- direkt auf die Bank - bequemer, nimmt der Mission aber die Spannung.
+	RewardToBank = false,
+
+	MaxSteps = 24, -- Sicherheitsgrenze; groessere Missionen gelten als Datenfehler
+}
+
+--==========================================================================
+-- 12. RATE-LIMITS (Token-Bucket pro Spieler und Remote)
 -- Jede neue Remote braucht hier einen Eintrag, sonst wird sie verworfen.
 --==========================================================================
 Config.RateLimits = {
@@ -324,10 +360,13 @@ Config.RateLimits = {
 	HackAbort = { Rate = 4, Burst = 6 },
 	SellRequest = { Rate = 1, Burst = 3 },
 	ShopPurchase = { Rate = 2, Burst = 4 },
+	MissionAccept = { Rate = 1, Burst = 3 },
+	MissionAbandon = { Rate = 1, Burst = 2 },
+	MissionInteract = { Rate = 2, Burst = 4 },
 }
 
 --==========================================================================
--- 12. NODE-BREACH
+-- 13. NODE-BREACH
 --==========================================================================
 Config.NodeBreach = {
 	-- Pro Schwierigkeitsband: Gittergroesse, Anzahl Relays, Anteil sichtbares
@@ -344,7 +383,7 @@ Config.NodeBreach = {
 }
 
 --==========================================================================
--- 13. DEFAULTS FUER HACK-ZIELE
+-- 14. DEFAULTS FUER HACK-ZIELE
 -- Ein Part braucht KEIN einziges Attribut. Alles, was fehlt, kommt von hier.
 --==========================================================================
 Config.TargetDefaults = {
@@ -444,6 +483,356 @@ return Geometry
 </Item>
 <Item class="ModuleScript" referent="GN3">
 <Properties>
+<string name="Name">Missions</string>
+<ProtectedString name="Source">-- ReplicatedStorage/Shared/Missions.luau
+--!strict
+-- GHOSTNET :: Missionsdaten und die reinen Regeln dazu.
+--
+-- WARUM DATEN UND NICHT SKRIPTE
+--   Eine Mission ist ein Tabelleneintrag. Wer eine neue schreibt, fasst nur
+--   diese Datei an - der MissionService bleibt unberuehrt. Das Modul kennt
+--   weder Spieler noch Remotes noch die Welt: alles hier ist pur und damit
+--   im Testlauf ohne Roblox pruefbar.
+--
+-- LEITREGEL AUS DEM BAUPLAN
+--   Jede Mission ist gleichzeitig das Tutorial fuer ein System UND schaltet
+--   dieses System dauerhaft frei. Nie eine Mission bauen, deren Inhalt danach
+--   verschwindet.
+--
+-- SCHRITT-TYPEN (mehr gibt es nicht, alles andere setzt sich daraus zusammen)
+--   GOTO   Target     = WaypointId eines Parts mit Tag GhostNetWaypoint
+--   HACK   TargetId   = TargetId eines Parts mit Tag GhostNetHackable
+--   SELL   Amount     = Anzahl Verkaeufe beim Hehler (Standard 1)
+--   BUY    GoodId?    = Ware im Darknet, Amount = Stueckzahl (Phase C)
+--   WAIT   Seconds    = Wartezeit, serverseitig ueber os.time() gemessen
+--   TALK   ContactId  = Kontakt-Part mit Tag GhostNetContact
+
+local Types = require(script.Parent.Types)
+
+local Missions = {}
+
+export type Step = {
+	Type: string,
+	Text: string,
+	Target: string?, -- GOTO
+	TargetId: string?, -- HACK
+	ContactId: string?, -- TALK
+	GoodId: string?, -- BUY
+	Amount: number?, -- SELL / BUY
+	Seconds: number?, -- WAIT
+}
+
+export type Reward = {
+	Crypto: number?,
+	Unlock: string?,
+}
+
+export type Mission = {
+	Id: string,
+	Title: string,
+	Briefing: string,
+	Requires: { string },
+	Steps: { Step },
+	Reward: Reward,
+}
+
+--==========================================================================
+-- Die Registry
+--==========================================================================
+
+-- PHASE A liefert absichtlich das Geruest ohne Inhalt: erst das System, dann
+-- die Missionen. Der MissionService muss mit einer leeren Liste sauber laufen.
+-- Phase B traegt hier M01_FIRSTHACK bis M03_HOME ein, Phase D M04 und M05.
+-- Das Schema steht in Missions.Example - dort abschauen, nicht raten.
+Missions.List = {} :: { Mission }
+
+-- Nur Doku und Testmaterial. Steht NICHT in der Registry und laeuft im Spiel
+-- nie. Zeigt jeden Schritt-Typ genau einmal.
+Missions.Example = {
+	Id = "M00_BEISPIEL",
+	Title = "Beispielmission",
+	Briefing = "Zeigt das Schema. Wird nie gespielt.",
+	Requires = {},
+	Steps = {
+		{ Type = "GOTO", Target = "STORE_FRONT", Text = "Geh zum Laden" },
+		{ Type = "HACK", TargetId = "STORE_LOCK", Text = "Knack das Schloss" },
+		{ Type = "WAIT", Seconds = 5, Text = "Warte, bis die Luft rein ist" },
+		{ Type = "TALK", ContactId = "FIXER", Text = "Sprich mit dem Fixer" },
+		{ Type = "BUY", GoodId = "EXPLOIT_KIT", Amount = 2, Text = "Kauf zwei Exploit-Kits" },
+		{ Type = "SELL", Amount = 1, Text = "Bring die Beute zum Hehler" },
+	},
+	Reward = { Crypto = 400, Unlock = "STORE_RAIDS" },
+} :: Mission
+
+Missions.StepTypes = {
+	GOTO = true,
+	HACK = true,
+	SELL = true,
+	BUY = true,
+	WAIT = true,
+	TALK = true,
+}
+
+--==========================================================================
+-- Nachschlagen
+--==========================================================================
+
+local function indexOf(list: { string }, value: string): number?
+	for index, entry in list do
+		if entry == value then
+			return index
+		end
+	end
+	return nil
+end
+
+function Missions.Contains(list: { string }, value: string): boolean
+	return indexOf(list, value) ~= nil
+end
+
+function Missions.Get(id: string, list: { Mission }?): Mission?
+	for _, mission in (list or Missions.List) do
+		if mission.Id == id then
+			return mission
+		end
+	end
+	return nil
+end
+
+function Missions.Count(list: { Mission }?): number
+	return #(list or Missions.List)
+end
+
+--==========================================================================
+-- Verfuegbarkeit
+--==========================================================================
+
+-- story ist der Story-Block aus dem Profil. Es wird bewusst derselbe Typ
+-- benutzt statt eine zweite Kopie der Form zu pflegen - sonst laufen die
+-- beiden bei der naechsten Schema-Aenderung auseinander.
+export type StoryView = Types.Story
+
+function Missions.IsCompleted(story: StoryView, id: string): boolean
+	return Missions.Contains(story.Completed, id)
+end
+
+function Missions.IsAvailable(story: StoryView, id: string, list: { Mission }?): boolean
+	local mission = Missions.Get(id, list)
+	if not mission then
+		return false
+	end
+	if Missions.IsCompleted(story, id) then
+		return false
+	end
+	for _, required in mission.Requires do
+		if not Missions.IsCompleted(story, required) then
+			return false
+		end
+	end
+	return true
+end
+
+-- Erste Mission in Listenreihenfolge, die jetzt gespielt werden koennte.
+function Missions.FirstAvailable(story: StoryView, list: { Mission }?): Mission?
+	for _, mission in (list or Missions.List) do
+		if Missions.IsAvailable(story, mission.Id, list) then
+			return mission
+		end
+	end
+	return nil
+end
+
+function Missions.HasUnlock(story: StoryView, key: string): boolean
+	return Missions.Contains(story.Unlocks, key)
+end
+
+--==========================================================================
+-- Fortschritt eines Schrittes
+--==========================================================================
+
+-- Wie viel ein Schritt braucht, um zu gelten.
+function Missions.Required(step: Step): number
+	if step.Type == "WAIT" then
+		return 1 -- der Timer laeuft im Service, hier zaehlt nur "fertig"
+	end
+	local amount = step.Amount
+	if typeof(amount) == "number" and amount &gt; 0 then
+		return math.floor(amount)
+	end
+	return 1
+end
+
+-- Was ein Ereignis zu diesem Schritt beitraegt. 0 = passt nicht.
+--
+-- event = { Type = "HACK"|"SELL"|"BUY"|"GOTO"|"TALK"|"WAIT",
+--           TargetId?, WaypointId?, ContactId?, GoodId?, Amount?, Success? }
+--
+-- Diese Funktion ist der einzige Ort, an dem entschieden wird, ob ein Schritt
+-- vorankommt. Sie ist pur - der Testlauf faehrt sie ohne Roblox durch.
+function Missions.Progress(step: Step, event: { [string]: any }): number
+	if typeof(event) ~= "table" or step.Type ~= event.Type then
+		return 0
+	end
+
+	if step.Type == "GOTO" then
+		return if event.WaypointId == step.Target then 1 else 0
+	elseif step.Type == "HACK" then
+		if event.Success ~= true then
+			return 0 -- ein Fehlschlag bringt eine Mission nicht voran
+		end
+		return if event.TargetId == step.TargetId then 1 else 0
+	elseif step.Type == "TALK" then
+		return if event.ContactId == step.ContactId then 1 else 0
+	elseif step.Type == "SELL" then
+		return 1 -- jeder Verkauf zaehlt einmal
+	elseif step.Type == "WAIT" then
+		return 1 -- nur der Service schickt dieses Ereignis
+	elseif step.Type == "BUY" then
+		if step.GoodId ~= nil and event.GoodId ~= step.GoodId then
+			return 0
+		end
+		local amount = event.Amount
+		if typeof(amount) ~= "number" or amount &lt;= 0 then
+			return 0
+		end
+		return math.floor(amount)
+	end
+
+	return 0
+end
+
+--==========================================================================
+-- Pruefung der Missionsdaten
+-- Laeuft beim Serverstart UND im Testlauf. Eine kaputte Mission soll beim
+-- Hochfahren auffallen und nicht erst, wenn ein Spieler darin feststeckt.
+--==========================================================================
+
+local REQUIRED_FIELD: { [string]: string } = {
+	GOTO = "Target",
+	HACK = "TargetId",
+	TALK = "ContactId",
+}
+
+function Missions.Validate(list: { Mission }?, maxSteps: number?): (boolean, { string })
+	local missions = list or Missions.List
+	local limit = maxSteps or 64
+	local errors: { string } = {}
+
+	local seen: { [string]: boolean } = {}
+	for index, mission in missions do
+		local label = ("Mission #%d"):format(index)
+
+		if typeof(mission.Id) ~= "string" or mission.Id == "" then
+			table.insert(errors, ("%s: Id fehlt"):format(label))
+			continue
+		end
+		label = mission.Id
+
+		if seen[mission.Id] then
+			table.insert(errors, ("%s: Id doppelt vergeben"):format(label))
+		end
+		seen[mission.Id] = true
+
+		if typeof(mission.Title) ~= "string" or mission.Title == "" then
+			table.insert(errors, ("%s: Title fehlt"):format(label))
+		end
+		if typeof(mission.Briefing) ~= "string" then
+			table.insert(errors, ("%s: Briefing fehlt"):format(label))
+		end
+		if typeof(mission.Requires) ~= "table" then
+			table.insert(errors, ("%s: Requires ist keine Liste"):format(label))
+		end
+		if typeof(mission.Reward) ~= "table" then
+			table.insert(errors, ("%s: Reward fehlt"):format(label))
+		end
+
+		if typeof(mission.Steps) ~= "table" or #mission.Steps == 0 then
+			table.insert(errors, ("%s: keine Schritte"):format(label))
+		elseif #mission.Steps &gt; limit then
+			table.insert(errors, ("%s: %d Schritte, erlaubt sind %d"):format(label, #mission.Steps, limit))
+		else
+			for stepIndex, step in mission.Steps do
+				local where = ("%s Schritt %d"):format(label, stepIndex)
+				if typeof(step.Type) ~= "string" or not Missions.StepTypes[step.Type] then
+					table.insert(errors, ("%s: unbekannter Typ '%s'"):format(where, tostring(step.Type)))
+					continue
+				end
+				if typeof(step.Text) ~= "string" or step.Text == "" then
+					table.insert(errors, ("%s: Text fehlt"):format(where))
+				end
+				local field = REQUIRED_FIELD[step.Type]
+				if field and typeof((step :: any)[field]) ~= "string" then
+					table.insert(errors, ("%s: %s fehlt fuer %s"):format(where, field, step.Type))
+				end
+				if step.Type == "WAIT" and (typeof(step.Seconds) ~= "number" or step.Seconds &lt;= 0) then
+					table.insert(errors, ("%s: Seconds fehlt oder ist &lt;= 0"):format(where))
+				end
+				if step.Amount ~= nil and (typeof(step.Amount) ~= "number" or step.Amount &lt;= 0) then
+					table.insert(errors, ("%s: Amount muss groesser 0 sein"):format(where))
+				end
+			end
+		end
+	end
+
+	-- Vorgaenger muessen existieren.
+	for _, mission in missions do
+		if typeof(mission.Requires) ~= "table" then
+			continue
+		end
+		for _, required in mission.Requires do
+			if not seen[required] then
+				table.insert(errors, ("%s: Vorgaenger '%s' gibt es nicht"):format(mission.Id, tostring(required)))
+			end
+		end
+	end
+
+	-- Kreise in den Vorbedingungen. Ohne diese Pruefung waere eine Mission
+	-- stumm nie erreichbar, und niemand fuende heraus warum.
+	local WHITE, GREY, BLACK = 0, 1, 2
+	local colour: { [string]: number } = {}
+	local byId: { [string]: Mission } = {}
+	for _, mission in missions do
+		if typeof(mission.Id) == "string" then
+			byId[mission.Id] = mission
+			colour[mission.Id] = WHITE
+		end
+	end
+
+	local function visit(id: string): boolean
+		if colour[id] == GREY then
+			return true
+		end
+		if colour[id] == BLACK then
+			return false
+		end
+		colour[id] = GREY
+		local mission = byId[id]
+		if mission and typeof(mission.Requires) == "table" then
+			for _, required in mission.Requires do
+				if byId[required] and visit(required) then
+					return true
+				end
+			end
+		end
+		colour[id] = BLACK
+		return false
+	end
+
+	for id in byId do
+		if colour[id] == WHITE and visit(id) then
+			table.insert(errors, ("Kreis in den Vorbedingungen bei '%s'"):format(id))
+		end
+	end
+
+	return #errors == 0, errors
+end
+
+return Missions
+</ProtectedString>
+</Properties>
+</Item>
+<Item class="ModuleScript" referent="GN4">
+<Properties>
 <string name="Name">Remotes</string>
 <ProtectedString name="Source">-- ReplicatedStorage/Shared/Remotes.luau
 --!strict
@@ -469,6 +858,11 @@ local EVENT_NAMES = {
 	"SellRequest", -- C-&gt;S  { }            Verkauf beim Hehler
 	"SellResult", -- S-&gt;C  { ok, reason, gross, fee, net, seconds }
 	"TraceSync", -- S-&gt;C  { trace, max, locked, lockSeconds, bust? }
+	"MissionSync", -- S-&gt;C  { active, title, briefing, stepIndex, stepText, steps, progress }
+	"MissionAccept", -- C-&gt;S  { missionId }
+	"MissionAbandon", -- C-&gt;S  { }
+	"MissionInteract", -- C-&gt;S  { contactId }   loest TALK-Schritte aus
+	"WaypointSync", -- S-&gt;C  { position, label }  Marker fuer GOTO/HACK/TALK
 }
 
 local FUNCTION_NAMES: { string } = {
@@ -529,7 +923,7 @@ return Remotes
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN4">
+<Item class="ModuleScript" referent="GN5">
 <Properties>
 <string name="Name">Types</string>
 <ProtectedString name="Source">-- ReplicatedStorage/Shared/Types.luau
@@ -553,6 +947,17 @@ export type Stats = {
 	Upgrades: number, -- gekaufte Rig-Stufen
 }
 
+-- Story-Fortschritt im Profil. Der Client bekommt davon nur eine Abschrift
+-- ueber MissionSync und meldet nie selbst, dass ein Schritt fertig ist.
+export type Story = {
+	Active: string, -- "" = gerade keine Mission
+	Step: number, -- 1-basierter Index in Mission.Steps
+	StepProgress: number, -- fuer Schritte mit Amount &gt; 1
+	StepStartedAt: number, -- Unix-Zeit, gebraucht fuer WAIT-Schritte
+	Completed: { string }, -- abgeschlossene Missions-Ids
+	Unlocks: { string }, -- dauerhaft freigeschaltete Systeme
+}
+
 -- Das gespeicherte Spielerprofil. Einzige Wahrheit fuer alles, was einen
 -- Serverwechsel ueberleben muss. Alle Zeitstempel sind os.time() (Unix-Zeit).
 export type Profile = {
@@ -563,6 +968,7 @@ export type Profile = {
 	Trace: number, -- 0 .. Config.Trace.Max
 	Cooldowns: { [string]: number }, -- [targetId] = Unix-Zeit, ab der wieder erlaubt
 	Stats: Stats,
+	Story: Story, -- seit SchemaVersion 2
 	LastSeen: number, -- Unix-Zeit des letzten Speicherns
 	SessionId: string, -- Session-Lock gegen Doppel-Sitzungen
 }
@@ -638,7 +1044,7 @@ return {}
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN5">
+<Item class="ModuleScript" referent="GN6">
 <Properties>
 <string name="Name">UITheme</string>
 <ProtectedString name="Source">-- ReplicatedStorage/Shared/UITheme.luau
@@ -842,11 +1248,11 @@ return UITheme
 </Item>
 </Item>
 </Item>
-<Item class="ServerScriptService" referent="GN33">
+<Item class="ServerScriptService" referent="GN36">
 <Properties>
 <string name="Name">ServerScriptService</string>
 </Properties>
-<Item class="Script" referent="GN7">
+<Item class="Script" referent="GN8">
 <Properties>
 <string name="Name">GhostNetServer</string>
 <ProtectedString name="Source">-- ServerScriptService/GhostNetServer.server.luau
@@ -871,6 +1277,7 @@ local HackTargets = require(Systems.HackTargets)
 local HackService = require(Systems.HackService)
 local SellService = require(Systems.SellService)
 local ShopService = require(Systems.ShopService)
+local MissionService = require(Systems.MissionService)
 
 SaveService.Init() -- zuerst: haelt das Profil
 EconomyService.Init() -- liest aus dem Profil
@@ -879,16 +1286,18 @@ HackTargets.Init() -- braucht das Profil fuer Cooldowns
 HackService.Init() -- meldet sich beim TraceService fuer den Bust an
 SellService.Init()
 ShopService.Init()
+-- Zuletzt: haengt sich per OnHackResolved / OnSell an die fertigen Services.
+MissionService.Init()
 
 print(("[GHOSTNET] Server hochgefahren - Version %s"):format(Config.Version))
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="Folder" referent="GN19">
+<Item class="Folder" referent="GN21">
 <Properties>
 <string name="Name">Systems</string>
 </Properties>
-<Item class="ModuleScript" referent="GN8">
+<Item class="ModuleScript" referent="GN9">
 <Properties>
 <string name="Name">EconomyService</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/EconomyService.luau
@@ -1009,6 +1418,21 @@ function EconomyService.AwardUnsold(player: Player, amount: number)
 		return
 	end
 	profile.Unsold += math.floor(amount)
+	EconomyService.Sync(player)
+end
+
+-- Direkt auf die Bank, ohne Umweg ueber den Hehler. Nur fuer Belohnungen,
+-- die bewusst sicher sein sollen (Missionen mit Config.Mission.RewardToBank).
+function EconomyService.AwardBanked(player: Player, amount: number)
+	if amount &lt;= 0 then
+		return
+	end
+	local profile = SaveService.Get(player)
+	if not profile then
+		return
+	end
+	profile.Banked += math.floor(amount)
+	profile.Stats.Earned += math.floor(amount)
 	EconomyService.Sync(player)
 end
 
@@ -1135,7 +1559,7 @@ return EconomyService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN9">
+<Item class="ModuleScript" referent="GN10">
 <Properties>
 <string name="Name">HackEffects</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/HackEffects.luau
@@ -1324,7 +1748,7 @@ return HackEffects
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN10">
+<Item class="ModuleScript" referent="GN11">
 <Properties>
 <string name="Name">HackService</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/HackService.luau
@@ -1368,6 +1792,15 @@ local Minigames = {
 }
 
 local sessions: { [Player]: Session } = {}
+
+-- Wer mitbekommen will, dass ein Hack ausgegangen ist, meldet sich hier an -
+-- genau wie bei TraceService.OnBust. Dadurch bleibt die Richtung
+-- MissionService -&gt; HackService und kein Modul requiret rueckwaerts.
+local resolvedCallbacks: { (Player, { [string]: any }) -&gt; () } = {}
+
+function HackService.OnHackResolved(callback: (Player, { [string]: any }) -&gt; ())
+	table.insert(resolvedCallbacks, callback)
+end
 
 --==========================================================================
 -- Hilfsfunktionen
@@ -1457,6 +1890,22 @@ local function resolve(session: Session, success: boolean, reason: string)
 
 	if target then
 		SaveService.RequestSave(player)
+	end
+
+	for _, callback in resolvedCallbacks do
+		task.spawn(function()
+			local ok, err = pcall(callback, player, {
+				TargetId = session.TargetId,
+				Success = success,
+				Reason = reason,
+				Reward = reward,
+				Difficulty = session.Difficulty,
+				HackType = session.HackType,
+			})
+			if not ok then
+				warn(("[GHOSTNET] OnHackResolved-Callback fehlgeschlagen: %s"):format(tostring(err)))
+			end
+		end)
 	end
 end
 
@@ -1775,7 +2224,7 @@ return HackService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN11">
+<Item class="ModuleScript" referent="GN12">
 <Properties>
 <string name="Name">HackTargets</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/HackTargets.luau
@@ -2025,11 +2474,11 @@ return HackTargets
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="Folder" referent="GN13">
+<Item class="Folder" referent="GN14">
 <Properties>
 <string name="Name">Minigames</string>
 </Properties>
-<Item class="ModuleScript" referent="GN12">
+<Item class="ModuleScript" referent="GN13">
 <Properties>
 <string name="Name">NodeBreach</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/Minigames/NodeBreach.luau
@@ -2404,7 +2853,559 @@ return NodeBreach
 </Properties>
 </Item>
 </Item>
-<Item class="ModuleScript" referent="GN14">
+<Item class="ModuleScript" referent="GN15">
+<Properties>
+<string name="Name">MissionService</string>
+<ProtectedString name="Source">-- ServerScriptService/Systems/MissionService.luau
+--!strict
+-- GHOSTNET :: Das Missions-Rueckgrat.
+--
+-- WAS ER TUT
+--   Haelt pro Spieler die aktive Mission und den Schritt-Index IM PROFIL,
+--   prueft serverseitig, ob ein Schritt erfuellt ist, und schaltet beim
+--   Abschluss dauerhafte Unlocks frei.
+--
+-- WAS ER NICHT TUT
+--   Er kennt keine einzelne Mission. Missionsinhalte stehen als Daten in
+--   Shared/Missions.luau; die Regeln dazu sind dort pur und ohne Roblox
+--   pruefbar. Dieses Modul ist nur die Mechanik drumherum.
+--
+-- SERVER-AUTORITAET
+--   Der Client meldet NIE "Schritt fertig". Er darf genau drei Dinge sagen:
+--   "ich nehme Mission X an", "ich breche ab", "ich spreche Kontakt Y an".
+--   Alles andere leitet der Server aus dem ab, was ohnehin schon passiert:
+--   geloeste Hacks, Verkaeufe, Distanz zu Wegpunkten, Ablauf von Wartezeiten.
+--
+-- KEIN REQUIRE-KREIS
+--   HackService und SellService kennen den MissionService nicht. Er meldet
+--   sich bei ihnen per OnHackResolved / OnSell an - dasselbe Muster, das
+--   TraceService.OnBust bereits vormacht.
+
+local CollectionService = game:GetService("CollectionService")
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+
+local Config = require(ReplicatedStorage.Shared.Config)
+local Geometry = require(ReplicatedStorage.Shared.Geometry)
+local Missions = require(ReplicatedStorage.Shared.Missions)
+local Remotes = require(ReplicatedStorage.Shared.Remotes)
+local Types = require(ReplicatedStorage.Shared.Types)
+
+local EconomyService = require(script.Parent.EconomyService)
+local HackService = require(script.Parent.HackService)
+local HackTargets = require(script.Parent.HackTargets)
+local RateLimiter = require(script.Parent.RateLimiter)
+local SaveService = require(script.Parent.SaveService)
+local SellService = require(script.Parent.SellService)
+
+type Mission = Missions.Mission
+type Step = Missions.Step
+type Story = Types.Story
+
+local MissionService = {}
+
+-- Damit der Marker nicht jeden Takt neu geschickt wird.
+local lastMarker: { [Player]: string } = {}
+
+-- Wer mitbekommen will, dass eine Mission fertig ist (Phase B fuer das
+-- Tutorial, Phase C fuer Darknet-Freischaltungen).
+local completeCallbacks: { (Player, Mission) -&gt; () } = {}
+
+function MissionService.OnMissionComplete(callback: (Player, Mission) -&gt; ())
+	table.insert(completeCallbacks, callback)
+end
+
+--==========================================================================
+-- Zugriff aufs Profil
+--==========================================================================
+
+local function storyOf(player: Player): Story?
+	local profile = SaveService.Get(player)
+	return if profile then profile.Story else nil
+end
+
+local function activeMission(story: Story): Mission?
+	if story.Active == "" then
+		return nil
+	end
+	return Missions.Get(story.Active)
+end
+
+local function currentStep(mission: Mission, story: Story): Step?
+	return mission.Steps[story.Step]
+end
+
+-- Fuer Phase B und C: "darf der Spieler Ladenueberfaelle / das Darknet?"
+function MissionService.HasUnlock(player: Player, key: string): boolean
+	local story = storyOf(player)
+	if not story then
+		return false
+	end
+	return Missions.HasUnlock(story, key)
+end
+
+function MissionService.IsCompleted(player: Player, missionId: string): boolean
+	local story = storyOf(player)
+	if not story then
+		return false
+	end
+	return Missions.IsCompleted(story, missionId)
+end
+
+--==========================================================================
+-- Weltobjekte zu einem Schritt finden
+--==========================================================================
+
+local function taggedPartWithAttribute(tag: string, attribute: string, value: string): BasePart?
+	for _, inst in CollectionService:GetTagged(tag) do
+		if inst:IsA("BasePart") and inst:IsDescendantOf(workspace) and inst:GetAttribute(attribute) == value then
+			return inst
+		end
+	end
+	return nil
+end
+
+function MissionService.FindWaypoint(id: string): BasePart?
+	return taggedPartWithAttribute(Config.WaypointTag, "WaypointId", id)
+end
+
+function MissionService.FindContact(id: string): BasePart?
+	return taggedPartWithAttribute(Config.ContactTag, "ContactId", id)
+end
+
+-- Wohin der Marker im HUD zeigen soll. nil = kein Marker fuer diesen Schritt.
+local function markerFor(player: Player, step: Step): (Vector3?, string)
+	if step.Type == "GOTO" and step.Target then
+		local part = MissionService.FindWaypoint(step.Target)
+		return (if part then part.Position else nil), step.Text
+	elseif step.Type == "HACK" and step.TargetId then
+		local target = HackTargets.Get(step.TargetId)
+		return (if target and target.Part.Parent then target.Part.Position else nil), step.Text
+	elseif step.Type == "TALK" and step.ContactId then
+		local part = MissionService.FindContact(step.ContactId)
+		return (if part then part.Position else nil), step.Text
+	elseif step.Type == "SELL" then
+		local fence = SellService.NearestFence(player)
+		return (if fence then fence.Position else nil), step.Text
+	end
+	return nil, step.Text
+end
+
+--==========================================================================
+-- An den Client schicken
+--==========================================================================
+
+local function syncWaypoint(player: Player, step: Step?)
+	if not player.Parent then
+		return
+	end
+
+	local position: Vector3? = nil
+	local label = ""
+	if step then
+		position, label = markerFor(player, step)
+	end
+
+	-- Nur bei echter Aenderung senden, sonst laeuft der Takt als Paketflut.
+	local key = if position then ("%d|%d|%d|%s"):format(position.X, position.Y, position.Z, label) else ""
+	if lastMarker[player] == key then
+		return
+	end
+	lastMarker[player] = key
+
+	Remotes.WaypointSync:FireClient(player, {
+		Position = position,
+		Label = label,
+	})
+end
+
+function MissionService.Sync(player: Player)
+	if not player.Parent then
+		return
+	end
+	local story = storyOf(player)
+	if not story then
+		return
+	end
+
+	local mission = activeMission(story)
+	if not mission then
+		local available = Missions.FirstAvailable(story)
+		Remotes.MissionSync:FireClient(player, {
+			Active = "",
+			Completed = table.clone(story.Completed),
+			Unlocks = table.clone(story.Unlocks),
+			Available = if available then available.Id else "",
+			AvailableTitle = if available then available.Title else "",
+		})
+		syncWaypoint(player, nil)
+		return
+	end
+
+	local step = currentStep(mission, story)
+	local texts: { string } = {}
+	for _, entry in mission.Steps do
+		table.insert(texts, entry.Text)
+	end
+
+	Remotes.MissionSync:FireClient(player, {
+		Active = mission.Id,
+		Title = mission.Title,
+		Briefing = mission.Briefing,
+		StepIndex = story.Step,
+		StepCount = #mission.Steps,
+		StepText = if step then step.Text else "",
+		StepType = if step then step.Type else "",
+		StepProgress = story.StepProgress,
+		StepRequired = if step then Missions.Required(step) else 1,
+		StepSeconds = if step and step.Type == "WAIT" then step.Seconds else nil,
+		StepStartedAt = story.StepStartedAt,
+		ContactId = if step then step.ContactId else nil,
+		Steps = texts,
+		Completed = table.clone(story.Completed),
+		Unlocks = table.clone(story.Unlocks),
+	})
+
+	syncWaypoint(player, step)
+end
+
+--==========================================================================
+-- Missionen starten und abschliessen
+--==========================================================================
+
+local startMission: (Player, Story, string) -&gt; boolean
+
+local function completeMission(player: Player, story: Story, mission: Mission)
+	if not Missions.IsCompleted(story, mission.Id) then
+		table.insert(story.Completed, mission.Id)
+	end
+	story.Active = ""
+	story.Step = 1
+	story.StepProgress = 0
+	story.StepStartedAt = 0
+
+	local reward = mission.Reward
+	if typeof(reward) == "table" then
+		local crypto = reward.Crypto
+		if typeof(crypto) == "number" and crypto &gt; 0 then
+			-- Standard: die Belohnung ist heiss und muss erst zum Hehler.
+			-- Das haelt den Verkaufs-Loop auch bei Story-Geld relevant.
+			if Config.Mission.RewardToBank then
+				EconomyService.AwardBanked(player, crypto)
+			else
+				EconomyService.AwardUnsold(player, crypto)
+			end
+		end
+		local unlock = reward.Unlock
+		if typeof(unlock) == "string" and unlock ~= "" and not Missions.HasUnlock(story, unlock) then
+			table.insert(story.Unlocks, unlock)
+		end
+	end
+
+	print(("[GHOSTNET] %s hat Mission '%s' abgeschlossen."):format(player.Name, mission.Id))
+	SaveService.RequestSave(player)
+
+	for _, callback in completeCallbacks do
+		task.spawn(function()
+			local ok, err = pcall(callback, player, mission)
+			if not ok then
+				warn(("[GHOSTNET] OnMissionComplete-Callback fehlgeschlagen: %s"):format(tostring(err)))
+			end
+		end)
+	end
+
+	-- Direkt die naechste anbieten, damit die Story nicht stehen bleibt.
+	if Config.Mission.AutoStart then
+		local next_ = Missions.FirstAvailable(story)
+		if next_ then
+			startMission(player, story, next_.Id)
+			return
+		end
+	end
+
+	MissionService.Sync(player)
+end
+
+startMission = function(player: Player, story: Story, missionId: string): boolean
+	if not Missions.IsAvailable(story, missionId) then
+		return false
+	end
+	story.Active = missionId
+	story.Step = 1
+	story.StepProgress = 0
+	story.StepStartedAt = os.time()
+	lastMarker[player] = nil
+	SaveService.RequestSave(player)
+	MissionService.Sync(player)
+	return true
+end
+
+local function advance(player: Player, story: Story, mission: Mission)
+	story.Step += 1
+	story.StepProgress = 0
+	story.StepStartedAt = os.time()
+	lastMarker[player] = nil
+
+	if story.Step &gt; #mission.Steps then
+		completeMission(player, story, mission)
+	else
+		SaveService.RequestSave(player)
+		MissionService.Sync(player)
+	end
+end
+
+--==========================================================================
+-- Ereignisse verarbeiten
+-- Der einzige Weg, wie ein Schritt vorankommt. Ob ein Ereignis passt,
+-- entscheidet Missions.Progress - pur und im Testlauf abgedeckt.
+--==========================================================================
+
+local function applyEvent(player: Player, event: { [string]: any })
+	local story = storyOf(player)
+	if not story then
+		return
+	end
+	local mission = activeMission(story)
+	if not mission then
+		return
+	end
+	local step = currentStep(mission, story)
+	if not step then
+		-- Kaputter Index (z.B. Mission nachtraeglich gekuerzt): sauber beenden,
+		-- statt den Spieler in einer toten Mission haengen zu lassen.
+		completeMission(player, story, mission)
+		return
+	end
+
+	local gain = Missions.Progress(step, event)
+	if gain &lt;= 0 then
+		return
+	end
+
+	story.StepProgress += gain
+	if story.StepProgress &gt;= Missions.Required(step) then
+		advance(player, story, mission)
+	else
+		SaveService.RequestSave(player)
+		MissionService.Sync(player)
+	end
+end
+
+-- Oeffentlicher Haken fuer Phase C: der InventoryService meldet Kaeufe hier,
+-- statt dass dieses Modul ihn requiret.
+function MissionService.NotifyBuy(player: Player, goodId: string, amount: number)
+	if typeof(goodId) ~= "string" or typeof(amount) ~= "number" or amount &lt;= 0 then
+		return
+	end
+	applyEvent(player, { Type = "BUY", GoodId = goodId, Amount = math.floor(amount) })
+end
+
+--==========================================================================
+-- Remote-Handler
+--==========================================================================
+
+local function onAccept(player: Player, payload: any)
+	if not RateLimiter.Check(player, "MissionAccept") then
+		return
+	end
+	if typeof(payload) ~= "table" then
+		return
+	end
+	local missionId = (payload :: any).MissionId
+	if typeof(missionId) ~= "string" or missionId == "" or #missionId &gt; 48 then
+		return
+	end
+
+	local story = storyOf(player)
+	if not story then
+		return
+	end
+	if story.Active ~= "" then
+		MissionService.Sync(player) -- laeuft schon eine; Client neu ausrichten
+		return
+	end
+
+	if not startMission(player, story, missionId) then
+		MissionService.Sync(player)
+	end
+end
+
+local function onAbandon(player: Player, payload: any)
+	if not RateLimiter.Check(player, "MissionAbandon") then
+		return
+	end
+	if payload ~= nil and typeof(payload) ~= "table" then
+		return
+	end
+	local story = storyOf(player)
+	if not story or story.Active == "" then
+		return
+	end
+
+	story.Active = ""
+	story.Step = 1
+	story.StepProgress = 0
+	story.StepStartedAt = 0
+	lastMarker[player] = nil
+	SaveService.RequestSave(player)
+	MissionService.Sync(player)
+end
+
+local function onInteract(player: Player, payload: any)
+	if not RateLimiter.Check(player, "MissionInteract") then
+		return
+	end
+	if typeof(payload) ~= "table" then
+		return
+	end
+	local contactId = (payload :: any).ContactId
+	if typeof(contactId) ~= "string" or contactId == "" or #contactId &gt; 48 then
+		return
+	end
+
+	local part = MissionService.FindContact(contactId)
+	if not part then
+		return
+	end
+
+	-- Distanz serverseitig, wie ueberall sonst auch.
+	local position = Geometry.AlivePosition(player)
+	if not position then
+		return
+	end
+	local distance = Geometry.SurfaceDistance(part, position)
+	if distance &gt; Config.Mission.ContactRange + Config.Mission.ContactTolerance then
+		return
+	end
+
+	applyEvent(player, { Type = "TALK", ContactId = contactId })
+end
+
+--==========================================================================
+-- Takt: GOTO-Distanz und WAIT-Timer
+-- Beides kann der Client nicht melden, also schaut der Server selbst nach.
+--==========================================================================
+
+local function tick()
+	local accumulator = 0
+	RunService.Heartbeat:Connect(function(dt)
+		accumulator += dt
+		if accumulator &lt; Config.Mission.TickSeconds then
+			return
+		end
+		accumulator = 0
+
+		for _, player in Players:GetPlayers() do
+			local story = storyOf(player)
+			if not story then
+				continue
+			end
+			local mission = activeMission(story)
+			if not mission then
+				continue
+			end
+			local step = currentStep(mission, story)
+			if not step then
+				continue
+			end
+
+			if step.Type == "WAIT" then
+				local seconds = step.Seconds or 0
+				if story.StepStartedAt &gt; 0 and os.time() - story.StepStartedAt &gt;= seconds then
+					applyEvent(player, { Type = "WAIT" })
+				end
+			elseif step.Type == "GOTO" and step.Target then
+				local part = MissionService.FindWaypoint(step.Target)
+				local position = Geometry.AlivePosition(player)
+				if part and position then
+					local distance = Geometry.SurfaceDistance(part, position)
+					if distance &lt;= Config.Mission.WaypointRange + Config.Mission.WaypointTolerance then
+						applyEvent(player, { Type = "GOTO", WaypointId = step.Target })
+					end
+				end
+			end
+
+			-- Der Marker kann sich bewegen (Hehler in der Naehe, Ziel-Part neu
+			-- registriert), deshalb bei jedem Takt nachziehen. syncWaypoint
+			-- sendet nur, wenn sich wirklich etwas geaendert hat.
+			syncWaypoint(player, step)
+		end
+	end)
+end
+
+--==========================================================================
+
+function MissionService.Init()
+	-- Datenfehler sollen beim Hochfahren auffallen, nicht wenn ein Spieler
+	-- in einer kaputten Mission feststeckt.
+	local valid, errors = Missions.Validate(nil, Config.Mission.MaxSteps)
+	if not valid then
+		for _, message in errors do
+			warn(("[GHOSTNET] Missionsdaten: %s"):format(message))
+		end
+	end
+
+	HackService.OnHackResolved(function(player, data)
+		applyEvent(player, {
+			Type = "HACK",
+			TargetId = data.TargetId,
+			Success = data.Success,
+		})
+	end)
+
+	SellService.OnSell(function(player, data)
+		applyEvent(player, { Type = "SELL", Net = data.Net })
+	end)
+
+	Remotes.MissionAccept.OnServerEvent:Connect(onAccept)
+	Remotes.MissionAbandon.OnServerEvent:Connect(onAbandon)
+	Remotes.MissionInteract.OnServerEvent:Connect(onInteract)
+
+	SaveService.OnReady(function(player, profile)
+		lastMarker[player] = nil
+		local story = profile.Story
+
+		-- Aktive Mission zeigt auf etwas, das es nicht mehr gibt (Mission
+		-- umbenannt oder entfernt): stillschweigend loesen statt crashen.
+		if story.Active ~= "" and not Missions.Get(story.Active) then
+			warn(("[GHOSTNET] %s hatte die unbekannte Mission '%s' aktiv - zurueckgesetzt."):format(
+				player.Name,
+				story.Active
+			))
+			story.Active = ""
+			story.Step = 1
+			story.StepProgress = 0
+		end
+
+		if Config.Mission.AutoStart and story.Active == "" then
+			local next_ = Missions.FirstAvailable(story)
+			if next_ then
+				startMission(player, story, next_.Id)
+				return
+			end
+		end
+
+		MissionService.Sync(player)
+	end)
+
+	Players.PlayerRemoving:Connect(function(player)
+		lastMarker[player] = nil
+	end)
+
+	tick()
+
+	print(("[GHOSTNET] MissionService bereit. %d Missionen registriert%s."):format(
+		Missions.Count(),
+		if valid then "" else " (mit Datenfehlern, siehe oben)"
+	))
+end
+
+return MissionService
+</ProtectedString>
+</Properties>
+</Item>
+<Item class="ModuleScript" referent="GN16">
 <Properties>
 <string name="Name">RateLimiter</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/RateLimiter.luau
@@ -2484,7 +3485,7 @@ return RateLimiter
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN15">
+<Item class="ModuleScript" referent="GN17">
 <Properties>
 <string name="Name">SaveService</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/SaveService.luau
@@ -2543,6 +3544,17 @@ local function defaultStats(): Types.Stats
 	return { Hacks = 0, Fails = 0, Busts = 0, Sales = 0, Earned = 0, Upgrades = 0 }
 end
 
+local function defaultStory(): Types.Story
+	return {
+		Active = "",
+		Step = 1,
+		StepProgress = 0,
+		StepStartedAt = 0,
+		Completed = {},
+		Unlocks = {},
+	}
+end
+
 function SaveService.DefaultProfile(): Profile
 	local start = Config.Rig.StartLevels
 	return {
@@ -2553,6 +3565,7 @@ function SaveService.DefaultProfile(): Profile
 		Trace = 0,
 		Cooldowns = {},
 		Stats = defaultStats(),
+		Story = defaultStory(),
 		LastSeen = os.time(),
 		SessionId = "",
 	}
@@ -2565,13 +3578,37 @@ local function toCount(value: any): number?
 	return math.max(0, math.floor(value))
 end
 
+-- Nur Strings, die als Id taugen. Haelt Muell aus dem Profil, falls jemals
+-- kaputte Daten im Store landen.
+local function cleanIdList(raw: any, limit: number): { string }
+	local out: { string } = {}
+	if typeof(raw) ~= "table" then
+		return out
+	end
+	for _, value in raw do
+		if typeof(value) == "string" and value ~= "" and #value &lt;= 48 and #out &lt; limit then
+			if not table.find(out, value) then
+				table.insert(out, value)
+			end
+		end
+	end
+	return out
+end
+
 -- Migration und Missbrauchsschutz in einem: alles, was fehlt, kommt aus dem
 -- Default, alles was da ist, wird auf Typ und Wertebereich geprueft. Neue
 -- Felder in kuenftigen Schema-Versionen brauchen deshalb nur hier eine Zeile.
-local function sanitize(raw: any): Profile
+-- Liefert zusaetzlich die Schema-Version, die im Store STAND - die braucht
+-- runMigrations, um zu wissen, was noch nachzuziehen ist.
+local function sanitize(raw: any): (Profile, number)
 	local p = SaveService.DefaultProfile()
 	if typeof(raw) ~= "table" then
-		return p
+		return p, Config.Save.SchemaVersion -- frisches Profil, nichts zu migrieren
+	end
+
+	local rawVersion = 1
+	if typeof(raw.SchemaVersion) == "number" and raw.SchemaVersion &gt;= 1 then
+		rawVersion = math.floor(raw.SchemaVersion)
 	end
 
 	p.Banked = toCount(raw.Banked) or p.Banked
@@ -2609,13 +3646,69 @@ local function sanitize(raw: any): Profile
 		end
 	end
 
+	if typeof(raw.Story) == "table" then
+		local story = raw.Story
+		if typeof(story.Active) == "string" and #story.Active &lt;= 48 then
+			p.Story.Active = story.Active
+		end
+		p.Story.Step = math.max(1, toCount(story.Step) or 1)
+		p.Story.StepProgress = toCount(story.StepProgress) or 0
+		p.Story.StepStartedAt = toCount(story.StepStartedAt) or 0
+		p.Story.Completed = cleanIdList(story.Completed, 128)
+		p.Story.Unlocks = cleanIdList(story.Unlocks, 128)
+	end
+
 	p.LastSeen = toCount(raw.LastSeen) or p.LastSeen
 	if typeof(raw.SessionId) == "string" then
 		p.SessionId = raw.SessionId
 	end
 
 	p.SchemaVersion = Config.Save.SchemaVersion
-	return p
+	return p, rawVersion
+end
+
+--==========================================================================
+-- Migrationen
+--
+-- sanitize() fuellt fehlende Felder bereits mit Defaults - das allein reicht
+-- fuer reine Feld-Ergaenzungen. Hier steht, was DARUEBER HINAUS noetig ist,
+-- wenn sich die Bedeutung vorhandener Daten aendert. Schluessel = Zielversion.
+-- Ein Altprofil wird nie verworfen und darf nie zum Absturz fuehren.
+--==========================================================================
+
+local MIGRATIONS: { [number]: (Profile) -&gt; () } = {
+	-- 1 -&gt; 2: Der Story-Block kam dazu. Alte Profile haben ihn nicht; sie
+	-- starten bei der ersten Mission, behalten aber Bank, Rig und Cooldowns.
+	[2] = function(profile: Profile)
+		profile.Story.Active = ""
+		profile.Story.Step = 1
+		profile.Story.StepProgress = 0
+		profile.Story.StepStartedAt = 0
+	end,
+}
+
+local function runMigrations(profile: Profile, fromVersion: number, playerName: string)
+	if fromVersion &gt;= Config.Save.SchemaVersion then
+		return
+	end
+	for version = fromVersion + 1, Config.Save.SchemaVersion do
+		local migrate = MIGRATIONS[version]
+		if migrate then
+			local ok, err = pcall(migrate, profile)
+			if not ok then
+				warn(("[GHOSTNET] Migration auf Schema %d fuer %s fehlgeschlagen: %s"):format(
+					version,
+					playerName,
+					tostring(err)
+				))
+			end
+		end
+	end
+	print(("[GHOSTNET] Profil von %s auf Schema %d -&gt; %d migriert."):format(
+		playerName,
+		fromVersion,
+		Config.Save.SchemaVersion
+	))
 end
 
 -- Alte Cooldowns wegwerfen, bevor gespeichert wird.
@@ -2726,7 +3819,10 @@ local function loadProfile(player: Player)
 
 	local ok, loaded = withRetry("Profil laden", player.Name, function()
 		return dataStore:UpdateAsync(key, function(raw: any): Profile
-			local profile = sanitize(raw)
+			local profile, rawVersion = sanitize(raw)
+			-- Altprofile nachziehen, BEVOR geschrieben wird. Ein Profil wird
+			-- dabei nie verworfen.
+			runMigrations(profile, rawVersion, player.Name)
 
 			-- Abkuehlung fuer die Zeit, in der der Spieler offline war. Der
 			-- Trace laeuft also nicht "eingefroren" weiter - wer eine Woche
@@ -2962,7 +4058,7 @@ return SaveService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN16">
+<Item class="ModuleScript" referent="GN18">
 <Properties>
 <string name="Name">SellService</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/SellService.luau
@@ -2990,6 +4086,14 @@ local SaveService = require(script.Parent.SaveService)
 local TraceService = require(script.Parent.TraceService)
 
 local SellService = {}
+
+-- Wer mitbekommen will, dass verkauft wurde, meldet sich hier an - gleiches
+-- Muster wie TraceService.OnBust und HackService.OnHackResolved.
+local sellCallbacks: { (Player, { [string]: any }) -&gt; () } = {}
+
+function SellService.OnSell(callback: (Player, { [string]: any }) -&gt; ())
+	table.insert(sellCallbacks, callback)
+end
 
 --==========================================================================
 -- Hehler finden
@@ -3086,6 +4190,15 @@ local function onSellRequest(player: Player, payload: any)
 		Relief = Config.Sell.TraceRelief,
 		FenceName = fence:GetAttribute("DisplayName") or fence.Name,
 	})
+
+	for _, callback in sellCallbacks do
+		task.spawn(function()
+			local ok, err = pcall(callback, player, { Gross = gross, Fee = fee, Net = net })
+			if not ok then
+				warn(("[GHOSTNET] OnSell-Callback fehlgeschlagen: %s"):format(tostring(err)))
+			end
+		end)
+	end
 end
 
 --==========================================================================
@@ -3111,7 +4224,7 @@ return SellService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN17">
+<Item class="ModuleScript" referent="GN19">
 <Properties>
 <string name="Name">ShopService</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/ShopService.luau
@@ -3237,7 +4350,7 @@ return ShopService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN18">
+<Item class="ModuleScript" referent="GN20">
 <Properties>
 <string name="Name">TraceService</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/TraceService.luau
@@ -3476,11 +4589,11 @@ return TraceService
 </Properties>
 </Item>
 </Item>
-<Item class="Folder" referent="GN21">
+<Item class="Folder" referent="GN23">
 <Properties>
 <string name="Name">World</string>
 </Properties>
-<Item class="Script" referent="GN20">
+<Item class="Script" referent="GN22">
 <Properties>
 <string name="Name">TestTargets</string>
 <ProtectedString name="Source">-- ServerScriptService/World/TestTargets.server.luau
@@ -3781,19 +4894,19 @@ print("[GHOSTNET] Testwelt gebaut: Kamera (D2), Sicherheitstuer (D4), Geldautoma
 </Item>
 </Item>
 </Item>
-<Item class="StarterPlayer" referent="GN34">
+<Item class="StarterPlayer" referent="GN37">
 <Properties>
 <string name="Name">StarterPlayer</string>
 </Properties>
-<Item class="StarterPlayerScripts" referent="GN35">
+<Item class="StarterPlayerScripts" referent="GN38">
 <Properties>
 <string name="Name">StarterPlayerScripts</string>
 </Properties>
-<Item class="Folder" referent="GN25">
+<Item class="Folder" referent="GN28">
 <Properties>
 <string name="Name">UI</string>
 </Properties>
-<Item class="LocalScript" referent="GN22">
+<Item class="LocalScript" referent="GN24">
 <Properties>
 <string name="Name">HUD</string>
 <ProtectedString name="Source">-- StarterPlayer/StarterPlayerScripts/UI/HUD.client.luau
@@ -4468,7 +5581,7 @@ UITheme.Scanlines(walletPanel, 4)
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="LocalScript" referent="GN23">
+<Item class="LocalScript" referent="GN25">
 <Properties>
 <string name="Name">HackUI</string>
 <ProtectedString name="Source">-- StarterPlayer/StarterPlayerScripts/UI/HackUI.client.luau
@@ -5247,7 +6360,375 @@ end)
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="LocalScript" referent="GN24">
+<Item class="LocalScript" referent="GN26">
+<Properties>
+<string name="Name">MissionUI</string>
+<ProtectedString name="Source">-- StarterPlayer/StarterPlayerScripts/UI/MissionUI.client.luau
+--!strict
+-- GHOSTNET :: Auftragsanzeige und Wegpunkt-Marker.
+--
+-- Reine Anzeige. Dieses Skript entscheidet nie, ob ein Schritt erfuellt ist -
+-- das macht ausschliesslich der Server und schickt das Ergebnis per
+-- MissionSync. Der einzige Knopf, den der Client druecken darf, ist [E] auf
+-- einen Kontakt (TALK-Schritt), und auch den prueft der Server nochmal.
+--
+-- Solange keine Mission laeuft, ist hier nichts zu sehen.
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+
+local Config = require(ReplicatedStorage.Shared.Config)
+local Geometry = require(ReplicatedStorage.Shared.Geometry)
+local Remotes = require(ReplicatedStorage.Shared.Remotes)
+local UITheme = require(ReplicatedStorage.Shared.UITheme)
+
+local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+
+local C = UITheme.Color
+
+--==========================================================================
+-- Zustand (nur Abschrift dessen, was der Server geschickt hat)
+--==========================================================================
+
+local mission = {
+	Active = "",
+	Title = "",
+	StepIndex = 0,
+	StepCount = 0,
+	StepText = "",
+	StepType = "",
+	StepProgress = 0,
+	StepRequired = 1,
+	StepSeconds = nil :: number?,
+	StepStartedAt = 0,
+	ContactId = nil :: string?,
+}
+
+local marker = {
+	Position = nil :: Vector3?,
+	Label = "",
+}
+
+local hackOpen = false
+
+--==========================================================================
+-- Aufbau
+--==========================================================================
+
+local gui = UITheme.Screen("GhostNetMissions", 12)
+gui.Parent = playerGui
+
+local panel = UITheme.Frame({
+	Name = "Mission",
+	Position = UDim2.new(0, 18, 0, 18),
+	Size = UDim2.fromOffset(300, 92),
+	BackgroundColor3 = C.Panel,
+	BackgroundTransparency = 0.08,
+	Visible = false,
+	Parent = gui,
+})
+UITheme.Corner(panel, 4)
+local panelStroke = UITheme.Stroke(panel, C.CyanDim)
+UITheme.Padding(panel, 10)
+
+local kicker = UITheme.Label({
+	Name = "Kicker",
+	Text = "AUFTRAG",
+	TextColor3 = C.TextDim,
+	TextSize = 11,
+	Size = UDim2.new(1, 0, 0, 12),
+	Parent = panel,
+})
+
+local titleLabel = UITheme.Label({
+	Name = "Title",
+	Text = "",
+	TextColor3 = C.Cyan,
+	TextSize = 16,
+	TextTruncate = Enum.TextTruncate.AtEnd,
+	Position = UDim2.new(0, 0, 0, 14),
+	Size = UDim2.new(1, 0, 0, 18),
+	Parent = panel,
+})
+
+local stepLabel = UITheme.Label({
+	Name = "Step",
+	Text = "",
+	TextColor3 = C.Text,
+	TextSize = 13,
+	TextWrapped = true,
+	Position = UDim2.new(0, 0, 0, 34),
+	Size = UDim2.new(1, 0, 0, 30),
+	Parent = panel,
+})
+
+local progressLabel = UITheme.Label({
+	Name = "Progress",
+	Text = "",
+	TextColor3 = C.TextDim,
+	TextSize = 11,
+	Position = UDim2.new(0, 0, 1, -12),
+	Size = UDim2.new(1, 0, 0, 12),
+	Parent = panel,
+})
+
+local progressTrack = UITheme.Frame({
+	Name = "Track",
+	AnchorPoint = Vector2.new(1, 1),
+	Position = UDim2.new(1, 0, 1, -2),
+	Size = UDim2.fromOffset(110, 4),
+	BackgroundColor3 = C.PanelLight,
+	Parent = panel,
+})
+local progressFill = UITheme.Frame({
+	Name = "Fill",
+	Size = UDim2.fromScale(0, 1),
+	BackgroundColor3 = C.Cyan,
+	Parent = progressTrack,
+})
+
+--== Wegpunkt in der Welt ==================================================
+-- Ein unsichtbarer Anker-Part traegt das Billboard. Rein clientseitig - er
+-- existiert auf dem Server nicht und kann dort auch nichts ausloesen.
+
+local anchor = Instance.new("Part")
+anchor.Name = "GhostNetWaypointAnchor"
+anchor.Anchored = true
+anchor.CanCollide = false
+anchor.CanQuery = false
+anchor.CanTouch = false
+anchor.Transparency = 1
+anchor.Size = Vector3.new(1, 1, 1)
+
+local billboard = Instance.new("BillboardGui")
+billboard.Name = "Marker"
+billboard.Size = UDim2.fromOffset(190, 44)
+billboard.StudsOffsetWorldSpace = Vector3.new(0, 4, 0)
+billboard.AlwaysOnTop = true
+billboard.MaxDistance = 1000
+billboard.Enabled = false
+billboard.Adornee = anchor
+billboard.Parent = anchor
+
+local markerLabel = UITheme.Label({
+	Name = "Text",
+	Text = "",
+	TextColor3 = C.Cyan,
+	TextSize = 15,
+	TextXAlignment = Enum.TextXAlignment.Center,
+	Size = UDim2.new(1, 0, 0.6, 0),
+	Parent = billboard,
+})
+
+local markerDistance = UITheme.Label({
+	Name = "Distance",
+	Text = "",
+	TextColor3 = C.TextDim,
+	TextSize = 12,
+	TextXAlignment = Enum.TextXAlignment.Center,
+	Position = UDim2.new(0, 0, 0.6, 0),
+	Size = UDim2.new(1, 0, 0.4, 0),
+	Parent = billboard,
+})
+
+anchor.Parent = workspace
+
+--== Kontakt-Prompt (nur bei TALK-Schritten) ===============================
+
+local contactPrompt = UITheme.Button({
+	Name = "ContactPrompt",
+	AnchorPoint = Vector2.new(0.5, 1),
+	Position = UDim2.new(0.5, 0, 1, -136),
+	Size = UDim2.fromOffset(300, 46), -- Touch-Ziel
+	BackgroundColor3 = C.Panel,
+	BackgroundTransparency = 0.06,
+	Text = "",
+	Visible = false,
+	Parent = gui,
+})
+UITheme.Corner(contactPrompt, 4)
+UITheme.Stroke(contactPrompt, C.Amber)
+
+UITheme.Label({
+	Name = "Caption",
+	Text = "[E]  ANSPRECHEN",
+	TextColor3 = C.Amber,
+	TextSize = 14,
+	TextXAlignment = Enum.TextXAlignment.Center,
+	Size = UDim2.fromScale(1, 1),
+	Parent = contactPrompt,
+})
+
+--==========================================================================
+-- Anzeige
+--==========================================================================
+
+local function refresh()
+	local active = mission.Active ~= "" and not hackOpen
+	panel.Visible = active
+	if not active then
+		return
+	end
+
+	titleLabel.Text = mission.Title
+	stepLabel.Text = mission.StepText
+
+	local required = math.max(1, mission.StepRequired)
+	local done = math.clamp(mission.StepProgress, 0, required)
+
+	if required &gt; 1 then
+		progressLabel.Text = ("SCHRITT %d/%d   //   %d von %d"):format(
+			mission.StepIndex,
+			mission.StepCount,
+			done,
+			required
+		)
+	else
+		progressLabel.Text = ("SCHRITT %d/%d"):format(mission.StepIndex, mission.StepCount)
+	end
+
+	local fraction = if mission.StepCount &gt; 0 then (mission.StepIndex - 1 + done / required) / mission.StepCount else 0
+	TweenService:Create(progressFill, UITheme.Tween.Normal, { Size = UDim2.fromScale(fraction, 1) }):Play()
+end
+
+--==========================================================================
+-- Server-Meldungen
+--==========================================================================
+
+Remotes.MissionSync.OnClientEvent:Connect(function(data: any)
+	if typeof(data) ~= "table" then
+		return
+	end
+
+	local wasActive = mission.Active
+	mission.Active = if typeof(data.Active) == "string" then data.Active else ""
+	mission.Title = if typeof(data.Title) == "string" then data.Title else ""
+	mission.StepIndex = tonumber(data.StepIndex) or 0
+	mission.StepCount = tonumber(data.StepCount) or 0
+	mission.StepText = if typeof(data.StepText) == "string" then data.StepText else ""
+	mission.StepType = if typeof(data.StepType) == "string" then data.StepType else ""
+	mission.StepProgress = tonumber(data.StepProgress) or 0
+	mission.StepRequired = tonumber(data.StepRequired) or 1
+	mission.StepSeconds = tonumber(data.StepSeconds)
+	mission.StepStartedAt = tonumber(data.StepStartedAt) or 0
+	mission.ContactId = if typeof(data.ContactId) == "string" then data.ContactId else nil
+
+	-- Neue Mission: Panel kurz aufziehen, damit man es bemerkt.
+	if mission.Active ~= "" and mission.Active ~= wasActive then
+		panel.Size = UDim2.fromOffset(300, 60)
+		panel.Visible = true
+		TweenService:Create(panel, UITheme.Tween.Slow, { Size = UDim2.fromOffset(300, 92) }):Play()
+		UITheme.Flash(panel, C.CyanDim)
+	end
+
+	refresh()
+end)
+
+Remotes.WaypointSync.OnClientEvent:Connect(function(data: any)
+	if typeof(data) ~= "table" then
+		return
+	end
+	marker.Position = if typeof(data.Position) == "Vector3" then data.Position else nil
+	marker.Label = if typeof(data.Label) == "string" then data.Label else ""
+
+	if marker.Position then
+		anchor.Position = marker.Position
+		markerLabel.Text = marker.Label
+		billboard.Enabled = true
+	else
+		billboard.Enabled = false
+	end
+end)
+
+Remotes.HackSessionStarted.OnClientEvent:Connect(function()
+	hackOpen = true
+	panel.Visible = false
+	contactPrompt.Visible = false
+	billboard.Enabled = false
+end)
+
+Remotes.HackResolved.OnClientEvent:Connect(function()
+	hackOpen = false
+	if marker.Position then
+		billboard.Enabled = true
+	end
+	refresh()
+end)
+
+--==========================================================================
+-- TALK: der einzige Knopf, den dieses Skript hat
+--==========================================================================
+
+local nearContact = false
+
+local function tryInteract()
+	if hackOpen or not nearContact then
+		return
+	end
+	local contactId = mission.ContactId
+	if mission.StepType ~= "TALK" or not contactId then
+		return
+	end
+	Remotes.MissionInteract:FireServer({ ContactId = contactId })
+end
+
+UserInputService.InputBegan:Connect(function(input, processed)
+	if processed then
+		return
+	end
+	if input.KeyCode == Enum.KeyCode.E then
+		tryInteract()
+	end
+end)
+
+contactPrompt.Activated:Connect(tryInteract)
+
+--==========================================================================
+-- Schleife: Entfernung am Marker, WAIT-Countdown, Kontakt-Prompt
+--==========================================================================
+
+local accumulator = 0
+RunService.RenderStepped:Connect(function(dt)
+	accumulator += dt
+	if accumulator &lt; 0.12 then
+		return
+	end
+	accumulator = 0
+
+	local position = Geometry.AlivePosition(player)
+
+	-- Entfernung zum Wegpunkt.
+	if billboard.Enabled and marker.Position and position then
+		markerDistance.Text = ("%d m"):format(math.floor((marker.Position - position).Magnitude))
+	elseif billboard.Enabled then
+		markerDistance.Text = ""
+	end
+
+	-- Kontakt in Reichweite? Reine Anzeige - der Server prueft nochmal.
+	local wantsContact = mission.Active ~= "" and mission.StepType == "TALK" and not hackOpen
+	if wantsContact and marker.Position and position then
+		nearContact = (marker.Position - position).Magnitude &lt;= Config.Mission.ContactRange
+	else
+		nearContact = false
+	end
+	contactPrompt.Visible = nearContact
+
+	-- WAIT-Schritte zaehlen sichtbar herunter, sonst wirkt das Spiel haengend.
+	if mission.Active ~= "" and mission.StepType == "WAIT" and mission.StepSeconds then
+		local left = math.max(0, mission.StepStartedAt + mission.StepSeconds - os.time())
+		progressLabel.Text = ("SCHRITT %d/%d   //   noch %ds"):format(mission.StepIndex, mission.StepCount, left)
+	end
+end)
+
+refresh()
+</ProtectedString>
+</Properties>
+</Item>
+<Item class="LocalScript" referent="GN27">
 <Properties>
 <string name="Name">ShopUI</string>
 <ProtectedString name="Source">-- StarterPlayer/StarterPlayerScripts/UI/ShopUI.client.luau
