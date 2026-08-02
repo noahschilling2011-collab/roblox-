@@ -37,6 +37,7 @@ local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local AssetLibrary = require(ReplicatedStorage.Shared.AssetLibrary)
 local Vehicles = require(ReplicatedStorage.Shared.Vehicles)
 
+local ContractService = require(script.Parent.ContractService)
 local RateLimiter = require(script.Parent.RateLimiter)
 local RoadNetwork = require(script.Parent.RoadNetwork)
 local TimeService = require(script.Parent.TimeService)
@@ -529,6 +530,7 @@ function TrafficService.HandleSteal(player: Player)
 	-- Autodiebstahl haengt am Trace, statt danebenherzulaufen.
 	TraceService.Add(player, T.StealTrace)
 	PursuitService.AddHeat(player, 1)
+	ContractService.Report(player, "STEAL", 1)
 	print(("[GHOSTNET] %s hat ein Auto kurzgeschlossen (+%d Trace)."):format(player.Name, T.StealTrace))
 end
 

@@ -1,7 +1,7 @@
 # GHOSTNET — Bauplan
 
 **Stand: alles abgearbeitet** — Phase 0 bis G, Open-World-Abschnitt 2 und
-Phase 1 bis 7, v2.1.0 bis v2.4.0 (`Config.Version = "2.4.0"`).
+Phase 1 bis 7, v2.1.0 bis v2.6.0 (`Config.Version = "2.6.0"`).
 Was jetzt ansteht, steht ganz unten unter „Offen".
 
 Reihenfolge war bindend. Eine Phase wurde komplett fertig, bevor die nächste
@@ -490,6 +490,43 @@ Pflicht-Kindern, Maßen und Bezugsquelle — sortiert nach Wichtigkeit.
 
 ---
 
+# v2.6.0 — Die offene Liste abgearbeitet
+
+Punkte 2 bis 5 aus „Offen" sind gebaut. Punkt 0 (Bildrate) und Punkt 1 (IDs)
+bleiben stehen — beides kann Code nicht erledigen.
+
+## Zwei weitere Minispiele ✅
+Drei Rätsel, die drei verschiedene Sachen verlangen:
+**Node-Breach** räumlich · **CodeCrack** logisch (Mastermind: exakte Treffer
+und richtige Ziffer am falschen Platz) · **SignalMatch** feinmotorisch (drei
+Regler auf eine Zielwelle). Alle halten die bindende Schnittstelle ein, und
+in keinem verlässt die Lösung den Server. Zuweisung über das vorhandene
+`HackType`-Attribut — kein Code pro Ziel.
+
+## Prozeduraler Weltgenerator ✅
+`World/WorldGenerator` verteilt bis zu `Config.Generator.MaxTargets` (60)
+Ziele entlang des Straßengraphen. **Die Schwierigkeit kommt aus dem Bezirk** —
+damit schließt Rig-Fortschritt neue Stadtteile auf, statt nur größere Zahlen
+zu erlauben. Vier Archetypen mit unterschiedlichem Minispiel, sodass man beim
+freien Spielen allen dreien begegnet. Die Story-Ziele bleiben unangetastet:
+Missionen zeigen auf feste `TargetId`s.
+
+## Tagesziele ✅
+`ContractService` — drei Aufträge pro Tag, Reset über `os.time()`, Serie für
+aufeinanderfolgende Tage. **Schema-Migration 5 → 6** (`Profile.Contracts`).
+Kein neues Wirtschaftssystem: die Aufträge zählen mit, was der Spieler ohnehin
+tut, und zahlen über denselben `EconomyService`. Gewürfelt wird aus UserId +
+Tag, damit sich durch Serverwechsel keine neuen Aufträge erzeugen lassen.
+
+## Ranglisten ✅
+`leaderstats` (CRY, RIG) plus zwei `OrderedDataStore`-Listen:
+**Guthaben** und **Ruhigste Hand** (längste Serie erfolgreicher Hacks ohne
+einen einzigen Fehlversuch). Die zweite ist die interessantere — sie belohnt
+Präzision statt Spielzeit. Der DataStore-Zugriff liegt in `SaveService`,
+Regel 5 bleibt unangetastet.
+
+---
+
 ## Offen — was als Nächstes sinnvoll ist
 
 Der Bauplan aus dem Prompt ist abgearbeitet. Nichts davon ist mehr blockiert,
@@ -506,12 +543,9 @@ also gilt jetzt: **erst mit echten Spielern testen, dann weiterbauen.**
 1. **IDs eintragen** (manuell, außerhalb des Codes): Sound-Assets in
    `SoundCatalog.luau`, Gamepässe und Produkte in `MonetizationService.luau`,
    die eigene UserId in `AdminList.luau`.
-2. **Zwei weitere Minispiele** — SignalMatch (Wellenform angleichen) und
-   CodeCrack (Mastermind). Das Register in `HackService` steht bereits;
-   Zuweisung über das vorhandene `HackType`-Attribut.
-3. **Prozeduraler Weltgenerator** — 25+ Ziele in vier Schwierigkeitszonen
-   statt der handgesetzten Objekte. Die Attribut-Logik bleibt gleich.
-4. **Tagesziele** (`ContractService`) — drei Aufträge pro Tag, Reset über
-   `os.time()`, im Profil gespeichert. Stärkster Hebel für Wiederkehr.
-5. **Ranglisten** — `leaderstats` (Banked, Tier), `OrderedDataStore`-Top-100
-   und eine „Ruhigste Hand"-Tafel (Hacks ohne einen einzigen Fehlversuch).
+2. ~~Zwei weitere Minispiele~~ · ~~Weltgenerator~~ · ~~Tagesziele~~ ·
+   ~~Ranglisten~~ — alle vier in v2.6.0 gebaut.
+3. **Die Modelle aus `ASSETS_TODO.md`.** Gebäude, Props und Figuren sind
+   weiterhin magenta. Das ist der größte verbliebene optische Sprung.
+4. **Ein echter Spielertest.** Alles ist automatisch geprüft, aber noch nie
+   von einem Menschen durchgespielt.

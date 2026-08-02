@@ -6,7 +6,7 @@
 
 local Config = {}
 
-Config.Version = "2.5.0" -- Fahrzeuge sehen aus wie Fahrzeuge, Raeder bleiben dran
+Config.Version = "2.6.0" -- Minispiele, Weltgenerator, Tagesziele, Ranglisten
 
 -- CollectionService-Tags. Ein Part mit dem Tag ist ein Hack-Ziel, ein Hehler,
 -- ein Missions-Wegpunkt oder ein ansprechbarer Kontakt. Kein Code pro Objekt.
@@ -233,7 +233,7 @@ Config.Save = {
 	--   3 = Phase C (Darknet-Lager)
 	--   4 = Phase F (PurchaseLog gegen Doppelvergabe)
 	--   5 = Open World (Fahrzeugbesitz, Endgame-Entscheidung)
-	SchemaVersion = 5,
+	SchemaVersion = 6,
 	StoreName = "GhostNetPlayers_v1",
 	KeyFormat = "ghostnet_player_%d",
 
@@ -874,6 +874,7 @@ Config.RateLimits = {
 	-- herumhaemmern - und jede Anfrage ist eine Wegsuche im Graphen.
 	RouteRequest = { Rate = 2, Burst = 5 },
 	PhoneRead = { Rate = 2, Burst = 5 },
+	ContractClaim = { Rate = 1, Burst = 4 },
 }
 
 --==========================================================================
@@ -894,7 +895,179 @@ Config.NodeBreach = {
 }
 
 --==========================================================================
--- 26. DEFAULTS FUER HACK-ZIELE
+-- 25. RANGLISTEN
+--
+-- Zwei Listen, zwei verschiedene Arten, gut zu sein. Die zweite ist die
+-- wichtigere: "Ruhigste Hand" belohnt Praezision statt Spielzeit und ist
+-- damit auch fuer jemanden erreichbar, der nicht den ganzen Tag spielt.
+--==========================================================================
+Config.Leaderboard = {
+	BankedBoard = "Banked",
+	QuietBoard = "Quiet",
+	BankedLabel = "CRY",
+	TierLabel = "RIG",
+	QuietLabel = "RUHIGSTE HAND",
+	TopCount = 25, -- OrderedDataStore erlaubt maximal 100 pro Seite
+
+	-- Schreiben im Autosave-Rhythmus, lesen deutlich langsamer. Eine
+	-- Rangliste muss nicht sekundengenau stimmen, und jeder Zugriff zaehlt
+	-- gegen das DataStore-Limit.
+	PublishInterval = 120,
+	RefreshInterval = 90,
+}
+
+--==========================================================================
+-- 25a. TAGESZIELE
+--
+-- Drei Auftraege pro Tag, zurueckgesetzt ueber os.time(). Der staerkste
+-- Hebel fuer Wiederkehr, den es gibt: ein Grund, morgen nochmal reinzusehen.
+--
+-- Bewusst KEIN neues Wirtschaftssystem - die Auftraege zaehlen mit, was der
+-- Spieler ohnehin tut, und zahlen in dieselbe Waehrung.
+--==========================================================================
+Config.Contracts = {
+	PerDay = 3,
+	-- Belohnung geht auf die BANK, nicht ins Unverkaufte. Ein Tagesziel ist
+	-- eine Auszahlung, kein Diebesgut - und es soll den Trace nicht anfassen.
+	ToBank = true,
+	-- Serie: wer alle drei an mehreren Tagen hintereinander schafft, bekommt
+	-- pro Tag etwas mehr. Gedeckelt, sonst wird die zehnte Woche absurd.
+	StreakBonus = 0.15,
+	StreakCap = 7,
+
+	-- Die moeglichen Auftragsarten. Ziel wird zwischen Min und Max gewuerfelt,
+	-- die Belohnung waechst mit dem Ziel.
+	Kinds = {
+		{ Kind = "HACK", Text = "Knack %d Ziele", Min = 3, Max = 8, RewardPer = 90 },
+		{ Kind = "SELL", Text = "Liefere %d Mal beim Hehler ab", Min = 2, Max = 4, RewardPer = 160 },
+		{ Kind = "EARN", Text = "Verdiene %d CRY", Min = 800, Max = 2500, RewardPer = 0.35 },
+		{ Kind = "STEAL", Text = "Schliess %d Autos kurz", Min = 1, Max = 3, RewardPer = 220 },
+		{ Kind = "ESCAPE", Text = "Entkomme %d Mal der Fahndung", Min = 1, Max = 2, RewardPer = 400 },
+	},
+}
+
+--==========================================================================
+-- 25b. WELTGENERATOR
+--
+-- Verteilt Hack-Ziele ueber die Stadt. Die Schwierigkeit kommt aus dem
+-- BEZIRK - damit schliesst Rig-Fortschritt neue Stadtteile auf, statt nur
+-- groessere Zahlen zu erlauben.
+--
+-- MaxTargets ist ein Bildraten-Regler: jedes Ziel ist ein Modell plus ein
+-- Eintrag in der Ziel-Registry. Erst messen, dann hochdrehen.
+--==========================================================================
+Config.Generator = {
+	MaxTargets = 60, -- harte Obergrenze ueber die ganze Stadt
+	PerEdge = 2, -- moegliche Plaetze je Strassenkante
+	Chance = 0.45, -- Anteil der Plaetze, die belegt werden
+	WallOffset = 3, -- Abstand von der Gehwegkante zur Fassade
+	Cooldown = 240, -- laenger als bei Story-Zielen: es gibt viele davon
+	LevelPerDifficulty = 2.5, -- ab welchem Rig ein Ziel oeffnet
+	-- Was hoeher als das haengt, gilt als offen einsehbar (Config.Cover).
+	ExposedHeight = 5,
+
+	LightChance = 0.55,
+	LightBrightness = 2,
+	LightRange = 14,
+
+	-- Vier Archetypen, jeder mit einem anderen Minispiel. Dadurch trifft man
+	-- beim freien Spielen alle drei Raetsel, ohne dass jemand sie zuweisen
+	-- muesste.
+	Archetypes = {
+		{
+			Id = "CAM",
+			Asset = "Kamera",
+			Label = "KAMERA",
+			Suffix = "Strassenzug",
+			Size = Vector3.new(1.4, 1.4, 2.6),
+			Height = 9,
+			HackType = "NodeBreach",
+			OnSuccess = "CameraOffline",
+			DownTime = 90,
+		},
+		{
+			Id = "BOX",
+			Asset = "Verteiler",
+			Label = "VERTEILERKASTEN",
+			Suffix = "Netzknoten",
+			Size = Vector3.new(2, 4, 1.4),
+			Height = 3,
+			HackType = "SignalMatch",
+			OnSuccess = "Offline",
+			DownTime = 60,
+		},
+		{
+			Id = "ATM",
+			Asset = "Automat",
+			Label = "GELDAUTOMAT",
+			Suffix = "Filiale",
+			Size = Vector3.new(2.4, 5, 1.4),
+			Height = 3,
+			HackType = "CodeCrack",
+			OnSuccess = "AtmPayout",
+			DownTime = 30,
+		},
+		{
+			Id = "DOOR",
+			Asset = "Tuer",
+			Label = "SEITENTUER",
+			Suffix = "Hinterhof",
+			Size = Vector3.new(4, 8, 0.6),
+			Height = 4,
+			HackType = "CodeCrack",
+			OnSuccess = "DoorOpen",
+			DownTime = 45,
+		},
+	},
+}
+
+--==========================================================================
+-- 26. CODE-CRACK (Mastermind)
+--
+-- Zwei Regler: Codelaenge und Ziffernbereich. Beide gleichzeitig
+-- hochzudrehen macht das Raetsel sehr schnell unfair - deshalb waechst die
+-- Laenge zuerst, der Ziffernbereich langsamer.
+--==========================================================================
+Config.CodeCrack = {
+	Tiers = {
+		{ UpTo = 3, Length = 3, Digits = 5, Guesses = 8 },
+		{ UpTo = 6, Length = 4, Digits = 6, Guesses = 8 },
+		{ UpTo = 8, Length = 4, Digits = 8, Guesses = 7 },
+		{ UpTo = 10, Length = 5, Digits = 8, Guesses = 7 },
+	},
+}
+
+--==========================================================================
+-- 27. SIGNAL-ABGLEICH
+--
+-- Drei Regler auf eine Zielwelle einstellen. Tolerance ist der einzige
+-- echte Schwierigkeitsregler: runter = Millimeterarbeit, hoch = geschenkt.
+--==========================================================================
+Config.SignalMatch = {
+	Samples = 48, -- Aufloesung der gezeichneten Kurve
+
+	FrequencyMin = 0.5,
+	FrequencyMax = 4,
+	FrequencyStep = 0.25,
+	AmplitudeMin = 0.3,
+	AmplitudeMax = 1,
+	AmplitudeStep = 0.05,
+	PhaseStep = math.pi / 12,
+
+	-- Groesster sinnvoller Fehler, nur fuer die Naehe-Anzeige. Zwei Wellen
+	-- mit Amplitude 1 liegen im Mittel selten weiter als das auseinander.
+	MaxError = 1.2,
+
+	Tiers = {
+		{ UpTo = 3, Tolerance = 0.16, Attempts = 12 },
+		{ UpTo = 6, Tolerance = 0.11, Attempts = 10 },
+		{ UpTo = 8, Tolerance = 0.08, Attempts = 9 },
+		{ UpTo = 10, Tolerance = 0.06, Attempts = 8 },
+	},
+}
+
+--==========================================================================
+-- 28. DEFAULTS FUER HACK-ZIELE
 -- Ein Part braucht KEIN einziges Attribut. Alles, was fehlt, kommt von hier.
 --==========================================================================
 Config.TargetDefaults = {

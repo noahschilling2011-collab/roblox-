@@ -30,6 +30,22 @@ export type OwnedVehicle = {
 
 -- Story-Fortschritt im Profil. Der Client bekommt davon nur eine Abschrift
 -- ueber MissionSync und meldet nie selbst, dass ein Schritt fertig ist.
+-- Drei Auftraege pro Tag. Zuruecksetzen ueber os.time(), damit es einen
+-- Serverwechsel ueberlebt - genau dafuer ist die Regel da.
+export type Contract = {
+	Kind: string, -- HACK | SELL | EARN | STEAL | ESCAPE
+	Target: number, -- wie viel noetig ist
+	Progress: number,
+	Reward: number,
+	Claimed: boolean,
+}
+
+export type Contracts = {
+	Day: number, -- welcher Tag (os.time() // 86400)
+	List: { Contract },
+	Streak: number, -- aufeinanderfolgende Tage mit allen drei erledigt
+}
+
 export type Story = {
 	Active: string, -- "" = gerade keine Mission
 	Step: number, -- 1-basierter Index in Mission.Steps
@@ -55,6 +71,7 @@ export type Profile = {
 	Stash: { [string]: number }, -- Darknet-Lager, seit SchemaVersion 3
 	PurchaseLog: { string }, -- verarbeitete PurchaseIds, seit SchemaVersion 4
 	Garage: { OwnedVehicle }, -- gekaufte Fahrzeuge, seit SchemaVersion 5
+	Contracts: Contracts, -- Tagesziele, seit SchemaVersion 6
 	LastSeen: number, -- Unix-Zeit des letzten Speicherns
 	SessionId: string, -- Session-Lock gegen Doppel-Sitzungen
 }

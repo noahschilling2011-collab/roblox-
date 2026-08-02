@@ -278,6 +278,11 @@ Eine leere Straße mit perfekten Häusern wirkt tot; eine durchschnittliche
 Straße mit Kram darauf wirkt echt. Das ist der billigste Realismus, den es
 gibt — und das hier sind die kleinsten Modelle der ganzen Liste.
 
+Die letzten vier (`Verteiler`, `Kamera`, `Automat`, `Tuer`) sind seit v2.6.0
+gleichzeitig **Hack-Ziele**: der Weltgenerator verteilt bis zu 60 davon über
+die Stadt. Solange sie fehlen, steht dort ein magenta Klotz — spielbar, aber
+unübersehbar.
+
 Alle setzt der Code auf `CanCollide = false` (man soll nicht am Poller
 hängenbleiben) und `CastShadow = false`.
 
@@ -290,6 +295,9 @@ Model-Name: Poller         ~0.8 x 3 x 0.8
 Model-Name: Verteiler      ~2 x 4 x 1.4     Verteilerkasten
 Model-Name: Schild         ~1.4 x 7 x 0.3   Verkehrsschild
 Model-Name: Feuerleiter    ~2.6 x 1 x 1.2   EINE Sprosse, wird gestapelt
+Model-Name: Kamera         ~1.4 x 1.4 x 2.6 Hack-Ziel, haengt an der Fassade
+Model-Name: Automat        ~2.4 x 5 x 1.4   Geldautomat, Hack-Ziel
+Model-Name: Tuer           ~4 x 8 x 0.6     Seitentuer, Hack-Ziel
 Woher: Toolbox („street props pack") oder schnell in Studio gebaut
 ```
 

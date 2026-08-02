@@ -39,6 +39,11 @@ local HackService = {}
 -- sonst aendert sich nichts.
 local Minigames = {
 	NodeBreach = require(script.Parent.Minigames.NodeBreach),
+	-- Drei Raetsel, die drei verschiedene Sachen verlangen: raeumlich,
+	-- logisch, feinmotorisch. Welches ein Ziel benutzt, steht als Attribut
+	-- HackType am Part - kein Code pro Objekt.
+	CodeCrack = require(script.Parent.Minigames.CodeCrack),
+	SignalMatch = require(script.Parent.Minigames.SignalMatch),
 }
 
 local sessions: { [Player]: Session } = {}

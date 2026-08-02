@@ -26,6 +26,7 @@ local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local AssetLibrary = require(ReplicatedStorage.Shared.AssetLibrary)
 
 local ArrestService = require(script.Parent.ArrestService)
+local ContractService = require(script.Parent.ContractService)
 local RoadNetwork = require(script.Parent.RoadNetwork)
 local VehicleChassis = require(script.Parent.VehicleChassis)
 local SaveService = require(script.Parent.SaveService)
@@ -528,6 +529,7 @@ local function step(dt: number)
 				chase.OutOfSight = 0
 				if computeLevel(player, chase) <= 0 then
 					print(("[GHOSTNET] %s ist entkommen."):format(player.Name))
+					ContractService.Report(player, "ESCAPE", 1)
 					clearChase(player)
 					continue
 				end

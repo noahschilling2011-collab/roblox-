@@ -328,6 +328,68 @@ try {
     );
   }
 
+  // --- Nachschub: Minispiele, Generator, Tagesziele, Ranglisten ---
+  for (const name of ["CodeCrack", "SignalMatch"]) {
+    const src = sources.get(join(SRC, `server/Systems/Minigames/${name}.luau`));
+    if (!src) continue;
+    const code = codeOnly(src);
+    check(
+      `${name} haelt die Minispiel-Schnittstelle ein`,
+      new RegExp(`function ${name}\\.Generate`).test(code)
+        && new RegExp(`function ${name}\\.Input`).test(code)
+        && new RegExp(`function ${name}\\.Label`).test(code),
+      "HackService kann das Minispiel nicht aufrufen"
+    );
+    check(
+      `${name} schickt die Loesung nicht an den Client`,
+      !/public\.Code|public\.Frequency|public\.Amplitude|public\.Phase/.test(code),
+      "der publicState enthaelt die Loesung"
+    );
+  }
+  {
+    const contracts = sources.get(join(SRC, "server/Systems/ContractService.luau"));
+    if (contracts) {
+      const code = codeOnly(contracts);
+      check(
+        "Tagesziele benutzen os.time(), nicht os.clock()",
+        /os\.time\(\)/.test(code) && !/os\.clock\(\)/.test(code),
+        "os.clock faengt bei jedem Serverstart neu an - dann gibt es nach jedem Wechsel neue Auftraege"
+      );
+      check(
+        "Tagesziele wuerfeln pro Spieler und Tag reproduzierbar",
+        /Random\.new\(player\.UserId/.test(code),
+        "durch Serverwechsel liessen sich neue Auftraege erwuerfeln"
+      );
+      check(
+        "Belohnung laeuft ueber den EconomyService",
+        /EconomyService\.Award/.test(code),
+        "es entsteht ein zweiter Weg, Geld zu erzeugen"
+      );
+    }
+    const board = sources.get(join(SRC, "server/Systems/LeaderboardService.luau"));
+    if (board) {
+      check(
+        "Die Rangliste fasst keinen DataStore selbst an",
+        !/DataStoreService/.test(codeOnly(board)),
+        "nur SaveService spricht mit einem DataStore"
+      );
+    }
+    const gen = sources.get(join(SRC, "server/World/WorldGenerator.server.luau"));
+    if (gen) {
+      const code = codeOnly(gen);
+      check(
+        "Der Generator klont Vorlagen statt Ziele zu bauen",
+        /AssetLibrary\.Clone\(/.test(code),
+        "erzeugt sichtbare Geometrie selbst"
+      );
+      check(
+        "Der Generator hat eine harte Obergrenze",
+        /MaxTargets/.test(code),
+        "eine unbegrenzte Zielzahl frisst Registry und Bildrate"
+      );
+    }
+  }
+
   // --- Orientierung, Story, Polizei ---
   {
     const route = sources.get(join(SRC, "server/Systems/RouteService.luau"));
@@ -785,6 +847,8 @@ local __deps = {}
     ["Vehicles", "shared/Vehicles.luau"],
     ["Districts", "shared/Districts.luau"],
     ["NodeBreach", "server/Systems/Minigames/NodeBreach.luau"],
+    ["CodeCrack", "server/Systems/Minigames/CodeCrack.luau"],
+    ["SignalMatch", "server/Systems/Minigames/SignalMatch.luau"],
   ]) {
     body += `\n__deps["${name}"] = (function()\n${loadModule(path)}\nend)()\n`;
   }
@@ -796,6 +860,8 @@ local Goods = __deps["Goods"]
 local Vehicles = __deps["Vehicles"]
 local Districts = __deps["Districts"]
 local NodeBreach = __deps["NodeBreach"]
+local CodeCrack = __deps["CodeCrack"]
+local SignalMatch = __deps["SignalMatch"]
 
 -- Ergebnis geht als eine Zeichenkette zurueck ("OK|name" / "FAIL|name|grund"),
 -- damit zwischen Luau und JS keine Tabelle uebersetzt werden muss.
@@ -1389,6 +1455,68 @@ test("Die Karte ist vollstaendig und lesbar", function()
 	expect(M.MiniRange > 0, "die Minikarte zeigt nichts")
 	expect(M.MaxTargets > 0, "keine Ziele auf der Karte")
 	expect(M.SyncDebounce > 0, "Kartendaten wuerden ungebuendelt gesendet")
+end)
+
+test("Beide neuen Minispiele sind loesbar und fair", function()
+	local rng = Random.new(4242)
+
+	for difficulty = 1, 10 do
+		local public, state = CodeCrack.Generate(difficulty, rng)
+		expect(#state.Code == state.Length, "Code hat die falsche Laenge")
+		expect(public.Length == state.Length, "Client bekommt eine andere Laenge")
+		-- Der richtige Code muss als Loesung durchgehen.
+		local win = CodeCrack.Input(state, { Guess = table.clone(state.Code) })
+		expect(win.Solved, "der richtige Code wird nicht akzeptiert")
+
+		-- Und Unsinn darf nichts kaputtmachen.
+		local _, fresh = CodeCrack.Generate(difficulty, rng)
+		expect(not CodeCrack.Input(fresh, { Guess = { 0 } }).Ok, "zu kurze Eingabe durchgelassen")
+		expect(not CodeCrack.Input(fresh, "nope").Ok, "String als Eingabe durchgelassen")
+	end
+
+	for difficulty = 1, 10 do
+		local public, state = SignalMatch.Generate(difficulty, rng)
+		expect(#public.Target == public.Samples, "Zielkurve hat die falsche Punktzahl")
+		local hit = SignalMatch.Input(state, {
+			Frequency = state.Frequency,
+			Amplitude = state.Amplitude,
+			Phase = state.Phase,
+		})
+		expect(hit.Solved, "die exakte Einstellung wird nicht akzeptiert")
+
+		local _, fresh = SignalMatch.Generate(difficulty, rng)
+		expect(not SignalMatch.Input(fresh, {}).Ok, "leere Eingabe durchgelassen")
+	end
+end)
+
+test("Tagesziele sind erreichbar und lohnen sich", function()
+	local C = Config.Contracts
+	expect(C.PerDay >= 1 and C.PerDay <= #C.Kinds,
+		"mehr Auftraege pro Tag als es Arten gibt - dann kommt einer doppelt")
+	for _, kind in C.Kinds do
+		expect(kind.Min >= 1 and kind.Min <= kind.Max, kind.Kind .. ": Zielspanne unbrauchbar")
+		expect(kind.RewardPer > 0, kind.Kind .. ": bringt nichts ein")
+		expect(string.find(kind.Text, "%%d") ~= nil, kind.Kind .. ": Text ohne Platzhalter")
+	end
+	expect(C.StreakBonus > 0 and C.StreakCap > 0, "die Serie bringt nichts")
+end)
+
+test("Der Generator bleibt im Rahmen", function()
+	local G = Config.Generator
+	expect(G.MaxTargets > 0 and G.MaxTargets <= 200, "Zielzahl unbrauchbar")
+	expect(#G.Archetypes >= 3, "zu wenige Zielarten - alles sieht gleich aus")
+	local kinds = {}
+	for _, archetype in G.Archetypes do
+		expect(archetype.Asset ~= "", archetype.Id .. ": kein Asset-Name")
+		kinds[archetype.HackType] = true
+	end
+	-- Ueber die Archetypen muessen alle drei Raetsel vorkommen, sonst
+	-- begegnet man beim freien Spielen nur einem davon.
+	local distinct = 0
+	for _ in kinds do
+		distinct += 1
+	end
+	expect(distinct >= 3, "nur " .. distinct .. " Raetselart(en) im Generator")
 end)
 
 test("Die Polizei ist eine Bedrohung, aber fair", function()

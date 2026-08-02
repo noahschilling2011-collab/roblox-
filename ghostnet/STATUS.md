@@ -3,8 +3,8 @@
 > Wird am Ende jeder Session aktualisiert. Erstes, was eine neue Session liest.
 
 ## Aktuelle Phase
-**Alles abgearbeitet, zuletzt v2.5.0 „Fahrzeuge"**
-(`Config.Version = "2.5.0"`). Aus dem Hacking-Spiel ist ein Hacking-Spiel mit
+**Alles abgearbeitet, zuletzt v2.6.0 „Die offene Liste"**
+(`Config.Version = "2.6.0"`). Aus dem Hacking-Spiel ist ein Hacking-Spiel mit
 offener Stadt geworden — Bezirke, Verkehr, Autobesitz, ein Bankraub mit drei
 Wegen, eine Polizei ohne Waffen und eine 10-Missionen-Story mit Entscheidung
 am Ende. Seit v2.1.0 spielt das Ganze bei **hellem Tag**.
@@ -15,7 +15,7 @@ Warnung direkt darunter und Punkt 0 am Ende von `PHASEN.md`.
 ## ⚠️ Was ich NICHT prüfen konnte
 Der Bauplan verlangt nach jeder Phase eine **gemessene Bildrate**. Das kann ich
 nicht liefern und erfinde die Zahl auch nicht: Ich habe keine Roblox-Laufzeit,
-nur eine Luau-VM für Syntax und Logik. Die 725 Prüfungen sagen **nichts** über
+nur eine Luau-VM für Syntax und Logik. Die 784 Prüfungen sagen **nichts** über
 Bildrate, Fahrverhalten oder Physikstabilität aus. Das muss Noah im
 MicroProfiler messen, und zwar besonders jetzt — Verkehr, Fußgänger,
 Streifenwagen und eine gebaute Stadt sind zusammen der teuerste Teil des
@@ -34,6 +34,49 @@ gegenüber dem alten Standardzustand. Gegengerechnet: die PointLights an den
 Neonschildern entfallen bei Tag komplett.
 
 ## Fertig ✅
+
+### v2.6.0 — Die offene Liste abgearbeitet
+Punkte 2 bis 5 aus „Offen" in `PHASEN.md` sind gebaut. Punkt 0 (Bildrate) und
+Punkt 1 (IDs eintragen) bleiben stehen — beides kann Code nicht erledigen.
+
+**Zwei weitere Minispiele.** Jetzt drei Rätsel, die drei verschiedene Sachen
+verlangen: **Node-Breach** räumlich, **CodeCrack** logisch (Mastermind —
+exakte Treffer und richtige Ziffer am falschen Platz), **SignalMatch**
+feinmotorisch (drei Regler auf eine Zielwelle). Beide halten die bindende
+Schnittstelle ein; in keinem verlässt die Lösung den Server. Zuweisung über
+das vorhandene `HackType`-Attribut, kein Code pro Ziel.
+
+**Prozeduraler Weltgenerator.** `World/WorldGenerator` verteilt bis zu 60
+Ziele entlang des Straßengraphen. **Die Schwierigkeit kommt aus dem Bezirk** —
+damit schließt Rig-Fortschritt neue Stadtteile auf, statt nur größere Zahlen
+zu erlauben. Vier Archetypen mit unterschiedlichem Minispiel, sodass man beim
+freien Spielen allen dreien begegnet. Story-Ziele bleiben unangetastet:
+Missionen zeigen auf feste `TargetId`s, ein Generator, der die überschreibt,
+macht die Story unspielbar.
+
+**Tagesziele.** `ContractService` — drei Aufträge pro Tag, Reset über
+`os.time()`, Serie für aufeinanderfolgende Tage. Kein neues
+Wirtschaftssystem: die Aufträge zählen mit, was der Spieler ohnehin tut, und
+zahlen über denselben `EconomyService`. Gewürfelt wird aus **UserId + Tag** —
+sonst könnte man sich durch Serverwechsel neue Aufträge erwürfeln.
+
+**Ranglisten.** `leaderstats` (CRY, RIG) plus zwei `OrderedDataStore`-Listen:
+Guthaben und **Ruhigste Hand** (längste Serie erfolgreicher Hacks ohne einen
+einzigen Fehlversuch). Die zweite ist die interessantere — sie belohnt
+Präzision statt Spielzeit. Der DataStore-Zugriff liegt in `SaveService`,
+Regel 5 bleibt unangetastet.
+
+#### ⚠️ Schema-Migration 5 → 6
+`Profile.Contracts` (`Day`, `List`, `Streak`). Ein Altprofil startet mit
+leerem Tag; beim nächsten Login würfelt der `ContractService` drei Aufträge.
+Es geht nichts verloren.
+
+#### Vom Testlauf gefunden
+`SignalMatch.Input` hat eine Tabelle `{ frequency, amplitude, phase }`
+durchlaufen, um alle drei zu prüfen. Sind alle drei `nil`, ist die Tabelle
+**leer** — die Schleife lief nie, und `nil` landete ungeprüft in
+`math.clamp`. Ein leeres Paket hätte das Minispiel zum Absturz gebracht.
+Jetzt wird jeder Wert einzeln geprüft.
 
 ### v2.5.0 — Fahrzeuge sehen aus wie Fahrzeuge (Noahs Fassung)
 Noah hat eine komplette `VehicleChassis` geliefert und damit zwei Dinge
@@ -546,8 +589,8 @@ M05 → `BANK_RAIDS`. Nichts davon verschwindet nach der Mission.
   Story-Geld ist heiß und muss erst zum Hehler, damit der Verkaufs-Loop
   relevant bleibt.
 
-### ⚠️ Schema-Migrationen 1 → 5
-`Config.Save.SchemaVersion = 5`. `SaveService.MIGRATIONS` zieht Altprofile beim
+### ⚠️ Schema-Migrationen 1 → 6
+`Config.Save.SchemaVersion = 6`. `SaveService.MIGRATIONS` zieht Altprofile beim
 Laden nach, **bevor** geschrieben wird — ein Altprofil wird nie verworfen.
 | Version | Neu | Für Altprofile |
 |---|---|---|
@@ -555,6 +598,7 @@ Laden nach, **bevor** geschrieben wird — ein Altprofil wird nie verworfen.
 | 3 | `Stash` (Darknet-Lager) | Lager startet leer |
 | 4 | `PurchaseLog` (gegen Doppelvergabe) | Log startet leer |
 | 5 | `Garage` (Fahrzeugbesitz) + `Story.Allegiance` | Garage leer, Allegiance `""` |
+| 6 | `Contracts` (Tagesziele) | leerer Tag, wird beim Login gewürfelt |
 **v2.1.0 ändert das Profil nicht** — helle Stadt und Deckungs-Bonus brauchen
 kein neues Feld, `SchemaVersion` bleibt auf 5 und es gibt nichts zu migrieren.
 
@@ -623,7 +667,7 @@ Testlauf prüft das.
   Hack kostet — auch das wird geprüft.
 
 ## Tests
-`cd ghostnet/tests && npm install && node testlauf.mjs` → **725/725 grün**.
+`cd ghostnet/tests && npm install && node testlauf.mjs` → **784/784 grün**.
 Drei Stufen:
 1. **Syntax** — `luau-compile` über jede `.luau`-Datei.
 2. **Struktur** — `--!strict` überall, keine veralteten APIs, jede Remote
@@ -675,7 +719,7 @@ Der Bauplan aus dem Prompt ist abgearbeitet. Was fehlt, fehlt mit Absicht:
   fertig, dann den nächsten" — und der Testlauf hält sie fest.
 - **Zwei weitere Minispiele**, **prozeduraler Weltgenerator**, **Tagesziele**
   und **Ranglisten** — Details am Ende von `PHASEN.md`.
-- **Kein echter Spielertest.** Alles ist im Code umgesetzt und durch 725
+- **Kein echter Spielertest.** Alles ist im Code umgesetzt und durch 784
   automatische Prüfungen abgesichert, aber noch nicht von einem Menschen in
   Studio durchgespielt.
 

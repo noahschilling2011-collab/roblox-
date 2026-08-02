@@ -47,6 +47,9 @@ local EVENT_NAMES = {
 	"PhoneRead", -- C->S  { }                   Spieler hat das Telefon geoeffnet
 	"DistrictEnter", -- S->C  { id, name }      Bezirk betreten (Einblendung)
 	"ArrestSync", -- S->C  { state, seconds, station }   Festnahme und Zelle
+	"ContractSync", -- S->C  { list, streak }   Tagesziele
+	"ContractClaim", -- C->S  { index }         Belohnung abholen
+	"LeaderboardSync", -- S->C  { banked, quiet }   Top-Listen
 }
 
 local FUNCTION_NAMES: { string } = {

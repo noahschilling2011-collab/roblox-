@@ -36,6 +36,8 @@ local TrafficService = require(Systems.TrafficService)
 local GuardService = require(Systems.GuardService)
 local MapService = require(Systems.MapService)
 local PhoneService = require(Systems.PhoneService)
+local ContractService = require(Systems.ContractService)
+local LeaderboardService = require(Systems.LeaderboardService)
 local MonetizationService = require(Systems.MonetizationService)
 local AdminService = require(Systems.AdminService)
 
@@ -65,6 +67,8 @@ TrafficService.Init()
 GuardService.Init() -- meldet Alarme an den RaidService
 MapService.Init() -- nach der Welt: sammelt ein, was gebaut wurde
 PhoneService.Init() -- haengt sich an MissionService, muss danach kommen
+ContractService.Init() -- haengt sich an HackService und SellService
+LeaderboardService.Init() -- leaderstats und die Top-Listen
 MonetizationService.Init()
 AdminService.Init() -- zuletzt: greift auf alle anderen zu
 

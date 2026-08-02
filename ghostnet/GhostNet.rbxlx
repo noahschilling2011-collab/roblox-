@@ -1,5 +1,5 @@
 <roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4">
-<Item class="Workspace" referent="GN85">
+<Item class="Workspace" referent="GN90">
 <Properties>
 <string name="Name">Workspace</string>
 <float name="Gravity">196.2</float>
@@ -7,7 +7,7 @@
 <int name="StreamingMinRadius">128</int>
 <int name="StreamingTargetRadius">512</int>
 </Properties>
-<Item class="Part" referent="GN74">
+<Item class="Part" referent="GN79">
 <Properties>
 <string name="Name">Baseplate</string>
 <bool name="Anchored">true</bool>
@@ -21,7 +21,7 @@
 <token name="BottomSurface">0</token>
 </Properties>
 </Item>
-<Item class="SpawnLocation" referent="GN75">
+<Item class="SpawnLocation" referent="GN80">
 <Properties>
 <string name="Name">SpawnLocation</string>
 <bool name="Anchored">true</bool>
@@ -34,7 +34,7 @@
 </Properties>
 </Item>
 </Item>
-<Item class="Lighting" referent="GN76">
+<Item class="Lighting" referent="GN81">
 <Properties>
 <string name="Name">Lighting</string>
 <token name="Technology">4</token>
@@ -50,7 +50,7 @@
 <Color3 name="FogColor"><R>0.78</R><G>0.83</G><B>0.89</B></Color3>
 <float name="FogEnd">2200</float>
 </Properties>
-<Item class="Atmosphere" referent="GN77">
+<Item class="Atmosphere" referent="GN82">
 <Properties>
 <string name="Name">Atmosphere</string>
 <float name="Density">0.12</float>
@@ -60,7 +60,7 @@
 <Color3 name="Decay"><R>0.588</R><G>0.659</G><B>0.745</B></Color3>
 </Properties>
 </Item>
-<Item class="BloomEffect" referent="GN78">
+<Item class="BloomEffect" referent="GN83">
 <Properties>
 <string name="Name">Bloom</string>
 <bool name="Enabled">true</bool>
@@ -69,7 +69,7 @@
 <float name="Threshold">0.95</float>
 </Properties>
 </Item>
-<Item class="ColorCorrectionEffect" referent="GN79">
+<Item class="ColorCorrectionEffect" referent="GN84">
 <Properties>
 <string name="Name">ColorCorrection</string>
 <bool name="Enabled">true</bool>
@@ -80,7 +80,7 @@
 </Properties>
 </Item>
 </Item>
-<Item class="ReplicatedStorage" referent="GN86">
+<Item class="ReplicatedStorage" referent="GN91">
 <Properties>
 <string name="Name">ReplicatedStorage</string>
 </Properties>
@@ -350,7 +350,7 @@ return AssetLibrary
 
 local Config = {}
 
-Config.Version = "2.5.0" -- Fahrzeuge sehen aus wie Fahrzeuge, Raeder bleiben dran
+Config.Version = "2.6.0" -- Minispiele, Weltgenerator, Tagesziele, Ranglisten
 
 -- CollectionService-Tags. Ein Part mit dem Tag ist ein Hack-Ziel, ein Hehler,
 -- ein Missions-Wegpunkt oder ein ansprechbarer Kontakt. Kein Code pro Objekt.
@@ -577,7 +577,7 @@ Config.Save = {
 	--   3 = Phase C (Darknet-Lager)
 	--   4 = Phase F (PurchaseLog gegen Doppelvergabe)
 	--   5 = Open World (Fahrzeugbesitz, Endgame-Entscheidung)
-	SchemaVersion = 5,
+	SchemaVersion = 6,
 	StoreName = "GhostNetPlayers_v1",
 	KeyFormat = "ghostnet_player_%d",
 
@@ -1218,6 +1218,7 @@ Config.RateLimits = {
 	-- herumhaemmern - und jede Anfrage ist eine Wegsuche im Graphen.
 	RouteRequest = { Rate = 2, Burst = 5 },
 	PhoneRead = { Rate = 2, Burst = 5 },
+	ContractClaim = { Rate = 1, Burst = 4 },
 }
 
 --==========================================================================
@@ -1238,7 +1239,179 @@ Config.NodeBreach = {
 }
 
 --==========================================================================
--- 26. DEFAULTS FUER HACK-ZIELE
+-- 25. RANGLISTEN
+--
+-- Zwei Listen, zwei verschiedene Arten, gut zu sein. Die zweite ist die
+-- wichtigere: "Ruhigste Hand" belohnt Praezision statt Spielzeit und ist
+-- damit auch fuer jemanden erreichbar, der nicht den ganzen Tag spielt.
+--==========================================================================
+Config.Leaderboard = {
+	BankedBoard = "Banked",
+	QuietBoard = "Quiet",
+	BankedLabel = "CRY",
+	TierLabel = "RIG",
+	QuietLabel = "RUHIGSTE HAND",
+	TopCount = 25, -- OrderedDataStore erlaubt maximal 100 pro Seite
+
+	-- Schreiben im Autosave-Rhythmus, lesen deutlich langsamer. Eine
+	-- Rangliste muss nicht sekundengenau stimmen, und jeder Zugriff zaehlt
+	-- gegen das DataStore-Limit.
+	PublishInterval = 120,
+	RefreshInterval = 90,
+}
+
+--==========================================================================
+-- 25a. TAGESZIELE
+--
+-- Drei Auftraege pro Tag, zurueckgesetzt ueber os.time(). Der staerkste
+-- Hebel fuer Wiederkehr, den es gibt: ein Grund, morgen nochmal reinzusehen.
+--
+-- Bewusst KEIN neues Wirtschaftssystem - die Auftraege zaehlen mit, was der
+-- Spieler ohnehin tut, und zahlen in dieselbe Waehrung.
+--==========================================================================
+Config.Contracts = {
+	PerDay = 3,
+	-- Belohnung geht auf die BANK, nicht ins Unverkaufte. Ein Tagesziel ist
+	-- eine Auszahlung, kein Diebesgut - und es soll den Trace nicht anfassen.
+	ToBank = true,
+	-- Serie: wer alle drei an mehreren Tagen hintereinander schafft, bekommt
+	-- pro Tag etwas mehr. Gedeckelt, sonst wird die zehnte Woche absurd.
+	StreakBonus = 0.15,
+	StreakCap = 7,
+
+	-- Die moeglichen Auftragsarten. Ziel wird zwischen Min und Max gewuerfelt,
+	-- die Belohnung waechst mit dem Ziel.
+	Kinds = {
+		{ Kind = "HACK", Text = "Knack %d Ziele", Min = 3, Max = 8, RewardPer = 90 },
+		{ Kind = "SELL", Text = "Liefere %d Mal beim Hehler ab", Min = 2, Max = 4, RewardPer = 160 },
+		{ Kind = "EARN", Text = "Verdiene %d CRY", Min = 800, Max = 2500, RewardPer = 0.35 },
+		{ Kind = "STEAL", Text = "Schliess %d Autos kurz", Min = 1, Max = 3, RewardPer = 220 },
+		{ Kind = "ESCAPE", Text = "Entkomme %d Mal der Fahndung", Min = 1, Max = 2, RewardPer = 400 },
+	},
+}
+
+--==========================================================================
+-- 25b. WELTGENERATOR
+--
+-- Verteilt Hack-Ziele ueber die Stadt. Die Schwierigkeit kommt aus dem
+-- BEZIRK - damit schliesst Rig-Fortschritt neue Stadtteile auf, statt nur
+-- groessere Zahlen zu erlauben.
+--
+-- MaxTargets ist ein Bildraten-Regler: jedes Ziel ist ein Modell plus ein
+-- Eintrag in der Ziel-Registry. Erst messen, dann hochdrehen.
+--==========================================================================
+Config.Generator = {
+	MaxTargets = 60, -- harte Obergrenze ueber die ganze Stadt
+	PerEdge = 2, -- moegliche Plaetze je Strassenkante
+	Chance = 0.45, -- Anteil der Plaetze, die belegt werden
+	WallOffset = 3, -- Abstand von der Gehwegkante zur Fassade
+	Cooldown = 240, -- laenger als bei Story-Zielen: es gibt viele davon
+	LevelPerDifficulty = 2.5, -- ab welchem Rig ein Ziel oeffnet
+	-- Was hoeher als das haengt, gilt als offen einsehbar (Config.Cover).
+	ExposedHeight = 5,
+
+	LightChance = 0.55,
+	LightBrightness = 2,
+	LightRange = 14,
+
+	-- Vier Archetypen, jeder mit einem anderen Minispiel. Dadurch trifft man
+	-- beim freien Spielen alle drei Raetsel, ohne dass jemand sie zuweisen
+	-- muesste.
+	Archetypes = {
+		{
+			Id = "CAM",
+			Asset = "Kamera",
+			Label = "KAMERA",
+			Suffix = "Strassenzug",
+			Size = Vector3.new(1.4, 1.4, 2.6),
+			Height = 9,
+			HackType = "NodeBreach",
+			OnSuccess = "CameraOffline",
+			DownTime = 90,
+		},
+		{
+			Id = "BOX",
+			Asset = "Verteiler",
+			Label = "VERTEILERKASTEN",
+			Suffix = "Netzknoten",
+			Size = Vector3.new(2, 4, 1.4),
+			Height = 3,
+			HackType = "SignalMatch",
+			OnSuccess = "Offline",
+			DownTime = 60,
+		},
+		{
+			Id = "ATM",
+			Asset = "Automat",
+			Label = "GELDAUTOMAT",
+			Suffix = "Filiale",
+			Size = Vector3.new(2.4, 5, 1.4),
+			Height = 3,
+			HackType = "CodeCrack",
+			OnSuccess = "AtmPayout",
+			DownTime = 30,
+		},
+		{
+			Id = "DOOR",
+			Asset = "Tuer",
+			Label = "SEITENTUER",
+			Suffix = "Hinterhof",
+			Size = Vector3.new(4, 8, 0.6),
+			Height = 4,
+			HackType = "CodeCrack",
+			OnSuccess = "DoorOpen",
+			DownTime = 45,
+		},
+	},
+}
+
+--==========================================================================
+-- 26. CODE-CRACK (Mastermind)
+--
+-- Zwei Regler: Codelaenge und Ziffernbereich. Beide gleichzeitig
+-- hochzudrehen macht das Raetsel sehr schnell unfair - deshalb waechst die
+-- Laenge zuerst, der Ziffernbereich langsamer.
+--==========================================================================
+Config.CodeCrack = {
+	Tiers = {
+		{ UpTo = 3, Length = 3, Digits = 5, Guesses = 8 },
+		{ UpTo = 6, Length = 4, Digits = 6, Guesses = 8 },
+		{ UpTo = 8, Length = 4, Digits = 8, Guesses = 7 },
+		{ UpTo = 10, Length = 5, Digits = 8, Guesses = 7 },
+	},
+}
+
+--==========================================================================
+-- 27. SIGNAL-ABGLEICH
+--
+-- Drei Regler auf eine Zielwelle einstellen. Tolerance ist der einzige
+-- echte Schwierigkeitsregler: runter = Millimeterarbeit, hoch = geschenkt.
+--==========================================================================
+Config.SignalMatch = {
+	Samples = 48, -- Aufloesung der gezeichneten Kurve
+
+	FrequencyMin = 0.5,
+	FrequencyMax = 4,
+	FrequencyStep = 0.25,
+	AmplitudeMin = 0.3,
+	AmplitudeMax = 1,
+	AmplitudeStep = 0.05,
+	PhaseStep = math.pi / 12,
+
+	-- Groesster sinnvoller Fehler, nur fuer die Naehe-Anzeige. Zwei Wellen
+	-- mit Amplitude 1 liegen im Mittel selten weiter als das auseinander.
+	MaxError = 1.2,
+
+	Tiers = {
+		{ UpTo = 3, Tolerance = 0.16, Attempts = 12 },
+		{ UpTo = 6, Tolerance = 0.11, Attempts = 10 },
+		{ UpTo = 8, Tolerance = 0.08, Attempts = 9 },
+		{ UpTo = 10, Tolerance = 0.06, Attempts = 8 },
+	},
+}
+
+--==========================================================================
+-- 28. DEFAULTS FUER HACK-ZIELE
 -- Ein Part braucht KEIN einziges Attribut. Alles, was fehlt, kommt von hier.
 --==========================================================================
 Config.TargetDefaults = {
@@ -2712,6 +2885,9 @@ local EVENT_NAMES = {
 	"PhoneRead", -- C-&gt;S  { }                   Spieler hat das Telefon geoeffnet
 	"DistrictEnter", -- S-&gt;C  { id, name }      Bezirk betreten (Einblendung)
 	"ArrestSync", -- S-&gt;C  { state, seconds, station }   Festnahme und Zelle
+	"ContractSync", -- S-&gt;C  { list, streak }   Tagesziele
+	"ContractClaim", -- C-&gt;S  { index }         Belohnung abholen
+	"LeaderboardSync", -- S-&gt;C  { banked, quiet }   Top-Listen
 }
 
 local FUNCTION_NAMES: { string } = {
@@ -2934,6 +3110,22 @@ export type OwnedVehicle = {
 
 -- Story-Fortschritt im Profil. Der Client bekommt davon nur eine Abschrift
 -- ueber MissionSync und meldet nie selbst, dass ein Schritt fertig ist.
+-- Drei Auftraege pro Tag. Zuruecksetzen ueber os.time(), damit es einen
+-- Serverwechsel ueberlebt - genau dafuer ist die Regel da.
+export type Contract = {
+	Kind: string, -- HACK | SELL | EARN | STEAL | ESCAPE
+	Target: number, -- wie viel noetig ist
+	Progress: number,
+	Reward: number,
+	Claimed: boolean,
+}
+
+export type Contracts = {
+	Day: number, -- welcher Tag (os.time() // 86400)
+	List: { Contract },
+	Streak: number, -- aufeinanderfolgende Tage mit allen drei erledigt
+}
+
 export type Story = {
 	Active: string, -- "" = gerade keine Mission
 	Step: number, -- 1-basierter Index in Mission.Steps
@@ -2959,6 +3151,7 @@ export type Profile = {
 	Stash: { [string]: number }, -- Darknet-Lager, seit SchemaVersion 3
 	PurchaseLog: { string }, -- verarbeitete PurchaseIds, seit SchemaVersion 4
 	Garage: { OwnedVehicle }, -- gekaufte Fahrzeuge, seit SchemaVersion 5
+	Contracts: Contracts, -- Tagesziele, seit SchemaVersion 6
 	LastSeen: number, -- Unix-Zeit des letzten Speicherns
 	SessionId: string, -- Session-Lock gegen Doppel-Sitzungen
 }
@@ -3501,33 +3694,33 @@ return Vehicles
 </Properties>
 </Item>
 </Item>
-<Item class="Folder" referent="GN80">
+<Item class="Folder" referent="GN85">
 <Properties>
 <string name="Name">Assets</string>
 </Properties>
-<Item class="Folder" referent="GN81">
+<Item class="Folder" referent="GN86">
 <Properties>
 <string name="Name">Vehicles</string>
 </Properties>
 </Item>
-<Item class="Folder" referent="GN82">
+<Item class="Folder" referent="GN87">
 <Properties>
 <string name="Name">Buildings</string>
 </Properties>
 </Item>
-<Item class="Folder" referent="GN83">
+<Item class="Folder" referent="GN88">
 <Properties>
 <string name="Name">Props</string>
 </Properties>
 </Item>
-<Item class="Folder" referent="GN84">
+<Item class="Folder" referent="GN89">
 <Properties>
 <string name="Name">Characters</string>
 </Properties>
 </Item>
 </Item>
 </Item>
-<Item class="ServerScriptService" referent="GN87">
+<Item class="ServerScriptService" referent="GN92">
 <Properties>
 <string name="Name">ServerScriptService</string>
 </Properties>
@@ -3638,6 +3831,8 @@ local TrafficService = require(Systems.TrafficService)
 local GuardService = require(Systems.GuardService)
 local MapService = require(Systems.MapService)
 local PhoneService = require(Systems.PhoneService)
+local ContractService = require(Systems.ContractService)
+local LeaderboardService = require(Systems.LeaderboardService)
 local MonetizationService = require(Systems.MonetizationService)
 local AdminService = require(Systems.AdminService)
 
@@ -3667,6 +3862,8 @@ TrafficService.Init()
 GuardService.Init() -- meldet Alarme an den RaidService
 MapService.Init() -- nach der Welt: sammelt ein, was gebaut wurde
 PhoneService.Init() -- haengt sich an MissionService, muss danach kommen
+ContractService.Init() -- haengt sich an HackService und SellService
+LeaderboardService.Init() -- leaderstats und die Top-Listen
 MonetizationService.Init()
 AdminService.Init() -- zuletzt: greift auf alle anderen zu
 
@@ -3679,7 +3876,7 @@ task.defer(AssetLibrary.Report)
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="Folder" referent="GN44">
+<Item class="Folder" referent="GN48">
 <Properties>
 <string name="Name">Systems</string>
 </Properties>
@@ -4479,6 +4676,285 @@ return ArrestService
 </Item>
 <Item class="ModuleScript" referent="GN18">
 <Properties>
+<string name="Name">ContractService</string>
+<ProtectedString name="Source">-- ServerScriptService/Systems/ContractService.luau
+--!strict
+-- GHOSTNET :: Drei Auftraege pro Tag.
+--
+-- WARUM DAS DER STAERKSTE HEBEL FUER WIEDERKEHR IST
+--   Ein Spiel, das man durchspielen kann, spielt man einmal. Drei Ziele,
+--   die morgen andere sind, geben einen Grund, nochmal reinzusehen - und
+--   zwar ohne dass irgendetwas Neues gebaut werden muesste.
+--
+-- KEIN NEUES WIRTSCHAFTSSYSTEM
+--   Die Auftraege zaehlen mit, was der Spieler ohnehin tut: hacken,
+--   abliefern, verdienen, Autos kurzschliessen, entkommen. Sie zahlen in
+--   dieselbe Waehrung ueber denselben EconomyService. Es gibt keine
+--   zweite Punkteart und keinen zweiten Laden.
+--
+-- ZEIT UEBERLEBT DEN SERVERWECHSEL
+--   Der Tag kommt aus os.time(), nie aus os.clock(). Genau dafuer ist die
+--   Regel da: os.clock() faengt bei jedem Serverstart neu an, und dann
+--   haette man nach jedem Serverwechsel wieder drei frische Auftraege.
+--
+-- ANGEHAENGT, NICHT EINGEBAUT
+--   Der Fortschritt kommt ueber die vorhandenen Callbacks
+--   (HackService.OnHackResolved, SellService.OnSell). Kein bestehendes
+--   Modul muss dafuer angefasst werden.
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Config = require(ReplicatedStorage.Shared.Config)
+local Remotes = require(ReplicatedStorage.Shared.Remotes)
+local Types = require(ReplicatedStorage.Shared.Types)
+
+local EconomyService = require(script.Parent.EconomyService)
+local HackService = require(script.Parent.HackService)
+local RateLimiter = require(script.Parent.RateLimiter)
+local SaveService = require(script.Parent.SaveService)
+local SellService = require(script.Parent.SellService)
+
+local ContractService = {}
+
+local C = Config.Contracts
+type Contract = Types.Contract
+
+local SECONDS_PER_DAY = 86400
+
+local function today(): number
+	return math.floor(os.time() / SECONDS_PER_DAY)
+end
+
+--==========================================================================
+-- Wuerfeln
+--==========================================================================
+
+local function rollFor(player: Player): { Contract }
+	-- Aus der UserId und dem Tag: derselbe Spieler bekommt an einem Tag
+	-- ueberall dieselben drei Auftraege, egal auf welchem Server er landet.
+	-- Ohne das koennte man durch Serverwechsel neu wuerfeln.
+	local rng = Random.new(player.UserId * 1000003 + today())
+
+	local pool = table.clone(C.Kinds)
+	local list: { Contract } = {}
+
+	for _ = 1, math.min(C.PerDay, #pool) do
+		local index = rng:NextInteger(1, #pool)
+		local kind = pool[index]
+		table.remove(pool, index)
+
+		local target = rng:NextInteger(kind.Min, kind.Max)
+		table.insert(list, {
+			Kind = kind.Kind,
+			Target = target,
+			Progress = 0,
+			Reward = math.floor(target * kind.RewardPer),
+			Claimed = false,
+		})
+	end
+
+	return list
+end
+
+-- Tageswechsel: neue Auftraege, Serie fortschreiben oder abreissen.
+local function refresh(player: Player)
+	local profile = SaveService.Get(player)
+	if not profile then
+		return
+	end
+	local contracts = profile.Contracts
+	local day = today()
+	if contracts.Day == day then
+		return
+	end
+
+	-- Serie nur halten, wenn GESTERN alles abgeholt war. Wer zwei Tage weg
+	-- war, faengt wieder bei eins an - sonst ist die Serie keine Serie.
+	local allDone = #contracts.List &gt; 0
+	for _, contract in contracts.List do
+		if not contract.Claimed then
+			allDone = false
+			break
+		end
+	end
+	if allDone and contracts.Day == day - 1 then
+		contracts.Streak = math.min(contracts.Streak + 1, C.StreakCap)
+	else
+		contracts.Streak = 0
+	end
+
+	contracts.Day = day
+	contracts.List = rollFor(player)
+	SaveService.RequestSave(player)
+end
+
+--==========================================================================
+-- Anzeigen
+--==========================================================================
+
+local function textFor(contract: Contract): string
+	for _, kind in C.Kinds do
+		if kind.Kind == contract.Kind then
+			return (kind.Text):format(contract.Target)
+		end
+	end
+	return contract.Kind
+end
+
+function ContractService.Sync(player: Player)
+	local profile = SaveService.Get(player)
+	if not profile or not player.Parent then
+		return
+	end
+
+	local list = {}
+	for index, contract in profile.Contracts.List do
+		table.insert(list, {
+			Index = index,
+			Text = textFor(contract),
+			Progress = math.min(contract.Progress, contract.Target),
+			Target = contract.Target,
+			Reward = contract.Reward,
+			Claimed = contract.Claimed,
+			Done = contract.Progress &gt;= contract.Target,
+		})
+	end
+
+	Remotes.ContractSync:FireClient(player, {
+		List = list,
+		Streak = profile.Contracts.Streak,
+		StreakBonus = profile.Contracts.Streak * C.StreakBonus,
+	})
+end
+
+--==========================================================================
+-- Fortschritt
+--==========================================================================
+
+local function advance(player: Player, kind: string, amount: number)
+	if amount &lt;= 0 then
+		return
+	end
+	local profile = SaveService.Get(player)
+	if not profile then
+		return
+	end
+	refresh(player)
+
+	local changed = false
+	for _, contract in profile.Contracts.List do
+		if contract.Kind ~= kind or contract.Claimed then
+			continue
+		end
+		if contract.Progress &gt;= contract.Target then
+			continue
+		end
+		contract.Progress += amount
+		changed = true
+	end
+
+	if changed then
+		SaveService.RequestSave(player)
+		ContractService.Sync(player)
+	end
+end
+
+-- Oeffentlich, damit TrafficService und PursuitService melden koennen, ohne
+-- dass dieses Modul sie kennen muss. Die Richtung bleibt damit einwaertig.
+function ContractService.Report(player: Player, kind: string, amount: number?)
+	advance(player, kind, amount or 1)
+end
+
+--==========================================================================
+-- Abholen
+--==========================================================================
+
+local function claim(player: Player, index: any)
+	local profile = SaveService.Get(player)
+	if not profile then
+		return
+	end
+	if typeof(index) ~= "number" or index % 1 ~= 0 then
+		return
+	end
+
+	local contract = profile.Contracts.List[index]
+	if not contract then
+		return
+	end
+	-- Beides serverseitig geprueft: der Client sagt nur, WELCHEN er meint.
+	if contract.Claimed or contract.Progress &lt; contract.Target then
+		return
+	end
+
+	contract.Claimed = true
+
+	local bonus = 1 + profile.Contracts.Streak * C.StreakBonus
+	local payout = math.floor(contract.Reward * bonus)
+	if C.ToBank then
+		EconomyService.AwardBanked(player, payout)
+	else
+		EconomyService.AwardUnsold(player, payout)
+	end
+
+	SaveService.RequestSave(player)
+	ContractService.Sync(player)
+	print(("[GHOSTNET] %s hat ein Tagesziel abgeholt (%d CRY)."):format(player.Name, payout))
+end
+
+--==========================================================================
+
+function ContractService.Init()
+	Remotes.ContractClaim.OnServerEvent:Connect(function(player: Player, payload: any)
+		if not RateLimiter.Check(player, "ContractClaim") then
+			return
+		end
+		if typeof(payload) ~= "table" then
+			return
+		end
+		claim(player, (payload :: any).Index)
+	end)
+
+	-- An die vorhandenen Callbacks haengen statt in fremde Module zu greifen.
+	HackService.OnHackResolved(function(player: Player, info: { [string]: any })
+		if info.Success == true then
+			advance(player, "HACK", 1)
+			local reward = info.Reward
+			if typeof(reward) == "number" and reward &gt; 0 then
+				advance(player, "EARN", reward)
+			end
+		end
+	end)
+
+	SellService.OnSell(function(player: Player)
+		advance(player, "SELL", 1)
+	end)
+
+	SaveService.OnReady(function(player: Player)
+		refresh(player)
+		ContractService.Sync(player)
+	end)
+
+	Players.PlayerAdded:Connect(function(player)
+		-- Falls das Profil schon vor dieser Anmeldung fertig war.
+		task.defer(function()
+			if SaveService.IsReady(player) then
+				refresh(player)
+				ContractService.Sync(player)
+			end
+		end)
+	end)
+
+	print(("[GHOSTNET] ContractService bereit. %d Auftraege pro Tag."):format(C.PerDay))
+end
+
+return ContractService
+</ProtectedString>
+</Properties>
+</Item>
+<Item class="ModuleScript" referent="GN19">
+<Properties>
 <string name="Name">EconomyService</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/EconomyService.luau
 --!strict
@@ -4739,7 +5215,7 @@ return EconomyService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN19">
+<Item class="ModuleScript" referent="GN20">
 <Properties>
 <string name="Name">GuardService</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/GuardService.luau
@@ -4955,7 +5431,7 @@ return GuardService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN20">
+<Item class="ModuleScript" referent="GN21">
 <Properties>
 <string name="Name">HackEffects</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/HackEffects.luau
@@ -5144,7 +5620,7 @@ return HackEffects
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN21">
+<Item class="ModuleScript" referent="GN22">
 <Properties>
 <string name="Name">HackService</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/HackService.luau
@@ -5188,6 +5664,11 @@ local HackService = {}
 -- sonst aendert sich nichts.
 local Minigames = {
 	NodeBreach = require(script.Parent.Minigames.NodeBreach),
+	-- Drei Raetsel, die drei verschiedene Sachen verlangen: raeumlich,
+	-- logisch, feinmotorisch. Welches ein Ziel benutzt, steht als Attribut
+	-- HackType am Part - kein Code pro Objekt.
+	CodeCrack = require(script.Parent.Minigames.CodeCrack),
+	SignalMatch = require(script.Parent.Minigames.SignalMatch),
 }
 
 local sessions: { [Player]: Session } = {}
@@ -5728,7 +6209,7 @@ return HackService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN22">
+<Item class="ModuleScript" referent="GN23">
 <Properties>
 <string name="Name">HackTargets</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/HackTargets.luau
@@ -5978,7 +6459,7 @@ return HackTargets
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN23">
+<Item class="ModuleScript" referent="GN24">
 <Properties>
 <string name="Name">InventoryService</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/InventoryService.luau
@@ -6326,7 +6807,230 @@ return InventoryService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN24">
+<Item class="ModuleScript" referent="GN25">
+<Properties>
+<string name="Name">LeaderboardService</string>
+<ProtectedString name="Source">-- ServerScriptService/Systems/LeaderboardService.luau
+--!strict
+-- GHOSTNET :: leaderstats und die serveruebergreifenden Top-Listen.
+--
+-- ZWEI LISTEN, ZWEI VERSCHIEDENE ARTEN, GUT ZU SEIN
+--   GUTHABEN     wer am meisten sicher hat. Die naheliegende Liste.
+--   RUHIGSTE HAND  wer die laengste Serie erfolgreicher Hacks ohne einen
+--                einzigen Fehlversuch hat. Belohnt Praezision statt Zeit -
+--                und ist damit auch fuer jemanden erreichbar, der nicht
+--                den ganzen Tag spielt.
+--
+-- KEIN EIGENER DATASTORE
+--   Regel 5 gilt: nur der SaveService spricht mit einem DataStore. Dieses
+--   Modul benutzt SaveService.PublishScore und SaveService.TopScores.
+--
+-- KEIN TAKT PRO SPIELER
+--   Geschrieben wird beim Verlassen und im Autosave-Rhythmus, gelesen in
+--   einem langsamen Intervall fuer alle gemeinsam. Ranglisten sind nichts,
+--   was sekundengenau stimmen muss.
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Config = require(ReplicatedStorage.Shared.Config)
+local Remotes = require(ReplicatedStorage.Shared.Remotes)
+
+local EconomyService = require(script.Parent.EconomyService)
+local HackService = require(script.Parent.HackService)
+local SaveService = require(script.Parent.SaveService)
+
+local LeaderboardService = {}
+
+local L = Config.Leaderboard
+
+-- Die laufende Serie fehlerfreier Hacks. Reine Sitzungsinformation: eine
+-- Serie ueber Serverwechsel hinweg zu fuehren braeuchte ein Profilfeld und
+-- damit eine Migration - fuer eine Bestenliste ist das den Preis nicht wert.
+-- Der HOECHSTWERT wandert dagegen in die Liste und bleibt dort.
+local streak: { [Player]: number } = {}
+
+local cache: { [string]: { { UserId: number, Value: number } } } = {}
+
+--==========================================================================
+-- leaderstats
+--==========================================================================
+
+local function ensureStats(player: Player)
+	local existing = player:FindFirstChild("leaderstats")
+	if existing then
+		return
+	end
+
+	local folder = Instance.new("Folder")
+	folder.Name = "leaderstats"
+
+	local banked = Instance.new("IntValue")
+	banked.Name = L.BankedLabel
+	banked.Value = 0
+	banked.Parent = folder
+
+	local tier = Instance.new("IntValue")
+	tier.Name = L.TierLabel
+	tier.Value = 1
+	tier.Parent = folder
+
+	folder.Parent = player
+end
+
+local function refreshStats(player: Player)
+	local stats = player:FindFirstChild("leaderstats")
+	if not stats then
+		return
+	end
+	local profile = SaveService.Get(player)
+	if not profile then
+		return
+	end
+
+	local banked = stats:FindFirstChild(L.BankedLabel)
+	if banked and banked:IsA("IntValue") then
+		banked.Value = math.floor(profile.Banked)
+	end
+	local tier = stats:FindFirstChild(L.TierLabel)
+	if tier and tier:IsA("IntValue") then
+		tier.Value = EconomyService.GetTier(player)
+	end
+end
+
+--==========================================================================
+-- Veroeffentlichen
+--==========================================================================
+
+local function publish(player: Player)
+	local profile = SaveService.Get(player)
+	if not profile then
+		return
+	end
+	SaveService.PublishScore(L.BankedBoard, player.UserId, profile.Banked)
+
+	local best = streak[player] or 0
+	if best &gt; 0 then
+		SaveService.PublishScore(L.QuietBoard, player.UserId, best)
+	end
+end
+
+--==========================================================================
+-- Lesen und senden
+--==========================================================================
+
+local function pull()
+	cache[L.BankedBoard] = SaveService.TopScores(L.BankedBoard, L.TopCount)
+	cache[L.QuietBoard] = SaveService.TopScores(L.QuietBoard, L.TopCount)
+end
+
+-- Namen erst beim Senden nachschlagen, und nur fuer die Top-Eintraege.
+-- GetNameFromUserIdAsync ist ein Netzwerkaufruf; hundert davon pro Tick
+-- waeren das Ende.
+local nameCache: { [number]: string } = {}
+
+local function nameFor(userId: number): string
+	local known = nameCache[userId]
+	if known then
+		return known
+	end
+	local ok, result = pcall(function()
+		return Players:GetNameFromUserIdAsync(userId)
+	end)
+	local resolved = if ok and typeof(result) == "string" then result else ("Spieler %d"):format(userId)
+	nameCache[userId] = resolved
+	return resolved
+end
+
+local function decorate(entries: { { UserId: number, Value: number } }?): { { [string]: any } }
+	local out: { { [string]: any } } = {}
+	if not entries then
+		return out
+	end
+	for rank, entry in entries do
+		table.insert(out, { Rank = rank, Name = nameFor(entry.UserId), Value = entry.Value })
+	end
+	return out
+end
+
+function LeaderboardService.SyncTo(player: Player)
+	if not player.Parent then
+		return
+	end
+	Remotes.LeaderboardSync:FireClient(player, {
+		Banked = decorate(cache[L.BankedBoard]),
+		Quiet = decorate(cache[L.QuietBoard]),
+		BankedLabel = L.BankedLabel,
+		QuietLabel = L.QuietLabel,
+	})
+end
+
+local function broadcast()
+	for _, player in Players:GetPlayers() do
+		LeaderboardService.SyncTo(player)
+	end
+end
+
+--==========================================================================
+
+function LeaderboardService.Init()
+	SaveService.OnReady(function(player: Player)
+		ensureStats(player)
+		refreshStats(player)
+		streak[player] = 0
+		LeaderboardService.SyncTo(player)
+	end)
+
+	-- Die ruhigste Hand: jeder Erfolg verlaengert die Serie, jeder
+	-- Fehlversuch setzt sie auf null. Genau das macht sie schwer.
+	HackService.OnHackResolved(function(player: Player, info: { [string]: any })
+		if info.Success == true then
+			streak[player] = (streak[player] or 0) + 1
+		else
+			streak[player] = 0
+		end
+		refreshStats(player)
+	end)
+
+	Players.PlayerRemoving:Connect(function(player)
+		publish(player)
+		streak[player] = nil
+	end)
+
+	-- Schreiben im Autosave-Rhythmus, lesen deutlich langsamer. Beides
+	-- gestaffelt, damit nicht alle Server gleichzeitig auf denselben
+	-- OrderedDataStore einschlagen.
+	task.spawn(function()
+		while true do
+			task.wait(L.PublishInterval)
+			for _, player in Players:GetPlayers() do
+				refreshStats(player)
+				publish(player)
+			end
+		end
+	end)
+
+	task.spawn(function()
+		while true do
+			local ok, err = pcall(function()
+				pull()
+				broadcast()
+			end)
+			if not ok then
+				warn(("[GHOSTNET] Rangliste konnte nicht geladen werden: %s"):format(tostring(err)))
+			end
+			task.wait(L.RefreshInterval)
+		end
+	end)
+
+	print("[GHOSTNET] LeaderboardService bereit.")
+end
+
+return LeaderboardService
+</ProtectedString>
+</Properties>
+</Item>
+<Item class="ModuleScript" referent="GN26">
 <Properties>
 <string name="Name">MapService</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/MapService.luau
@@ -6610,7 +7314,7 @@ return MapService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN25">
+<Item class="ModuleScript" referent="GN27">
 <Properties>
 <string name="Name">MarketService</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/MarketService.luau
@@ -6900,11 +7604,205 @@ return MarketService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="Folder" referent="GN27">
+<Item class="Folder" referent="GN31">
 <Properties>
 <string name="Name">Minigames</string>
 </Properties>
-<Item class="ModuleScript" referent="GN26">
+<Item class="ModuleScript" referent="GN28">
+<Properties>
+<string name="Name">CodeCrack</string>
+<ProtectedString name="Source">-- ServerScriptService/Systems/Minigames/CodeCrack.luau
+--!strict
+-- GHOSTNET :: Zugangscode knacken (Mastermind).
+--
+-- WAS DER SPIELER TUT
+--   Er raet eine Ziffernfolge. Nach jedem Versuch bekommt er zurueck, wie
+--   viele Stellen exakt stimmen und wie viele Ziffern zwar vorkommen, aber
+--   an der falschen Stelle stehen. Mehr nicht - daraus muss er schliessen.
+--
+-- WARUM DAS NEBEN NODE-BREACH STEHT
+--   Node-Breach ist raeumlich und schnell: man sieht ein Gitter und zieht
+--   einen Pfad. CodeCrack ist das Gegenteil - langsam, rein logisch, ohne
+--   Bewegung. Zwei Raetsel, die sich gleich anfuehlen, waeren ein Raetsel.
+--
+-- DIE SCHNITTSTELLE IST BINDEND
+--   Generate(difficulty, rng) -&gt; publicState, serverState
+--   Input(serverState, payload) -&gt; InputResult
+--   Label() -&gt; string
+--   publicState enthaelt NIEMALS die Loesung. Hier heisst das konkret:
+--   der Code selbst bleibt im serverState, der Client bekommt nur die
+--   Laenge, den Ziffernbereich und seine eigene Rateliste zurueck.
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Config = require(ReplicatedStorage.Shared.Config)
+local Types = require(ReplicatedStorage.Shared.Types)
+
+type InputResult = Types.InputResult
+
+local CodeCrack = {}
+
+local C = Config.CodeCrack
+
+export type State = {
+	Code: { number }, -- die Loesung. Verlaesst den Server nie.
+	Length: number,
+	Digits: number, -- Ziffern 1..Digits
+	Guesses: number,
+	MaxGuesses: number,
+}
+
+function CodeCrack.Label(): string
+	return "ZUGANGSCODE"
+end
+
+--==========================================================================
+-- Schwierigkeit
+--
+-- Zwei Regler: wie lang der Code ist und aus wie vielen Ziffern er besteht.
+-- Beide gleichzeitig hochzudrehen macht das Raetsel sehr schnell unfair -
+-- deshalb waechst die Laenge zuerst, der Ziffernbereich langsamer.
+--==========================================================================
+
+local function tierFor(difficulty: number): (number, number, number)
+	for _, tier in C.Tiers do
+		if difficulty &lt;= tier.UpTo then
+			return tier.Length, tier.Digits, tier.Guesses
+		end
+	end
+	local last = C.Tiers[#C.Tiers]
+	return last.Length, last.Digits, last.Guesses
+end
+
+--==========================================================================
+
+function CodeCrack.Generate(difficulty: number, rng: Random): ({ [string]: any }, State)
+	local length, digits, guesses = tierFor(difficulty)
+
+	local code: { number } = {}
+	for _ = 1, length do
+		table.insert(code, rng:NextInteger(1, digits))
+	end
+
+	local state: State = {
+		Code = code,
+		Length = length,
+		Digits = digits,
+		Guesses = 0,
+		MaxGuesses = guesses,
+	}
+
+	-- Alles, was der Client wissen darf. Der Code ist NICHT dabei.
+	local public = {
+		Kind = "CodeCrack",
+		Length = length,
+		Digits = digits,
+		MaxGuesses = guesses,
+		History = {}, -- fuellt sich mit jedem Versuch
+	}
+
+	return public, state
+end
+
+--==========================================================================
+-- Eingabe
+--==========================================================================
+
+local function result(ok: boolean, reason: string, costs: boolean, solved: boolean, feedback: { [string]: any }): InputResult
+	return { Ok = ok, Reason = reason, CostsAttempt = costs, Solved = solved, Feedback = feedback }
+end
+
+-- Wie viele Stellen sitzen, wie viele Ziffern kommen vor. Klassische
+-- Mastermind-Wertung: erst die exakten Treffer rausnehmen, dann den Rest
+-- ueber Haeufigkeiten zaehlen. Ohne das doppelte Rausnehmen wuerde eine
+-- doppelte Ziffer zweimal gezaehlt und die Rueckmeldung waere gelogen.
+local function score(code: { number }, guess: { number }): (number, number)
+	local exact = 0
+	local codeCounts: { [number]: number } = {}
+	local guessCounts: { [number]: number } = {}
+
+	for index = 1, #code do
+		if guess[index] == code[index] then
+			exact += 1
+		else
+			codeCounts[code[index]] = (codeCounts[code[index]] or 0) + 1
+			guessCounts[guess[index]] = (guessCounts[guess[index]] or 0) + 1
+		end
+	end
+
+	local partial = 0
+	for digit, count in guessCounts do
+		partial += math.min(count, codeCounts[digit] or 0)
+	end
+
+	return exact, partial
+end
+
+function CodeCrack.Input(state: State, payload: any): InputResult
+	if typeof(payload) ~= "table" then
+		return result(false, "BAD_PAYLOAD", false, false, {})
+	end
+
+	local guess = (payload :: any).Guess
+	if typeof(guess) ~= "table" then
+		return result(false, "BAD_PAYLOAD", false, false, {})
+	end
+
+	-- Jede Stelle einzeln pruefen. Ein Client, der eine 0 oder eine 99
+	-- schickt, darf die Wertung nicht durcheinanderbringen.
+	if #guess ~= state.Length then
+		return result(false, "WRONG_LENGTH", false, false, { Expected = state.Length })
+	end
+	local clean: { number } = {}
+	for index = 1, state.Length do
+		local digit = guess[index]
+		if typeof(digit) ~= "number" or digit ~= digit or digit % 1 ~= 0 then
+			return result(false, "BAD_PAYLOAD", false, false, {})
+		end
+		if digit &lt; 1 or digit &gt; state.Digits then
+			return result(false, "BAD_DIGIT", false, false, { Digits = state.Digits })
+		end
+		clean[index] = digit
+	end
+
+	state.Guesses += 1
+	local exact, partial = score(state.Code, clean)
+
+	if exact == state.Length then
+		return result(true, "SOLVED", false, true, {
+			Guess = clean,
+			Exact = exact,
+			Partial = partial,
+			GuessesUsed = state.Guesses,
+		})
+	end
+
+	-- Versuche sind aufgebraucht: der HackService zaehlt einen Fehlversuch
+	-- und beendet die Session ueber seine normale Kette.
+	if state.Guesses &gt;= state.MaxGuesses then
+		return result(false, "OUT_OF_GUESSES", true, false, {
+			Guess = clean,
+			Exact = exact,
+			Partial = partial,
+			GuessesLeft = 0,
+		})
+	end
+
+	-- Ein Fehlversuch kostet NICHT sofort einen Rig-Versuch: das Raten ist
+	-- der Kern des Raetsels. Erst wenn die Rateliste leer ist, wird es teuer.
+	return result(true, "FEEDBACK", false, false, {
+		Guess = clean,
+		Exact = exact,
+		Partial = partial,
+		GuessesLeft = state.MaxGuesses - state.Guesses,
+	})
+end
+
+return CodeCrack
+</ProtectedString>
+</Properties>
+</Item>
+<Item class="ModuleScript" referent="GN29">
 <Properties>
 <string name="Name">NodeBreach</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/Minigames/NodeBreach.luau
@@ -7278,8 +8176,205 @@ return NodeBreach
 </ProtectedString>
 </Properties>
 </Item>
+<Item class="ModuleScript" referent="GN30">
+<Properties>
+<string name="Name">SignalMatch</string>
+<ProtectedString name="Source">-- ServerScriptService/Systems/Minigames/SignalMatch.luau
+--!strict
+-- GHOSTNET :: Signal angleichen.
+--
+-- WAS DER SPIELER TUT
+--   Auf dem Terminal liegen zwei Wellen uebereinander: die Zielwelle und
+--   die eigene. Er stellt drei Regler ein - Frequenz, Amplitude, Phase -
+--   bis seine Welle die Zielwelle trifft. Trifft sie nahe genug, ist das
+--   Signal uebernommen.
+--
+-- WARUM DAS NEBEN DEN ANDEREN BEIDEN STEHT
+--   Node-Breach ist raeumlich, CodeCrack ist logisch. SignalMatch ist
+--   feinmotorisch: man schiebt, sieht sofort, ob es besser wird, und
+--   korrigiert. Drei Raetsel, die drei verschiedene Sachen von einem
+--   verlangen.
+--
+-- DIE SCHNITTSTELLE IST BINDEND
+--   Generate(difficulty, rng) -&gt; publicState, serverState
+--   Input(serverState, payload) -&gt; InputResult
+--   Label() -&gt; string
+--   publicState enthaelt NIEMALS die Loesung. Der Client bekommt die
+--   Zielwelle als ABGETASTETE PUNKTE zum Zeichnen - aus denen liesse sich
+--   die Loesung theoretisch zurueckrechnen, praktisch ist das aber genau
+--   die Aufgabe. Die Parameter selbst bleiben auf dem Server, und geprueft
+--   wird ausschliesslich dort.
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Config = require(ReplicatedStorage.Shared.Config)
+local Types = require(ReplicatedStorage.Shared.Types)
+
+type InputResult = Types.InputResult
+
+local SignalMatch = {}
+
+local S = Config.SignalMatch
+
+export type State = {
+	Frequency: number,
+	Amplitude: number,
+	Phase: number,
+	Tolerance: number, -- wie nah man dran sein muss
+	Attempts: number,
+	MaxAttempts: number,
+}
+
+function SignalMatch.Label(): string
+	return "SIGNALABGLEICH"
+end
+
+--==========================================================================
+
+local function tierFor(difficulty: number): (number, number)
+	for _, tier in S.Tiers do
+		if difficulty &lt;= tier.UpTo then
+			return tier.Tolerance, tier.Attempts
+		end
+	end
+	local last = S.Tiers[#S.Tiers]
+	return last.Tolerance, last.Attempts
+end
+
+-- Die Welle an einer Stelle. Server und Client rechnen dieselbe Formel,
+-- damit die gezeichnete Kurve zur Pruefung passt.
+local function sample(frequency: number, amplitude: number, phase: number, t: number): number
+	return amplitude * math.sin(frequency * t * math.pi * 2 + phase)
+end
+
+--==========================================================================
+
+function SignalMatch.Generate(difficulty: number, rng: Random): ({ [string]: any }, State)
+	local tolerance, attempts = tierFor(difficulty)
+
+	-- Auf das Raster runden, auf dem auch der Regler laeuft. Sonst gibt es
+	-- Ziele, die mit den erlaubten Schritten gar nicht erreichbar sind -
+	-- das ist der haeufigste Weg, so ein Raetsel unloesbar zu machen.
+	local function snap(value: number, step: number): number
+		return math.round(value / step) * step
+	end
+
+	local frequency = snap(rng:NextNumber(S.FrequencyMin, S.FrequencyMax), S.FrequencyStep)
+	local amplitude = snap(rng:NextNumber(S.AmplitudeMin, S.AmplitudeMax), S.AmplitudeStep)
+	local phase = snap(rng:NextNumber(0, math.pi * 2), S.PhaseStep)
+
+	local state: State = {
+		Frequency = frequency,
+		Amplitude = amplitude,
+		Phase = phase,
+		Tolerance = tolerance,
+		Attempts = 0,
+		MaxAttempts = attempts,
+	}
+
+	-- Die Zielkurve als Punkte. Der Client zeichnet sie, mehr braucht er
+	-- nicht - und die Parameter selbst bekommt er nicht.
+	local points: { number } = {}
+	for index = 0, S.Samples - 1 do
+		local t = index / (S.Samples - 1)
+		table.insert(points, sample(frequency, amplitude, phase, t))
+	end
+
+	local public = {
+		Kind = "SignalMatch",
+		Target = points,
+		Samples = S.Samples,
+		MaxAttempts = attempts,
+		-- Grenzen und Schrittweiten der Regler, damit der Client dieselben
+		-- Werte anbietet, die der Server akzeptiert.
+		FrequencyMin = S.FrequencyMin,
+		FrequencyMax = S.FrequencyMax,
+		FrequencyStep = S.FrequencyStep,
+		AmplitudeMin = S.AmplitudeMin,
+		AmplitudeMax = S.AmplitudeMax,
+		AmplitudeStep = S.AmplitudeStep,
+		PhaseStep = S.PhaseStep,
+	}
+
+	return public, state
+end
+
+--==========================================================================
+-- Eingabe
+--==========================================================================
+
+local function result(ok: boolean, reason: string, costs: boolean, solved: boolean, feedback: { [string]: any }): InputResult
+	return { Ok = ok, Reason = reason, CostsAttempt = costs, Solved = solved, Feedback = feedback }
+end
+
+function SignalMatch.Input(state: State, payload: any): InputResult
+	if typeof(payload) ~= "table" then
+		return result(false, "BAD_PAYLOAD", false, false, {})
+	end
+
+	local frequency = (payload :: any).Frequency
+	local amplitude = (payload :: any).Amplitude
+	local phase = (payload :: any).Phase
+
+	-- Jeden Wert EINZELN pruefen. Eine Tabelle { frequency, amplitude, phase }
+	-- durchzugehen sieht kuerzer aus, ist aber falsch: sind alle drei nil,
+	-- ist die Tabelle leer, die Schleife laeuft nie, und nil landet
+	-- ungeprueft in math.clamp. Genau das hat der Testlauf gefunden.
+	local function bad(value: any): boolean
+		return typeof(value) ~= "number" or value ~= value or value == math.huge or value == -math.huge
+	end
+	if bad(frequency) or bad(amplitude) or bad(phase) then
+		return result(false, "BAD_PAYLOAD", false, false, {})
+	end
+
+	-- Werte in die erlaubten Grenzen zwingen. Ein Client, der eine Amplitude
+	-- von 10000 schickt, soll damit nichts erreichen - weder einen Treffer
+	-- noch einen Fehler im Vergleich.
+	frequency = math.clamp(frequency, S.FrequencyMin, S.FrequencyMax)
+	amplitude = math.clamp(amplitude, S.AmplitudeMin, S.AmplitudeMax)
+	phase = phase % (math.pi * 2)
+
+	state.Attempts += 1
+
+	-- Mittlerer Abstand ueber die ganze Kurve. Ein einzelner Punkt koennte
+	-- zufaellig treffen; die ganze Welle nicht.
+	local total = 0
+	for index = 0, S.Samples - 1 do
+		local t = index / (S.Samples - 1)
+		local mine = sample(frequency, amplitude, phase, t)
+		local theirs = sample(state.Frequency, state.Amplitude, state.Phase, t)
+		total += math.abs(mine - theirs)
+	end
+	local error_ = total / S.Samples
+
+	if error_ &lt;= state.Tolerance then
+		return result(true, "SOLVED", false, true, {
+			Error = error_,
+			AttemptsUsed = state.Attempts,
+		})
+	end
+
+	if state.Attempts &gt;= state.MaxAttempts then
+		return result(false, "OUT_OF_TRIES", true, false, { Error = error_, TriesLeft = 0 })
+	end
+
+	-- Rueckmeldung ohne die Loesung: nur "waermer" oder "kaelter". Genau das
+	-- braucht man zum Nachregeln, und mehr verraet nichts.
+	return result(true, "FEEDBACK", false, false, {
+		Error = error_,
+		-- 0 = weit weg, 1 = fast getroffen. Der Client macht daraus einen
+		-- Balken; eine nackte Fehlerzahl sagt niemandem etwas.
+		Closeness = math.clamp(1 - error_ / math.max(S.MaxError, 0.001), 0, 1),
+		TriesLeft = state.MaxAttempts - state.Attempts,
+	})
+end
+
+return SignalMatch
+</ProtectedString>
+</Properties>
 </Item>
-<Item class="ModuleScript" referent="GN28">
+</Item>
+<Item class="ModuleScript" referent="GN32">
 <Properties>
 <string name="Name">MissionService</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/MissionService.luau
@@ -7971,7 +9066,7 @@ return MissionService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN29">
+<Item class="ModuleScript" referent="GN33">
 <Properties>
 <string name="Name">MonetizationService</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/MonetizationService.luau
@@ -8390,7 +9485,7 @@ return MonetizationService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN30">
+<Item class="ModuleScript" referent="GN34">
 <Properties>
 <string name="Name">PhoneService</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/PhoneService.luau
@@ -8584,7 +9679,7 @@ return PhoneService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN31">
+<Item class="ModuleScript" referent="GN35">
 <Properties>
 <string name="Name">PursuitService</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/PursuitService.luau
@@ -8615,6 +9710,7 @@ local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local AssetLibrary = require(ReplicatedStorage.Shared.AssetLibrary)
 
 local ArrestService = require(script.Parent.ArrestService)
+local ContractService = require(script.Parent.ContractService)
 local RoadNetwork = require(script.Parent.RoadNetwork)
 local VehicleChassis = require(script.Parent.VehicleChassis)
 local SaveService = require(script.Parent.SaveService)
@@ -9117,6 +10213,7 @@ local function step(dt: number)
 				chase.OutOfSight = 0
 				if computeLevel(player, chase) &lt;= 0 then
 					print(("[GHOSTNET] %s ist entkommen."):format(player.Name))
+					ContractService.Report(player, "ESCAPE", 1)
 					clearChase(player)
 					continue
 				end
@@ -9253,7 +10350,7 @@ return PursuitService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN32">
+<Item class="ModuleScript" referent="GN36">
 <Properties>
 <string name="Name">RaidService</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/RaidService.luau
@@ -9529,7 +10626,7 @@ return RaidService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN33">
+<Item class="ModuleScript" referent="GN37">
 <Properties>
 <string name="Name">RateLimiter</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/RateLimiter.luau
@@ -9609,7 +10706,7 @@ return RateLimiter
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN34">
+<Item class="ModuleScript" referent="GN38">
 <Properties>
 <string name="Name">RoadNetwork</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/RoadNetwork.luau
@@ -9922,7 +11019,7 @@ return RoadNetwork
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN35">
+<Item class="ModuleScript" referent="GN39">
 <Properties>
 <string name="Name">RouteService</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/RouteService.luau
@@ -10075,7 +11172,7 @@ return RouteService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN36">
+<Item class="ModuleScript" referent="GN40">
 <Properties>
 <string name="Name">SaveService</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/SaveService.luau
@@ -10161,6 +11258,7 @@ function SaveService.DefaultProfile(): Profile
 		Stash = {},
 		PurchaseLog = {},
 		Garage = {},
+		Contracts = { Day = 0, List = {}, Streak = 0 },
 		LastSeen = os.time(),
 		SessionId = "",
 	}
@@ -10333,6 +11431,11 @@ local MIGRATIONS: { [number]: (Profile) -&gt; () } = {
 		profile.Story.Allegiance = ""
 		profile.Story.AllegianceAt = 0
 	end,
+	-- Tagesziele. Ein Altprofil startet mit einem leeren Tag - der
+	-- ContractService wuerfelt beim naechsten Login drei neue Auftraege.
+	[6] = function(profile: Profile)
+		profile.Contracts = { Day = 0, List = {}, Streak = 0 }
+	end,
 }
 
 local function runMigrations(profile: Profile, fromVersion: number, playerName: string)
@@ -10395,6 +11498,77 @@ local function getStore(): DataStore?
 		return store
 	end
 	return nil
+end
+
+--==========================================================================
+-- RANGLISTEN
+--
+-- Auch die laufen ueber den SaveService - Regel 5: nur dieses Modul spricht
+-- mit einem DataStore. Ein zweites Modul mit eigenem Store waere eine
+-- zweite Wahrheit und ein zweiter Ort, an dem man Limits reissen kann.
+--
+-- OrderedDataStore statt selbst sortieren: der Dienst haelt die Reihenfolge,
+-- und eine Top-100 aus einem normalen Store zu bauen hiesse, alle Profile
+-- zu lesen.
+--==========================================================================
+
+local boards: { [string]: OrderedDataStore } = {}
+
+local function getBoard(name: string): OrderedDataStore?
+	if boards[name] then
+		return boards[name]
+	end
+	local ok, result = pcall(function()
+		return DataStoreService:GetOrderedDataStore(Config.Save.StoreName .. "_" .. name)
+	end)
+	if ok and result then
+		boards[name] = result
+		return result
+	end
+	return nil
+end
+
+-- Einen Wert eintragen. Fehler sind hier bewusst still: eine Rangliste, die
+-- nicht schreibt, darf niemals das Speichern des Profils gefaehrden.
+function SaveService.PublishScore(board: string, userId: number, value: number)
+	-- Ohne API-Zugriff (Studio) gibt getBoard schlicht nil zurueck. Kein
+	-- Sonderfall noetig - und vor allem kein Aufruf einer Funktion, die
+	-- weiter unten steht: die waere hier oben noch nicht sichtbar.
+	local target = getBoard(board)
+	if not target then
+		return
+	end
+	pcall(function()
+		target:SetAsync(tostring(userId), math.floor(value))
+	end)
+end
+
+-- Die besten Eintraege. Gibt eine Liste aus { UserId, Value } zurueck.
+function SaveService.TopScores(board: string, count: number): { { UserId: number, Value: number } }
+	local out: { { UserId: number, Value: number } } = {}
+	local target = getBoard(board)
+	if not target then
+		return out
+	end
+
+	local ok, pages = pcall(function()
+		return target:GetSortedAsync(false, math.clamp(count, 1, 100))
+	end)
+	if not ok or not pages then
+		return out
+	end
+
+	local ok2, page = pcall(function()
+		return pages:GetCurrentPage()
+	end)
+	if not ok2 or typeof(page) ~= "table" then
+		return out
+	end
+
+	for _, entry in page do
+		table.insert(out, { UserId = tonumber(entry.key) or 0, Value = entry.value })
+	end
+	return out
 end
 
 local function studioFallbackAllowed(): boolean
@@ -10706,7 +11880,7 @@ return SaveService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN37">
+<Item class="ModuleScript" referent="GN41">
 <Properties>
 <string name="Name">SellService</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/SellService.luau
@@ -10872,7 +12046,7 @@ return SellService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN38">
+<Item class="ModuleScript" referent="GN42">
 <Properties>
 <string name="Name">ShopService</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/ShopService.luau
@@ -10998,7 +12172,7 @@ return ShopService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN39">
+<Item class="ModuleScript" referent="GN43">
 <Properties>
 <string name="Name">TimeService</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/TimeService.luau
@@ -11319,7 +12493,7 @@ return TimeService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN40">
+<Item class="ModuleScript" referent="GN44">
 <Properties>
 <string name="Name">TraceService</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/TraceService.luau
@@ -11557,7 +12731,7 @@ return TraceService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN41">
+<Item class="ModuleScript" referent="GN45">
 <Properties>
 <string name="Name">TrafficService</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/TrafficService.luau
@@ -11599,6 +12773,7 @@ local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local AssetLibrary = require(ReplicatedStorage.Shared.AssetLibrary)
 local Vehicles = require(ReplicatedStorage.Shared.Vehicles)
 
+local ContractService = require(script.Parent.ContractService)
 local RateLimiter = require(script.Parent.RateLimiter)
 local RoadNetwork = require(script.Parent.RoadNetwork)
 local TimeService = require(script.Parent.TimeService)
@@ -12091,6 +13266,7 @@ function TrafficService.HandleSteal(player: Player)
 	-- Autodiebstahl haengt am Trace, statt danebenherzulaufen.
 	TraceService.Add(player, T.StealTrace)
 	PursuitService.AddHeat(player, 1)
+	ContractService.Report(player, "STEAL", 1)
 	print(("[GHOSTNET] %s hat ein Auto kurzgeschlossen (+%d Trace)."):format(player.Name, T.StealTrace))
 end
 
@@ -12174,7 +13350,7 @@ return TrafficService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN42">
+<Item class="ModuleScript" referent="GN46">
 <Properties>
 <string name="Name">VehicleChassis</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/VehicleChassis.luau
@@ -13055,7 +14231,7 @@ return VehicleChassis
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN43">
+<Item class="ModuleScript" referent="GN47">
 <Properties>
 <string name="Name">VehicleService</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/VehicleService.luau
@@ -13495,11 +14671,11 @@ return VehicleService
 </Properties>
 </Item>
 </Item>
-<Item class="Folder" referent="GN53">
+<Item class="Folder" referent="GN58">
 <Properties>
 <string name="Name">World</string>
 </Properties>
-<Item class="Script" referent="GN45">
+<Item class="Script" referent="GN49">
 <Properties>
 <string name="Name">BankInterior</string>
 <ProtectedString name="Source">-- ServerScriptService/World/BankInterior.server.luau
@@ -13797,7 +14973,7 @@ print("[GHOSTNET] Bank-Innenraum gebaut: Halle, Sicherheitsbereich, Tresorraum, 
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="Script" referent="GN46">
+<Item class="Script" referent="GN50">
 <Properties>
 <string name="Name">City</string>
 <ProtectedString name="Source">-- ServerScriptService/World/City.server.luau
@@ -14179,7 +15355,7 @@ print(
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="Script" referent="GN47">
+<Item class="Script" referent="GN51">
 <Properties>
 <string name="Name">Dealership</string>
 <ProtectedString name="Source">-- ServerScriptService/World/Dealership.server.luau
@@ -14411,7 +15587,7 @@ print("[GHOSTNET] Autohaus, Garage und Bezirks-Wegpunkte gebaut.")
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="Script" referent="GN48">
+<Item class="Script" referent="GN52">
 <Properties>
 <string name="Name">PoliceStations</string>
 <ProtectedString name="Source">-- ServerScriptService/World/PoliceStations.server.luau
@@ -14600,7 +15776,7 @@ print(("[GHOSTNET] %d Polizeiwachen gebaut."):format(#STATIONS))
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="Script" referent="GN49">
+<Item class="Script" referent="GN53">
 <Properties>
 <string name="Name">Signage</string>
 <ProtectedString name="Source">-- ServerScriptService/World/Signage.server.luau
@@ -14882,7 +16058,7 @@ print(("[GHOSTNET] Beschilderung gebaut: %d Gebaeudeschilder, %d Strassenschilde
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="Script" referent="GN50">
+<Item class="Script" referent="GN54">
 <Properties>
 <string name="Name">StoryWorld</string>
 <ProtectedString name="Source">-- ServerScriptService/World/StoryWorld.server.luau
@@ -15432,7 +16608,7 @@ print("[GHOSTNET] Story-Welt gebaut: Uebungsterminal, Laden, Apartment, Nakamura
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="Script" referent="GN51">
+<Item class="Script" referent="GN55">
 <Properties>
 <string name="Name">TestTargets</string>
 <ProtectedString name="Source">-- ServerScriptService/World/TestTargets.server.luau
@@ -15738,7 +16914,7 @@ print("[GHOSTNET] Testwelt gebaut: Kamera (D2), Sicherheitstuer (D4), Geldautoma
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="Script" referent="GN52">
+<Item class="Script" referent="GN56">
 <Properties>
 <string name="Name">TestVehicles</string>
 <ProtectedString name="Source">-- ServerScriptService/World/TestVehicles.server.luau
@@ -15829,21 +17005,204 @@ print(("[GHOSTNET] %d Testfahrzeuge gebaut."):format(built))
 </ProtectedString>
 </Properties>
 </Item>
+<Item class="Script" referent="GN57">
+<Properties>
+<string name="Name">WorldGenerator</string>
+<ProtectedString name="Source">-- ServerScriptService/World/WorldGenerator.server.luau
+--!strict
+-- GHOSTNET :: Hack-Ziele ueber die ganze Stadt verteilen.
+--
+-- WARUM
+--   Bisher standen die Ziele von Hand gesetzt am Spawn und in der Story-Welt:
+--   vier Stueck. Wer die durch hat, hat nichts mehr zu tun. Der Generator
+--   fuellt die Stadt mit Zielen, deren Schwierigkeit vom BEZIRK kommt -
+--   damit schliesst Rig-Fortschritt neue Stadtteile auf, statt nur groessere
+--   Zahlen zu erlauben.
+--
+-- WAS ER NICHT ANFASST
+--   Die Story-Ziele aus StoryWorld, TestTargets und BankInterior bleiben,
+--   wo sie sind. Missionen zeigen auf feste TargetIds - ein Generator, der
+--   die ueberschreibt, macht die Story unspielbar. Er ERGAENZT nur.
+--
+-- KEIN CODE PRO OBJEKT
+--   Jedes Ziel ist ein geklontes Prop mit Tag GhostNetHackable und
+--   Attributen. HackService liest die Attribute und weiss dann alles.
+--   Fehlt die Vorlage, kommt ein magenta Platzhalter - so wie ueberall.
+
+local CollectionService = game:GetService("CollectionService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local ServerScriptService = game:GetService("ServerScriptService")
+
+local AssetLibrary = require(ReplicatedStorage.Shared.AssetLibrary)
+local Config = require(ReplicatedStorage.Shared.Config)
+local Districts = require(ReplicatedStorage.Shared.Districts)
+
+local RoadNetwork = require(ServerScriptService:WaitForChild("Systems"):WaitForChild("RoadNetwork"))
+
+local FOLDER_NAME = "GhostNet_Generated"
+
+if workspace:FindFirstChild(FOLDER_NAME) then
+	return
+end
+
+RoadNetwork.Build()
+
+local folder = Instance.new("Folder")
+folder.Name = FOLDER_NAME
+folder.Parent = workspace
+
+local G = Config.Generator
+local rng = Random.new(Config.World.Seed + 7)
+
+--==========================================================================
+-- Ein Ziel setzen
+--==========================================================================
+
+local placed = 0
+
+local function place(archetype: any, position: Vector3, difficulty: number, exposed: boolean, index: number)
+	local model = AssetLibrary.Clone("Props", archetype.Asset, archetype.Size)
+	model:PivotTo(CFrame.new(position) * CFrame.Angles(0, rng:NextNumber(0, math.pi * 2), 0))
+
+	local anchor: BasePart? = model.PrimaryPart
+	for _, descendant in model:GetDescendants() do
+		if descendant:IsA("BasePart") then
+			descendant.Anchored = true
+			descendant.CanCollide = false
+			descendant.CanTouch = false
+			descendant.CastShadow = false
+			if not anchor then
+				anchor = descendant
+			end
+		end
+	end
+	if not anchor then
+		model:Destroy()
+		return
+	end
+
+	-- Nur der Ankerpart traegt Tag und Attribute. Ein Hack-Ziel ist genau
+	-- EIN BasePart - so steht es in der Architekturregel.
+	anchor.CanQuery = true
+	anchor:SetAttribute("TargetId", ("GEN_%s_%d"):format(archetype.Id, index))
+	anchor:SetAttribute("DisplayName", ("%s // %s"):format(archetype.Label, archetype.Suffix))
+	anchor:SetAttribute("Difficulty", difficulty)
+	anchor:SetAttribute("HackType", archetype.HackType)
+	anchor:SetAttribute("RequiredLevel", math.clamp(math.ceil(difficulty / G.LevelPerDifficulty), 1, Config.Rig.MaxLevel))
+	anchor:SetAttribute("OnSuccess", archetype.OnSuccess)
+	anchor:SetAttribute("DownTime", archetype.DownTime)
+	anchor:SetAttribute("Cooldown", G.Cooldown)
+	anchor:SetAttribute("Exposed", exposed)
+	anchor:SetAttribute("Offline", false)
+
+	-- Akzentlicht, damit man das Ziel auf Distanz erkennt. Neonflaeche waere
+	-- billiger, aber ein Prop bringt seine eigene Form mit - ein Licht ist
+	-- der einzige Weg, das von aussen zu markieren.
+	if rng:NextNumber() &lt; G.LightChance then
+		local light = Instance.new("PointLight")
+		light.Color = if exposed then Config.Theme.Amber else Config.Theme.Cyan
+		light.Brightness = G.LightBrightness
+		light.Range = G.LightRange
+		light.Parent = anchor
+	end
+
+	model.Parent = folder
+	CollectionService:AddTag(anchor, Config.HackableTag)
+	placed += 1
+end
+
+--==========================================================================
+-- Verteilen
+--
+-- Entlang der Strassenkanten, abwechselnd links und rechts. Das gibt Ziele
+-- an Fassaden statt mitten auf der Kreuzung - und es braucht keine
+-- Kollisionsabfrage, weil der Abstand zur Strasse fest ist.
+--==========================================================================
+
+local seen: { [string]: boolean } = {}
+
+for _, node in RoadNetwork.All() do
+	for _, linkId in node.Links do
+		local key = if node.Id &lt; linkId
+			then ("%d-%d"):format(node.Id, linkId)
+			else ("%d-%d"):format(linkId, node.Id)
+		if seen[key] then
+			continue
+		end
+		seen[key] = true
+
+		local other = RoadNetwork.Get(linkId)
+		if not other then
+			continue
+		end
+
+		local middle = (node.Position + other.Position) * 0.5
+		local district = Districts.At(
+			math.round(middle.X / Config.City.BlockSize),
+			math.round(middle.Z / Config.City.BlockSize)
+		)
+		if not district then
+			continue
+		end
+
+		for step = 1, G.PerEdge do
+			if rng:NextNumber() &gt; G.Chance then
+				continue
+			end
+			if placed &gt;= G.MaxTargets then
+				break
+			end
+
+			local alpha = step / (G.PerEdge + 1)
+			local along = node.Position:Lerp(other.Position, alpha)
+			local delta = other.Position - node.Position
+			local horizontal = math.abs(delta.X) &gt; math.abs(delta.Z)
+			local side = if rng:NextNumber() &lt; 0.5 then -1 else 1
+			local lateral = Config.City.RoadWidth * 0.5 + Config.City.SidewalkWidth + G.WallOffset
+			local offset = if horizontal
+				then Vector3.new(0, 0, side * lateral)
+				else Vector3.new(side * lateral, 0, 0)
+
+			-- Schwierigkeit aus dem Bezirk. Genau daran haengt der Fortschritt:
+			-- mit einem besseren Rig werden neue Stadtteile ueberhaupt erst
+			-- knackbar.
+			local difficulty = rng:NextInteger(district.MinDifficulty, district.MaxDifficulty)
+			local archetype = G.Archetypes[rng:NextInteger(1, #G.Archetypes)]
+
+			-- Hoch an der Fassade = gedeckt ist Unsinn; was oben haengt, sieht
+			-- jeder. Bodennahes in der Gasse gilt als gedeckt.
+			local exposed = archetype.Height &gt; G.ExposedHeight
+
+			place(
+				archetype,
+				along + offset + Vector3.new(0, Config.City.RoadThickness * 0.5 + archetype.Height, 0),
+				difficulty,
+				exposed,
+				placed + 1
+			)
+		end
+	end
+end
+
+print(("[GHOSTNET] Weltgenerator: %d Ziele verteilt (Obergrenze %d)."):format(placed, G.MaxTargets))
+</ProtectedString>
+</Properties>
 </Item>
 </Item>
-<Item class="StarterPlayer" referent="GN88">
+</Item>
+<Item class="StarterPlayer" referent="GN93">
 <Properties>
 <string name="Name">StarterPlayer</string>
 </Properties>
-<Item class="StarterPlayerScripts" referent="GN89">
+<Item class="StarterPlayerScripts" referent="GN94">
 <Properties>
 <string name="Name">StarterPlayerScripts</string>
 </Properties>
-<Item class="Folder" referent="GN70">
+<Item class="Folder" referent="GN75">
 <Properties>
 <string name="Name">UI</string>
 </Properties>
-<Item class="LocalScript" referent="GN54">
+<Item class="LocalScript" referent="GN59">
 <Properties>
 <string name="Name">AdminUI</string>
 <ProtectedString name="Source">-- StarterPlayer/StarterPlayerScripts/UI/AdminUI.client.luau
@@ -16206,7 +17565,7 @@ end)
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="LocalScript" referent="GN55">
+<Item class="LocalScript" referent="GN60">
 <Properties>
 <string name="Name">ArrestUI</string>
 <ProtectedString name="Source">-- StarterPlayerScripts/UI/ArrestUI.client.luau
@@ -16431,7 +17790,7 @@ end)
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="LocalScript" referent="GN56">
+<Item class="LocalScript" referent="GN61">
 <Properties>
 <string name="Name">CityUI</string>
 <ProtectedString name="Source">-- StarterPlayer/StarterPlayerScripts/UI/CityUI.client.luau
@@ -17045,7 +18404,7 @@ refreshEndgame()
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="LocalScript" referent="GN57">
+<Item class="LocalScript" referent="GN62">
 <Properties>
 <string name="Name">CompassUI</string>
 <ProtectedString name="Source">-- StarterPlayerScripts/UI/CompassUI.client.luau
@@ -17342,7 +18701,7 @@ end)
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="LocalScript" referent="GN58">
+<Item class="LocalScript" referent="GN63">
 <Properties>
 <string name="Name">DarknetUI</string>
 <ProtectedString name="Source">-- StarterPlayer/StarterPlayerScripts/UI/DarknetUI.client.luau
@@ -18035,7 +19394,7 @@ end)
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="LocalScript" referent="GN59">
+<Item class="LocalScript" referent="GN64">
 <Properties>
 <string name="Name">HUD</string>
 <ProtectedString name="Source">-- StarterPlayer/StarterPlayerScripts/UI/HUD.client.luau
@@ -18737,7 +20096,7 @@ UITheme.Scanlines(walletPanel, 4)
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="LocalScript" referent="GN60">
+<Item class="LocalScript" referent="GN65">
 <Properties>
 <string name="Name">HackUI</string>
 <ProtectedString name="Source">-- StarterPlayer/StarterPlayerScripts/UI/HackUI.client.luau
@@ -19589,7 +20948,7 @@ end)
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="LocalScript" referent="GN61">
+<Item class="LocalScript" referent="GN66">
 <Properties>
 <string name="Name">MapUI</string>
 <ProtectedString name="Source">-- StarterPlayerScripts/UI/MapUI.client.luau
@@ -20237,7 +21596,7 @@ end)
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="LocalScript" referent="GN62">
+<Item class="LocalScript" referent="GN67">
 <Properties>
 <string name="Name">MissionUI</string>
 <ProtectedString name="Source">-- StarterPlayer/StarterPlayerScripts/UI/MissionUI.client.luau
@@ -20605,7 +21964,7 @@ refresh()
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="LocalScript" referent="GN63">
+<Item class="LocalScript" referent="GN68">
 <Properties>
 <string name="Name">PhoneUI</string>
 <ProtectedString name="Source">-- StarterPlayerScripts/UI/PhoneUI.client.luau
@@ -21094,7 +22453,7 @@ end)
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="LocalScript" referent="GN64">
+<Item class="LocalScript" referent="GN69">
 <Properties>
 <string name="Name">ShopUI</string>
 <ProtectedString name="Source">-- StarterPlayer/StarterPlayerScripts/UI/ShopUI.client.luau
@@ -21570,7 +22929,7 @@ refresh()
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="LocalScript" referent="GN65">
+<Item class="LocalScript" referent="GN70">
 <Properties>
 <string name="Name">SoundController</string>
 <ProtectedString name="Source">-- StarterPlayer/StarterPlayerScripts/UI/SoundController.client.luau
@@ -21881,7 +23240,7 @@ local _ = player
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="LocalScript" referent="GN66">
+<Item class="LocalScript" referent="GN71">
 <Properties>
 <string name="Name">StoreUI</string>
 <ProtectedString name="Source">-- StarterPlayer/StarterPlayerScripts/UI/StoreUI.client.luau
@@ -22207,7 +23566,7 @@ refresh()
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="LocalScript" referent="GN67">
+<Item class="LocalScript" referent="GN72">
 <Properties>
 <string name="Name">TargetBeacons</string>
 <ProtectedString name="Source">-- StarterPlayer/StarterPlayerScripts/UI/TargetBeacons.client.luau
@@ -22309,7 +23668,7 @@ end)
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="LocalScript" referent="GN68">
+<Item class="LocalScript" referent="GN73">
 <Properties>
 <string name="Name">TutorialUI</string>
 <ProtectedString name="Source">-- StarterPlayer/StarterPlayerScripts/UI/TutorialUI.client.luau
@@ -22644,7 +24003,7 @@ end)
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="LocalScript" referent="GN69">
+<Item class="LocalScript" referent="GN74">
 <Properties>
 <string name="Name">VehicleController</string>
 <ProtectedString name="Source">-- StarterPlayer/StarterPlayerScripts/UI/VehicleController.client.luau
@@ -23064,11 +24423,11 @@ end)
 </Properties>
 </Item>
 </Item>
-<Item class="Folder" referent="GN73">
+<Item class="Folder" referent="GN78">
 <Properties>
 <string name="Name">World</string>
 </Properties>
-<Item class="LocalScript" referent="GN71">
+<Item class="LocalScript" referent="GN76">
 <Properties>
 <string name="Name">RouteMarkers</string>
 <ProtectedString name="Source">-- StarterPlayerScripts/World/RouteMarkers.client.luau
@@ -23334,7 +24693,7 @@ end)
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="LocalScript" referent="GN72">
+<Item class="LocalScript" referent="GN77">
 <Properties>
 <string name="Name">TrafficSmoother</string>
 <ProtectedString name="Source">-- StarterPlayerScripts/World/TrafficSmoother.client.luau

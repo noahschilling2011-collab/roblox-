@@ -81,6 +81,7 @@ function SaveService.DefaultProfile(): Profile
 		Stash = {},
 		PurchaseLog = {},
 		Garage = {},
+		Contracts = { Day = 0, List = {}, Streak = 0 },
 		LastSeen = os.time(),
 		SessionId = "",
 	}
@@ -253,6 +254,11 @@ local MIGRATIONS: { [number]: (Profile) -> () } = {
 		profile.Story.Allegiance = ""
 		profile.Story.AllegianceAt = 0
 	end,
+	-- Tagesziele. Ein Altprofil startet mit einem leeren Tag - der
+	-- ContractService wuerfelt beim naechsten Login drei neue Auftraege.
+	[6] = function(profile: Profile)
+		profile.Contracts = { Day = 0, List = {}, Streak = 0 }
+	end,
 }
 
 local function runMigrations(profile: Profile, fromVersion: number, playerName: string)
@@ -315,6 +321,77 @@ local function getStore(): DataStore?
 		return store
 	end
 	return nil
+end
+
+--==========================================================================
+-- RANGLISTEN
+--
+-- Auch die laufen ueber den SaveService - Regel 5: nur dieses Modul spricht
+-- mit einem DataStore. Ein zweites Modul mit eigenem Store waere eine
+-- zweite Wahrheit und ein zweiter Ort, an dem man Limits reissen kann.
+--
+-- OrderedDataStore statt selbst sortieren: der Dienst haelt die Reihenfolge,
+-- und eine Top-100 aus einem normalen Store zu bauen hiesse, alle Profile
+-- zu lesen.
+--==========================================================================
+
+local boards: { [string]: OrderedDataStore } = {}
+
+local function getBoard(name: string): OrderedDataStore?
+	if boards[name] then
+		return boards[name]
+	end
+	local ok, result = pcall(function()
+		return DataStoreService:GetOrderedDataStore(Config.Save.StoreName .. "_" .. name)
+	end)
+	if ok and result then
+		boards[name] = result
+		return result
+	end
+	return nil
+end
+
+-- Einen Wert eintragen. Fehler sind hier bewusst still: eine Rangliste, die
+-- nicht schreibt, darf niemals das Speichern des Profils gefaehrden.
+function SaveService.PublishScore(board: string, userId: number, value: number)
+	-- Ohne API-Zugriff (Studio) gibt getBoard schlicht nil zurueck. Kein
+	-- Sonderfall noetig - und vor allem kein Aufruf einer Funktion, die
+	-- weiter unten steht: die waere hier oben noch nicht sichtbar.
+	local target = getBoard(board)
+	if not target then
+		return
+	end
+	pcall(function()
+		target:SetAsync(tostring(userId), math.floor(value))
+	end)
+end
+
+-- Die besten Eintraege. Gibt eine Liste aus { UserId, Value } zurueck.
+function SaveService.TopScores(board: string, count: number): { { UserId: number, Value: number } }
+	local out: { { UserId: number, Value: number } } = {}
+	local target = getBoard(board)
+	if not target then
+		return out
+	end
+
+	local ok, pages = pcall(function()
+		return target:GetSortedAsync(false, math.clamp(count, 1, 100))
+	end)
+	if not ok or not pages then
+		return out
+	end
+
+	local ok2, page = pcall(function()
+		return pages:GetCurrentPage()
+	end)
+	if not ok2 or typeof(page) ~= "table" then
+		return out
+	end
+
+	for _, entry in page do
+		table.insert(out, { UserId = tonumber(entry.key) or 0, Value = entry.value })
+	end
+	return out
 end
 
 local function studioFallbackAllowed(): boolean
