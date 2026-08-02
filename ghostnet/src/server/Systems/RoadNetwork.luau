@@ -186,6 +186,104 @@ function RoadNetwork.DistrictAt(position: Vector3): Districts.District?
 	return Districts.At(math.round(position.X / block), math.round(position.Z / block))
 end
 
+--==========================================================================
+-- Wegsuche
+--
+-- Dijkstra ueber denselben Graphen, auf dem Verkehr und Polizei fahren. Es
+-- gibt keinen zweiten, abweichenden Wegenetz-Datensatz - und weil das Netz
+-- ein Raster mit wenigen Dutzend Knoten ist, reicht Dijkstra locker; A*
+-- waere hier nur mehr Code fuer denselben Weg.
+--
+-- Laeuft nur, wenn jemand ein Ziel setzt. Kein Takt, keine Dauerlast.
+--==========================================================================
+
+function RoadNetwork.FindPath(fromId: number, toId: number): { number }?
+	if not nodes[fromId] or not nodes[toId] then
+		return nil
+	end
+	if fromId == toId then
+		return { fromId }
+	end
+
+	local distance: { [number]: number } = {}
+	local previous: { [number]: number } = {}
+	local visited: { [number]: boolean } = {}
+	distance[fromId] = 0
+
+	while true do
+		-- Kleinster offener Knoten. Lineare Suche ist bei dieser Groesse
+		-- schneller als eine Halde und deutlich einfacher zu lesen.
+		local current: number? = nil
+		local best = math.huge
+		for id, cost in distance do
+			if not visited[id] and cost < best then
+				current, best = id, cost
+			end
+		end
+		if not current then
+			return nil -- nicht erreichbar
+		end
+		if current == toId then
+			break
+		end
+		visited[current] = true
+
+		local node = nodes[current]
+		for _, linkId in node.Links do
+			if visited[linkId] then
+				continue
+			end
+			local neighbour = nodes[linkId]
+			if not neighbour then
+				continue
+			end
+			local step = best + (neighbour.Position - node.Position).Magnitude
+			if step < (distance[linkId] or math.huge) then
+				distance[linkId] = step
+				previous[linkId] = current
+			end
+		end
+	end
+
+	local path: { number } = { toId }
+	local walk = toId
+	while walk ~= fromId do
+		local before = previous[walk]
+		if not before then
+			return nil
+		end
+		table.insert(path, 1, before)
+		walk = before
+	end
+	return path
+end
+
+-- Bequemer Einstieg: von einer Weltposition zur naechsten. Gibt die
+-- Stuetzpunkte als Weltpositionen zurueck, inklusive Start und Ziel selbst,
+-- damit die Linie nicht erst auf halber Strecke anfaengt.
+function RoadNetwork.RouteBetween(from: Vector3, to: Vector3): { Vector3 }?
+	local startNode = RoadNetwork.NearestNode(from)
+	local goalNode = RoadNetwork.NearestNode(to)
+	if not startNode or not goalNode then
+		return nil
+	end
+
+	local ids = RoadNetwork.FindPath(startNode.Id, goalNode.Id)
+	if not ids then
+		return nil
+	end
+
+	local points: { Vector3 } = { Vector3.new(from.X, 0, from.Z) }
+	for _, id in ids do
+		local node = nodes[id]
+		if node then
+			table.insert(points, node.Position)
+		end
+	end
+	table.insert(points, Vector3.new(to.X, 0, to.Z))
+	return points
+end
+
 function RoadNetwork.Init()
 	local valid, errors = Districts.Validate()
 	if not valid then

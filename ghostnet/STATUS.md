@@ -3,8 +3,8 @@
 > Wird am Ende jeder Session aktualisiert. Erstes, was eine neue Session liest.
 
 ## Aktuelle Phase
-**Alles abgearbeitet, dazu v2.1.0 „Vantorra bei Tag", v2.2.0 „Rework" und
-v2.3.0 „Karte"** (`Config.Version = "2.3.0"`). Aus dem Hacking-Spiel ist ein Hacking-Spiel mit
+**Alles abgearbeitet, zuletzt v2.4.0 „Orientierung, Story, Polizei"**
+(`Config.Version = "2.4.0"`). Aus dem Hacking-Spiel ist ein Hacking-Spiel mit
 offener Stadt geworden — Bezirke, Verkehr, Autobesitz, ein Bankraub mit drei
 Wegen, eine Polizei ohne Waffen und eine 10-Missionen-Story mit Entscheidung
 am Ende. Seit v2.1.0 spielt das Ganze bei **hellem Tag**.
@@ -15,7 +15,7 @@ Warnung direkt darunter und Punkt 0 am Ende von `PHASEN.md`.
 ## ⚠️ Was ich NICHT prüfen konnte
 Der Bauplan verlangt nach jeder Phase eine **gemessene Bildrate**. Das kann ich
 nicht liefern und erfinde die Zahl auch nicht: Ich habe keine Roblox-Laufzeit,
-nur eine Luau-VM für Syntax und Logik. Die 626 Prüfungen sagen **nichts** über
+nur eine Luau-VM für Syntax und Logik. Die 719 Prüfungen sagen **nichts** über
 Bildrate, Fahrverhalten oder Physikstabilität aus. Das muss Noah im
 MicroProfiler messen, und zwar besonders jetzt — Verkehr, Fußgänger,
 Streifenwagen und eine gebaute Stadt sind zusammen der teuerste Teil des
@@ -35,16 +35,87 @@ Neonschildern entfallen bei Tag komplett.
 
 ## Fertig ✅
 
+### v2.4.0 — Orientierung, Story, Polizei
+Drei Probleme, in dieser Reihenfolge: niemand wusste, wo etwas ist; die Story
+war gebaut, aber unsichtbar; die Polizei verfolgte, nahm aber niemanden fest.
+
+#### Phase 1 — Orientierung
+- **Minikarte oben rechts, dauerhaft.** Dreht sich mit der Blickrichtung
+  (genordet ist sie beim Fahren unlesbar), Nordpfeil bleibt fest, zwei
+  Zoomstufen automatisch: zu Fuß nah, im Auto weit. HUD-Wallet und Trace sind
+  darunter gewandert — die Position wird aus `Config.Map` gerechnet, damit
+  sich beide nie überlappen.
+- **Ein Symbol je Bedeutung** (`Shared/Icons.luau`, neu): Haus, Banknote,
+  Schlüssel, Tresor, Chip, Stern, Auto, Schild — auf Minikarte, großer Karte,
+  Legende und Kompass dasselbe. Aus Frames gezeichnet, **keine Asset-IDs**.
+- **Route auf der Straße** — der wichtigste Einzelpunkt. `RoadNetwork.FindPath`
+  (Dijkstra über denselben Graphen, auf dem Verkehr und Polizei fahren) +
+  `RouteService` (Server rechnet) + `Client/World/RouteMarkers` (Client
+  zeichnet). **Der Client zeichnet, weil eine Route genau einem Spieler
+  gehört** — serverseitige Parts sähe jeder. Die Spur verblasst hinter dem
+  Spieler und löst sich bei Ankunft auf.
+- **Kompassleiste oben Mitte** mit Himmelsrichtungen und Entfernung in Metern.
+  Das Missionsziel klebt am Rand, statt zu verschwinden.
+- **Beschilderung** (`World/Signage`, neu): Leuchtschrift über Bank, Autohaus,
+  Apartment, Pfandleihe und Garage; Straßenschilder an jeder Kreuzung mit
+  echten Namen aus zwei kurzen Listen; Apartment mit Hausnummer und eigenem
+  Licht; Bezirksname beim Betreten als Einblendung.
+- **„Wo ist mein Auto"**: orangener Marker plus *Fahrzeug rufen* gegen Gebühr,
+  mit Cooldown und nur an einer Straße.
+
+#### Phase 2 — Die Story sichtbar machen
+- **Das Telefon** (`PhoneService` + `PhoneUI`, neu): Knopf unten rechts,
+  pulsiert bei neuer Nachricht. Chatverlauf mit Wren, Nachrichten einzeln mit
+  Tippanimation, „Annehmen" setzt sofort den Wegpunkt — und damit die Route.
+- **Kein neues Speicherfeld.** Der Verlauf wird bei jedem Sync aus dem
+  Story-Zustand gebaut (erledigte Missionen + aktive). Damit ist er
+  automatisch korrekt, überlebt jeden Serverwechsel und das **Profil-Schema
+  bleibt auf Version 5 — es gibt nichts zu migrieren**. Ein zweites,
+  mitgeschriebenes Chatprotokoll wäre eine zweite Wahrheit.
+- **Auftrags-Tracker links oben**, dauerhaft: Titel, aktueller Schritt,
+  Entfernung. Ohne Auftrag steht dort, was zu tun ist — nie eine leere Ecke.
+- **Wiedereinstieg**: „Zuletzt: … Wren wartet auf Antwort."
+
+#### Phase 3 — Polizei, die aussteigt und festnimmt
+- **Zwei Polizeiwachen** (`World/PoliceStations`, neu) mit Zelle, Ausgang und
+  blauem Schild auf der Karte. **Ohne Ort ist eine Festnahme nur ein
+  Bildschirmtext.**
+- **Ab Stufe 3 steigen Polizisten aus.** Echte NPCs mit `Humanoid`, Verfolgung
+  zu Fuß über `PathfindingService`. **Hier ist er richtig** — verboten ist er
+  für Verkehrsautos, wo Dutzende Pfade pro Sekunde den Server fressen; hier
+  laufen ein paar Polizisten, und ein Mensch um eine Hausecke braucht einen
+  echten Weg. Neu gerechnet wird nur alle `OfficerRepath` (0,5 s). Verliert
+  ein Polizist die Sicht (Raycast), läuft er zur letzten bekannten Position.
+- **Die Festnahme** (`ArrestService`, neu): „FESTGENOMMEN", kurze Blende,
+  Zelle, Countdown, Entlassung vor der Wache. **Konsequenzen ausschließlich
+  über bestehende Systeme** — `EconomyService.WipeUnsold`,
+  `InventoryService.ConfiscateFraction`, Trace auf `Config.Trace.AfterBust`,
+  gedeckelte Gebühr. Kein zweites Strafsystem.
+- **Fair bleiben**: sichtbarer Entkommen-Balken in Prozent, Vorwarnung
+  („ZUGRIFF") vor jedem Zugriff, Verfolgung endet spätestens nach
+  `MaxDuration`. **Kein Kampf, keine Waffen** — der Testlauf lehnt sie ab.
+
+#### Phase 4 — Fahrgefühl
+Netzwerkbesitz, FOV-Tween 70→85, tempoabhängige Lenkung, Bremslichter,
+Motor-Tonhöhe und Bremsspuren waren schon da. Neu: **tiefer Schwerpunkt** über
+ein unsichtbares Gewicht unter dem Chassis — ohne das kippt in Roblox
+praktisch jedes Fahrzeug in der ersten Kurve. Bremslichter erkennen jetzt auch
+`Lights/TailL` / `TailR` aus dem Modellvertrag.
+
+#### `ASSETS_TODO.md`
+Neu im Projektordner: jedes fehlende Modell mit Ordner, exaktem Namen,
+Pflicht-Kindern, ungefähren Maßen und Bezugsquelle — sortiert nach Wichtigkeit.
+`AssetLibrary.Report()` schreibt dieselbe Liste beim Serverstart in die
+Ausgabe, inklusive der erwarteten Kindteile.
+
 ### v2.3.0 — Karte und größere Stadt
 
 #### Karte
 Zwei Ansichten, **eine** Datenquelle (`Remotes.MapSync`) — es kann keine
 zweite Karte geben, die von der Welt abweicht.
 
-- **Minikarte** unten rechts (oben rechts sitzen Wallet, Trace und die
-  Fahndungssterne, unten links die Knöpfe). Folgt dem Spieler, Norden bleibt
-  oben — bei einem Straßenraster liest sich das besser als eine mitdrehende
-  Karte. Antippen öffnet die große.
+- **Minikarte** (in v2.4.0 nach oben rechts gewandert und drehbar geworden).
+  Folgt dem Spieler, antippen öffnet die große.
 - **Große Karte** auf `M`: ganze Stadt, Bezirke farbig hinterlegt mit Namen,
   **Legende** unten links. Das ist die Antwort auf „wo ist eigentlich was".
 - Drauf sind: Hehler, Autohaus, Garage, Kontakte, Hack-Ziele — **offene Ziele
@@ -515,7 +586,7 @@ Testlauf prüft das.
   Hack kostet — auch das wird geprüft.
 
 ## Tests
-`cd ghostnet/tests && npm install && node testlauf.mjs` → **626/626 grün**.
+`cd ghostnet/tests && npm install && node testlauf.mjs` → **719/719 grün**.
 Drei Stufen:
 1. **Syntax** — `luau-compile` über jede `.luau`-Datei.
 2. **Struktur** — `--!strict` überall, keine veralteten APIs, jede Remote
@@ -567,7 +638,7 @@ Der Bauplan aus dem Prompt ist abgearbeitet. Was fehlt, fehlt mit Absicht:
   fertig, dann den nächsten" — und der Testlauf hält sie fest.
 - **Zwei weitere Minispiele**, **prozeduraler Weltgenerator**, **Tagesziele**
   und **Ranglisten** — Details am Ende von `PHASEN.md`.
-- **Kein echter Spielertest.** Alles ist im Code umgesetzt und durch 626
+- **Kein echter Spielertest.** Alles ist im Code umgesetzt und durch 719
   automatische Prüfungen abgesichert, aber noch nicht von einem Menschen in
   Studio durchgespielt.
 

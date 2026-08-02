@@ -27,12 +27,15 @@ local MissionService = require(Systems.MissionService)
 local MarketService = require(Systems.MarketService)
 local InventoryService = require(Systems.InventoryService)
 local RoadNetwork = require(Systems.RoadNetwork)
+local RouteService = require(Systems.RouteService)
 local VehicleChassis = require(Systems.VehicleChassis)
 local VehicleService = require(Systems.VehicleService)
+local ArrestService = require(Systems.ArrestService)
 local PursuitService = require(Systems.PursuitService)
 local TrafficService = require(Systems.TrafficService)
 local GuardService = require(Systems.GuardService)
 local MapService = require(Systems.MapService)
+local PhoneService = require(Systems.PhoneService)
 local MonetizationService = require(Systems.MonetizationService)
 local AdminService = require(Systems.AdminService)
 
@@ -47,16 +50,21 @@ ShopService.Init()
 -- Die letzten beiden haengen sich per OnHackResolved / OnSell an die
 -- fertigen Services, muessen also nach ihnen kommen.
 RaidService.Init()
+-- Vor dem MissionService: der setzt bei jedem Wegpunkt eine Route, und die
+-- Wegsuche laeuft auf dem Strassengraphen.
+RoadNetwork.Init() -- Strassengraph, den Verkehr und Polizei teilen
+RouteService.Init() -- Wegsuche auf demselben Graphen
 MissionService.Init()
 MarketService.Init() -- Kurse laufen unabhaengig von Spielern
 InventoryService.Init() -- braucht Markt und Missionen (Unlock-Pruefung)
-RoadNetwork.Init() -- Strassengraph, den Verkehr und Polizei teilen
 VehicleChassis.Init()
 VehicleService.Init() -- Besitz und Haendler
+ArrestService.Init() -- Zelle und Konsequenzen, bevor jemand gefasst wird
 PursuitService.Init() -- vor dem Verkehr: der meldet Diebstaehle dorthin
 TrafficService.Init()
 GuardService.Init() -- meldet Alarme an den RaidService
 MapService.Init() -- nach der Welt: sammelt ein, was gebaut wurde
+PhoneService.Init() -- haengt sich an MissionService, muss danach kommen
 MonetizationService.Init()
 AdminService.Init() -- zuletzt: greift auf alle anderen zu
 

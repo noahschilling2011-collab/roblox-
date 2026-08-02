@@ -48,12 +48,16 @@ local currentTargetId: string? = nil
 local gui = UITheme.Screen("GhostNetHUD", 10)
 gui.Parent = playerGui
 
---== Wallet oben rechts ====================================================
+--== Wallet rechts, unter der Minikarte ====================================
+-- Oben rechts sitzt seit der Orientierungs-Phase die Minikarte, und die ist
+-- dauerhaft an. Aus Config gerechnet, damit sich beide nicht ueberlappen,
+-- wenn jemand die Kartengroesse aendert.
+local RIGHT_TOP = Config.Map.MiniMargin * 2 + Config.Map.MiniSize
 
 local walletPanel = UITheme.Frame({
 	Name = "Wallet",
 	AnchorPoint = Vector2.new(1, 0),
-	Position = UDim2.new(1, -18, 0, 18),
+	Position = UDim2.new(1, -18, 0, RIGHT_TOP),
 	Size = UDim2.fromOffset(240, 62),
 	BackgroundColor3 = C.Panel,
 	BackgroundTransparency = 0.08,
@@ -97,7 +101,7 @@ local walletSub = UITheme.Label({
 local tracePanel = UITheme.Frame({
 	Name = "Trace",
 	AnchorPoint = Vector2.new(1, 0),
-	Position = UDim2.new(1, -18, 0, 88),
+	Position = UDim2.new(1, -18, 0, RIGHT_TOP + 70),
 	Size = UDim2.fromOffset(240, 54),
 	BackgroundColor3 = C.Panel,
 	BackgroundTransparency = 0.08,

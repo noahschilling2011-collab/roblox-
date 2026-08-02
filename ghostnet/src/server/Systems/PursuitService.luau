@@ -14,15 +14,18 @@
 --   die vorhandene Kette - kein zweites Straf-System daneben.
 
 local CollectionService = game:GetService("CollectionService")
+local PathfindingService = game:GetService("PathfindingService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local AssetLibrary = require(ReplicatedStorage.Shared.AssetLibrary)
 local Config = require(ReplicatedStorage.Shared.Config)
 local Geometry = require(ReplicatedStorage.Shared.Geometry)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 
 local AssetLibrary = require(ReplicatedStorage.Shared.AssetLibrary)
 
+local ArrestService = require(script.Parent.ArrestService)
 local RoadNetwork = require(script.Parent.RoadNetwork)
 local SaveService = require(script.Parent.SaveService)
 local TraceService = require(script.Parent.TraceService)
@@ -48,7 +51,14 @@ type Chase = {
 	OutOfSight: number, -- Sekunden ohne Sichtkontakt
 	InRange: number, -- Sekunden dicht dran am Streifenwagen
 	Units: { Unit },
+	Officers: { Officer }, -- ausgestiegene Polizisten (ab ExitLevel)
+	Standing: number, -- Sekunden, die der Spieler kaum bewegt ist
+	StartedAt: number, -- os.clock() beim Beginn - fuer MaxDuration
 }
+
+-- Vorwaertsdeklaration: der Officer-Typ steht weiter unten, weil er den
+-- Container und den ArrestService braucht.
+export type Officer = any
 
 local chases: { [Player]: Chase } = {}
 local container: Folder? = nil
@@ -150,6 +160,178 @@ local function buildUnit(): Unit
 	}
 end
 
+--==========================================================================
+-- POLIZISTEN ZU FUSS
+--
+-- Ab Config.Pursuit.ExitLevel steigen sie aus. Das ist der Punkt, an dem
+-- eine Verfolgung erst zur Bedrohung wird: solange nur Autos hinterherfahren,
+-- steigt man aus und geht durch eine Gasse.
+--
+-- HIER IST PathfindingService RICHTIG
+--   Fuer Verkehrsautos ist er verboten - Dutzende Pfade pro Sekunde fressen
+--   den Server. Hier laufen hoechstens eine Handvoll Polizisten, und ein
+--   Mensch, der um eine Hausecke geht, braucht einen echten Weg.
+--   Neu gerechnet wird nur alle Config.Pursuit.OfficerRepath Sekunden.
+--
+-- KEIN KAMPF. Ein Polizist greift zu, er schlaegt nicht.
+--==========================================================================
+
+type Officer = {
+	Model: Model,
+	Humanoid: Humanoid,
+	Root: BasePart,
+	Path: Path,
+	NextRepath: number,
+	Waypoints: { PathWaypoint },
+	WaypointIndex: number,
+	LastSeen: Vector3?,
+	SearchUntil: number,
+	Warned: boolean,
+	InRange: number,
+}
+
+local function buildOfficer(at: Vector3): Officer?
+	-- Ein Polizist ist eine Figur, also gehoert er nach Assets/Characters.
+	-- Fehlt die Vorlage, kommt ein magenta Platzhalter - der laeuft genauso,
+	-- er sieht nur unuebersehbar unfertig aus.
+	local model = AssetLibrary.Clone("Characters", "Officer", P.OfficerSize)
+	model.Name = "Polizist"
+
+	local root = model.PrimaryPart or model:FindFirstChildWhichIsA("BasePart", true)
+	if not root then
+		warn("[GHOSTNET] Polizisten-Vorlage enthaelt keinen BasePart.")
+		model:Destroy()
+		return nil
+	end
+
+	-- Ein Humanoid, damit er laufen, Treppen nehmen und Animationen abspielen
+	-- kann. Das ist genau der Fall, fuer den ein Humanoid gedacht ist -
+	-- anders als bei Hintergrund-Fussgaengern, wo er reine Verschwendung ist.
+	local humanoid = model:FindFirstChildOfClass("Humanoid")
+	if not humanoid then
+		humanoid = Instance.new("Humanoid")
+		humanoid.Parent = model
+	end
+	humanoid.WalkSpeed = P.OfficerSpeed
+	humanoid.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
+
+	for _, descendant in model:GetDescendants() do
+		if descendant:IsA("BasePart") then
+			descendant.Anchored = false
+			descendant.CanQuery = false
+		end
+	end
+	root.CFrame = CFrame.new(at + Vector3.new(0, 3, 0))
+	model.Parent = ensureContainer()
+
+	return {
+		Model = model,
+		Humanoid = humanoid,
+		Root = root,
+		Path = PathfindingService:CreatePath({
+			AgentRadius = 2,
+			AgentHeight = 5,
+			AgentCanJump = false,
+		}),
+		NextRepath = 0,
+		Waypoints = {},
+		WaypointIndex = 1,
+		LastSeen = nil,
+		SearchUntil = 0,
+		Warned = false,
+		InRange = 0,
+	}
+end
+
+local function releaseOfficer(officer: Officer)
+	if officer.Model.Parent then
+		officer.Model:Destroy()
+	end
+end
+
+-- Sichtlinie: Waende blockieren. Ohne das laeuft der Polizist durch das
+-- halbe Viertel direkt auf einen zu, obwohl er einen gar nicht sehen kann.
+local officerRay = RaycastParams.new()
+officerRay.FilterType = Enum.RaycastFilterType.Exclude
+officerRay.IgnoreWater = true
+
+local function officerSees(officer: Officer, character: Model, position: Vector3): boolean
+	local delta = position - officer.Root.Position
+	if delta.Magnitude > P.OfficerSightRange then
+		return false
+	end
+	officerRay.FilterDescendantsInstances = { officer.Model, character }
+	return workspace:Raycast(officer.Root.Position, delta, officerRay) == nil
+end
+
+local function stepOfficer(officer: Officer, player: Player, character: Model, position: Vector3, now: number, dt: number): boolean
+	local visible = officerSees(officer, character, position)
+	if visible then
+		officer.LastSeen = position
+		officer.SearchUntil = now + P.OfficerSearchSeconds
+	end
+
+	-- Ziel: der Spieler, wenn man ihn sieht, sonst die letzte bekannte
+	-- Position. Danach gibt der Polizist auf.
+	local goal = if visible then position else officer.LastSeen
+	if not goal then
+		return false
+	end
+	if not visible and now > officer.SearchUntil then
+		return false
+	end
+
+	-- NUR alle OfficerRepath Sekunden neu rechnen. Jeden Frame waere das
+	-- Ende des Servers.
+	if now >= officer.NextRepath then
+		officer.NextRepath = now + P.OfficerRepath
+		local ok = pcall(function()
+			officer.Path:ComputeAsync(officer.Root.Position, goal)
+		end)
+		if ok and officer.Path.Status == Enum.PathStatus.Success then
+			officer.Waypoints = officer.Path:GetWaypoints()
+			officer.WaypointIndex = 2 -- der erste Punkt ist die eigene Position
+		else
+			-- Kein Weg: dann wenigstens stur in die Richtung laufen.
+			officer.Waypoints = {}
+			officer.Humanoid:MoveTo(goal)
+		end
+	end
+
+	local waypoint = officer.Waypoints[officer.WaypointIndex]
+	if waypoint then
+		officer.Humanoid:MoveTo(waypoint.Position)
+		if (officer.Root.Position - waypoint.Position).Magnitude < 4 then
+			officer.WaypointIndex += 1
+		end
+	end
+
+	--== Festnahme =========================================================
+	local distance = (officer.Root.Position - position).Magnitude
+	if distance <= P.ArrestRange and visible then
+		officer.InRange += dt
+
+		-- Nie ohne Vorwarnung. Erst der Ruf, dann der Zugriff.
+		if not officer.Warned and officer.InRange >= P.WarnSeconds then
+			officer.Warned = true
+			Remotes.ArrestSync:FireClient(player, {
+				State = "WARNING",
+				Seconds = math.ceil(P.ArrestSeconds - officer.InRange),
+				Station = "",
+			})
+		end
+
+		if officer.InRange >= P.ArrestSeconds then
+			return ArrestService.Arrest(player)
+		end
+	else
+		officer.InRange = math.max(0, officer.InRange - dt)
+		officer.Warned = false
+	end
+
+	return false
+end
+
 local function releaseUnit(unit: Unit)
 	unit.Active = false
 	if unit.Model.Parent then
@@ -171,7 +353,7 @@ end
 function PursuitService.AddHeat(player: Player, amount: number)
 	local chase = chases[player]
 	if not chase then
-		chase = { Level = 0, Bonus = 0, OutOfSight = 0, InRange = 0, Units = {} }
+		chase = { Level = 0, Bonus = 0, OutOfSight = 0, InRange = 0, Units = {}, Officers = {}, Standing = 0, StartedAt = os.clock() }
 		chases[player] = chase
 	end
 	chase.Bonus = math.clamp(chase.Bonus + amount, 0, P.MaxLevel)
@@ -228,6 +410,10 @@ local function syncChase(player: Player, chase: Chase)
 		EscapeSeconds = math.max(0, P.EscapeSeconds - chase.OutOfSight),
 		Roadblock = chase.Level >= P.RoadblockLevel,
 		Helicopter = chase.Level >= P.HelicopterLevel,
+		-- Sichtbarer Entkommen-Fortschritt. Der Spieler muss sehen, dass er
+		-- kurz davor ist - sonst gibt er auf, obwohl es fast geschafft war.
+		EscapeProgress = math.clamp(chase.OutOfSight / math.max(P.EscapeSeconds, 0.01), 0, 1),
+		OnFoot = #chase.Officers > 0,
 	})
 end
 
@@ -240,6 +426,11 @@ local function clearChase(player: Player)
 		releaseUnit(unit)
 	end
 	table.clear(chase.Units)
+	for _, officer in chase.Officers do
+		releaseOfficer(officer)
+	end
+	table.clear(chase.Officers)
+	chase.Standing = 0
 	chase.Level = 0
 	chase.Bonus = 0
 	chase.OutOfSight = 0
@@ -324,22 +515,84 @@ local function step(dt: number)
 			end
 		end
 
-		-- Gefasst: lange genug dicht dran. Das ist ein Bust ueber die
-		-- bestehende Kette, kein neues Straf-System.
-		if closest <= P.CatchRange then
+		--== Aussteigen ====================================================
+		-- Ab ExitLevel steigen Polizisten aus, sobald der Spieler steht oder
+		-- ohnehin zu Fuss unterwegs ist. Solange nur Autos hinterherfahren,
+		-- steigt man aus und geht durch eine Gasse - das ist keine Verfolgung.
+		local character = player.Character
+		local root = character and character:FindFirstChild("HumanoidRootPart")
+		local speed = if root and root:IsA("BasePart") then root.AssemblyLinearVelocity.Magnitude else 0
+		local onFoot = root ~= nil
+			and character:FindFirstChildOfClass("Humanoid") ~= nil
+			and (character:FindFirstChildOfClass("Humanoid") :: Humanoid).SeatPart == nil
+
+		if speed < P.ExitSpeedThreshold or onFoot then
+			chase.Standing += dt
+		else
+			chase.Standing = 0
+		end
+
+		if chase.Level >= P.ExitLevel and chase.Standing >= P.ExitDelay and #chase.Officers == 0 then
+			for _, unit in chase.Units do
+				for _ = 1, P.OfficersPerUnit do
+					local officer = buildOfficer(unit.Body.Position)
+					if officer then
+						table.insert(chase.Officers, officer)
+					end
+				end
+			end
+		end
+
+		--== Zu Fuss verfolgen und festnehmen ==============================
+		local now = os.clock()
+		local arrested = false
+		for index = #chase.Officers, 1, -1 do
+			local officer = chase.Officers[index]
+			if not officer.Model.Parent or not character then
+				releaseOfficer(officer)
+				table.remove(chase.Officers, index)
+				continue
+			end
+			local ok, result = pcall(stepOfficer, officer, player, character, position, now, dt)
+			if not ok then
+				warn(("[GHOSTNET] Polizist-Schritt fehlgeschlagen: %s"):format(tostring(result)))
+			elseif result == true then
+				arrested = true
+			end
+		end
+		if arrested then
+			clearChase(player)
+			continue
+		end
+
+		-- Gefasst per Streifenwagen: nur, wenn niemand ausgestiegen ist.
+		-- Sonst wird man zweimal gleichzeitig festgenommen.
+		if #chase.Officers == 0 and closest <= P.CatchRange then
 			chase.InRange += dt
 			if chase.InRange >= P.CatchSeconds then
-				warn(("[GHOSTNET] %s wurde gefasst."):format(player.Name))
-				local profile = SaveService.Get(player)
-				if profile then
-					profile.Trace = 0
+				if not ArrestService.Arrest(player) then
+					-- Keine Wache getaggt: dann wenigstens die bestehende
+					-- Bust-Kette, statt gar nichts zu tun.
+					warn(("[GHOSTNET] %s wurde gefasst (Bust, keine Wache)."):format(player.Name))
+					local profile = SaveService.Get(player)
+					if profile then
+						profile.Trace = 0
+					end
+					TraceService.Add(player, Config.Trace.Max)
 				end
-				TraceService.Add(player, Config.Trace.Max)
 				clearChase(player)
 				continue
 			end
 		else
 			chase.InRange = math.max(0, chase.InRange - dt)
+		end
+
+		--== Fair bleiben ==================================================
+		-- Spaetestens hier ist Schluss. Niemand wird ewig gejagt.
+		if os.clock() - chase.StartedAt > P.MaxDuration then
+			print(("[GHOSTNET] Fahndung auf %s laeuft aus (Zeitlimit)."):format(player.Name))
+			clearChase(player)
+			continue
 		end
 
 		-- Passiver Abbau, damit eine alte Tat nicht ewig nachhaengt.
@@ -355,7 +608,7 @@ function PursuitService.Init()
 	RoadNetwork.Build()
 
 	SaveService.OnReady(function(player)
-		chases[player] = { Level = 0, Bonus = 0, OutOfSight = 0, InRange = 0, Units = {} }
+		chases[player] = { Level = 0, Bonus = 0, OutOfSight = 0, InRange = 0, Units = {}, Officers = {}, Standing = 0, StartedAt = os.clock() }
 	end)
 
 	Players.PlayerRemoving:Connect(function(player)

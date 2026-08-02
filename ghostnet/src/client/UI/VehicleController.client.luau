@@ -170,7 +170,13 @@ local function collect(seat: VehicleSeat): Ride?
 			elseif descendant:GetAttribute("Steered") ~= nil then
 				table.insert(steers, descendant)
 			end
-		elseif descendant:IsA("BasePart") and descendant.Name == "BrakeLight" then
+		elseif
+			descendant:IsA("BasePart")
+			and (descendant.Name == "BrakeLight" or descendant.Name == "TailL" or descendant.Name == "TailR")
+		then
+			-- Zwei Namen, weil zwei Quellen: der alte Platzhalter heisst
+			-- BrakeLight, ein Modell aus Assets/Vehicles bringt Lights/TailL
+			-- und TailR mit. Beide sollen beim Bremsen aufleuchten.
 			table.insert(brakeLights, descendant)
 		end
 	end

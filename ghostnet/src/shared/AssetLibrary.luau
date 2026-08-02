@@ -201,18 +201,45 @@ function AssetLibrary.Missing(): { string }
 	return table.clone(missingOrder)
 end
 
--- Einmal beim Serverstart aufrufen. Sagt Noah in einer Zeile pro Modell,
--- was noch zu bauen oder zu besorgen ist.
+-- Welche Kindteile eine Vorlage tragen MUSS. Steht hier, damit der Bericht
+-- nicht nur sagt "fehlt", sondern auch "und so muss es innen aussehen".
+local function requiredChildren(category: string): { string }?
+	if category == "Vehicles" then
+		return A.VehicleRequired
+	end
+	return nil
+end
+
+-- Einmal beim Serverstart aufrufen. Sagt in einer lesbaren Liste, welche
+-- Modelle noch fehlen und welche Teile sie enthalten muessen. Ohne das
+-- sucht man den Grund fuer magenta Kloetze in den falschen Dateien.
 function AssetLibrary.Report()
 	if #missingOrder == 0 then
 		print("[GHOSTNET] Alle Vorlagen gefunden.")
 		return
 	end
-	warn(("[GHOSTNET] %d Vorlage(n) fehlen - im Spiel stehen dafuer magenta Platzhalter:"):format(#missingOrder))
-	for _, label in missingOrder do
-		warn(("            ReplicatedStorage/%s/%s"):format(A.FolderName, label))
+
+	warn("[GHOSTNET] ============================================================")
+	warn(("[GHOSTNET] %d VORLAGE(N) FEHLEN. Dafuer stehen magenta Platzhalter"):format(#missingOrder))
+	warn("[GHOSTNET] im Spiel - das ist Absicht, kein Fehler im Code.")
+	warn("[GHOSTNET] Vollstaendige Anleitung: ghostnet/ASSETS_TODO.md")
+	warn("[GHOSTNET] ------------------------------------------------------------")
+
+	for index, label in missingOrder do
+		local category = string.match(label, "^([^/]+)") or ""
+		warn(("[GHOSTNET] %2d. ReplicatedStorage/%s/%s"):format(index, A.FolderName, label))
+
+		local children = requiredChildren(category)
+		if children then
+			warn("[GHOSTNET]     Pflicht-Kinder (exakte Namen):")
+			for _, path in children do
+				warn(("[GHOSTNET]       - %s"):format(path))
+			end
+			warn("[GHOSTNET]     Optional: " .. table.concat(A.VehicleOptional, ", "))
+		end
 	end
-	warn("            Solange sie fehlen, sieht die Stadt absichtlich kaputt aus.")
+
+	warn("[GHOSTNET] ============================================================")
 end
 
 return AssetLibrary

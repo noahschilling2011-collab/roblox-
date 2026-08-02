@@ -24,6 +24,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config)
+local Geometry = require(ReplicatedStorage.Shared.Geometry)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 
 local RoadNetwork = require(script.Parent.RoadNetwork)
@@ -108,6 +109,27 @@ end
 local function build(): { [string]: any }
 	local pois: { Poi } = {}
 
+	-- Reine Kartenpunkte zuerst: Bank, Apartment, Polizeiwache. Diese Orte
+	-- sind selbst nicht hackbar, muessen aber auf die Karte - sonst findet
+	-- niemand nach Hause. Die Art steht als Attribut MapKind am Objekt.
+	for _, instance in CollectionService:GetTagged(Config.PoiTag) do
+		if not instance:IsDescendantOf(workspace) then
+			continue
+		end
+		local position = positionOf(instance)
+		local kind = instance:GetAttribute("MapKind")
+		if not position or typeof(kind) ~= "string" then
+			continue
+		end
+		table.insert(pois, {
+			Kind = kind,
+			Name = labelOf(instance, kind),
+			X = math.round(position.X),
+			Z = math.round(position.Z),
+		})
+	end
+
+	collect(Config.PoliceStationTag, "POLICE", "Polizeiwache", pois)
 	collect(Config.FenceTag, "FENCE", "Hehler", pois)
 	collect(Config.DealerTag, "DEALER", "Autohaus", pois)
 	collect(Config.VehicleSpawnTag, "GARAGE", "Garage", pois)
@@ -183,9 +205,46 @@ local function markDirty()
 end
 
 --==========================================================================
+-- Bezirkswechsel
+--
+-- Eine dezente Einblendung "ALTSTADT" beim Betreten sagt dem Spieler mehr
+-- ueber die Stadt als jede Karte. Laeuft in einem eigenen, langsamen Takt -
+-- ein Bezirkswechsel passiert alle paar Minuten, nicht jeden Frame.
+--==========================================================================
+
+local lastDistrict: { [Player]: string } = {}
+
+local function checkDistricts()
+	for _, player in Players:GetPlayers() do
+		local position = Geometry.AlivePosition(player)
+		if not position then
+			continue
+		end
+		local district = RoadNetwork.DistrictAt(position)
+		local id = if district then district.Id else ""
+		if lastDistrict[player] == id then
+			continue
+		end
+		lastDistrict[player] = id
+		if district then
+			Remotes.DistrictEnter:FireClient(player, { Id = district.Id, Name = district.Name })
+		end
+	end
+end
+
+--==========================================================================
 
 function MapService.Init()
-	for _, tag in { Config.HackableTag, Config.FenceTag, Config.DealerTag, Config.VehicleSpawnTag, Config.ContactTag } do
+	local watched = {
+		Config.HackableTag,
+		Config.FenceTag,
+		Config.DealerTag,
+		Config.VehicleSpawnTag,
+		Config.ContactTag,
+		Config.PoiTag,
+		Config.PoliceStationTag,
+	}
+	for _, tag in watched do
 		CollectionService:GetInstanceAddedSignal(tag):Connect(markDirty)
 		CollectionService:GetInstanceRemovedSignal(tag):Connect(markDirty)
 	end
@@ -195,6 +254,19 @@ function MapService.Init()
 		-- Liste sonst halb leer, und nachgeliefert wird erst beim naechsten
 		-- Tag-Ereignis.
 		task.delay(M.SyncDebounce, MapService.SyncTo, player)
+	end)
+	Players.PlayerRemoving:Connect(function(player)
+		lastDistrict[player] = nil
+	end)
+
+	task.spawn(function()
+		while true do
+			task.wait(M.DistrictTick)
+			local ok, err = pcall(checkDistricts)
+			if not ok then
+				warn(("[GHOSTNET] Bezirkspruefung fehlgeschlagen: %s"):format(tostring(err)))
+			end
+		end
 	end)
 	for _, player in Players:GetPlayers() do
 		task.defer(MapService.SyncTo, player)

@@ -6,7 +6,7 @@
 
 local Config = {}
 
-Config.Version = "2.3.0" -- Karte (Mini + gross), groessere Stadt
+Config.Version = "2.4.0" -- Orientierung, Story sichtbar, Polizei nimmt fest
 
 -- CollectionService-Tags. Ein Part mit dem Tag ist ein Hack-Ziel, ein Hehler,
 -- ein Missions-Wegpunkt oder ein ansprechbarer Kontakt. Kein Code pro Objekt.
@@ -21,6 +21,10 @@ Config.GuardTag = "GhostNetGuard" -- Wache mit Sichtkegel
 -- Modelle, deren CFrame der Server nur im Takt setzt und die der Client
 -- dazwischen weich nachzieht. Siehe Client/World/TrafficSmoother.
 Config.SmoothTag = "GhostNetSmoothed"
+-- Reiner Kartenpunkt: ein Ort, der auf der Karte auftauchen soll, ohne selbst
+-- hackbar zu sein (Bank, Apartment, Polizeiwache). Attribute: MapKind, DisplayName.
+Config.PoiTag = "GhostNetPoi"
+Config.PoliceStationTag = "GhostNetPoliceStation"
 
 --==========================================================================
 -- 1. REICHWEITE (Netzwerkkarte)
@@ -528,6 +532,13 @@ Config.Vehicle = {
 	SpawnRange = 24, -- so nah muss man an einem Ausparkplatz stehen
 	EnterRange = 12, -- Reichweite des Einsteigen-Prompts
 
+	-- "Wo ist mein Auto". Ohne das sucht jeder Spieler irgendwann sein
+	-- Fahrzeug und hoert auf. Kostet etwas, damit es kein Teleport wird.
+	CallFee = 150, -- CRY vom Guthaben
+	CallCooldown = 90, -- Sekunden zwischen zwei Rufen
+	CallRoadRange = 40, -- so nah muss eine Strasse sein, sonst kommt keiner
+	CallDropDistance = 14, -- so weit vor dem Spieler wird abgestellt
+
 	-- Raeder kollidieren mit dem Boden, aber nicht miteinander. Ohne eigene
 	-- Gruppe verhaken sich zwei Autos, sobald sie sich beruehren.
 	WheelCollisionGroup = "GhostNetWheels",
@@ -538,6 +549,13 @@ Config.Vehicle = {
 	SuspensionDamping = 900, -- zu wenig = Wackelpudding, zu viel = Brett
 	SteerSpeed = 6, -- wie schnell der Lenkeinschlag folgt (Grad/Tick-Faktor)
 	SteerSpeedFalloff = 0.55, -- bei Tempo weniger Einschlag, sonst ueberschlaegt es
+
+	-- Schwerpunkt. Ein unsichtbares Gewicht tief unter dem Chassis - ohne
+	-- das kippt jedes Roblox-Fahrzeug in der ersten Kurve um.
+	-- Dichte hoch = klebt, aber traege. Drop hoch = kippt nie, wirkt aber
+	-- wie an einem Faden aufgehaengt.
+	BallastDensity = 6,
+	BallastDrop = 1.6,
 
 	WheelDensity = 0.4,
 	CarrierDensity = 0.05, -- Radtraeger fast masselos, sonst schlingert es
@@ -730,6 +748,46 @@ Config.Pursuit = {
 	RoadblockLevel = 4,
 	HelicopterLevel = 5,
 	Tick = 0.25,
+
+	--== Aussteigen und zu Fuss verfolgen (Stufe 3) ========================
+	-- Eine Verfolgung ohne moegliches Ende ist keine Bedrohung. Ab hier
+	-- steigen Polizisten aus und laufen hinterher.
+	ExitLevel = 3,
+	ExitDelay = 2, -- so lange muss der Spieler stehen, dann wird ausgestiegen
+	ExitSpeedThreshold = 6, -- darunter gilt er als "steht"
+	OfficersPerUnit = 1,
+	-- Nur die Groesse des magenta Platzhalters, solange
+	-- Assets/Characters/Officer fehlt.
+	OfficerSize = Vector3.new(2, 5.6, 1.4),
+	OfficerSpeed = 17, -- etwas schneller als ein laufender Spieler
+	OfficerSightRange = 120,
+	-- Pfad NUR alle so viele Sekunden neu rechnen. Jeden Frame waere das
+	-- Ende des Servers - PathfindingService ist teuer.
+	OfficerRepath = 0.5,
+	-- Verliert ein Polizist die Sicht, laeuft er zur letzten bekannten
+	-- Position und sucht dort so lange, bevor er aufgibt.
+	OfficerSearchSeconds = 8,
+
+	--== Festnahme =========================================================
+	ArrestRange = 8,
+	ArrestSeconds = 3, -- so lange am Stueck in Reichweite
+	-- Nie ohne Vorwarnung. Erst ein Ruf, dann greift er zu.
+	WarnSeconds = 1.2,
+	JailSeconds = 45, -- Zellenzeit, Countdown ist sichtbar
+	-- Gebuehr aus dem Guthaben, gedeckelt: ein Bust darf wehtun, aber
+	-- niemanden auf null setzen.
+	JailFeeFraction = 0.12,
+	JailFeeCap = 3000,
+	JailStashFraction = 0.4, -- so viel vom Darknet-Lager ist weg
+	-- Blende statt echter Fahrt zur Wache. Eine echte Fahrt waere lang,
+	-- langweilig und fehleranfaellig.
+	TransportSeconds = 2.5,
+
+	--== Fair bleiben ======================================================
+	-- Verfolgung endet spaetestens hier, damit niemand ewig gejagt wird.
+	MaxDuration = 180,
+	-- Streifenwagen kehren zur Wache zurueck, statt zu verschwinden.
+	ReturnSeconds = 20,
 }
 
 --==========================================================================
@@ -797,6 +855,10 @@ Config.RateLimits = {
 	VehicleAction = { Rate = 1, Burst = 4 },
 	StealVehicle = { Rate = 1, Burst = 2 },
 	EndgameChoice = { Rate = 0.2, Burst = 2 },
+	-- Route setzen ist billig, aber ein Spieler koennte auf der Karte
+	-- herumhaemmern - und jede Anfrage ist eine Wegsuche im Graphen.
+	RouteRequest = { Rate = 2, Burst = 5 },
+	PhoneRead = { Rate = 2, Burst = 5 },
 }
 
 --==========================================================================
@@ -849,6 +911,72 @@ Config.TargetDefaults = {
 Config.Session = {
 	TickRate = 0.25, -- Sekunden zwischen Ablauf- und Distanzpruefung
 	GraceAfterStart = 0.5, -- kurze Schonfrist, bevor die Distanz geprueft wird
+}
+
+--==========================================================================
+-- TELEFON (die Story sichtbar machen)
+--
+-- Ein einziges UI-Element traegt die ganze Geschichte. Briefings sind
+-- Nachrichten, keine Textbloecke.
+--==========================================================================
+Config.Phone = {
+	ButtonSize = 62,
+	Margin = 14,
+	PanelWidth = 360,
+	PanelHeight = 440,
+
+	-- Tippanimation vor jeder Nachricht. Ohne sie fuehlt sich der Chat wie
+	-- eine Textwand an, mit ihr wie ein Gespraech.
+	TypingSeconds = 0.9,
+	CharsPerSecond = 42,
+	-- Pause zwischen zwei Nachrichten derselben Zustellung.
+	MessageGap = 0.5,
+
+	-- Nach einem Missionsabschluss muss die naechste Nachricht kommen,
+	-- BEVOR der Spieler sich fragt, was jetzt. Fuenf Sekunden sind das
+	-- Fenster, in dem er noch hinsieht.
+	NextMessageDelay = 4,
+
+	-- Wie viele Nachrichten aufgehoben werden. Wer eine Woche weg war, soll
+	-- zurueck in die Geschichte finden - aber das Profil darf nicht wachsen.
+	HistoryLimit = 40,
+
+	-- Klingeln: der Knopf pulsiert, bis der Spieler hinsieht.
+	PulseSpeed = 2.2,
+	PulseDepth = 0.35,
+}
+
+--==========================================================================
+-- ORIENTIERUNG IN DER WELT
+--
+-- Die Karte hilft nur dem, der hinsieht. Die Welt selbst muss sprechen.
+--==========================================================================
+Config.Signage = {
+	-- Leuchtschrift ueber wichtigen Gebaeuden. Ueber SurfaceGui, damit sie
+	-- an der Fassade klebt und von weitem lesbar ist.
+	TextSize = 90, -- Schriftgroesse auf der Flaeche
+	SignHeight = 7, -- Hoehe des Schilderbretts in Studs
+	SignDepth = 0.4,
+	MaxDistance = 400, -- ab hier wird ausgeblendet
+
+	-- Lichtsaeule ueber Missionszielen. Das Element, das in jedem
+	-- Open-World-Spiel funktioniert - man sieht es ueber Daecher hinweg.
+	PillarRadius = 4,
+	PillarHeight = 200,
+	PillarTransparency = 0.72,
+	PillarSpin = 12, -- Grad pro Sekunde. 0 = steht still.
+
+	-- Bezirksname beim Betreten, unten links, dann weg.
+	DistrictToastSeconds = 2,
+	DistrictToastFade = 0.4,
+
+	-- Strassenschilder an Kreuzungen.
+	StreetSignHeight = 9,
+	StreetSignSize = Vector3.new(9, 1.8, 0.3),
+	-- Namen werden aus diesen beiden Listen gebildet: Nord-Sued mal Ost-West.
+	-- Zwei kurze Listen ergeben ein ganzes Strassennetz mit echten Namen.
+	StreetsNorthSouth = { "Kanalstrasse", "Meridianweg", "Alte Muenze", "Hafenachse", "Nordspur", "Turmgasse", "Werftweg" },
+	StreetsEastWest = { "Vantorra-Allee", "Schacht 9", "Lange Zeile", "Uferstrasse", "Blechgasse", "Sendeweg", "Randstrasse" },
 }
 
 --==========================================================================
@@ -1005,6 +1133,8 @@ Config.Theme = {
 	TextDim = Color3.fromRGB(96, 116, 134),
 	Ice = Color3.fromRGB(64, 78, 96),
 	Green = Color3.fromRGB(0, 230, 118), -- Verkauf und Bank
+	Blue = Color3.fromRGB(64, 132, 255), -- Polizei
+	Orange = Color3.fromRGB(255, 122, 40), -- eigenes Fahrzeug
 }
 
 table.freeze(Config.Theme)
@@ -1048,19 +1178,59 @@ Config.Map = {
 	-- So lange wird gewartet, bevor nach einer Aenderung neu gesendet wird.
 	-- Ohne das feuert der Aufbau der Welt hunderte Sync-Pakete.
 	SyncDebounce = 2,
+	-- Wie oft geprueft wird, ob jemand einen Bezirk gewechselt hat. Das
+	-- passiert alle paar Minuten - jede Sekunde reicht dicke.
+	DistrictTick = 1,
 
 	--== Was auf der Karte auftaucht =======================================
 	-- Reihenfolge = Reihenfolge in der Legende.
 	-- Order steuert, was oben liegt: Ziele unten, Wegpunkt ganz oben.
+	-- EIN Symbol je Art, ueberall gleich: Minikarte, grosse Karte, Kompass.
+	-- Shape wird von Shared/Icons.luau gezeichnet - keine Bild-Assets.
 	Kinds = {
-		{ Id = "TARGET", Label = "Hack-Ziel", Colour = Config.Theme.Cyan, Order = 2 },
-		{ Id = "EXPOSED", Label = "Ziel auf offener Strasse", Colour = Config.Theme.Amber, Order = 3 },
-		{ Id = "FENCE", Label = "Hehler", Colour = Config.Theme.Green, Order = 5 },
-		{ Id = "DEALER", Label = "Autohaus", Colour = Config.Theme.Amber, Order = 5 },
-		{ Id = "GARAGE", Label = "Garage", Colour = Config.Theme.Cyan, Order = 5 },
-		{ Id = "CONTACT", Label = "Kontakt", Colour = Config.Theme.Magenta, Order = 5 },
-		{ Id = "WAYPOINT", Label = "Auftrag", Colour = Config.Theme.Text, Order = 9 },
+		{ Id = "TARGET", Label = "Hack-Ziel", Shape = "Chip", Colour = Config.Theme.CyanDim, Order = 2 },
+		{ Id = "EXPOSED", Label = "Ziel auf offener Strasse", Shape = "Chip", Colour = Config.Theme.Amber, Order = 3 },
+		{ Id = "APARTMENT", Label = "Dein Apartment", Shape = "Haus", Colour = Config.Theme.Cyan, Order = 6 },
+		{ Id = "FENCE", Label = "Hehler", Shape = "Schein", Colour = Config.Theme.Green, Order = 6 },
+		{ Id = "DEALER", Label = "Autohaendler", Shape = "Schluessel", Colour = Config.Theme.Amber, Order = 6 },
+		{ Id = "BANK", Label = "Bank", Shape = "Tresor", Colour = Config.Theme.Magenta, Order = 6 },
+		{ Id = "GARAGE", Label = "Garage", Shape = "Haus", Colour = Config.Theme.Cyan, Order = 5 },
+		{ Id = "CONTACT", Label = "Kontakt", Shape = "Chip", Colour = Config.Theme.Magenta, Order = 5 },
+		{ Id = "POLICE", Label = "Polizeiwache", Shape = "Schild", Colour = Config.Theme.Blue, Order = 6 },
+		{ Id = "MYCAR", Label = "Dein Fahrzeug", Shape = "Auto", Colour = Config.Theme.Orange, Order = 8 },
+		{ Id = "WAYPOINT", Label = "Aktueller Auftrag", Shape = "Stern", Colour = Config.Theme.Text, Order = 9 },
 	},
+
+	--== Drehen und Zoomen =================================================
+	-- Die Minikarte dreht sich mit der Blickrichtung: beim Fahren ist eine
+	-- genordete Karte praktisch nicht lesbar.
+	Rotate = true,
+	-- Zwei Zoomstufen, automatisch. Zu Fuss naeher dran, im Auto weiter weg -
+	-- sonst ist der naechste Abzweig schon aus dem Bild, bevor man ihn sieht.
+	RangeOnFoot = 220,
+	RangeDriving = 460,
+	ZoomLerp = 0.12, -- wie weich zwischen beiden gewechselt wird
+
+	--== Route =============================================================
+	-- Ein Marker am Kartenrand reicht nicht. Niemand liest Karten - der
+	-- Spieler braucht eine Linie auf der Strasse, der er folgen kann.
+	RouteWidth = 3.5, -- Breite der Leuchtspur in Studs
+	RouteHeight = 0.35, -- wie hoch ueber der Fahrbahn
+	RouteSegment = 12, -- Laenge eines Spurstuecks. Kurz = teuer, lang = eckig.
+	RouteColour = Config.Theme.Cyan,
+	RouteTransparency = 0.35,
+	-- Hinter dem Spieler verblasst die Spur. Ohne das laeuft man versehentlich
+	-- zurueck, weil vorne und hinten gleich aussehen.
+	RouteFadeBehind = 0.85,
+	RouteArrivalRange = 22, -- so nah gilt das Ziel als erreicht
+	RouteMaxNodes = 64, -- Notbremse gegen absurd lange Routen
+
+	--== Kompassleiste =====================================================
+	CompassHeight = 30,
+	CompassWidth = 0.52, -- Anteil der Bildschirmbreite
+	CompassFov = 120, -- welcher Winkel auf die Leiste passt
+	CompassRange = 900, -- weiter entfernte Marker werden ausgeblendet
+	CompassMaxMarkers = 10,
 
 	-- Bezirke werden als getoente Flaeche mit Namen gezeichnet. Das ist der
 	-- eigentliche "wo bin ich hier"-Teil.

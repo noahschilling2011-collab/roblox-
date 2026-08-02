@@ -38,6 +38,7 @@ local EconomyService = require(script.Parent.EconomyService)
 local HackService = require(script.Parent.HackService)
 local HackTargets = require(script.Parent.HackTargets)
 local RateLimiter = require(script.Parent.RateLimiter)
+local RouteService = require(script.Parent.RouteService)
 local SaveService = require(script.Parent.SaveService)
 local SellService = require(script.Parent.SellService)
 
@@ -229,6 +230,10 @@ local function syncWaypoint(player: Player, step: Step?)
 		Position = position,
 		Label = label,
 	})
+
+	-- Und die Route gleich mit. Ein Wegpunkt ohne Linie auf der Strasse ist
+	-- fuer einen neuen Spieler nur ein Pfeil ins Nichts.
+	RouteService.SetTarget(player, position, label)
 end
 
 function MissionService.Sync(player: Player)

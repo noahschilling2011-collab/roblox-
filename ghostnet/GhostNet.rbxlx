@@ -1,5 +1,5 @@
 <roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4">
-<Item class="Workspace" referent="GN75">
+<Item class="Workspace" referent="GN85">
 <Properties>
 <string name="Name">Workspace</string>
 <float name="Gravity">196.2</float>
@@ -7,7 +7,7 @@
 <int name="StreamingMinRadius">128</int>
 <int name="StreamingTargetRadius">512</int>
 </Properties>
-<Item class="Part" referent="GN64">
+<Item class="Part" referent="GN74">
 <Properties>
 <string name="Name">Baseplate</string>
 <bool name="Anchored">true</bool>
@@ -21,7 +21,7 @@
 <token name="BottomSurface">0</token>
 </Properties>
 </Item>
-<Item class="SpawnLocation" referent="GN65">
+<Item class="SpawnLocation" referent="GN75">
 <Properties>
 <string name="Name">SpawnLocation</string>
 <bool name="Anchored">true</bool>
@@ -34,7 +34,7 @@
 </Properties>
 </Item>
 </Item>
-<Item class="Lighting" referent="GN66">
+<Item class="Lighting" referent="GN76">
 <Properties>
 <string name="Name">Lighting</string>
 <token name="Technology">4</token>
@@ -50,7 +50,7 @@
 <Color3 name="FogColor"><R>0.78</R><G>0.83</G><B>0.89</B></Color3>
 <float name="FogEnd">2200</float>
 </Properties>
-<Item class="Atmosphere" referent="GN67">
+<Item class="Atmosphere" referent="GN77">
 <Properties>
 <string name="Name">Atmosphere</string>
 <float name="Density">0.12</float>
@@ -60,7 +60,7 @@
 <Color3 name="Decay"><R>0.588</R><G>0.659</G><B>0.745</B></Color3>
 </Properties>
 </Item>
-<Item class="BloomEffect" referent="GN68">
+<Item class="BloomEffect" referent="GN78">
 <Properties>
 <string name="Name">Bloom</string>
 <bool name="Enabled">true</bool>
@@ -69,7 +69,7 @@
 <float name="Threshold">0.95</float>
 </Properties>
 </Item>
-<Item class="ColorCorrectionEffect" referent="GN69">
+<Item class="ColorCorrectionEffect" referent="GN79">
 <Properties>
 <string name="Name">ColorCorrection</string>
 <bool name="Enabled">true</bool>
@@ -80,11 +80,11 @@
 </Properties>
 </Item>
 </Item>
-<Item class="ReplicatedStorage" referent="GN76">
+<Item class="ReplicatedStorage" referent="GN86">
 <Properties>
 <string name="Name">ReplicatedStorage</string>
 </Properties>
-<Item class="Folder" referent="GN12">
+<Item class="Folder" referent="GN13">
 <Properties>
 <string name="Name">Shared</string>
 </Properties>
@@ -294,18 +294,45 @@ function AssetLibrary.Missing(): { string }
 	return table.clone(missingOrder)
 end
 
--- Einmal beim Serverstart aufrufen. Sagt Noah in einer Zeile pro Modell,
--- was noch zu bauen oder zu besorgen ist.
+-- Welche Kindteile eine Vorlage tragen MUSS. Steht hier, damit der Bericht
+-- nicht nur sagt "fehlt", sondern auch "und so muss es innen aussehen".
+local function requiredChildren(category: string): { string }?
+	if category == "Vehicles" then
+		return A.VehicleRequired
+	end
+	return nil
+end
+
+-- Einmal beim Serverstart aufrufen. Sagt in einer lesbaren Liste, welche
+-- Modelle noch fehlen und welche Teile sie enthalten muessen. Ohne das
+-- sucht man den Grund fuer magenta Kloetze in den falschen Dateien.
 function AssetLibrary.Report()
 	if #missingOrder == 0 then
 		print("[GHOSTNET] Alle Vorlagen gefunden.")
 		return
 	end
-	warn(("[GHOSTNET] %d Vorlage(n) fehlen - im Spiel stehen dafuer magenta Platzhalter:"):format(#missingOrder))
-	for _, label in missingOrder do
-		warn(("            ReplicatedStorage/%s/%s"):format(A.FolderName, label))
+
+	warn("[GHOSTNET] ============================================================")
+	warn(("[GHOSTNET] %d VORLAGE(N) FEHLEN. Dafuer stehen magenta Platzhalter"):format(#missingOrder))
+	warn("[GHOSTNET] im Spiel - das ist Absicht, kein Fehler im Code.")
+	warn("[GHOSTNET] Vollstaendige Anleitung: ghostnet/ASSETS_TODO.md")
+	warn("[GHOSTNET] ------------------------------------------------------------")
+
+	for index, label in missingOrder do
+		local category = string.match(label, "^([^/]+)") or ""
+		warn(("[GHOSTNET] %2d. ReplicatedStorage/%s/%s"):format(index, A.FolderName, label))
+
+		local children = requiredChildren(category)
+		if children then
+			warn("[GHOSTNET]     Pflicht-Kinder (exakte Namen):")
+			for _, path in children do
+				warn(("[GHOSTNET]       - %s"):format(path))
+			end
+			warn("[GHOSTNET]     Optional: " .. table.concat(A.VehicleOptional, ", "))
+		end
 	end
-	warn("            Solange sie fehlen, sieht die Stadt absichtlich kaputt aus.")
+
+	warn("[GHOSTNET] ============================================================")
 end
 
 return AssetLibrary
@@ -323,7 +350,7 @@ return AssetLibrary
 
 local Config = {}
 
-Config.Version = "2.3.0" -- Karte (Mini + gross), groessere Stadt
+Config.Version = "2.4.0" -- Orientierung, Story sichtbar, Polizei nimmt fest
 
 -- CollectionService-Tags. Ein Part mit dem Tag ist ein Hack-Ziel, ein Hehler,
 -- ein Missions-Wegpunkt oder ein ansprechbarer Kontakt. Kein Code pro Objekt.
@@ -338,6 +365,10 @@ Config.GuardTag = "GhostNetGuard" -- Wache mit Sichtkegel
 -- Modelle, deren CFrame der Server nur im Takt setzt und die der Client
 -- dazwischen weich nachzieht. Siehe Client/World/TrafficSmoother.
 Config.SmoothTag = "GhostNetSmoothed"
+-- Reiner Kartenpunkt: ein Ort, der auf der Karte auftauchen soll, ohne selbst
+-- hackbar zu sein (Bank, Apartment, Polizeiwache). Attribute: MapKind, DisplayName.
+Config.PoiTag = "GhostNetPoi"
+Config.PoliceStationTag = "GhostNetPoliceStation"
 
 --==========================================================================
 -- 1. REICHWEITE (Netzwerkkarte)
@@ -845,6 +876,13 @@ Config.Vehicle = {
 	SpawnRange = 24, -- so nah muss man an einem Ausparkplatz stehen
 	EnterRange = 12, -- Reichweite des Einsteigen-Prompts
 
+	-- "Wo ist mein Auto". Ohne das sucht jeder Spieler irgendwann sein
+	-- Fahrzeug und hoert auf. Kostet etwas, damit es kein Teleport wird.
+	CallFee = 150, -- CRY vom Guthaben
+	CallCooldown = 90, -- Sekunden zwischen zwei Rufen
+	CallRoadRange = 40, -- so nah muss eine Strasse sein, sonst kommt keiner
+	CallDropDistance = 14, -- so weit vor dem Spieler wird abgestellt
+
 	-- Raeder kollidieren mit dem Boden, aber nicht miteinander. Ohne eigene
 	-- Gruppe verhaken sich zwei Autos, sobald sie sich beruehren.
 	WheelCollisionGroup = "GhostNetWheels",
@@ -855,6 +893,13 @@ Config.Vehicle = {
 	SuspensionDamping = 900, -- zu wenig = Wackelpudding, zu viel = Brett
 	SteerSpeed = 6, -- wie schnell der Lenkeinschlag folgt (Grad/Tick-Faktor)
 	SteerSpeedFalloff = 0.55, -- bei Tempo weniger Einschlag, sonst ueberschlaegt es
+
+	-- Schwerpunkt. Ein unsichtbares Gewicht tief unter dem Chassis - ohne
+	-- das kippt jedes Roblox-Fahrzeug in der ersten Kurve um.
+	-- Dichte hoch = klebt, aber traege. Drop hoch = kippt nie, wirkt aber
+	-- wie an einem Faden aufgehaengt.
+	BallastDensity = 6,
+	BallastDrop = 1.6,
 
 	WheelDensity = 0.4,
 	CarrierDensity = 0.05, -- Radtraeger fast masselos, sonst schlingert es
@@ -1047,6 +1092,46 @@ Config.Pursuit = {
 	RoadblockLevel = 4,
 	HelicopterLevel = 5,
 	Tick = 0.25,
+
+	--== Aussteigen und zu Fuss verfolgen (Stufe 3) ========================
+	-- Eine Verfolgung ohne moegliches Ende ist keine Bedrohung. Ab hier
+	-- steigen Polizisten aus und laufen hinterher.
+	ExitLevel = 3,
+	ExitDelay = 2, -- so lange muss der Spieler stehen, dann wird ausgestiegen
+	ExitSpeedThreshold = 6, -- darunter gilt er als "steht"
+	OfficersPerUnit = 1,
+	-- Nur die Groesse des magenta Platzhalters, solange
+	-- Assets/Characters/Officer fehlt.
+	OfficerSize = Vector3.new(2, 5.6, 1.4),
+	OfficerSpeed = 17, -- etwas schneller als ein laufender Spieler
+	OfficerSightRange = 120,
+	-- Pfad NUR alle so viele Sekunden neu rechnen. Jeden Frame waere das
+	-- Ende des Servers - PathfindingService ist teuer.
+	OfficerRepath = 0.5,
+	-- Verliert ein Polizist die Sicht, laeuft er zur letzten bekannten
+	-- Position und sucht dort so lange, bevor er aufgibt.
+	OfficerSearchSeconds = 8,
+
+	--== Festnahme =========================================================
+	ArrestRange = 8,
+	ArrestSeconds = 3, -- so lange am Stueck in Reichweite
+	-- Nie ohne Vorwarnung. Erst ein Ruf, dann greift er zu.
+	WarnSeconds = 1.2,
+	JailSeconds = 45, -- Zellenzeit, Countdown ist sichtbar
+	-- Gebuehr aus dem Guthaben, gedeckelt: ein Bust darf wehtun, aber
+	-- niemanden auf null setzen.
+	JailFeeFraction = 0.12,
+	JailFeeCap = 3000,
+	JailStashFraction = 0.4, -- so viel vom Darknet-Lager ist weg
+	-- Blende statt echter Fahrt zur Wache. Eine echte Fahrt waere lang,
+	-- langweilig und fehleranfaellig.
+	TransportSeconds = 2.5,
+
+	--== Fair bleiben ======================================================
+	-- Verfolgung endet spaetestens hier, damit niemand ewig gejagt wird.
+	MaxDuration = 180,
+	-- Streifenwagen kehren zur Wache zurueck, statt zu verschwinden.
+	ReturnSeconds = 20,
 }
 
 --==========================================================================
@@ -1114,6 +1199,10 @@ Config.RateLimits = {
 	VehicleAction = { Rate = 1, Burst = 4 },
 	StealVehicle = { Rate = 1, Burst = 2 },
 	EndgameChoice = { Rate = 0.2, Burst = 2 },
+	-- Route setzen ist billig, aber ein Spieler koennte auf der Karte
+	-- herumhaemmern - und jede Anfrage ist eine Wegsuche im Graphen.
+	RouteRequest = { Rate = 2, Burst = 5 },
+	PhoneRead = { Rate = 2, Burst = 5 },
 }
 
 --==========================================================================
@@ -1166,6 +1255,72 @@ Config.TargetDefaults = {
 Config.Session = {
 	TickRate = 0.25, -- Sekunden zwischen Ablauf- und Distanzpruefung
 	GraceAfterStart = 0.5, -- kurze Schonfrist, bevor die Distanz geprueft wird
+}
+
+--==========================================================================
+-- TELEFON (die Story sichtbar machen)
+--
+-- Ein einziges UI-Element traegt die ganze Geschichte. Briefings sind
+-- Nachrichten, keine Textbloecke.
+--==========================================================================
+Config.Phone = {
+	ButtonSize = 62,
+	Margin = 14,
+	PanelWidth = 360,
+	PanelHeight = 440,
+
+	-- Tippanimation vor jeder Nachricht. Ohne sie fuehlt sich der Chat wie
+	-- eine Textwand an, mit ihr wie ein Gespraech.
+	TypingSeconds = 0.9,
+	CharsPerSecond = 42,
+	-- Pause zwischen zwei Nachrichten derselben Zustellung.
+	MessageGap = 0.5,
+
+	-- Nach einem Missionsabschluss muss die naechste Nachricht kommen,
+	-- BEVOR der Spieler sich fragt, was jetzt. Fuenf Sekunden sind das
+	-- Fenster, in dem er noch hinsieht.
+	NextMessageDelay = 4,
+
+	-- Wie viele Nachrichten aufgehoben werden. Wer eine Woche weg war, soll
+	-- zurueck in die Geschichte finden - aber das Profil darf nicht wachsen.
+	HistoryLimit = 40,
+
+	-- Klingeln: der Knopf pulsiert, bis der Spieler hinsieht.
+	PulseSpeed = 2.2,
+	PulseDepth = 0.35,
+}
+
+--==========================================================================
+-- ORIENTIERUNG IN DER WELT
+--
+-- Die Karte hilft nur dem, der hinsieht. Die Welt selbst muss sprechen.
+--==========================================================================
+Config.Signage = {
+	-- Leuchtschrift ueber wichtigen Gebaeuden. Ueber SurfaceGui, damit sie
+	-- an der Fassade klebt und von weitem lesbar ist.
+	TextSize = 90, -- Schriftgroesse auf der Flaeche
+	SignHeight = 7, -- Hoehe des Schilderbretts in Studs
+	SignDepth = 0.4,
+	MaxDistance = 400, -- ab hier wird ausgeblendet
+
+	-- Lichtsaeule ueber Missionszielen. Das Element, das in jedem
+	-- Open-World-Spiel funktioniert - man sieht es ueber Daecher hinweg.
+	PillarRadius = 4,
+	PillarHeight = 200,
+	PillarTransparency = 0.72,
+	PillarSpin = 12, -- Grad pro Sekunde. 0 = steht still.
+
+	-- Bezirksname beim Betreten, unten links, dann weg.
+	DistrictToastSeconds = 2,
+	DistrictToastFade = 0.4,
+
+	-- Strassenschilder an Kreuzungen.
+	StreetSignHeight = 9,
+	StreetSignSize = Vector3.new(9, 1.8, 0.3),
+	-- Namen werden aus diesen beiden Listen gebildet: Nord-Sued mal Ost-West.
+	-- Zwei kurze Listen ergeben ein ganzes Strassennetz mit echten Namen.
+	StreetsNorthSouth = { "Kanalstrasse", "Meridianweg", "Alte Muenze", "Hafenachse", "Nordspur", "Turmgasse", "Werftweg" },
+	StreetsEastWest = { "Vantorra-Allee", "Schacht 9", "Lange Zeile", "Uferstrasse", "Blechgasse", "Sendeweg", "Randstrasse" },
 }
 
 --==========================================================================
@@ -1322,6 +1477,8 @@ Config.Theme = {
 	TextDim = Color3.fromRGB(96, 116, 134),
 	Ice = Color3.fromRGB(64, 78, 96),
 	Green = Color3.fromRGB(0, 230, 118), -- Verkauf und Bank
+	Blue = Color3.fromRGB(64, 132, 255), -- Polizei
+	Orange = Color3.fromRGB(255, 122, 40), -- eigenes Fahrzeug
 }
 
 table.freeze(Config.Theme)
@@ -1365,19 +1522,59 @@ Config.Map = {
 	-- So lange wird gewartet, bevor nach einer Aenderung neu gesendet wird.
 	-- Ohne das feuert der Aufbau der Welt hunderte Sync-Pakete.
 	SyncDebounce = 2,
+	-- Wie oft geprueft wird, ob jemand einen Bezirk gewechselt hat. Das
+	-- passiert alle paar Minuten - jede Sekunde reicht dicke.
+	DistrictTick = 1,
 
 	--== Was auf der Karte auftaucht =======================================
 	-- Reihenfolge = Reihenfolge in der Legende.
 	-- Order steuert, was oben liegt: Ziele unten, Wegpunkt ganz oben.
+	-- EIN Symbol je Art, ueberall gleich: Minikarte, grosse Karte, Kompass.
+	-- Shape wird von Shared/Icons.luau gezeichnet - keine Bild-Assets.
 	Kinds = {
-		{ Id = "TARGET", Label = "Hack-Ziel", Colour = Config.Theme.Cyan, Order = 2 },
-		{ Id = "EXPOSED", Label = "Ziel auf offener Strasse", Colour = Config.Theme.Amber, Order = 3 },
-		{ Id = "FENCE", Label = "Hehler", Colour = Config.Theme.Green, Order = 5 },
-		{ Id = "DEALER", Label = "Autohaus", Colour = Config.Theme.Amber, Order = 5 },
-		{ Id = "GARAGE", Label = "Garage", Colour = Config.Theme.Cyan, Order = 5 },
-		{ Id = "CONTACT", Label = "Kontakt", Colour = Config.Theme.Magenta, Order = 5 },
-		{ Id = "WAYPOINT", Label = "Auftrag", Colour = Config.Theme.Text, Order = 9 },
+		{ Id = "TARGET", Label = "Hack-Ziel", Shape = "Chip", Colour = Config.Theme.CyanDim, Order = 2 },
+		{ Id = "EXPOSED", Label = "Ziel auf offener Strasse", Shape = "Chip", Colour = Config.Theme.Amber, Order = 3 },
+		{ Id = "APARTMENT", Label = "Dein Apartment", Shape = "Haus", Colour = Config.Theme.Cyan, Order = 6 },
+		{ Id = "FENCE", Label = "Hehler", Shape = "Schein", Colour = Config.Theme.Green, Order = 6 },
+		{ Id = "DEALER", Label = "Autohaendler", Shape = "Schluessel", Colour = Config.Theme.Amber, Order = 6 },
+		{ Id = "BANK", Label = "Bank", Shape = "Tresor", Colour = Config.Theme.Magenta, Order = 6 },
+		{ Id = "GARAGE", Label = "Garage", Shape = "Haus", Colour = Config.Theme.Cyan, Order = 5 },
+		{ Id = "CONTACT", Label = "Kontakt", Shape = "Chip", Colour = Config.Theme.Magenta, Order = 5 },
+		{ Id = "POLICE", Label = "Polizeiwache", Shape = "Schild", Colour = Config.Theme.Blue, Order = 6 },
+		{ Id = "MYCAR", Label = "Dein Fahrzeug", Shape = "Auto", Colour = Config.Theme.Orange, Order = 8 },
+		{ Id = "WAYPOINT", Label = "Aktueller Auftrag", Shape = "Stern", Colour = Config.Theme.Text, Order = 9 },
 	},
+
+	--== Drehen und Zoomen =================================================
+	-- Die Minikarte dreht sich mit der Blickrichtung: beim Fahren ist eine
+	-- genordete Karte praktisch nicht lesbar.
+	Rotate = true,
+	-- Zwei Zoomstufen, automatisch. Zu Fuss naeher dran, im Auto weiter weg -
+	-- sonst ist der naechste Abzweig schon aus dem Bild, bevor man ihn sieht.
+	RangeOnFoot = 220,
+	RangeDriving = 460,
+	ZoomLerp = 0.12, -- wie weich zwischen beiden gewechselt wird
+
+	--== Route =============================================================
+	-- Ein Marker am Kartenrand reicht nicht. Niemand liest Karten - der
+	-- Spieler braucht eine Linie auf der Strasse, der er folgen kann.
+	RouteWidth = 3.5, -- Breite der Leuchtspur in Studs
+	RouteHeight = 0.35, -- wie hoch ueber der Fahrbahn
+	RouteSegment = 12, -- Laenge eines Spurstuecks. Kurz = teuer, lang = eckig.
+	RouteColour = Config.Theme.Cyan,
+	RouteTransparency = 0.35,
+	-- Hinter dem Spieler verblasst die Spur. Ohne das laeuft man versehentlich
+	-- zurueck, weil vorne und hinten gleich aussehen.
+	RouteFadeBehind = 0.85,
+	RouteArrivalRange = 22, -- so nah gilt das Ziel als erreicht
+	RouteMaxNodes = 64, -- Notbremse gegen absurd lange Routen
+
+	--== Kompassleiste =====================================================
+	CompassHeight = 30,
+	CompassWidth = 0.52, -- Anteil der Bildschirmbreite
+	CompassFov = 120, -- welcher Winkel auf die Leiste passt
+	CompassRange = 900, -- weiter entfernte Marker werden ausgeblendet
+	CompassMaxMarkers = 10,
 
 	-- Bezirke werden als getoente Flaeche mit Namen gezeichnet. Das ist der
 	-- eigentliche "wo bin ich hier"-Teil.
@@ -1799,6 +1996,171 @@ return Goods
 </Properties>
 </Item>
 <Item class="ModuleScript" referent="GN6">
+<Properties>
+<string name="Name">Icons</string>
+<ProtectedString name="Source">-- ReplicatedStorage/Shared/Icons.luau
+--!strict
+-- GHOSTNET :: Ein Symbol je Bedeutung, ueberall dasselbe.
+--
+-- WARUM AUS FRAMES UND NICHT AUS BILDERN
+--   Ein ImageLabel braucht eine hochgeladene Asset-Id. Die gibt es hier
+--   nicht, und erfinden darf man sie nicht. Also werden die Symbole aus
+--   wenigen Frames zusammengesetzt: ein Haus sind zwei Rechtecke, ein Stern
+--   sind zwei gedrehte Quadrate. Das kostet ein paar Instanzen und ist
+--   dafuer sofort da, ohne dass jemand etwas eintragen muss.
+--
+-- WARUM ZENTRAL
+--   Dasselbe Symbol taucht auf der Minikarte, auf der grossen Karte, in der
+--   Legende und auf der Kompassleiste auf. Vier Orte, an denen ein Haus wie
+--   ein Haus aussehen muss - also wird es genau einmal beschrieben.
+--
+-- Jede Form zeichnet sich in ein Quadrat der Kantenlaenge `size` und faerbt
+-- sich in `colour`. Der Aufrufer setzt Position und ZIndex am Rueckgabewert.
+
+local Icons = {}
+
+export type Shape = "Haus" | "Schein" | "Schluessel" | "Tresor" | "Chip" | "Stern" | "Auto" | "Schild" | "Punkt"
+
+local function piece(parent: Frame, colour: Color3, x: number, y: number, w: number, h: number, rotation: number?): Frame
+	local f = Instance.new("Frame")
+	f.BackgroundColor3 = colour
+	f.BorderSizePixel = 0
+	f.AnchorPoint = Vector2.new(0.5, 0.5)
+	-- Alles in Anteilen der Kantenlaenge, damit dieselbe Form in jeder
+	-- Groesse funktioniert - Minikarte, Legende und Kompass sind verschieden.
+	f.Position = UDim2.fromScale(x, y)
+	f.Size = UDim2.fromScale(w, h)
+	f.Rotation = rotation or 0
+	f.ZIndex = parent.ZIndex + 1
+	f.Parent = parent
+	return f
+end
+
+local function round(frame: Frame, radius: number)
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(radius, 0)
+	corner.Parent = frame
+end
+
+--==========================================================================
+-- Die Formen
+--==========================================================================
+
+local shapes: { [string]: (Frame, Color3) -&gt; () } = {}
+
+-- Haus: Wand plus gekipptes Quadrat als Dach.
+shapes.Haus = function(root: Frame, colour: Color3)
+	piece(root, colour, 0.5, 0.66, 0.62, 0.46)
+	piece(root, colour, 0.5, 0.34, 0.5, 0.5, 45)
+end
+
+-- Geldschein: liegendes Rechteck mit heller Mitte.
+shapes.Schein = function(root: Frame, colour: Color3)
+	piece(root, colour, 0.5, 0.5, 0.92, 0.56)
+	local hole = piece(root, colour, 0.5, 0.5, 0.24, 0.3)
+	hole.BackgroundTransparency = 0.75
+	round(hole, 0.5)
+end
+
+-- Schluessel: Ring plus Bart.
+shapes.Schluessel = function(root: Frame, colour: Color3)
+	local ring = piece(root, colour, 0.3, 0.5, 0.44, 0.44)
+	round(ring, 0.5)
+	piece(root, colour, 0.66, 0.5, 0.5, 0.16)
+	piece(root, colour, 0.82, 0.64, 0.14, 0.28)
+end
+
+-- Tresor: Kasten mit Griffrad.
+shapes.Tresor = function(root: Frame, colour: Color3)
+	local box = piece(root, colour, 0.5, 0.5, 0.86, 0.86)
+	round(box, 0.12)
+	local dial = piece(root, colour, 0.5, 0.5, 0.34, 0.34)
+	dial.BackgroundTransparency = 0.7
+	round(dial, 0.5)
+end
+
+-- Chip: Quadrat mit Beinchen links und rechts.
+shapes.Chip = function(root: Frame, colour: Color3)
+	piece(root, colour, 0.5, 0.5, 0.56, 0.56)
+	for _, y in { 0.32, 0.5, 0.68 } do
+		piece(root, colour, 0.16, y, 0.2, 0.09)
+		piece(root, colour, 0.84, y, 0.2, 0.09)
+	end
+end
+
+-- Stern: zwei gekippte Quadrate uebereinander.
+shapes.Stern = function(root: Frame, colour: Color3)
+	piece(root, colour, 0.5, 0.5, 0.58, 0.58, 45)
+	piece(root, colour, 0.5, 0.5, 0.5, 0.5, 0)
+end
+
+-- Auto: Karosserie, Dach, zwei Raeder.
+shapes.Auto = function(root: Frame, colour: Color3)
+	local body = piece(root, colour, 0.5, 0.54, 0.92, 0.34)
+	round(body, 0.25)
+	local roof = piece(root, colour, 0.5, 0.32, 0.5, 0.26)
+	round(roof, 0.3)
+	local left = piece(root, colour, 0.27, 0.78, 0.22, 0.22)
+	round(left, 0.5)
+	local right = piece(root, colour, 0.73, 0.78, 0.22, 0.22)
+	round(right, 0.5)
+end
+
+-- Schild: oben eckig, unten spitz - ein gekipptes Quadrat unter einem Kasten.
+shapes.Schild = function(root: Frame, colour: Color3)
+	piece(root, colour, 0.5, 0.4, 0.72, 0.5)
+	piece(root, colour, 0.5, 0.68, 0.5, 0.5, 45)
+end
+
+shapes.Punkt = function(root: Frame, colour: Color3)
+	local dot = piece(root, colour, 0.5, 0.5, 0.8, 0.8)
+	round(dot, 0.5)
+end
+
+--==========================================================================
+
+function Icons.Has(shape: string): boolean
+	return shapes[shape] ~= nil
+end
+
+-- Baut das Symbol und gibt den Container zurueck. Der Aufrufer setzt
+-- Position, Groesse in Pixeln und ZIndex.
+function Icons.Build(shape: string, colour: Color3, size: number): Frame
+	local root = Instance.new("Frame")
+	root.Name = shape
+	root.BackgroundTransparency = 1
+	root.AnchorPoint = Vector2.new(0.5, 0.5)
+	root.Size = UDim2.fromOffset(size, size)
+	root.ZIndex = 1
+
+	local draw = shapes[shape] or shapes.Punkt
+	draw(root, colour)
+	return root
+end
+
+-- Faerbt ein bestehendes Symbol um, ohne es neu zu bauen. Wird gebraucht,
+-- wenn ein Marker blinken oder verblassen soll.
+function Icons.Recolour(root: Frame, colour: Color3)
+	for _, child in root:GetChildren() do
+		if child:IsA("Frame") then
+			child.BackgroundColor3 = colour
+		end
+	end
+end
+
+function Icons.SetTransparency(root: Frame, transparency: number)
+	for _, child in root:GetChildren() do
+		if child:IsA("Frame") then
+			child.BackgroundTransparency = transparency
+		end
+	end
+end
+
+return Icons
+</ProtectedString>
+</Properties>
+</Item>
+<Item class="ModuleScript" referent="GN7">
 <Properties>
 <string name="Name">Missions</string>
 <ProtectedString name="Source">-- ReplicatedStorage/Shared/Missions.luau
@@ -2283,7 +2645,7 @@ return Missions
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN7">
+<Item class="ModuleScript" referent="GN8">
 <Properties>
 <string name="Name">Remotes</string>
 <ProtectedString name="Source">-- ReplicatedStorage/Shared/Remotes.luau
@@ -2329,6 +2691,12 @@ local EVENT_NAMES = {
 	"PursuitSync", -- S-&gt;C  { level, escaping, seconds }
 	"EndgameChoice", -- C-&gt;S  { choice }    Kassieren oder Verbrennen
 	"MapSync", -- S-&gt;C  { nodes, edges, pois }   Kartendaten, siehe MapService
+	"RouteSync", -- S-&gt;C  { points, label }     Route ueber den Strassengraphen
+	"RouteRequest", -- C-&gt;S  { x, z } oder { }  Ziel setzen bzw. loeschen
+	"PhoneSync", -- S-&gt;C  { messages, unread }  Chatverlauf mit Wren
+	"PhoneRead", -- C-&gt;S  { }                   Spieler hat das Telefon geoeffnet
+	"DistrictEnter", -- S-&gt;C  { id, name }      Bezirk betreten (Einblendung)
+	"ArrestSync", -- S-&gt;C  { state, seconds, station }   Festnahme und Zelle
 }
 
 local FUNCTION_NAMES: { string } = {
@@ -2392,7 +2760,7 @@ return Remotes
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN8">
+<Item class="ModuleScript" referent="GN9">
 <Properties>
 <string name="Name">SoundCatalog</string>
 <ProtectedString name="Source">-- ReplicatedStorage/Shared/SoundCatalog.luau
@@ -2516,7 +2884,7 @@ return SoundCatalog
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN9">
+<Item class="ModuleScript" referent="GN10">
 <Properties>
 <string name="Name">Types</string>
 <ProtectedString name="Source">-- ReplicatedStorage/Shared/Types.luau
@@ -2651,7 +3019,7 @@ return {}
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN10">
+<Item class="ModuleScript" referent="GN11">
 <Properties>
 <string name="Name">UITheme</string>
 <ProtectedString name="Source">-- ReplicatedStorage/Shared/UITheme.luau
@@ -2853,7 +3221,7 @@ return UITheme
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN11">
+<Item class="ModuleScript" referent="GN12">
 <Properties>
 <string name="Name">Vehicles</string>
 <ProtectedString name="Source">-- ReplicatedStorage/Shared/Vehicles.luau
@@ -3118,37 +3486,37 @@ return Vehicles
 </Properties>
 </Item>
 </Item>
-<Item class="Folder" referent="GN70">
+<Item class="Folder" referent="GN80">
 <Properties>
 <string name="Name">Assets</string>
 </Properties>
-<Item class="Folder" referent="GN71">
+<Item class="Folder" referent="GN81">
 <Properties>
 <string name="Name">Vehicles</string>
 </Properties>
 </Item>
-<Item class="Folder" referent="GN72">
+<Item class="Folder" referent="GN82">
 <Properties>
 <string name="Name">Buildings</string>
 </Properties>
 </Item>
-<Item class="Folder" referent="GN73">
+<Item class="Folder" referent="GN83">
 <Properties>
 <string name="Name">Props</string>
 </Properties>
 </Item>
-<Item class="Folder" referent="GN74">
+<Item class="Folder" referent="GN84">
 <Properties>
 <string name="Name">Characters</string>
 </Properties>
 </Item>
 </Item>
 </Item>
-<Item class="ServerScriptService" referent="GN77">
+<Item class="ServerScriptService" referent="GN87">
 <Properties>
 <string name="Name">ServerScriptService</string>
 </Properties>
-<Item class="ModuleScript" referent="GN13">
+<Item class="ModuleScript" referent="GN14">
 <Properties>
 <string name="Name">AdminList</string>
 <ProtectedString name="Source">-- ServerScriptService/AdminList.luau
@@ -3214,7 +3582,7 @@ return AdminList
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="Script" referent="GN14">
+<Item class="Script" referent="GN15">
 <Properties>
 <string name="Name">GhostNetServer</string>
 <ProtectedString name="Source">-- ServerScriptService/GhostNetServer.server.luau
@@ -3246,12 +3614,15 @@ local MissionService = require(Systems.MissionService)
 local MarketService = require(Systems.MarketService)
 local InventoryService = require(Systems.InventoryService)
 local RoadNetwork = require(Systems.RoadNetwork)
+local RouteService = require(Systems.RouteService)
 local VehicleChassis = require(Systems.VehicleChassis)
 local VehicleService = require(Systems.VehicleService)
+local ArrestService = require(Systems.ArrestService)
 local PursuitService = require(Systems.PursuitService)
 local TrafficService = require(Systems.TrafficService)
 local GuardService = require(Systems.GuardService)
 local MapService = require(Systems.MapService)
+local PhoneService = require(Systems.PhoneService)
 local MonetizationService = require(Systems.MonetizationService)
 local AdminService = require(Systems.AdminService)
 
@@ -3266,16 +3637,21 @@ ShopService.Init()
 -- Die letzten beiden haengen sich per OnHackResolved / OnSell an die
 -- fertigen Services, muessen also nach ihnen kommen.
 RaidService.Init()
+-- Vor dem MissionService: der setzt bei jedem Wegpunkt eine Route, und die
+-- Wegsuche laeuft auf dem Strassengraphen.
+RoadNetwork.Init() -- Strassengraph, den Verkehr und Polizei teilen
+RouteService.Init() -- Wegsuche auf demselben Graphen
 MissionService.Init()
 MarketService.Init() -- Kurse laufen unabhaengig von Spielern
 InventoryService.Init() -- braucht Markt und Missionen (Unlock-Pruefung)
-RoadNetwork.Init() -- Strassengraph, den Verkehr und Polizei teilen
 VehicleChassis.Init()
 VehicleService.Init() -- Besitz und Haendler
+ArrestService.Init() -- Zelle und Konsequenzen, bevor jemand gefasst wird
 PursuitService.Init() -- vor dem Verkehr: der meldet Diebstaehle dorthin
 TrafficService.Init()
 GuardService.Init() -- meldet Alarme an den RaidService
 MapService.Init() -- nach der Welt: sammelt ein, was gebaut wurde
+PhoneService.Init() -- haengt sich an MissionService, muss danach kommen
 MonetizationService.Init()
 AdminService.Init() -- zuletzt: greift auf alle anderen zu
 
@@ -3288,11 +3664,11 @@ task.defer(AssetLibrary.Report)
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="Folder" referent="GN40">
+<Item class="Folder" referent="GN44">
 <Properties>
 <string name="Name">Systems</string>
 </Properties>
-<Item class="ModuleScript" referent="GN15">
+<Item class="ModuleScript" referent="GN16">
 <Properties>
 <string name="Name">AdminService</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/AdminService.luau
@@ -3864,7 +4240,229 @@ return AdminService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN16">
+<Item class="ModuleScript" referent="GN17">
+<Properties>
+<string name="Name">ArrestService</string>
+<ProtectedString name="Source">-- ServerScriptService/Systems/ArrestService.luau
+--!strict
+-- GHOSTNET :: Die Festnahme.
+--
+-- WARUM DAS FEHLTE
+--   PursuitService hat verfolgt, aber niemanden festgenommen. Eine
+--   Verfolgung ohne moegliches Ende ist keine Bedrohung - man faehrt
+--   irgendwohin und irgendwann ist es vorbei. Erst mit einem Ort, an dem man
+--   landet, und einem Preis, den man zahlt, wird die Polizei ernst.
+--
+-- KEINE NEUEN STRAFSYSTEME
+--   Die Konsequenzen laufen ausschliesslich ueber das, was es schon gibt:
+--     EconomyService  Unverkauftes weg, Gebuehr vom Guthaben
+--     InventoryService ein Teil des Darknet-Lagers weg
+--     TraceService    Trace auf Config.Trace.AfterBust
+--   Hier wird nichts erfunden, nur zusammengefuehrt.
+--
+-- KEIN KAMPF
+--   Man wird gegriffen, nicht verletzt. Es gibt keine Waffe und keinen
+--   Schaden - wer entkommen will, entkommt durch Fahren, Laufen, Verstecken.
+
+local CollectionService = game:GetService("CollectionService")
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Config = require(ReplicatedStorage.Shared.Config)
+local Remotes = require(ReplicatedStorage.Shared.Remotes)
+
+local EconomyService = require(script.Parent.EconomyService)
+local InventoryService = require(script.Parent.InventoryService)
+local SaveService = require(script.Parent.SaveService)
+local TraceService = require(script.Parent.TraceService)
+
+local ArrestService = {}
+
+local P = Config.Pursuit
+
+local jailed: { [Player]: number } = {} -- Player -&gt; Sekunde der Entlassung
+
+--==========================================================================
+-- Die naechste Wache
+--==========================================================================
+
+type Station = {
+	Model: Model,
+	Name: string,
+	Cell: Vector3,
+	Exit: Vector3,
+}
+
+local function stations(): { Station }
+	local list: { Station } = {}
+	for _, instance in CollectionService:GetTagged(Config.PoliceStationTag) do
+		if not instance:IsA("Model") or not instance:IsDescendantOf(workspace) then
+			continue
+		end
+		local cell = instance:GetAttribute("CellPosition")
+		local exit = instance:GetAttribute("ExitPosition")
+		if typeof(cell) ~= "Vector3" or typeof(exit) ~= "Vector3" then
+			continue
+		end
+		local name = instance:GetAttribute("DisplayName")
+		table.insert(list, {
+			Model = instance,
+			Name = if typeof(name) == "string" then name else "Revier",
+			Cell = cell,
+			Exit = exit,
+		})
+	end
+	return list
+end
+
+function ArrestService.NearestStation(position: Vector3): Station?
+	local best: Station? = nil
+	local bestDistance = math.huge
+	for _, station in stations() do
+		local distance = (station.Cell - position).Magnitude
+		if distance &lt; bestDistance then
+			best, bestDistance = station, distance
+		end
+	end
+	return best
+end
+
+--==========================================================================
+-- Zustand
+--==========================================================================
+
+function ArrestService.IsJailed(player: Player): boolean
+	local until_ = jailed[player]
+	return until_ ~= nil and os.time() &lt; until_
+end
+
+local function sync(player: Player, state: string, seconds: number, stationName: string)
+	if not player.Parent then
+		return
+	end
+	Remotes.ArrestSync:FireClient(player, {
+		State = state, -- "CAUGHT" | "JAILED" | "FREE"
+		Seconds = math.max(0, math.floor(seconds)),
+		Station = stationName,
+	})
+end
+
+--==========================================================================
+-- Die Konsequenzen
+--
+-- Alles ueber bestehende Systeme. Gedeckelt, damit ein Bust wehtut, aber
+-- niemanden auf null setzt - wer nach einer Festnahme bei null steht, hoert
+-- auf zu spielen.
+--==========================================================================
+
+local function applyConsequences(player: Player)
+	local profile = SaveService.Get(player)
+	if not profile then
+		return
+	end
+
+	-- 1) Alles Unverkaufte ist weg. Das ist dieselbe Regel wie beim Bust
+	--    durch Trace - eine Festnahme ist kein Sonderfall.
+	EconomyService.WipeUnsold(player)
+
+	-- 2) Ein Teil des Darknet-Lagers. Ware ist heiss, und heisse Ware
+	--    nehmen sie mit.
+	InventoryService.ConfiscateFraction(player, P.JailStashFraction)
+
+	-- 3) Gebuehr vom Guthaben, gedeckelt.
+	local fee = math.min(math.floor(profile.Banked * P.JailFeeFraction), P.JailFeeCap)
+	if fee &gt; 0 then
+		EconomyService.SpendBanked(player, fee)
+	end
+
+	-- 4) Trace zurueck auf den Wert nach einem Bust.
+	profile.Trace = Config.Trace.AfterBust
+	TraceService.Sync(player)
+
+	SaveService.RequestSave(player)
+	return fee
+end
+
+--==========================================================================
+-- Festnahme
+--==========================================================================
+
+-- Wird von PursuitService gerufen, wenn ein Polizist lange genug am Spieler
+-- dran war. Gibt zurueck, ob es geklappt hat.
+function ArrestService.Arrest(player: Player): boolean
+	if ArrestService.IsJailed(player) then
+		return false
+	end
+	local character = player.Character
+	local root = character and character:FindFirstChild("HumanoidRootPart")
+	if not root or not root:IsA("BasePart") then
+		return false
+	end
+
+	local station = ArrestService.NearestStation(root.Position)
+	if not station then
+		-- Ohne Wache waere die Festnahme nur ein Text. Dann lieber nichts
+		-- tun und laut sein, damit der Fehler auffaellt.
+		warn("[GHOSTNET] Festnahme ohne Polizeiwache - es ist keine getaggt.")
+		return false
+	end
+
+	local releaseAt = os.time() + P.JailSeconds
+	jailed[player] = releaseAt
+
+	-- 1) Bildschirm friert kurz ein, "FESTGENOMMEN".
+	sync(player, "CAUGHT", P.JailSeconds, station.Name)
+
+	applyConsequences(player)
+
+	-- 2) Kurze Blende, dann steht der Spieler in der Zelle. Keine echte
+	--    Fahrt - die waere lange, langweilig und fehleranfaellig.
+	task.delay(Config.Pursuit.TransportSeconds, function()
+		if not player.Parent then
+			return
+		end
+		local body = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+		if body and body:IsA("BasePart") then
+			player.Character:PivotTo(CFrame.new(station.Cell + Vector3.new(0, 3, 0)))
+		end
+		sync(player, "JAILED", math.max(0, releaseAt - os.time()), station.Name)
+	end)
+
+	-- 3) Entlassung vor der Wache.
+	task.delay(P.JailSeconds, function()
+		if not player.Parent then
+			return
+		end
+		jailed[player] = nil
+		local character2 = player.Character
+		if character2 then
+			character2:PivotTo(CFrame.new(station.Exit + Vector3.new(0, 3, 0)))
+		end
+		sync(player, "FREE", 0, station.Name)
+	end)
+
+	print(("[GHOSTNET] %s wurde festgenommen (%s)."):format(player.Name, station.Name))
+	return true
+end
+
+--==========================================================================
+
+function ArrestService.Init()
+	Players.PlayerRemoving:Connect(function(player)
+		jailed[player] = nil
+	end)
+
+	-- Wer waehrend der Zellenzeit den Server wechselt, kommt frei. Das ist
+	-- Absicht: eine Strafe ueber Sitzungen hinweg braeuchte ein neues
+	-- Profilfeld und damit eine Migration - fuer 45 Sekunden nicht wert.
+	print(("[GHOSTNET] ArrestService bereit. Zellenzeit %d s."):format(P.JailSeconds))
+end
+
+return ArrestService
+</ProtectedString>
+</Properties>
+</Item>
+<Item class="ModuleScript" referent="GN18">
 <Properties>
 <string name="Name">EconomyService</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/EconomyService.luau
@@ -4126,7 +4724,7 @@ return EconomyService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN17">
+<Item class="ModuleScript" referent="GN19">
 <Properties>
 <string name="Name">GuardService</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/GuardService.luau
@@ -4342,7 +4940,7 @@ return GuardService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN18">
+<Item class="ModuleScript" referent="GN20">
 <Properties>
 <string name="Name">HackEffects</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/HackEffects.luau
@@ -4531,7 +5129,7 @@ return HackEffects
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN19">
+<Item class="ModuleScript" referent="GN21">
 <Properties>
 <string name="Name">HackService</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/HackService.luau
@@ -5115,7 +5713,7 @@ return HackService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN20">
+<Item class="ModuleScript" referent="GN22">
 <Properties>
 <string name="Name">HackTargets</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/HackTargets.luau
@@ -5365,7 +5963,7 @@ return HackTargets
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN21">
+<Item class="ModuleScript" referent="GN23">
 <Properties>
 <string name="Name">InventoryService</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/InventoryService.luau
@@ -5469,6 +6067,36 @@ end
 --==========================================================================
 -- Bust: das Lager ist genauso heiss wie das Bargeld
 --==========================================================================
+
+-- Nimmt einen Anteil des Lagers weg. Wird vom Bust benutzt und - mit einem
+-- eigenen Anteil - von der Festnahme: heisse Ware nehmen sie mit.
+function InventoryService.ConfiscateFraction(player: Player, fraction: number): number
+	if fraction &lt;= 0 then
+		return 0
+	end
+	local profile = SaveService.Get(player)
+	if not profile then
+		return 0
+	end
+
+	local lost = 0
+	for goodId, amount in profile.Stash do
+		local remove = math.floor(amount * fraction + 0.5)
+		if remove &gt; 0 then
+			profile.Stash[goodId] = math.max(0, amount - remove)
+			if profile.Stash[goodId] == 0 then
+				profile.Stash[goodId] = nil
+			end
+			lost += remove
+		end
+	end
+
+	if lost &gt; 0 then
+		InventoryService.Sync(player)
+		SaveService.RequestSave(player)
+	end
+	return lost
+end
 
 local function onBust(player: Player)
 	if Config.Market.BustStashLossPercent &lt;= 0 then
@@ -5683,7 +6311,7 @@ return InventoryService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN22">
+<Item class="ModuleScript" referent="GN24">
 <Properties>
 <string name="Name">MapService</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/MapService.luau
@@ -5712,6 +6340,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config)
+local Geometry = require(ReplicatedStorage.Shared.Geometry)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 
 local RoadNetwork = require(script.Parent.RoadNetwork)
@@ -5796,6 +6425,27 @@ end
 local function build(): { [string]: any }
 	local pois: { Poi } = {}
 
+	-- Reine Kartenpunkte zuerst: Bank, Apartment, Polizeiwache. Diese Orte
+	-- sind selbst nicht hackbar, muessen aber auf die Karte - sonst findet
+	-- niemand nach Hause. Die Art steht als Attribut MapKind am Objekt.
+	for _, instance in CollectionService:GetTagged(Config.PoiTag) do
+		if not instance:IsDescendantOf(workspace) then
+			continue
+		end
+		local position = positionOf(instance)
+		local kind = instance:GetAttribute("MapKind")
+		if not position or typeof(kind) ~= "string" then
+			continue
+		end
+		table.insert(pois, {
+			Kind = kind,
+			Name = labelOf(instance, kind),
+			X = math.round(position.X),
+			Z = math.round(position.Z),
+		})
+	end
+
+	collect(Config.PoliceStationTag, "POLICE", "Polizeiwache", pois)
 	collect(Config.FenceTag, "FENCE", "Hehler", pois)
 	collect(Config.DealerTag, "DEALER", "Autohaus", pois)
 	collect(Config.VehicleSpawnTag, "GARAGE", "Garage", pois)
@@ -5871,9 +6521,46 @@ local function markDirty()
 end
 
 --==========================================================================
+-- Bezirkswechsel
+--
+-- Eine dezente Einblendung "ALTSTADT" beim Betreten sagt dem Spieler mehr
+-- ueber die Stadt als jede Karte. Laeuft in einem eigenen, langsamen Takt -
+-- ein Bezirkswechsel passiert alle paar Minuten, nicht jeden Frame.
+--==========================================================================
+
+local lastDistrict: { [Player]: string } = {}
+
+local function checkDistricts()
+	for _, player in Players:GetPlayers() do
+		local position = Geometry.AlivePosition(player)
+		if not position then
+			continue
+		end
+		local district = RoadNetwork.DistrictAt(position)
+		local id = if district then district.Id else ""
+		if lastDistrict[player] == id then
+			continue
+		end
+		lastDistrict[player] = id
+		if district then
+			Remotes.DistrictEnter:FireClient(player, { Id = district.Id, Name = district.Name })
+		end
+	end
+end
+
+--==========================================================================
 
 function MapService.Init()
-	for _, tag in { Config.HackableTag, Config.FenceTag, Config.DealerTag, Config.VehicleSpawnTag, Config.ContactTag } do
+	local watched = {
+		Config.HackableTag,
+		Config.FenceTag,
+		Config.DealerTag,
+		Config.VehicleSpawnTag,
+		Config.ContactTag,
+		Config.PoiTag,
+		Config.PoliceStationTag,
+	}
+	for _, tag in watched do
 		CollectionService:GetInstanceAddedSignal(tag):Connect(markDirty)
 		CollectionService:GetInstanceRemovedSignal(tag):Connect(markDirty)
 	end
@@ -5883,6 +6570,19 @@ function MapService.Init()
 		-- Liste sonst halb leer, und nachgeliefert wird erst beim naechsten
 		-- Tag-Ereignis.
 		task.delay(M.SyncDebounce, MapService.SyncTo, player)
+	end)
+	Players.PlayerRemoving:Connect(function(player)
+		lastDistrict[player] = nil
+	end)
+
+	task.spawn(function()
+		while true do
+			task.wait(M.DistrictTick)
+			local ok, err = pcall(checkDistricts)
+			if not ok then
+				warn(("[GHOSTNET] Bezirkspruefung fehlgeschlagen: %s"):format(tostring(err)))
+			end
+		end
 	end)
 	for _, player in Players:GetPlayers() do
 		task.defer(MapService.SyncTo, player)
@@ -5895,7 +6595,7 @@ return MapService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN23">
+<Item class="ModuleScript" referent="GN25">
 <Properties>
 <string name="Name">MarketService</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/MarketService.luau
@@ -6185,11 +6885,11 @@ return MarketService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="Folder" referent="GN25">
+<Item class="Folder" referent="GN27">
 <Properties>
 <string name="Name">Minigames</string>
 </Properties>
-<Item class="ModuleScript" referent="GN24">
+<Item class="ModuleScript" referent="GN26">
 <Properties>
 <string name="Name">NodeBreach</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/Minigames/NodeBreach.luau
@@ -6564,7 +7264,7 @@ return NodeBreach
 </Properties>
 </Item>
 </Item>
-<Item class="ModuleScript" referent="GN26">
+<Item class="ModuleScript" referent="GN28">
 <Properties>
 <string name="Name">MissionService</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/MissionService.luau
@@ -6607,6 +7307,7 @@ local EconomyService = require(script.Parent.EconomyService)
 local HackService = require(script.Parent.HackService)
 local HackTargets = require(script.Parent.HackTargets)
 local RateLimiter = require(script.Parent.RateLimiter)
+local RouteService = require(script.Parent.RouteService)
 local SaveService = require(script.Parent.SaveService)
 local SellService = require(script.Parent.SellService)
 
@@ -6798,6 +7499,10 @@ local function syncWaypoint(player: Player, step: Step?)
 		Position = position,
 		Label = label,
 	})
+
+	-- Und die Route gleich mit. Ein Wegpunkt ohne Linie auf der Strasse ist
+	-- fuer einen neuen Spieler nur ein Pfeil ins Nichts.
+	RouteService.SetTarget(player, position, label)
 end
 
 function MissionService.Sync(player: Player)
@@ -7251,7 +7956,7 @@ return MissionService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN27">
+<Item class="ModuleScript" referent="GN29">
 <Properties>
 <string name="Name">MonetizationService</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/MonetizationService.luau
@@ -7670,7 +8375,201 @@ return MonetizationService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN28">
+<Item class="ModuleScript" referent="GN30">
+<Properties>
+<string name="Name">PhoneService</string>
+<ProtectedString name="Source">-- ServerScriptService/Systems/PhoneService.luau
+--!strict
+-- GHOSTNET :: Die Story als Chatverlauf mit Wren.
+--
+-- DAS PROBLEM, DAS DAS LOEST
+--   MissionService und Missions.luau funktionieren seit Langem. Nur sieht
+--   der Spieler nichts davon: das Briefing blinkt einmal auf und ist weg.
+--   Eine Geschichte, die man nicht nachlesen kann, ist keine Geschichte.
+--
+-- KEIN NEUES SPEICHERFELD, KEINE MIGRATION
+--   Der Verlauf wird bei jedem Sync AUS DEM STORY-ZUSTAND GEBAUT: erledigte
+--   Missionen plus die aktive. Damit ist er automatisch korrekt, ueberlebt
+--   jeden Serverwechsel und das Profil-Schema bleibt unveraendert.
+--   Ein zweites, mitgeschriebenes Chatprotokoll waere eine zweite Wahrheit,
+--   die irgendwann von der ersten abweicht.
+--
+-- KEIN NEUES MISSIONSSYSTEM
+--   Hier wird nichts entschieden. PhoneService liest, formatiert und
+--   verschickt - angenommen und abgeschlossen wird weiter im MissionService.
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Config = require(ReplicatedStorage.Shared.Config)
+local Missions = require(ReplicatedStorage.Shared.Missions)
+local Remotes = require(ReplicatedStorage.Shared.Remotes)
+
+local RateLimiter = require(script.Parent.RateLimiter)
+local MissionService = require(script.Parent.MissionService)
+local SaveService = require(script.Parent.SaveService)
+
+local PhoneService = {}
+
+local P = Config.Phone
+
+-- Ungelesen ist reine Sitzungsinformation: wer neu einsteigt, soll das
+-- Telefon leuchten sehen. Das muss keinen Serverwechsel ueberleben.
+local unread: { [Player]: boolean } = {}
+
+--==========================================================================
+-- Verlauf bauen
+--==========================================================================
+
+type Message = {
+	From: string,
+	Text: string,
+	Mission: string,
+	State: string, -- "DONE" | "ACTIVE" | "INFO"
+}
+
+local function push(list: { Message }, from: string, text: string, mission: string, state: string)
+	table.insert(list, { From = from, Text = text, Mission = mission, State = state })
+end
+
+local function buildHistory(player: Player): ({ Message }, string)
+	local profile = SaveService.Get(player)
+	local messages: { Message } = {}
+	if not profile then
+		return messages, ""
+	end
+
+	local story = profile.Story
+
+	-- Erledigtes zuerst, in der Reihenfolge der Registry - dann liest sich
+	-- der Verlauf wie ein Gespraech und nicht wie eine Datenbank.
+	for _, mission in Missions.List do
+		if not Missions.IsCompleted(story, mission.Id) then
+			continue
+		end
+		push(messages, "WREN", mission.Briefing, mission.Id, "DONE")
+		push(messages, "DU", "Erledigt.", mission.Id, "DONE")
+	end
+
+	local activeTitle = ""
+	if story.Active ~= "" then
+		local mission = Missions.Get(story.Active)
+		if mission then
+			activeTitle = mission.Title
+			push(messages, "WREN", mission.Briefing, mission.Id, "ACTIVE")
+		end
+	elseif #story.Completed &gt;= #Missions.List and #Missions.List &gt; 0 then
+		-- Story durch. Das Telefon bleibt der Ort, an dem es weitergeht -
+		-- die wiederholbaren Ziele stehen ohnehin alle in der Stadt.
+		push(
+			messages,
+			"WREN",
+			"Das war die Geschichte. Die Stadt laeuft weiter.\nNimm dir, was du brauchst - du weisst jetzt, wie.",
+			"",
+			"INFO"
+		)
+	end
+
+	-- Nie unbegrenzt wachsen lassen: bei sehr langen Verlaeufen zaehlt nur,
+	-- was zuletzt passiert ist.
+	while #messages &gt; P.HistoryLimit do
+		table.remove(messages, 1)
+	end
+
+	return messages, activeTitle
+end
+
+-- Kurze Zusammenfassung fuer den Wiedereinstieg. Wer eine Woche weg war,
+-- muss in einem Satz zurueck in die Geschichte finden.
+local function summaryFor(player: Player): string
+	local profile = SaveService.Get(player)
+	if not profile then
+		return ""
+	end
+	local story = profile.Story
+	local last = story.Completed[#story.Completed]
+	if not last then
+		return ""
+	end
+	local mission = Missions.Get(last)
+	if not mission then
+		return ""
+	end
+	if story.Active == "" then
+		return ("Zuletzt: %s. Wren meldet sich."):format(mission.Title)
+	end
+	return ("Zuletzt: %s. Wren wartet auf Antwort."):format(mission.Title)
+end
+
+--==========================================================================
+-- Senden
+--==========================================================================
+
+function PhoneService.SyncTo(player: Player)
+	if not player.Parent then
+		return
+	end
+	local messages, activeTitle = buildHistory(player)
+	Remotes.PhoneSync:FireClient(player, {
+		Messages = messages,
+		Unread = unread[player] == true,
+		ActiveTitle = activeTitle,
+		Summary = summaryFor(player),
+	})
+end
+
+-- Es gibt etwas Neues. Der Knopf pulsiert, bis der Spieler hinsieht.
+function PhoneService.Notify(player: Player)
+	unread[player] = true
+	PhoneService.SyncTo(player)
+end
+
+--==========================================================================
+
+function PhoneService.Init()
+	Remotes.PhoneRead.OnServerEvent:Connect(function(player: Player)
+		if not RateLimiter.Check(player, "PhoneRead") then
+			return
+		end
+		unread[player] = false
+		PhoneService.SyncTo(player)
+	end)
+
+	-- An den MissionService anhaengen statt ihn anzufassen: eine neue
+	-- Mission und ein Abschluss sind genau die zwei Momente, in denen das
+	-- Telefon klingeln muss.
+	MissionService.OnMissionComplete(function(player: Player)
+		-- Verzoegert, damit die naechste Mission schon gestartet ist und die
+		-- Nachricht gleich den neuen Auftrag enthaelt. Innerhalb des
+		-- Fensters, in dem der Spieler noch hinsieht.
+		task.delay(P.NextMessageDelay, function()
+			if player.Parent then
+				PhoneService.Notify(player)
+			end
+		end)
+	end)
+
+	Players.PlayerAdded:Connect(function(player)
+		unread[player] = true
+	end)
+	Players.PlayerRemoving:Connect(function(player)
+		unread[player] = nil
+	end)
+
+	-- Sobald ein Profil geladen ist, kennt der Verlauf seinen Inhalt.
+	SaveService.OnReady(function(player: Player)
+		unread[player] = true
+		PhoneService.SyncTo(player)
+	end)
+
+	print("[GHOSTNET] PhoneService bereit.")
+end
+
+return PhoneService
+</ProtectedString>
+</Properties>
+</Item>
+<Item class="ModuleScript" referent="GN31">
 <Properties>
 <string name="Name">PursuitService</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/PursuitService.luau
@@ -7689,15 +8588,18 @@ return MonetizationService
 --   die vorhandene Kette - kein zweites Straf-System daneben.
 
 local CollectionService = game:GetService("CollectionService")
+local PathfindingService = game:GetService("PathfindingService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local AssetLibrary = require(ReplicatedStorage.Shared.AssetLibrary)
 local Config = require(ReplicatedStorage.Shared.Config)
 local Geometry = require(ReplicatedStorage.Shared.Geometry)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 
 local AssetLibrary = require(ReplicatedStorage.Shared.AssetLibrary)
 
+local ArrestService = require(script.Parent.ArrestService)
 local RoadNetwork = require(script.Parent.RoadNetwork)
 local SaveService = require(script.Parent.SaveService)
 local TraceService = require(script.Parent.TraceService)
@@ -7723,7 +8625,14 @@ type Chase = {
 	OutOfSight: number, -- Sekunden ohne Sichtkontakt
 	InRange: number, -- Sekunden dicht dran am Streifenwagen
 	Units: { Unit },
+	Officers: { Officer }, -- ausgestiegene Polizisten (ab ExitLevel)
+	Standing: number, -- Sekunden, die der Spieler kaum bewegt ist
+	StartedAt: number, -- os.clock() beim Beginn - fuer MaxDuration
 }
+
+-- Vorwaertsdeklaration: der Officer-Typ steht weiter unten, weil er den
+-- Container und den ArrestService braucht.
+export type Officer = any
 
 local chases: { [Player]: Chase } = {}
 local container: Folder? = nil
@@ -7825,6 +8734,178 @@ local function buildUnit(): Unit
 	}
 end
 
+--==========================================================================
+-- POLIZISTEN ZU FUSS
+--
+-- Ab Config.Pursuit.ExitLevel steigen sie aus. Das ist der Punkt, an dem
+-- eine Verfolgung erst zur Bedrohung wird: solange nur Autos hinterherfahren,
+-- steigt man aus und geht durch eine Gasse.
+--
+-- HIER IST PathfindingService RICHTIG
+--   Fuer Verkehrsautos ist er verboten - Dutzende Pfade pro Sekunde fressen
+--   den Server. Hier laufen hoechstens eine Handvoll Polizisten, und ein
+--   Mensch, der um eine Hausecke geht, braucht einen echten Weg.
+--   Neu gerechnet wird nur alle Config.Pursuit.OfficerRepath Sekunden.
+--
+-- KEIN KAMPF. Ein Polizist greift zu, er schlaegt nicht.
+--==========================================================================
+
+type Officer = {
+	Model: Model,
+	Humanoid: Humanoid,
+	Root: BasePart,
+	Path: Path,
+	NextRepath: number,
+	Waypoints: { PathWaypoint },
+	WaypointIndex: number,
+	LastSeen: Vector3?,
+	SearchUntil: number,
+	Warned: boolean,
+	InRange: number,
+}
+
+local function buildOfficer(at: Vector3): Officer?
+	-- Ein Polizist ist eine Figur, also gehoert er nach Assets/Characters.
+	-- Fehlt die Vorlage, kommt ein magenta Platzhalter - der laeuft genauso,
+	-- er sieht nur unuebersehbar unfertig aus.
+	local model = AssetLibrary.Clone("Characters", "Officer", P.OfficerSize)
+	model.Name = "Polizist"
+
+	local root = model.PrimaryPart or model:FindFirstChildWhichIsA("BasePart", true)
+	if not root then
+		warn("[GHOSTNET] Polizisten-Vorlage enthaelt keinen BasePart.")
+		model:Destroy()
+		return nil
+	end
+
+	-- Ein Humanoid, damit er laufen, Treppen nehmen und Animationen abspielen
+	-- kann. Das ist genau der Fall, fuer den ein Humanoid gedacht ist -
+	-- anders als bei Hintergrund-Fussgaengern, wo er reine Verschwendung ist.
+	local humanoid = model:FindFirstChildOfClass("Humanoid")
+	if not humanoid then
+		humanoid = Instance.new("Humanoid")
+		humanoid.Parent = model
+	end
+	humanoid.WalkSpeed = P.OfficerSpeed
+	humanoid.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
+
+	for _, descendant in model:GetDescendants() do
+		if descendant:IsA("BasePart") then
+			descendant.Anchored = false
+			descendant.CanQuery = false
+		end
+	end
+	root.CFrame = CFrame.new(at + Vector3.new(0, 3, 0))
+	model.Parent = ensureContainer()
+
+	return {
+		Model = model,
+		Humanoid = humanoid,
+		Root = root,
+		Path = PathfindingService:CreatePath({
+			AgentRadius = 2,
+			AgentHeight = 5,
+			AgentCanJump = false,
+		}),
+		NextRepath = 0,
+		Waypoints = {},
+		WaypointIndex = 1,
+		LastSeen = nil,
+		SearchUntil = 0,
+		Warned = false,
+		InRange = 0,
+	}
+end
+
+local function releaseOfficer(officer: Officer)
+	if officer.Model.Parent then
+		officer.Model:Destroy()
+	end
+end
+
+-- Sichtlinie: Waende blockieren. Ohne das laeuft der Polizist durch das
+-- halbe Viertel direkt auf einen zu, obwohl er einen gar nicht sehen kann.
+local officerRay = RaycastParams.new()
+officerRay.FilterType = Enum.RaycastFilterType.Exclude
+officerRay.IgnoreWater = true
+
+local function officerSees(officer: Officer, character: Model, position: Vector3): boolean
+	local delta = position - officer.Root.Position
+	if delta.Magnitude &gt; P.OfficerSightRange then
+		return false
+	end
+	officerRay.FilterDescendantsInstances = { officer.Model, character }
+	return workspace:Raycast(officer.Root.Position, delta, officerRay) == nil
+end
+
+local function stepOfficer(officer: Officer, player: Player, character: Model, position: Vector3, now: number, dt: number): boolean
+	local visible = officerSees(officer, character, position)
+	if visible then
+		officer.LastSeen = position
+		officer.SearchUntil = now + P.OfficerSearchSeconds
+	end
+
+	-- Ziel: der Spieler, wenn man ihn sieht, sonst die letzte bekannte
+	-- Position. Danach gibt der Polizist auf.
+	local goal = if visible then position else officer.LastSeen
+	if not goal then
+		return false
+	end
+	if not visible and now &gt; officer.SearchUntil then
+		return false
+	end
+
+	-- NUR alle OfficerRepath Sekunden neu rechnen. Jeden Frame waere das
+	-- Ende des Servers.
+	if now &gt;= officer.NextRepath then
+		officer.NextRepath = now + P.OfficerRepath
+		local ok = pcall(function()
+			officer.Path:ComputeAsync(officer.Root.Position, goal)
+		end)
+		if ok and officer.Path.Status == Enum.PathStatus.Success then
+			officer.Waypoints = officer.Path:GetWaypoints()
+			officer.WaypointIndex = 2 -- der erste Punkt ist die eigene Position
+		else
+			-- Kein Weg: dann wenigstens stur in die Richtung laufen.
+			officer.Waypoints = {}
+			officer.Humanoid:MoveTo(goal)
+		end
+	end
+
+	local waypoint = officer.Waypoints[officer.WaypointIndex]
+	if waypoint then
+		officer.Humanoid:MoveTo(waypoint.Position)
+		if (officer.Root.Position - waypoint.Position).Magnitude &lt; 4 then
+			officer.WaypointIndex += 1
+		end
+	end
+
+	--== Festnahme =========================================================
+	local distance = (officer.Root.Position - position).Magnitude
+	if distance &lt;= P.ArrestRange and visible then
+		officer.InRange += dt
+
+		-- Nie ohne Vorwarnung. Erst der Ruf, dann der Zugriff.
+		if not officer.Warned and officer.InRange &gt;= P.WarnSeconds then
+			officer.Warned = true
+			Remotes.ArrestSync:FireClient(player, {
+				State = "WARNING",
+				Seconds = math.ceil(P.ArrestSeconds - officer.InRange),
+				Station = "",
+			})
+		end
+
+		if officer.InRange &gt;= P.ArrestSeconds then
+			return ArrestService.Arrest(player)
+		end
+	else
+		officer.InRange = math.max(0, officer.InRange - dt)
+		officer.Warned = false
+	end
+
+	return false
+end
+
 local function releaseUnit(unit: Unit)
 	unit.Active = false
 	if unit.Model.Parent then
@@ -7846,7 +8927,7 @@ end
 function PursuitService.AddHeat(player: Player, amount: number)
 	local chase = chases[player]
 	if not chase then
-		chase = { Level = 0, Bonus = 0, OutOfSight = 0, InRange = 0, Units = {} }
+		chase = { Level = 0, Bonus = 0, OutOfSight = 0, InRange = 0, Units = {}, Officers = {}, Standing = 0, StartedAt = os.clock() }
 		chases[player] = chase
 	end
 	chase.Bonus = math.clamp(chase.Bonus + amount, 0, P.MaxLevel)
@@ -7903,6 +8984,10 @@ local function syncChase(player: Player, chase: Chase)
 		EscapeSeconds = math.max(0, P.EscapeSeconds - chase.OutOfSight),
 		Roadblock = chase.Level &gt;= P.RoadblockLevel,
 		Helicopter = chase.Level &gt;= P.HelicopterLevel,
+		-- Sichtbarer Entkommen-Fortschritt. Der Spieler muss sehen, dass er
+		-- kurz davor ist - sonst gibt er auf, obwohl es fast geschafft war.
+		EscapeProgress = math.clamp(chase.OutOfSight / math.max(P.EscapeSeconds, 0.01), 0, 1),
+		OnFoot = #chase.Officers &gt; 0,
 	})
 end
 
@@ -7915,6 +9000,11 @@ local function clearChase(player: Player)
 		releaseUnit(unit)
 	end
 	table.clear(chase.Units)
+	for _, officer in chase.Officers do
+		releaseOfficer(officer)
+	end
+	table.clear(chase.Officers)
+	chase.Standing = 0
 	chase.Level = 0
 	chase.Bonus = 0
 	chase.OutOfSight = 0
@@ -7999,22 +9089,84 @@ local function step(dt: number)
 			end
 		end
 
-		-- Gefasst: lange genug dicht dran. Das ist ein Bust ueber die
-		-- bestehende Kette, kein neues Straf-System.
-		if closest &lt;= P.CatchRange then
+		--== Aussteigen ====================================================
+		-- Ab ExitLevel steigen Polizisten aus, sobald der Spieler steht oder
+		-- ohnehin zu Fuss unterwegs ist. Solange nur Autos hinterherfahren,
+		-- steigt man aus und geht durch eine Gasse - das ist keine Verfolgung.
+		local character = player.Character
+		local root = character and character:FindFirstChild("HumanoidRootPart")
+		local speed = if root and root:IsA("BasePart") then root.AssemblyLinearVelocity.Magnitude else 0
+		local onFoot = root ~= nil
+			and character:FindFirstChildOfClass("Humanoid") ~= nil
+			and (character:FindFirstChildOfClass("Humanoid") :: Humanoid).SeatPart == nil
+
+		if speed &lt; P.ExitSpeedThreshold or onFoot then
+			chase.Standing += dt
+		else
+			chase.Standing = 0
+		end
+
+		if chase.Level &gt;= P.ExitLevel and chase.Standing &gt;= P.ExitDelay and #chase.Officers == 0 then
+			for _, unit in chase.Units do
+				for _ = 1, P.OfficersPerUnit do
+					local officer = buildOfficer(unit.Body.Position)
+					if officer then
+						table.insert(chase.Officers, officer)
+					end
+				end
+			end
+		end
+
+		--== Zu Fuss verfolgen und festnehmen ==============================
+		local now = os.clock()
+		local arrested = false
+		for index = #chase.Officers, 1, -1 do
+			local officer = chase.Officers[index]
+			if not officer.Model.Parent or not character then
+				releaseOfficer(officer)
+				table.remove(chase.Officers, index)
+				continue
+			end
+			local ok, result = pcall(stepOfficer, officer, player, character, position, now, dt)
+			if not ok then
+				warn(("[GHOSTNET] Polizist-Schritt fehlgeschlagen: %s"):format(tostring(result)))
+			elseif result == true then
+				arrested = true
+			end
+		end
+		if arrested then
+			clearChase(player)
+			continue
+		end
+
+		-- Gefasst per Streifenwagen: nur, wenn niemand ausgestiegen ist.
+		-- Sonst wird man zweimal gleichzeitig festgenommen.
+		if #chase.Officers == 0 and closest &lt;= P.CatchRange then
 			chase.InRange += dt
 			if chase.InRange &gt;= P.CatchSeconds then
-				warn(("[GHOSTNET] %s wurde gefasst."):format(player.Name))
-				local profile = SaveService.Get(player)
-				if profile then
-					profile.Trace = 0
+				if not ArrestService.Arrest(player) then
+					-- Keine Wache getaggt: dann wenigstens die bestehende
+					-- Bust-Kette, statt gar nichts zu tun.
+					warn(("[GHOSTNET] %s wurde gefasst (Bust, keine Wache)."):format(player.Name))
+					local profile = SaveService.Get(player)
+					if profile then
+						profile.Trace = 0
+					end
+					TraceService.Add(player, Config.Trace.Max)
 				end
-				TraceService.Add(player, Config.Trace.Max)
 				clearChase(player)
 				continue
 			end
 		else
 			chase.InRange = math.max(0, chase.InRange - dt)
+		end
+
+		--== Fair bleiben ==================================================
+		-- Spaetestens hier ist Schluss. Niemand wird ewig gejagt.
+		if os.clock() - chase.StartedAt &gt; P.MaxDuration then
+			print(("[GHOSTNET] Fahndung auf %s laeuft aus (Zeitlimit)."):format(player.Name))
+			clearChase(player)
+			continue
 		end
 
 		-- Passiver Abbau, damit eine alte Tat nicht ewig nachhaengt.
@@ -8030,7 +9182,7 @@ function PursuitService.Init()
 	RoadNetwork.Build()
 
 	SaveService.OnReady(function(player)
-		chases[player] = { Level = 0, Bonus = 0, OutOfSight = 0, InRange = 0, Units = {} }
+		chases[player] = { Level = 0, Bonus = 0, OutOfSight = 0, InRange = 0, Units = {}, Officers = {}, Standing = 0, StartedAt = os.clock() }
 	end)
 
 	Players.PlayerRemoving:Connect(function(player)
@@ -8067,7 +9219,7 @@ return PursuitService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN29">
+<Item class="ModuleScript" referent="GN32">
 <Properties>
 <string name="Name">RaidService</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/RaidService.luau
@@ -8343,7 +9495,7 @@ return RaidService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN30">
+<Item class="ModuleScript" referent="GN33">
 <Properties>
 <string name="Name">RateLimiter</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/RateLimiter.luau
@@ -8423,7 +9575,7 @@ return RateLimiter
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN31">
+<Item class="ModuleScript" referent="GN34">
 <Properties>
 <string name="Name">RoadNetwork</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/RoadNetwork.luau
@@ -8614,6 +9766,104 @@ function RoadNetwork.DistrictAt(position: Vector3): Districts.District?
 	return Districts.At(math.round(position.X / block), math.round(position.Z / block))
 end
 
+--==========================================================================
+-- Wegsuche
+--
+-- Dijkstra ueber denselben Graphen, auf dem Verkehr und Polizei fahren. Es
+-- gibt keinen zweiten, abweichenden Wegenetz-Datensatz - und weil das Netz
+-- ein Raster mit wenigen Dutzend Knoten ist, reicht Dijkstra locker; A*
+-- waere hier nur mehr Code fuer denselben Weg.
+--
+-- Laeuft nur, wenn jemand ein Ziel setzt. Kein Takt, keine Dauerlast.
+--==========================================================================
+
+function RoadNetwork.FindPath(fromId: number, toId: number): { number }?
+	if not nodes[fromId] or not nodes[toId] then
+		return nil
+	end
+	if fromId == toId then
+		return { fromId }
+	end
+
+	local distance: { [number]: number } = {}
+	local previous: { [number]: number } = {}
+	local visited: { [number]: boolean } = {}
+	distance[fromId] = 0
+
+	while true do
+		-- Kleinster offener Knoten. Lineare Suche ist bei dieser Groesse
+		-- schneller als eine Halde und deutlich einfacher zu lesen.
+		local current: number? = nil
+		local best = math.huge
+		for id, cost in distance do
+			if not visited[id] and cost &lt; best then
+				current, best = id, cost
+			end
+		end
+		if not current then
+			return nil -- nicht erreichbar
+		end
+		if current == toId then
+			break
+		end
+		visited[current] = true
+
+		local node = nodes[current]
+		for _, linkId in node.Links do
+			if visited[linkId] then
+				continue
+			end
+			local neighbour = nodes[linkId]
+			if not neighbour then
+				continue
+			end
+			local step = best + (neighbour.Position - node.Position).Magnitude
+			if step &lt; (distance[linkId] or math.huge) then
+				distance[linkId] = step
+				previous[linkId] = current
+			end
+		end
+	end
+
+	local path: { number } = { toId }
+	local walk = toId
+	while walk ~= fromId do
+		local before = previous[walk]
+		if not before then
+			return nil
+		end
+		table.insert(path, 1, before)
+		walk = before
+	end
+	return path
+end
+
+-- Bequemer Einstieg: von einer Weltposition zur naechsten. Gibt die
+-- Stuetzpunkte als Weltpositionen zurueck, inklusive Start und Ziel selbst,
+-- damit die Linie nicht erst auf halber Strecke anfaengt.
+function RoadNetwork.RouteBetween(from: Vector3, to: Vector3): { Vector3 }?
+	local startNode = RoadNetwork.NearestNode(from)
+	local goalNode = RoadNetwork.NearestNode(to)
+	if not startNode or not goalNode then
+		return nil
+	end
+
+	local ids = RoadNetwork.FindPath(startNode.Id, goalNode.Id)
+	if not ids then
+		return nil
+	end
+
+	local points: { Vector3 } = { Vector3.new(from.X, 0, from.Z) }
+	for _, id in ids do
+		local node = nodes[id]
+		if node then
+			table.insert(points, node.Position)
+		end
+	end
+	table.insert(points, Vector3.new(to.X, 0, to.Z))
+	return points
+end
+
 function RoadNetwork.Init()
 	local valid, errors = Districts.Validate()
 	if not valid then
@@ -8638,7 +9888,160 @@ return RoadNetwork
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN32">
+<Item class="ModuleScript" referent="GN35">
+<Properties>
+<string name="Name">RouteService</string>
+<ProtectedString name="Source">-- ServerScriptService/Systems/RouteService.luau
+--!strict
+-- GHOSTNET :: Die Route zum Ziel.
+--
+-- DER WICHTIGSTE EINZELPUNKT DER ORIENTIERUNG
+--   Ein Marker am Kartenrand reicht nicht. Niemand liest Karten. Der Spieler
+--   braucht eine Linie auf der Strasse, der er einfach folgen kann.
+--
+-- WER RECHNET, WER ZEICHNET
+--   Der SERVER rechnet die Route ueber den bestehenden RoadNetwork-Graphen -
+--   derselbe Graph, auf dem Verkehr und Polizei fahren. Es gibt kein zweites
+--   Wegenetz, das auseinanderlaufen koennte.
+--
+--   Der CLIENT zeichnet die Leuchtspur. Das ist kein Detail: eine Route ist
+--   PRO SPIELER verschieden. Serverseitige Parts saehe jeder - dann liefe
+--   man durch fremde Wegweiser. Lokal erzeugte Parts sieht nur der, dem sie
+--   gehoeren, und sie kosten den Server gar nichts.
+--
+-- KEIN TAKT
+--   Gerechnet wird nur, wenn jemand ein Ziel setzt oder eine Mission einen
+--   Wegpunkt bekommt. Ankunft prueft der Client optisch; wegnehmen tut die
+--   Route der Server, wenn die Mission weiterspringt.
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Config = require(ReplicatedStorage.Shared.Config)
+local Geometry = require(ReplicatedStorage.Shared.Geometry)
+local Remotes = require(ReplicatedStorage.Shared.Remotes)
+
+local RateLimiter = require(script.Parent.RateLimiter)
+local RoadNetwork = require(script.Parent.RoadNetwork)
+
+local RouteService = {}
+
+local M = Config.Map
+
+type Route = {
+	Target: Vector3,
+	Label: string,
+}
+
+local routes: { [Player]: Route } = {}
+
+--==========================================================================
+
+local function send(player: Player, points: { Vector3 }?, label: string)
+	if not player.Parent then
+		return
+	end
+	Remotes.RouteSync:FireClient(player, {
+		Points = points,
+		Label = label,
+	})
+end
+
+-- Setzt (oder loescht, wenn target nil ist) die Route eines Spielers.
+-- Wird auch vom MissionService aufgerufen, wenn ein Auftrag startet.
+function RouteService.SetTarget(player: Player, target: Vector3?, label: string?)
+	if not target then
+		routes[player] = nil
+		send(player, nil, "")
+		return
+	end
+
+	local from = Geometry.AlivePosition(player)
+	if not from then
+		return
+	end
+
+	local points = RoadNetwork.RouteBetween(from, target)
+	if not points then
+		-- Kein Weg gefunden: dann wenigstens die Luftlinie, statt dem
+		-- Spieler gar nichts zu zeigen.
+		points = { Vector3.new(from.X, 0, from.Z), Vector3.new(target.X, 0, target.Z) }
+	end
+
+	-- Notbremse: eine absurd lange Route waere nur eine Leuchtwand.
+	while #points &gt; M.RouteMaxNodes do
+		table.remove(points)
+	end
+
+	routes[player] = { Target = target, Label = label or "" }
+	send(player, points, label or "")
+end
+
+function RouteService.Clear(player: Player)
+	RouteService.SetTarget(player, nil)
+end
+
+function RouteService.GetTarget(player: Player): Vector3?
+	local route = routes[player]
+	return if route then route.Target else nil
+end
+
+-- Neu rechnen, ohne das Ziel zu aendern. Braucht man nach einem Respawn oder
+-- einer Festnahme, weil der Startpunkt dann ein ganz anderer ist.
+function RouteService.Recalculate(player: Player)
+	local route = routes[player]
+	if route then
+		RouteService.SetTarget(player, route.Target, route.Label)
+	end
+end
+
+--==========================================================================
+
+local function onRouteRequest(player: Player, payload: any)
+	if not RateLimiter.Check(player, "RouteRequest") then
+		return
+	end
+	if typeof(payload) ~= "table" then
+		return
+	end
+
+	-- Leeres Paket = Route loeschen.
+	if payload.X == nil and payload.Z == nil then
+		RouteService.Clear(player)
+		return
+	end
+
+	if typeof(payload.X) ~= "number" or typeof(payload.Z) ~= "number" then
+		return
+	end
+	if payload.X ~= payload.X or payload.Z ~= payload.Z then
+		return -- NaN
+	end
+
+	-- Der Client sagt nur "dort hin will ich". Er bekommt dadurch keinen
+	-- Vorteil: eine Route ist eine Linie, keine Belohnung und kein Zugang.
+	local limit = Config.City.Grid * Config.City.BlockSize
+	local x = math.clamp(payload.X, -limit, limit)
+	local z = math.clamp(payload.Z, -limit, limit)
+
+	RouteService.SetTarget(player, Vector3.new(x, 0, z), "Eigenes Ziel")
+end
+
+function RouteService.Init()
+	Remotes.RouteRequest.OnServerEvent:Connect(onRouteRequest)
+
+	Players.PlayerRemoving:Connect(function(player)
+		routes[player] = nil
+	end)
+
+	print("[GHOSTNET] RouteService bereit.")
+end
+
+return RouteService
+</ProtectedString>
+</Properties>
+</Item>
+<Item class="ModuleScript" referent="GN36">
 <Properties>
 <string name="Name">SaveService</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/SaveService.luau
@@ -9269,7 +10672,7 @@ return SaveService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN33">
+<Item class="ModuleScript" referent="GN37">
 <Properties>
 <string name="Name">SellService</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/SellService.luau
@@ -9435,7 +10838,7 @@ return SellService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN34">
+<Item class="ModuleScript" referent="GN38">
 <Properties>
 <string name="Name">ShopService</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/ShopService.luau
@@ -9561,7 +10964,7 @@ return ShopService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN35">
+<Item class="ModuleScript" referent="GN39">
 <Properties>
 <string name="Name">TimeService</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/TimeService.luau
@@ -9882,7 +11285,7 @@ return TimeService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN36">
+<Item class="ModuleScript" referent="GN40">
 <Properties>
 <string name="Name">TraceService</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/TraceService.luau
@@ -10120,7 +11523,7 @@ return TraceService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN37">
+<Item class="ModuleScript" referent="GN41">
 <Properties>
 <string name="Name">TrafficService</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/TrafficService.luau
@@ -10743,7 +12146,7 @@ return TrafficService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN38">
+<Item class="ModuleScript" referent="GN42">
 <Properties>
 <string name="Name">VehicleChassis</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/VehicleChassis.luau
@@ -11127,6 +12530,27 @@ function VehicleChassis.Build(classId: string, cframe: CFrame, colour: Color3?):
 		prompt.Parent = seat
 	end
 
+	--== Schwerpunkt tief ansetzen =========================================
+	-- Ohne das kippt in Roblox praktisch jedes Fahrzeug in der ersten Kurve
+	-- um. Der Schwerpunkt einer Baugruppe laesst sich nicht direkt setzen -
+	-- also haengt ein schweres, unsichtbares Gewicht tief unter dem Chassis.
+	-- Das ist der billigste und stabilste Weg, und er wirkt sofort.
+	local ballast = Instance.new("Part")
+	ballast.Name = "Ballast"
+	ballast.Size = Vector3.new(class.BodySize.X * 0.5, 0.5, class.BodySize.Z * 0.5)
+	ballast.Transparency = 1
+	ballast.CanCollide = false
+	ballast.CanQuery = false
+	ballast.CanTouch = false
+	ballast.CustomPhysicalProperties = physical(Config.Vehicle.BallastDensity, 0.3, 0)
+	ballast.CFrame = chassis.CFrame * CFrame.new(0, -Config.Vehicle.BallastDrop, 0)
+	ballast.Parent = model
+
+	local ballastWeld = Instance.new("WeldConstraint")
+	ballastWeld.Part0 = chassis
+	ballastWeld.Part1 = ballast
+	ballastWeld.Parent = chassis
+
 	-- Der Sitz haengt fest an der Kollisionsbox. Hier ist eine WeldConstraint
 	-- richtig: beide Teile sind NICHT anchored, es ist echte Physik.
 	local seatWeld = Instance.new("WeldConstraint")
@@ -11300,7 +12724,7 @@ return VehicleChassis
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="GN39">
+<Item class="ModuleScript" referent="GN43">
 <Properties>
 <string name="Name">VehicleService</string>
 <ProtectedString name="Source">-- ServerScriptService/Systems/VehicleService.luau
@@ -11327,6 +12751,7 @@ local Types = require(ReplicatedStorage.Shared.Types)
 local Vehicles = require(ReplicatedStorage.Shared.Vehicles)
 
 local EconomyService = require(script.Parent.EconomyService)
+local RoadNetwork = require(script.Parent.RoadNetwork)
 local RateLimiter = require(script.Parent.RateLimiter)
 local SaveService = require(script.Parent.SaveService)
 local TimeService = require(script.Parent.TimeService)
@@ -11412,6 +12837,9 @@ function VehicleService.Sync(player: Player)
 	Remotes.GarageSync:FireClient(player, {
 		Owned = owned,
 		Spawned = if current and current.Parent then current:GetAttribute("ClassId") else "",
+		-- Damit die Karte einen orangenen Marker setzen kann: wo steht mein Auto?
+		SpawnedAt = if current and current.Parent then current:GetPivot().Position else nil,
+		CallFee = Config.Vehicle.CallFee,
 		MaxSpawned = Config.Vehicle.MaxSpawned,
 		DealerOpen = dealerOpen(),
 		Colours = Config.Dealer.ColourOptions,
@@ -11598,6 +13026,57 @@ local function repaint(player: Player, classId: string, colour: string): { [stri
 end
 
 --==========================================================================
+-- Fahrzeug rufen
+--
+-- "Wo ist mein Auto" ist der haeufigste Grund, ein Open-World-Spiel zu
+-- schliessen. Der Marker auf der Karte loest das halb; das hier loest den
+-- Rest - gegen Gebuehr, mit Cooldown und nur an einer Strasse, damit es
+-- kein Teleport wird.
+--==========================================================================
+
+local lastCall: { [Player]: number } = {}
+
+local function callVehicle(player: Player): { [string]: any }
+	local model = spawned[player]
+	if not model or not model.Parent then
+		return result(false, "NO_VEHICLE")
+	end
+
+	local now = os.time()
+	local since = now - (lastCall[player] or 0)
+	if since &lt; Config.Vehicle.CallCooldown then
+		return result(false, "COOLDOWN", { Seconds = Config.Vehicle.CallCooldown - since })
+	end
+
+	local position = Geometry.AlivePosition(player)
+	if not position then
+		return result(false, "NO_CHARACTER")
+	end
+
+	-- Nur an einer Strasse. Sonst steht das Auto im Treppenhaus.
+	local node = RoadNetwork.NearestNode(position)
+	if not node or (node.Position - position).Magnitude &gt; Config.Vehicle.CallRoadRange then
+		return result(false, "NO_ROAD")
+	end
+
+	if not EconomyService.SpendBanked(player, Config.Vehicle.CallFee) then
+		return result(false, "TOO_EXPENSIVE", { Cost = Config.Vehicle.CallFee })
+	end
+
+	lastCall[player] = now
+
+	-- Neben den Spieler stellen, in Richtung Strasse. PivotTo, damit das
+	-- ganze Modell mitkommt.
+	local toRoad = node.Position - position
+	local facing = if toRoad.Magnitude &gt; 1 then toRoad.Unit else Vector3.new(0, 0, 1)
+	local drop = position + facing * Config.Vehicle.CallDropDistance
+	model:PivotTo(CFrame.lookAt(Vector3.new(drop.X, position.Y + 3, drop.Z), Vector3.new(drop.X, position.Y + 3, drop.Z) + facing))
+
+	VehicleService.Sync(player)
+	return result(true, "OK", { Cost = Config.Vehicle.CallFee })
+end
+
+--==========================================================================
 -- Remote
 --==========================================================================
 
@@ -11617,6 +13096,10 @@ local function onAction(player: Player, payload: any): { [string]: any }
 		VehicleService.Despawn(player)
 		VehicleService.Sync(player)
 		return result(true, "OK")
+	end
+
+	if action == "CALL" then
+		return callVehicle(player)
 	end
 
 	if typeof(classId) ~= "string" or not Vehicles.Exists(classId) then
@@ -11681,11 +13164,11 @@ return VehicleService
 </Properties>
 </Item>
 </Item>
-<Item class="Folder" referent="GN47">
+<Item class="Folder" referent="GN53">
 <Properties>
 <string name="Name">World</string>
 </Properties>
-<Item class="Script" referent="GN41">
+<Item class="Script" referent="GN45">
 <Properties>
 <string name="Name">BankInterior</string>
 <ProtectedString name="Source">-- ServerScriptService/World/BankInterior.server.luau
@@ -11983,7 +13466,7 @@ print("[GHOSTNET] Bank-Innenraum gebaut: Halle, Sicherheitsbereich, Tresorraum, 
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="Script" referent="GN42">
+<Item class="Script" referent="GN46">
 <Properties>
 <string name="Name">City</string>
 <ProtectedString name="Source">-- ServerScriptService/World/City.server.luau
@@ -12365,7 +13848,7 @@ print(
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="Script" referent="GN43">
+<Item class="Script" referent="GN47">
 <Properties>
 <string name="Name">Dealership</string>
 <ProtectedString name="Source">-- ServerScriptService/World/Dealership.server.luau
@@ -12597,7 +14080,478 @@ print("[GHOSTNET] Autohaus, Garage und Bezirks-Wegpunkte gebaut.")
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="Script" referent="GN44">
+<Item class="Script" referent="GN48">
+<Properties>
+<string name="Name">PoliceStations</string>
+<ProtectedString name="Source">-- ServerScriptService/World/PoliceStations.server.luau
+--!strict
+-- GHOSTNET :: Zwei Polizeiwachen als echte Orte.
+--
+-- WARUM DAS NOETIG IST
+--   Eine Festnahme ohne Ort ist nur ein Bildschirmtext. Erst wenn es einen
+--   Platz gibt, an dem Festgenommene landen und von dem Streifenwagen
+--   losfahren, wird die Polizei Teil der Stadt statt eine Zahl im HUD.
+--
+-- WAS HIER STEHT
+--   Gebaeudehuelle, Zellenbereich hinter Gittern und zwei markierte Punkte:
+--   die Zelle (wo man aufwacht) und der Ausgang (wo man entlassen wird).
+--   Beides als Attribut am Modell, damit ArrestService keine Koordinaten
+--   kennen muss.
+--
+--   Ausnahme von Regel 7 wie bei der Beschilderung: das sind Waende und
+--   Marker, keine Modelle, die jemand haette bauen muessen. Sobald es ein
+--   Wachen-Modell in Assets/Buildings gibt, ersetzt es die Huelle - Tag und
+--   Attribute bleiben gleich.
+
+local CollectionService = game:GetService("CollectionService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Config = require(ReplicatedStorage.Shared.Config)
+
+local FOLDER_NAME = "GhostNet_Polizei"
+
+if workspace:FindFirstChild(FOLDER_NAME) then
+	return
+end
+
+local folder = Instance.new("Folder")
+folder.Name = FOLDER_NAME
+folder.Parent = workspace
+
+local function part(parent: Instance, name: string, size: Vector3, cframe: CFrame, colour: Color3, material: Enum.Material): Part
+	local p = Instance.new("Part")
+	p.Name = name
+	p.Size = size
+	p.CFrame = cframe
+	p.Color = colour
+	p.Material = material
+	p.Anchored = true
+	p.CanCollide = true
+	p.CanQuery = false
+	p.CanTouch = false
+	p.TopSurface = Enum.SurfaceType.Smooth
+	p.BottomSurface = Enum.SurfaceType.Smooth
+	p.Parent = parent
+	return p
+end
+
+local function sign(target: BasePart, text: string)
+	for _, face in { Enum.NormalId.Front, Enum.NormalId.Back } do
+		local surface = Instance.new("SurfaceGui")
+		surface.Face = face
+		surface.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+		surface.PixelsPerStud = 50
+		surface.MaxDistance = Config.Signage.MaxDistance
+		surface.LightInfluence = 0
+
+		local label = Instance.new("TextLabel")
+		label.BackgroundTransparency = 1
+		label.Size = UDim2.fromScale(1, 1)
+		label.Font = Enum.Font.Code
+		label.Text = text
+		label.TextColor3 = Config.Theme.Blue
+		label.TextScaled = true
+		label.Parent = surface
+
+		surface.Parent = target
+	end
+end
+
+--==========================================================================
+
+local STATIONS = {
+	{ Id = "NORD", Name = "Revier Nord", At = Vector3.new(-140, 0, -180) },
+	{ Id = "SUED", Name = "Revier Sued", At = Vector3.new(170, 0, 190) },
+}
+
+for _, station in STATIONS do
+	local model = Instance.new("Model")
+	model.Name = ("Revier_%s"):format(station.Id)
+
+	local base = station.At
+
+	local floor = part(
+		model,
+		"Boden",
+		Vector3.new(40, 1, 30),
+		CFrame.new(base + Vector3.new(0, 0.5, 0)),
+		Config.Palette.InnenBoden,
+		Enum.Material.Concrete
+	)
+	model.PrimaryPart = floor
+
+	part(
+		model,
+		"Rueckwand",
+		Vector3.new(40, 16, 1),
+		CFrame.new(base + Vector3.new(0, 8, -15)),
+		Config.Palette.BetonHell,
+		Enum.Material.Concrete
+	)
+	for _, side in { -1, 1 } do
+		part(
+			model,
+			"Seitenwand",
+			Vector3.new(1, 16, 30),
+			CFrame.new(base + Vector3.new(side * 20, 8, 0)),
+			Config.Palette.BetonHell,
+			Enum.Material.Concrete
+		)
+	end
+	part(
+		model,
+		"Dach",
+		Vector3.new(41, 1, 31),
+		CFrame.new(base + Vector3.new(0, 16, 0)),
+		Config.Palette.Dach,
+		Enum.Material.Metal
+	)
+
+	-- Schild ueber dem Eingang.
+	local board = part(
+		model,
+		"Schild",
+		Vector3.new(24, Config.Signage.SignHeight, Config.Signage.SignDepth),
+		CFrame.new(base + Vector3.new(0, 18, 15)),
+		Config.Palette.MetallDunkel,
+		Enum.Material.Metal
+	)
+	board.CanCollide = false
+	sign(board, ("POLIZEI // %s"):format(station.Name:upper()))
+
+	-- Blaue Leuchtleiste. Neonflaeche statt Lichtquelle: sichtbar und gratis.
+	local strip = part(
+		model,
+		"Leuchtband",
+		Vector3.new(40, 0.5, 1.2),
+		CFrame.new(base + Vector3.new(0, 15.4, 14.6)),
+		Config.Theme.Blue,
+		Enum.Material.Neon
+	)
+	strip.CanCollide = false
+
+	--== Zellenbereich =====================================================
+	-- Hinten links, mit Gitterstaeben davor. Wer drin steht, sieht die
+	-- Wache - das ist der Unterschied zu einem schwarzen Bildschirm.
+	local cellCentre = base + Vector3.new(-13, 4, -9)
+
+	part(
+		model,
+		"Zellenwand",
+		Vector3.new(1, 12, 12),
+		CFrame.new(base + Vector3.new(-6, 6, -9)),
+		Config.Palette.BetonDunkel,
+		Enum.Material.Concrete
+	)
+	for index = 0, 6 do
+		local bar = part(
+			model,
+			"Gitter",
+			Vector3.new(0.4, 11, 0.4),
+			CFrame.new(base + Vector3.new(-20 + index * 2.3, 6, -3)),
+			Config.Palette.Metall,
+			Enum.Material.Metal
+		)
+		bar.CanCollide = true
+	end
+
+	--== Punkte, die der ArrestService braucht =============================
+	model:SetAttribute("StationId", station.Id)
+	model:SetAttribute("DisplayName", station.Name)
+	model:SetAttribute("CellPosition", cellCentre)
+	model:SetAttribute("ExitPosition", base + Vector3.new(0, 4, 22))
+
+	model.Parent = folder
+	CollectionService:AddTag(model, Config.PoliceStationTag)
+end
+
+print(("[GHOSTNET] %d Polizeiwachen gebaut."):format(#STATIONS))
+</ProtectedString>
+</Properties>
+</Item>
+<Item class="Script" referent="GN49">
+<Properties>
+<string name="Name">Signage</string>
+<ProtectedString name="Source">-- ServerScriptService/World/Signage.server.luau
+--!strict
+-- GHOSTNET :: Die Welt beschriften.
+--
+-- WARUM DAS NOETIG IST
+--   Eine Karte hilft nur dem, der hinsieht. Ein neuer Spieler sieht nicht
+--   hin - er laeuft los. Also muss die Stadt selbst sagen, was wo ist:
+--   grosse Schrift an den Fassaden, Strassenschilder an den Kreuzungen,
+--   Lichtsaeulen ueber dem, was gerade zaehlt.
+--
+-- WAS HIER ERZEUGT WIRD
+--   Nur Schilder und Beschriftung - flache Bretter mit SurfaceGui und
+--   unsichtbare Kartenpunkte. Das faellt unter die Ausnahme in Regel 7:
+--   ein Schild ist Text auf einer Flaeche, kein Modell, das jemand haette
+--   bauen muessen. Gebaeude, Fahrzeuge und Menschen kommen weiter aus
+--   ReplicatedStorage/Assets.
+--
+-- KARTENPUNKTE
+--   Jedes beschriftete Gebaeude bekommt zusaetzlich den Tag GhostNetPoi mit
+--   dem Attribut MapKind. Damit taucht es auf Karte und Kompass auf, ohne
+--   dass MapService irgendein Gebaeude kennen muesste.
+
+local CollectionService = game:GetService("CollectionService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local ServerScriptService = game:GetService("ServerScriptService")
+
+local Config = require(ReplicatedStorage.Shared.Config)
+
+local RoadNetwork = require(ServerScriptService:WaitForChild("Systems"):WaitForChild("RoadNetwork"))
+
+local FOLDER_NAME = "GhostNet_Signage"
+
+if workspace:FindFirstChild(FOLDER_NAME) then
+	return
+end
+
+RoadNetwork.Build()
+
+local folder = Instance.new("Folder")
+folder.Name = FOLDER_NAME
+folder.Parent = workspace
+
+local S = Config.Signage
+local C = Config.City
+
+--==========================================================================
+-- Bausteine
+--==========================================================================
+
+-- Ein Brett mit Leuchtschrift auf beiden Seiten. Von weitem lesbar, weil die
+-- Schrift auf der FLAECHE sitzt und nicht als Billboard mitskaliert.
+local function signBoard(name: string, text: string, colour: Color3, cframe: CFrame, width: number)
+	local board = Instance.new("Part")
+	board.Name = name
+	board.Size = Vector3.new(width, S.SignHeight, S.SignDepth)
+	board.CFrame = cframe
+	board.Color = Config.Palette.MetallDunkel
+	board.Material = Enum.Material.Metal
+	board.Anchored = true
+	board.CanCollide = false
+	board.CanQuery = false
+	board.CanTouch = false
+	board.CastShadow = false
+	board.Parent = folder
+
+	for _, face in { Enum.NormalId.Front, Enum.NormalId.Back } do
+		local surface = Instance.new("SurfaceGui")
+		surface.Name = "Schrift"
+		surface.Face = face
+		surface.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+		surface.PixelsPerStud = 50
+		surface.MaxDistance = S.MaxDistance
+		surface.LightInfluence = 0
+
+		local label = Instance.new("TextLabel")
+		label.BackgroundTransparency = 1
+		label.Size = UDim2.fromScale(1, 1)
+		label.Font = Enum.Font.Code
+		label.Text = text
+		label.TextColor3 = colour
+		label.TextScaled = true
+		label.Parent = surface
+
+		surface.Parent = board
+	end
+
+	return board
+end
+
+-- Unsichtbarer Kartenpunkt. Traegt nur Tag und Attribute - kein Aussehen.
+local function mapPoint(id: string, kind: string, displayName: string, position: Vector3)
+	local marker = Instance.new("Part")
+	marker.Name = "POI_" .. id
+	marker.Size = Vector3.new(2, 2, 2)
+	marker.CFrame = CFrame.new(position)
+	marker.Transparency = 1
+	marker.Anchored = true
+	marker.CanCollide = false
+	marker.CanQuery = false
+	marker.CanTouch = false
+	marker:SetAttribute("MapKind", kind)
+	marker:SetAttribute("DisplayName", displayName)
+	marker.Parent = folder
+	CollectionService:AddTag(marker, Config.PoiTag)
+	return marker
+end
+
+--==========================================================================
+-- 1) Die wichtigen Gebaeude beschriften
+--
+-- Positionen stammen aus StoryWorld und Dealership. Sie stehen hier bewusst
+-- als Konstanten und nicht als Suche im Workspace: eine Suche waere von der
+-- Ladereihenfolge der World-Skripte abhaengig und damit fragil.
+--==========================================================================
+
+type Place = {
+	Id: string,
+	Kind: string,
+	Text: string,
+	Name: string,
+	Colour: Color3,
+	At: Vector3,
+	Facing: number, -- Grad
+	Width: number,
+}
+
+local PLACES: { Place } = {
+	{
+		Id = "BANK",
+		Kind = "BANK",
+		Text = "VANTORRA BANK",
+		Name = "Vantorra Bank",
+		Colour = Config.Theme.Magenta,
+		At = Vector3.new(78, 22, -70),
+		Facing = 0,
+		Width = 30,
+	},
+	{
+		Id = "DEALER",
+		Kind = "DEALER",
+		Text = "AUTOHAUS MERIDIAN",
+		Name = "Autohaus Meridian",
+		Colour = Config.Theme.Amber,
+		At = Vector3.new(-96, 21, 20),
+		Facing = 0,
+		Width = 34,
+	},
+	{
+		Id = "HOME",
+		Kind = "APARTMENT",
+		Text = "HAUS 14",
+		Name = "Dein Apartment",
+		Colour = Config.Theme.Cyan,
+		At = Vector3.new(46, 13, 31),
+		Facing = 0,
+		Width = 14,
+	},
+	{
+		Id = "STORE",
+		Kind = "TARGET",
+		Text = "PFANDLEIHE",
+		Name = "Pfandleihe Kreuzung Nord",
+		Colour = Config.Theme.Amber,
+		At = Vector3.new(-62, 14, -63),
+		Facing = 0,
+		Width = 18,
+	},
+	{
+		Id = "GARAGE",
+		Kind = "GARAGE",
+		Text = "GARAGE",
+		Name = "Deine Garage",
+		Colour = Config.Theme.Cyan,
+		At = Vector3.new(46, 14, 55),
+		Facing = 0,
+		Width = 16,
+	},
+}
+
+for _, place in PLACES do
+	signBoard(
+		place.Id .. "_Schild",
+		place.Text,
+		place.Colour,
+		CFrame.new(place.At) * CFrame.Angles(0, math.rad(place.Facing), 0),
+		place.Width
+	)
+	mapPoint(place.Id, place.Kind, place.Name, place.At)
+end
+
+--==========================================================================
+-- 2) Das eigene Apartment kennzeichnen
+--
+-- Eine Hausnummer allein sieht man nachts nicht und tagsueber uebersieht man
+-- sie. Ein farbiges Licht darueber findet man auch aus dem fahrenden Auto.
+--==========================================================================
+
+do
+	local home = Vector3.new(46, 13, 31)
+
+	local lamp = Instance.new("Part")
+	lamp.Name = "ApartmentLicht"
+	lamp.Size = Vector3.new(2.4, 0.6, 2.4)
+	lamp.CFrame = CFrame.new(home + Vector3.new(0, 2.2, 0))
+	lamp.Color = Config.Theme.Cyan
+	lamp.Material = Enum.Material.Neon
+	lamp.Anchored = true
+	lamp.CanCollide = false
+	lamp.CanQuery = false
+	lamp.CanTouch = false
+	lamp.Parent = folder
+
+	local light = Instance.new("PointLight")
+	light.Color = Config.Theme.Cyan
+	light.Brightness = 3
+	light.Range = 22
+	light.Parent = lamp
+end
+
+--==========================================================================
+-- 3) Strassenschilder an den Kreuzungen
+--
+-- Die Namen entstehen aus zwei kurzen Listen: Nord-Sued mal Ost-West. Zwei
+-- Dutzend Woerter ergeben ein ganzes Strassennetz mit echten Namen, und
+-- niemand muss hundert Schilder von Hand beschriften.
+--==========================================================================
+
+local function streetName(list: { string }, index: number): string
+	if #list == 0 then
+		return "Strasse"
+	end
+	return list[((index - 1) % #list) + 1]
+end
+
+local half = math.floor(C.Grid / 2)
+local signs = 0
+
+for _, node in RoadNetwork.All() do
+	-- Nur Kreuzungen mit mindestens drei Armen beschildern. An einer geraden
+	-- Strecke braucht kein Mensch ein Schild.
+	if #node.Links &lt; 3 then
+		continue
+	end
+
+	local northSouth = streetName(S.StreetsNorthSouth, node.GridX + half + 1)
+	local eastWest = streetName(S.StreetsEastWest, node.GridZ + half + 1)
+
+	local post = Instance.new("Part")
+	post.Name = "Schilderpfosten"
+	post.Size = Vector3.new(0.4, S.StreetSignHeight, 0.4)
+	post.CFrame = CFrame.new(node.Position + Vector3.new(C.RoadWidth * 0.5 + 3, S.StreetSignHeight * 0.5, C.RoadWidth * 0.5 + 3))
+	post.Color = Config.Palette.MetallDunkel
+	post.Material = Enum.Material.Metal
+	post.Anchored = true
+	post.CanCollide = false
+	post.CanQuery = false
+	post.CanTouch = false
+	post.CastShadow = false
+	post.Parent = folder
+
+	for index, entry in { { northSouth, 90 }, { eastWest, 0 } } do
+		local text = entry[1] :: string
+		local yaw = entry[2] :: number
+		signBoard(
+			"Strassenschild",
+			text,
+			Config.Theme.Text,
+			CFrame.new(post.Position + Vector3.new(0, S.StreetSignHeight * 0.5 - index * 2.2, 0))
+				* CFrame.Angles(0, math.rad(yaw), 0),
+			S.StreetSignSize.X
+		)
+		signs += 1
+	end
+end
+
+print(("[GHOSTNET] Beschilderung gebaut: %d Gebaeudeschilder, %d Strassenschilder."):format(#PLACES, signs))
+</ProtectedString>
+</Properties>
+</Item>
+<Item class="Script" referent="GN50">
 <Properties>
 <string name="Name">StoryWorld</string>
 <ProtectedString name="Source">-- ServerScriptService/World/StoryWorld.server.luau
@@ -13147,7 +15101,7 @@ print("[GHOSTNET] Story-Welt gebaut: Uebungsterminal, Laden, Apartment, Nakamura
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="Script" referent="GN45">
+<Item class="Script" referent="GN51">
 <Properties>
 <string name="Name">TestTargets</string>
 <ProtectedString name="Source">-- ServerScriptService/World/TestTargets.server.luau
@@ -13453,7 +15407,7 @@ print("[GHOSTNET] Testwelt gebaut: Kamera (D2), Sicherheitstuer (D4), Geldautoma
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="Script" referent="GN46">
+<Item class="Script" referent="GN52">
 <Properties>
 <string name="Name">TestVehicles</string>
 <ProtectedString name="Source">-- ServerScriptService/World/TestVehicles.server.luau
@@ -13546,19 +15500,19 @@ print(("[GHOSTNET] %d Testfahrzeuge gebaut."):format(built))
 </Item>
 </Item>
 </Item>
-<Item class="StarterPlayer" referent="GN78">
+<Item class="StarterPlayer" referent="GN88">
 <Properties>
 <string name="Name">StarterPlayer</string>
 </Properties>
-<Item class="StarterPlayerScripts" referent="GN79">
+<Item class="StarterPlayerScripts" referent="GN89">
 <Properties>
 <string name="Name">StarterPlayerScripts</string>
 </Properties>
-<Item class="Folder" referent="GN61">
+<Item class="Folder" referent="GN70">
 <Properties>
 <string name="Name">UI</string>
 </Properties>
-<Item class="LocalScript" referent="GN48">
+<Item class="LocalScript" referent="GN54">
 <Properties>
 <string name="Name">AdminUI</string>
 <ProtectedString name="Source">-- StarterPlayer/StarterPlayerScripts/UI/AdminUI.client.luau
@@ -13921,7 +15875,232 @@ end)
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="LocalScript" referent="GN49">
+<Item class="LocalScript" referent="GN55">
+<Properties>
+<string name="Name">ArrestUI</string>
+<ProtectedString name="Source">-- StarterPlayerScripts/UI/ArrestUI.client.luau
+--!strict
+-- GHOSTNET :: Festnahme, Zelle und der Entkommen-Balken.
+--
+-- FAIR BLEIBEN IST EIN ANZEIGEPROBLEM
+--   Eine Festnahme fuehlt sich nur dann gerecht an, wenn der Spieler drei
+--   Dinge sieht:
+--     1. dass ihn jemand gleich greift  ("ZUGRIFF" - die Vorwarnung)
+--     2. wie kurz er vor dem Entkommen steht (der Balken)
+--     3. wie lange die Zelle noch dauert   (der Countdown)
+--   Ohne das ist es Willkuer, und Willkuer laesst Leute aufhoeren.
+--
+-- ENTSCHIEDEN WIRD NICHTS HIER
+--   Der Server nimmt fest, rechnet die Kosten und setzt den Spieler um.
+--   Dieses Skript zeigt an, was passiert ist.
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+
+local Config = require(ReplicatedStorage.Shared.Config)
+local Remotes = require(ReplicatedStorage.Shared.Remotes)
+local UITheme = require(ReplicatedStorage.Shared.UITheme)
+
+local C = UITheme.Color
+local player = Players.LocalPlayer
+
+local gui = UITheme.Screen("GhostNetArrest", 20)
+gui.Parent = player:WaitForChild("PlayerGui")
+
+--==========================================================================
+-- Entkommen-Balken
+--==========================================================================
+
+local escapePanel = UITheme.Frame({
+	Name = "Entkommen",
+	BackgroundColor3 = C.Panel,
+	BackgroundTransparency = 0.1,
+	AnchorPoint = Vector2.new(0.5, 0),
+	Position = UDim2.new(0.5, 0, 0, 210),
+	Size = UDim2.fromOffset(260, 44),
+	Visible = false,
+	ZIndex = 4,
+})
+UITheme.Corner(escapePanel, 4)
+UITheme.Stroke(escapePanel, C.Line, 1)
+escapePanel.Parent = gui
+
+local escapeLabel = UITheme.Label({
+	Name = "Text",
+	Text = "ENTKOMMEN",
+	TextColor3 = C.Amber,
+	TextSize = 12,
+	TextXAlignment = Enum.TextXAlignment.Center,
+	Position = UDim2.fromOffset(0, 5),
+	Size = UDim2.new(1, 0, 0, 14),
+	ZIndex = 5,
+})
+escapeLabel.Parent = escapePanel
+
+local escapeTrack = UITheme.Frame({
+	Name = "Balken",
+	BackgroundColor3 = C.PanelLight,
+	AnchorPoint = Vector2.new(0.5, 0),
+	Position = UDim2.new(0.5, 0, 0, 24),
+	Size = UDim2.fromOffset(232, 10),
+	ZIndex = 5,
+})
+UITheme.Corner(escapeTrack, 5)
+escapeTrack.Parent = escapePanel
+
+local escapeFill = UITheme.Frame({
+	Name = "Fuellung",
+	BackgroundColor3 = C.Green,
+	Size = UDim2.fromScale(0, 1),
+	ZIndex = 6,
+})
+UITheme.Corner(escapeFill, 5)
+escapeFill.Parent = escapeTrack
+
+--==========================================================================
+-- Vorwarnung und Festnahme
+--==========================================================================
+
+local overlay = UITheme.Frame({
+	Name = "Ueberlagerung",
+	BackgroundColor3 = C.Background,
+	BackgroundTransparency = 1,
+	Size = UDim2.fromScale(1, 1),
+	Visible = false,
+	ZIndex = 60,
+})
+overlay.Parent = gui
+
+local bigText = UITheme.Label({
+	Name = "Meldung",
+	Text = "",
+	TextColor3 = C.Magenta,
+	TextSize = 44,
+	TextXAlignment = Enum.TextXAlignment.Center,
+	AnchorPoint = Vector2.new(0.5, 0.5),
+	Position = UDim2.fromScale(0.5, 0.44),
+	Size = UDim2.new(1, 0, 0, 56),
+	ZIndex = 61,
+})
+bigText.Parent = overlay
+
+local subText = UITheme.Label({
+	Name = "Untertitel",
+	Text = "",
+	TextColor3 = C.Text,
+	TextSize = 16,
+	TextXAlignment = Enum.TextXAlignment.Center,
+	AnchorPoint = Vector2.new(0.5, 0.5),
+	Position = UDim2.fromScale(0.5, 0.54),
+	Size = UDim2.new(1, 0, 0, 24),
+	ZIndex = 61,
+})
+subText.Parent = overlay
+
+local warnLabel = UITheme.Label({
+	Name = "Zugriff",
+	Text = "ZUGRIFF",
+	TextColor3 = C.Magenta,
+	TextSize = 26,
+	TextXAlignment = Enum.TextXAlignment.Center,
+	AnchorPoint = Vector2.new(0.5, 0.5),
+	Position = UDim2.fromScale(0.5, 0.72),
+	Size = UDim2.new(1, 0, 0, 30),
+	Visible = false,
+	ZIndex = 62,
+})
+warnLabel.Parent = gui
+
+--==========================================================================
+-- Zustand
+--==========================================================================
+
+local jailUntil = 0
+local jailStation = ""
+local warnUntil = 0
+
+Remotes.PursuitSync.OnClientEvent:Connect(function(payload)
+	if typeof(payload) ~= "table" then
+		return
+	end
+	local level = if typeof(payload.Level) == "number" then payload.Level else 0
+	local escaping = payload.Escaping == true
+	local progress = if typeof(payload.EscapeProgress) == "number" then payload.EscapeProgress else 0
+
+	escapePanel.Visible = level &gt; 0
+	if level &gt; 0 then
+		escapeFill.Size = UDim2.fromScale(math.clamp(progress, 0, 1), 1)
+		if escaping then
+			escapeLabel.Text = ("ENTKOMMEN  %d%%"):format(math.floor(progress * 100))
+			escapeLabel.TextColor3 = C.Green
+			escapeFill.BackgroundColor3 = C.Green
+		else
+			escapeLabel.Text = if payload.OnFoot == true then "SIE SIND AUSGESTIEGEN" else "SIE SEHEN DICH"
+			escapeLabel.TextColor3 = C.Magenta
+			escapeFill.BackgroundColor3 = C.Magenta
+		end
+	end
+end)
+
+Remotes.ArrestSync.OnClientEvent:Connect(function(payload)
+	if typeof(payload) ~= "table" then
+		return
+	end
+	local state = payload.State
+	local seconds = if typeof(payload.Seconds) == "number" then payload.Seconds else 0
+	jailStation = if typeof(payload.Station) == "string" then payload.Station else ""
+
+	if state == "WARNING" then
+		-- Nie festnehmen ohne Vorwarnung: erst der Ruf, dann der Zugriff.
+		warnUntil = os.clock() + Config.Pursuit.WarnSeconds + 0.5
+		return
+	end
+
+	if state == "CAUGHT" then
+		overlay.Visible = true
+		overlay.BackgroundTransparency = 0.25
+		bigText.Text = "FESTGENOMMEN"
+		subText.Text = "Alles Unverkaufte ist weg."
+		jailUntil = os.time() + seconds
+		return
+	end
+
+	if state == "JAILED" then
+		overlay.Visible = true
+		overlay.BackgroundTransparency = 0.55
+		bigText.Text = "ZELLE"
+		jailUntil = os.time() + seconds
+		return
+	end
+
+	if state == "FREE" then
+		overlay.Visible = false
+		jailUntil = 0
+		bigText.Text = ""
+		subText.Text = ""
+	end
+end)
+
+--==========================================================================
+
+RunService.RenderStepped:Connect(function()
+	warnLabel.Visible = os.clock() &lt; warnUntil
+
+	if jailUntil &gt; 0 then
+		local left = jailUntil - os.time()
+		if left &lt;= 0 then
+			overlay.Visible = false
+			jailUntil = 0
+		elseif bigText.Text == "ZELLE" then
+			subText.Text = ("%s  //  Entlassung in %d s"):format(jailStation, left)
+		end
+	end
+end)
+</ProtectedString>
+</Properties>
+</Item>
+<Item class="LocalScript" referent="GN56">
 <Properties>
 <string name="Name">CityUI</string>
 <ProtectedString name="Source">-- StarterPlayer/StarterPlayerScripts/UI/CityUI.client.luau
@@ -14535,7 +16714,304 @@ refreshEndgame()
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="LocalScript" referent="GN50">
+<Item class="LocalScript" referent="GN57">
+<Properties>
+<string name="Name">CompassUI</string>
+<ProtectedString name="Source">-- StarterPlayerScripts/UI/CompassUI.client.luau
+--!strict
+-- GHOSTNET :: Die Kompassleiste oben.
+--
+-- WOFUER
+--   Die Minikarte sagt, WO etwas liegt. Die Kompassleiste sagt, ob man
+--   gerade in die richtige Richtung schaut - und wie weit es noch ist.
+--   Zusammen braucht ein neuer Spieler niemanden mehr zu fragen.
+--
+-- WAS DRAUFSTEHT
+--   Himmelsrichtungen als Raster, darauf jeder bekannte Ort, der im
+--   Blickfeld liegt, mit Entfernung in Metern. Das aktuelle Missionsziel
+--   ist hervorgehoben und laeuft nie aus dem Bild - es klebt am Rand, wenn
+--   es hinter einem liegt.
+--
+-- LEISTUNG
+--   Feste Anzahl Marker, die recycelt werden. Es wird nie eine Instanz
+--   erzeugt oder geloescht, waehrend man laeuft - nur Position, Text und
+--   Sichtbarkeit geaendert.
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+
+local Config = require(ReplicatedStorage.Shared.Config)
+local Icons = require(ReplicatedStorage.Shared.Icons)
+local Remotes = require(ReplicatedStorage.Shared.Remotes)
+local UITheme = require(ReplicatedStorage.Shared.UITheme)
+
+local M = Config.Map
+local player = Players.LocalPlayer
+
+local kindById: { [string]: any } = {}
+for _, kind in M.Kinds do
+	kindById[kind.Id] = kind
+end
+
+--==========================================================================
+-- Aufbau
+--==========================================================================
+
+local gui = UITheme.Screen("GhostNetCompass", 5)
+gui.Parent = player:WaitForChild("PlayerGui")
+
+local bar = UITheme.Frame({
+	Name = "Kompass",
+	BackgroundColor3 = UITheme.Color.Background,
+	BackgroundTransparency = 0.35,
+	AnchorPoint = Vector2.new(0.5, 0),
+	Position = UDim2.new(0.5, 0, 0, 8),
+	Size = UDim2.new(M.CompassWidth, 0, 0, M.CompassHeight),
+	ClipsDescendants = true,
+	ZIndex = 3,
+})
+UITheme.Corner(bar, 4)
+UITheme.Stroke(bar, UITheme.Color.Line, 1)
+bar.Parent = gui
+
+-- Mittelstrich: die Blickrichtung.
+local centreTick = UITheme.Frame({
+	Name = "Mitte",
+	BackgroundColor3 = UITheme.Color.Cyan,
+	AnchorPoint = Vector2.new(0.5, 0),
+	Position = UDim2.fromScale(0.5, 0),
+	Size = UDim2.new(0, 2, 1, 0),
+	ZIndex = 8,
+})
+centreTick.Parent = bar
+
+--== Himmelsrichtungen =====================================================
+
+local CARDINALS = {
+	{ Text = "N", Bearing = 0 },
+	{ Text = "NO", Bearing = 45 },
+	{ Text = "O", Bearing = 90 },
+	{ Text = "SO", Bearing = 135 },
+	{ Text = "S", Bearing = 180 },
+	{ Text = "SW", Bearing = 225 },
+	{ Text = "W", Bearing = 270 },
+	{ Text = "NW", Bearing = 315 },
+}
+
+local cardinalLabels: { TextLabel } = {}
+for _, entry in CARDINALS do
+	local label = UITheme.Label({
+		Name = entry.Text,
+		Text = entry.Text,
+		TextColor3 = UITheme.Color.TextDim,
+		TextSize = 12,
+		TextXAlignment = Enum.TextXAlignment.Center,
+		AnchorPoint = Vector2.new(0.5, 0),
+		Size = UDim2.fromOffset(28, M.CompassHeight),
+		ZIndex = 4,
+	})
+	label.Parent = bar
+	table.insert(cardinalLabels, label)
+end
+
+--== Marker-Pool ===========================================================
+
+type Slot = {
+	Holder: Frame,
+	Icon: Frame?,
+	Label: TextLabel,
+	Kind: string,
+}
+
+local slots: { Slot } = {}
+for index = 1, M.CompassMaxMarkers do
+	local holder = UITheme.Frame({
+		Name = ("Marker%d"):format(index),
+		BackgroundTransparency = 1,
+		AnchorPoint = Vector2.new(0.5, 0),
+		Size = UDim2.fromOffset(70, M.CompassHeight),
+		Visible = false,
+		ZIndex = 6,
+	})
+	holder.Parent = bar
+
+	local label = UITheme.Label({
+		Name = "Entfernung",
+		Text = "",
+		TextSize = 11,
+		TextXAlignment = Enum.TextXAlignment.Center,
+		AnchorPoint = Vector2.new(0.5, 1),
+		Position = UDim2.new(0.5, 0, 1, 0),
+		Size = UDim2.new(1, 0, 0, 12),
+		ZIndex = 7,
+	})
+	label.Parent = holder
+
+	table.insert(slots, { Holder = holder, Icon = nil, Label = label, Kind = "" })
+end
+
+--==========================================================================
+-- Daten
+--==========================================================================
+
+type Point = {
+	Kind: string,
+	X: number,
+	Z: number,
+	Priority: number,
+}
+
+local points: { Point } = {}
+local waypoint: Vector3? = nil
+
+Remotes.MapSync.OnClientEvent:Connect(function(payload)
+	if typeof(payload) ~= "table" or typeof(payload.Pois) ~= "table" then
+		return
+	end
+	table.clear(points)
+	for _, poi in payload.Pois do
+		local kind = kindById[poi.Kind]
+		if not kind then
+			continue
+		end
+		-- Hack-Ziele bleiben von der Leiste weg: davon gibt es Dutzende und
+		-- sie wuerden alles zukleistern, was wirklich wichtig ist.
+		if poi.Kind == "TARGET" or poi.Kind == "EXPOSED" then
+			continue
+		end
+		table.insert(points, { Kind = poi.Kind, X = poi.X, Z = poi.Z, Priority = kind.Order })
+	end
+end)
+
+Remotes.WaypointSync.OnClientEvent:Connect(function(payload)
+	waypoint = if typeof(payload) == "table" and typeof(payload.Position) == "Vector3"
+		then payload.Position
+		else nil
+end)
+
+--==========================================================================
+-- Zeichnen
+--==========================================================================
+
+local function alivePosition(): Vector3?
+	local character = player.Character
+	local root = character and character:FindFirstChild("HumanoidRootPart")
+	if root and root:IsA("BasePart") then
+		return root.Position
+	end
+	return nil
+end
+
+-- Winkeldifferenz auf -180..180 bringen, damit ein Marker hinter einem nicht
+-- ploetzlich am falschen Rand auftaucht.
+local function wrap(angle: number): number
+	return (angle + 180) % 360 - 180
+end
+
+local function setSlot(slot: Slot, kind: any, offset: number, distance: number, highlight: boolean)
+	if slot.Kind ~= kind.Id then
+		if slot.Icon then
+			slot.Icon:Destroy()
+		end
+		local icon = Icons.Build(kind.Shape, kind.Colour, 14)
+		icon.Position = UDim2.new(0.5, 0, 0, 10)
+		icon.ZIndex = 7
+		icon.Parent = slot.Holder
+		slot.Icon = icon
+		slot.Kind = kind.Id
+	end
+
+	slot.Holder.Position = UDim2.new(offset, 0, 0, 0)
+	slot.Holder.Visible = true
+	-- Meter statt Studs: der Spieler denkt nicht in Studs.
+	slot.Label.Text = ("%dm"):format(math.round(distance))
+	slot.Label.TextColor3 = if highlight then UITheme.Color.Text else UITheme.Color.TextDim
+	if slot.Icon then
+		Icons.SetTransparency(slot.Icon, if highlight then 0 else 0.35)
+	end
+end
+
+RunService.RenderStepped:Connect(function()
+	local position = alivePosition()
+	local camera = workspace.CurrentCamera
+	if not position or not camera then
+		bar.Visible = false
+		return
+	end
+	bar.Visible = true
+
+	local look = camera.CFrame.LookVector
+	local heading = math.deg(math.atan2(look.X, look.Z))
+
+	-- Himmelsrichtungen aufs Band legen.
+	for index, entry in CARDINALS do
+		local delta = wrap(entry.Bearing - heading)
+		local label = cardinalLabels[index]
+		if math.abs(delta) &gt; M.CompassFov * 0.5 then
+			label.Visible = false
+		else
+			label.Visible = true
+			label.Position = UDim2.fromScale(0.5 + delta / M.CompassFov, 0)
+		end
+	end
+
+	-- Kandidaten einsammeln: alles im Blickfeld und in Reichweite.
+	type Candidate = { Kind: any, Offset: number, Distance: number, Highlight: boolean, Sort: number }
+	local candidates: { Candidate } = {}
+
+	local function consider(kindId: string, x: number, z: number, highlight: boolean)
+		local kind = kindById[kindId]
+		if not kind then
+			return
+		end
+		local dx, dz = x - position.X, z - position.Z
+		local distance = math.sqrt(dx * dx + dz * dz)
+		if not highlight and distance &gt; M.CompassRange then
+			return
+		end
+		local bearing = math.deg(math.atan2(dx, dz))
+		local delta = wrap(bearing - heading)
+		if not highlight and math.abs(delta) &gt; M.CompassFov * 0.5 then
+			return
+		end
+		-- Das Missionsziel klebt am Rand, statt zu verschwinden: sonst
+		-- weiss man nicht, in welche Richtung man sich drehen muss.
+		local clamped = math.clamp(delta, -M.CompassFov * 0.5, M.CompassFov * 0.5)
+		table.insert(candidates, {
+			Kind = kind,
+			Offset = 0.5 + clamped / M.CompassFov,
+			Distance = distance,
+			Highlight = highlight,
+			-- Wichtiges zuerst, danach das Naechste.
+			Sort = (if highlight then -1e9 else 0) - kind.Order * 1000 + distance,
+		})
+	end
+
+	if waypoint then
+		consider("WAYPOINT", waypoint.X, waypoint.Z, true)
+	end
+	for _, point in points do
+		consider(point.Kind, point.X, point.Z, false)
+	end
+
+	table.sort(candidates, function(a, b)
+		return a.Sort &lt; b.Sort
+	end)
+
+	for index, slot in slots do
+		local candidate = candidates[index]
+		if candidate then
+			setSlot(slot, candidate.Kind, candidate.Offset, candidate.Distance, candidate.Highlight)
+		else
+			slot.Holder.Visible = false
+		end
+	end
+end)
+</ProtectedString>
+</Properties>
+</Item>
+<Item class="LocalScript" referent="GN58">
 <Properties>
 <string name="Name">DarknetUI</string>
 <ProtectedString name="Source">-- StarterPlayer/StarterPlayerScripts/UI/DarknetUI.client.luau
@@ -15228,7 +17704,7 @@ end)
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="LocalScript" referent="GN51">
+<Item class="LocalScript" referent="GN59">
 <Properties>
 <string name="Name">HUD</string>
 <ProtectedString name="Source">-- StarterPlayer/StarterPlayerScripts/UI/HUD.client.luau
@@ -15281,12 +17757,16 @@ local currentTargetId: string? = nil
 local gui = UITheme.Screen("GhostNetHUD", 10)
 gui.Parent = playerGui
 
---== Wallet oben rechts ====================================================
+--== Wallet rechts, unter der Minikarte ====================================
+-- Oben rechts sitzt seit der Orientierungs-Phase die Minikarte, und die ist
+-- dauerhaft an. Aus Config gerechnet, damit sich beide nicht ueberlappen,
+-- wenn jemand die Kartengroesse aendert.
+local RIGHT_TOP = Config.Map.MiniMargin * 2 + Config.Map.MiniSize
 
 local walletPanel = UITheme.Frame({
 	Name = "Wallet",
 	AnchorPoint = Vector2.new(1, 0),
-	Position = UDim2.new(1, -18, 0, 18),
+	Position = UDim2.new(1, -18, 0, RIGHT_TOP),
 	Size = UDim2.fromOffset(240, 62),
 	BackgroundColor3 = C.Panel,
 	BackgroundTransparency = 0.08,
@@ -15330,7 +17810,7 @@ local walletSub = UITheme.Label({
 local tracePanel = UITheme.Frame({
 	Name = "Trace",
 	AnchorPoint = Vector2.new(1, 0),
-	Position = UDim2.new(1, -18, 0, 88),
+	Position = UDim2.new(1, -18, 0, RIGHT_TOP + 70),
 	Size = UDim2.fromOffset(240, 54),
 	BackgroundColor3 = C.Panel,
 	BackgroundTransparency = 0.08,
@@ -15926,7 +18406,7 @@ UITheme.Scanlines(walletPanel, 4)
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="LocalScript" referent="GN52">
+<Item class="LocalScript" referent="GN60">
 <Properties>
 <string name="Name">HackUI</string>
 <ProtectedString name="Source">-- StarterPlayer/StarterPlayerScripts/UI/HackUI.client.luau
@@ -16778,33 +19258,34 @@ end)
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="LocalScript" referent="GN53">
+<Item class="LocalScript" referent="GN61">
 <Properties>
 <string name="Name">MapUI</string>
 <ProtectedString name="Source">-- StarterPlayerScripts/UI/MapUI.client.luau
 --!strict
--- GHOSTNET :: Minikarte und grosse Karte.
+-- GHOSTNET :: Minikarte, grosse Karte, Legende.
 --
--- ZWEI ANSICHTEN, EINE DATENQUELLE
---   Minikarte    klein unten rechts, folgt dem Spieler, zeigt die Umgebung.
---   Grosse Karte [M] oder Tippen auf die Minikarte: die ganze Stadt mit
---                Bezirksnamen und Legende. Das ist die Antwort auf
---                "wo ist eigentlich was".
+-- MINIKARTE
+--   Oben rechts, dauerhaft an, nicht wegklickbar. Dreht sich mit der
+--   Blickrichtung - eine genordete Karte ist beim Fahren praktisch nicht
+--   lesbar. Ein kleiner Pfeil zeigt, wo Norden liegt.
+--   Zwei Zoomstufen, automatisch: zu Fuss nah dran, im Auto weiter weg.
 --
--- Beide zeichnen dieselben Daten aus Remotes.MapSync. Es gibt keine zweite
--- Karte, die auseinanderlaufen koennte.
+-- GROSSE KARTE  [M]
+--   Ganze Stadt, Bezirksnamen, Legende. Antippen setzt ein eigenes Ziel -
+--   der Server rechnet die Route und der Spieler bekommt eine Linie auf die
+--   Strasse (siehe RouteMarkers).
 --
--- KEINE BILDER, KEINE ASSET-IDS
---   Strassen sind gedrehte Frames, Symbole sind kleine Quadrate. Damit
---   braucht die Karte keine einzige hochgeladene Textur - und Noah muss
---   nichts eintragen, damit sie funktioniert.
+-- KEIN ViewportFrame
+--   Eine zweite Kamera waere teuer, und mit StreamingEnabled saehe sie
+--   entfernte Teile ohnehin nicht. Gezeichnet wird 2D aus den
+--   MapService-Daten: Strassen als gedrehte Frames, Orte als Symbole aus
+--   Shared/Icons. Keine einzige Asset-Id noetig.
 --
 -- LEISTUNG
---   Der ganze Karteninhalt wird EINMAL gebaut, wenn die Daten ankommen.
---   Pro Bild wird nur die Position des Inhalts-Containers und das
---   Spielersymbol angefasst - nicht jede der rund hundert Strassen.
+--   Der Inhalt wird EINMAL gebaut. Pro Bild werden nur Position und Drehung
+--   des Inhalts-Containers gesetzt - nicht die hundert Strassen darin.
 
-local CollectionService = game:GetService("CollectionService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -16812,6 +19293,7 @@ local UserInputService = game:GetService("UserInputService")
 
 local Config = require(ReplicatedStorage.Shared.Config)
 local Districts = require(ReplicatedStorage.Shared.Districts)
+local Icons = require(ReplicatedStorage.Shared.Icons)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local UITheme = require(ReplicatedStorage.Shared.UITheme)
 
@@ -16819,7 +19301,7 @@ local M = Config.Map
 local player = Players.LocalPlayer
 
 --==========================================================================
--- Kartenarten nachschlagen
+-- Kartenarten
 --==========================================================================
 
 local kindById: { [string]: any } = {}
@@ -16827,40 +19309,26 @@ for _, kind in M.Kinds do
 	kindById[kind.Id] = kind
 end
 
-local function kindColour(id: string): Color3
-	local kind = kindById[id]
-	return if kind then kind.Colour else UITheme.Color.TextDim
+local function kindOf(id: string): any
+	return kindById[id]
 end
-
-local function kindOrder(id: string): number
-	local kind = kindById[id]
-	return if kind then kind.Order else 1
-end
-
---==========================================================================
--- Ausmasse der Stadt
---
--- Aus Config gerechnet, nicht aus den empfangenen Knoten: so passt die
--- Karte auch dann, wenn gerade nur ein Teil der Stadt getaggt ist.
---==========================================================================
 
 local CITY_HALF = (Config.City.Grid - 1) * 0.5 * Config.City.BlockSize + Config.City.BlockSize * 0.5
 
 --==========================================================================
--- Ein Kartenfenster (Minikarte oder grosse Karte)
+-- Ein Kartenfenster
 --==========================================================================
 
 type Surface = {
 	Holder: GuiObject,
-	World: Frame, -- verschiebbarer Inhalt
-	Scale: number, -- Pixel pro Stud
+	World: Frame,
+	Scale: number,
 	Icons: number,
 	RoadWidth: number,
-	Marker: Frame?, -- Auftrags-Wegpunkt
+	Rotates: boolean,
 	Player: Frame,
 }
 
--- Weltkoordinate -&gt; Pixel innerhalb des Inhalts-Containers.
 local function toPixels(surface: Surface, x: number, z: number): (number, number)
 	return x * surface.Scale, z * surface.Scale
 end
@@ -16904,7 +19372,7 @@ local function drawDistrict(surface: Surface, district: Districts.District)
 	UITheme.Corner(area, 4)
 	area.Parent = surface.World
 
-	if surface.Icons &gt;= M.BigIcon then
+	if not surface.Rotates then
 		local label = UITheme.Label({
 			Name = "Name",
 			Text = district.Name:upper(),
@@ -16914,7 +19382,7 @@ local function drawDistrict(surface: Surface, district: Districts.District)
 			TextXAlignment = Enum.TextXAlignment.Center,
 			AnchorPoint = Vector2.new(0.5, 0.5),
 			Position = UDim2.fromOffset(x, z - extent * surface.Scale * 0.5 + 12),
-			Size = UDim2.fromOffset(160, 16),
+			Size = UDim2.fromOffset(180, 16),
 			ZIndex = 3,
 		})
 		label.Parent = surface.World
@@ -16922,70 +19390,49 @@ local function drawDistrict(surface: Surface, district: Districts.District)
 end
 
 local function drawPoi(surface: Surface, poi: { [string]: any })
+	local kind = kindOf(poi.Kind)
+	if not kind then
+		return
+	end
 	local x, z = toPixels(surface, poi.X, poi.Z)
-	local size = surface.Icons
 
-	local dot = UITheme.Frame({
-		Name = poi.Kind,
-		BackgroundColor3 = kindColour(poi.Kind),
-		AnchorPoint = Vector2.new(0.5, 0.5),
-		Position = UDim2.fromOffset(x, z),
-		Size = UDim2.fromOffset(size, size),
-		ZIndex = 4 + kindOrder(poi.Kind),
-	})
-	UITheme.Corner(dot, math.floor(size * 0.5))
-	UITheme.Stroke(dot, UITheme.Color.Background, 1)
-	dot.Parent = surface.World
+	local icon = Icons.Build(kind.Shape, kind.Colour, surface.Icons)
+	icon.Position = UDim2.fromOffset(x, z)
+	icon.ZIndex = 4 + kind.Order
+	icon.Parent = surface.World
 
-	-- Namen nur auf der grossen Karte: auf der Minikarte waere das Kleisterei.
-	if surface.Icons &gt;= M.BigIcon and poi.Kind ~= "TARGET" and poi.Kind ~= "EXPOSED" then
+	-- Namen nur auf der grossen Karte, und nicht fuer Hack-Ziele: davon gibt
+	-- es Dutzende, und beschriftet waere die Karte unlesbar.
+	if not surface.Rotates and poi.Kind ~= "TARGET" and poi.Kind ~= "EXPOSED" then
 		local label = UITheme.Label({
 			Name = "Name",
 			Text = poi.Name,
-			TextColor3 = kindColour(poi.Kind),
+			TextColor3 = kind.Colour,
 			TextSize = 11,
 			TextXAlignment = Enum.TextXAlignment.Center,
 			AnchorPoint = Vector2.new(0.5, 0),
-			Position = UDim2.fromOffset(x, z + size * 0.7),
-			Size = UDim2.fromOffset(150, 14),
-			ZIndex = 12,
+			Position = UDim2.fromOffset(x, z + surface.Icons * 0.7),
+			Size = UDim2.fromOffset(160, 14),
+			ZIndex = 14,
 		})
 		label.Parent = surface.World
 	end
 end
 
-local function makePlayerIcon(surface: Surface): Frame
-	-- Ein gedrehtes Quadrat als Pfeilersatz: ohne Bild-Asset geht kein
-	-- richtiger Pfeil, und ein gekipptes Viereck liest sich gut genug.
-	local icon = UITheme.Frame({
-		Name = "Spieler",
-		BackgroundColor3 = UITheme.Color.Text,
-		AnchorPoint = Vector2.new(0.5, 0.5),
-		Size = UDim2.fromOffset(M.PlayerIcon, M.PlayerIcon),
-		Rotation = 45,
-		ZIndex = 20,
-	})
-	UITheme.Stroke(icon, UITheme.Color.Background, 2)
-	icon.Parent = surface.Holder
-	return icon
-end
-
 --==========================================================================
--- Aufbau der Fenster
+-- Aufbau
 --==========================================================================
 
 local gui = UITheme.Screen("GhostNetMap", 6)
 gui.Parent = player:WaitForChild("PlayerGui")
 
---== Minikarte =============================================================
+--== Minikarte, oben rechts, dauerhaft =====================================
 
 local miniButton = UITheme.Button({
 	Name = "Minikarte",
 	BackgroundColor3 = M.Background,
-	-- Unten rechts: oben rechts sitzen schon Wallet, Trace und die
-	-- Fahndungssterne, unten links die Knoepfe fuer Shop und Store.
-	AnchorPoint = Vector2.new(1, 1),
-	Position = UDim2.new(1, -M.MiniMargin, 1, -M.MiniMargin),
+	AnchorPoint = Vector2.new(1, 0),
+	Position = UDim2.new(1, -M.MiniMargin, 0, M.MiniMargin),
 	Size = UDim2.fromOffset(M.MiniSize, M.MiniSize),
 	ClipsDescendants = true,
 	ZIndex = 2,
@@ -16997,19 +19444,35 @@ miniButton.Parent = gui
 local miniWorld = UITheme.Frame({
 	Name = "Inhalt",
 	BackgroundTransparency = 1,
-	Size = UDim2.fromScale(1, 1),
+	AnchorPoint = Vector2.new(0.5, 0.5),
+	Position = UDim2.fromScale(0.5, 0.5),
+	Size = UDim2.fromOffset(0, 0),
 	ZIndex = 2,
 })
 miniWorld.Parent = miniButton
 
+-- Nordpfeil. Wenn sich die Karte dreht, muss irgendetwas fest bleiben,
+-- sonst weiss man nicht mehr, wo oben ist.
+local northArrow = UITheme.Label({
+	Name = "Norden",
+	Text = "N",
+	TextColor3 = UITheme.Color.Magenta,
+	TextSize = 13,
+	TextXAlignment = Enum.TextXAlignment.Center,
+	AnchorPoint = Vector2.new(0.5, 0.5),
+	Size = UDim2.fromOffset(18, 18),
+	ZIndex = 26,
+})
+northArrow.Parent = miniButton
+
 local miniHint = UITheme.Label({
 	Name = "Hinweis",
-	Text = "[M] KARTE",
+	Text = "[M]",
 	TextColor3 = UITheme.Color.TextDim,
 	TextSize = 11,
 	TextXAlignment = Enum.TextXAlignment.Center,
 	AnchorPoint = Vector2.new(0.5, 1),
-	Position = UDim2.new(0.5, 0, 1, -3),
+	Position = UDim2.new(0.5, 0, 1, -2),
 	Size = UDim2.new(1, 0, 0, 14),
 	ZIndex = 25,
 })
@@ -17018,13 +19481,29 @@ miniHint.Parent = miniButton
 local mini: Surface = {
 	Holder = miniButton,
 	World = miniWorld,
-	Scale = (M.MiniSize * 0.5) / M.MiniRange,
+	Scale = (M.MiniSize * 0.5) / M.RangeOnFoot,
 	Icons = M.MiniIcon,
 	RoadWidth = M.MiniRoadWidth,
+	Rotates = M.Rotate,
 	Player = nil :: any,
 }
+
+local function makePlayerIcon(surface: Surface): Frame
+	local icon = UITheme.Frame({
+		Name = "Spieler",
+		BackgroundColor3 = UITheme.Color.Text,
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Size = UDim2.fromOffset(M.PlayerIcon, M.PlayerIcon),
+		Rotation = 45,
+		ZIndex = 22,
+	})
+	UITheme.Stroke(icon, UITheme.Color.Background, 2)
+	icon.Parent = surface.Holder
+	return icon
+end
+
 mini.Player = makePlayerIcon(mini)
-mini.Player.Position = UDim2.fromScale(0.5, 0.5) -- die Minikarte folgt dem Spieler
+mini.Player.Position = UDim2.fromScale(0.5, 0.5)
 
 --== Grosse Karte ==========================================================
 
@@ -17038,15 +19517,12 @@ local backdrop = UITheme.Frame({
 })
 backdrop.Parent = gui
 
-local bigSize = 0
-local bigScale = 0
-
-local bigPanel = UITheme.Frame({
+local bigPanel = UITheme.Button({
 	Name = "Blatt",
 	BackgroundColor3 = M.Background,
 	AnchorPoint = Vector2.new(0.5, 0.5),
 	Position = UDim2.fromScale(0.5, 0.5),
-	Size = UDim2.fromScale(0.72, 0.86),
+	Size = UDim2.fromScale(0.74, 0.86),
 	ClipsDescendants = true,
 	ZIndex = 31,
 })
@@ -17057,19 +19533,21 @@ bigPanel.Parent = backdrop
 local bigWorld = UITheme.Frame({
 	Name = "Inhalt",
 	BackgroundTransparency = 1,
-	Size = UDim2.fromScale(1, 1),
+	AnchorPoint = Vector2.new(0.5, 0.5),
+	Position = UDim2.fromScale(0.5, 0.5),
+	Size = UDim2.fromOffset(0, 0),
 	ZIndex = 31,
 })
 bigWorld.Parent = bigPanel
 
 local bigTitle = UITheme.Label({
 	Name = "Titel",
-	Text = "VANTORRA",
+	Text = "VANTORRA  //  tippen setzt ein Ziel",
 	TextColor3 = UITheme.Color.Cyan,
-	TextSize = 18,
+	TextSize = 16,
 	Position = UDim2.fromOffset(14, 10),
-	Size = UDim2.fromOffset(300, 22),
-	ZIndex = 40,
+	Size = UDim2.fromOffset(420, 22),
+	ZIndex = 45,
 })
 bigTitle.Parent = bigPanel
 
@@ -17079,11 +19557,38 @@ local closeButton = UITheme.Button({
 	TextColor3 = UITheme.Color.TextDim,
 	AnchorPoint = Vector2.new(1, 0),
 	Position = UDim2.new(1, -10, 0, 10),
-	Size = UDim2.fromOffset(160, 34), -- gross genug fuer Touch
-	ZIndex = 40,
+	Size = UDim2.fromOffset(170, 38),
+	ZIndex = 45,
 })
 UITheme.Corner(closeButton, 4)
 closeButton.Parent = bigPanel
+
+local clearButton = UITheme.Button({
+	Name = "ZielLoeschen",
+	Text = "ZIEL LOESCHEN",
+	TextColor3 = UITheme.Color.TextDim,
+	AnchorPoint = Vector2.new(1, 1),
+	Position = UDim2.new(1, -10, 1, -10),
+	Size = UDim2.fromOffset(170, 38),
+	ZIndex = 45,
+})
+UITheme.Corner(clearButton, 4)
+clearButton.Parent = bigPanel
+
+-- Und die zweite Haelfte der Antwort: das Auto herrufen. Kostet Gebuehr,
+-- hat einen Cooldown und geht nur an einer Strasse - alles serverseitig.
+local callButton = UITheme.Button({
+	Name = "FahrzeugRufen",
+	Text = "FAHRZEUG RUFEN",
+	TextColor3 = UITheme.Color.Amber,
+	AnchorPoint = Vector2.new(0.5, 1),
+	Position = UDim2.new(0.5, 0, 1, -10),
+	Size = UDim2.fromOffset(200, 38),
+	Visible = false,
+	ZIndex = 45,
+})
+UITheme.Corner(callButton, 4)
+callButton.Parent = bigPanel
 
 local big: Surface = {
 	Holder = bigPanel,
@@ -17091,21 +19596,21 @@ local big: Surface = {
 	Scale = 1,
 	Icons = M.BigIcon,
 	RoadWidth = M.BigRoadWidth,
+	Rotates = false,
 	Player = nil :: any,
 }
 big.Player = makePlayerIcon(big)
 
 --== Legende ===============================================================
--- "Wo alles ist" braucht auch: was bedeutet welcher Punkt.
 
 local legend = UITheme.Frame({
 	Name = "Legende",
 	BackgroundColor3 = UITheme.Color.Panel,
-	BackgroundTransparency = 0.15,
+	BackgroundTransparency = 0.12,
 	AnchorPoint = Vector2.new(0, 1),
 	Position = UDim2.new(0, 10, 1, -10),
-	Size = UDim2.fromOffset(230, 22 + #M.Kinds * 18),
-	ZIndex = 40,
+	Size = UDim2.fromOffset(250, 24 + #M.Kinds * 20),
+	ZIndex = 45,
 })
 UITheme.Corner(legend, 4)
 UITheme.Stroke(legend, UITheme.Color.Line, 1)
@@ -17116,40 +19621,37 @@ do
 		Text = "LEGENDE",
 		TextColor3 = UITheme.Color.TextDim,
 		TextSize = 11,
-		Position = UDim2.fromOffset(8, 4),
-		Size = UDim2.fromOffset(200, 14),
-		ZIndex = 41,
+		Position = UDim2.fromOffset(10, 5),
+		Size = UDim2.fromOffset(220, 14),
+		ZIndex = 46,
 	})
 	heading.Parent = legend
 
 	for index, kind in M.Kinds do
-		local y = 20 + (index - 1) * 18
+		local y = 22 + (index - 1) * 20
 
-		local dot = UITheme.Frame({
-			BackgroundColor3 = kind.Colour,
-			Position = UDim2.fromOffset(10, y + 4),
-			Size = UDim2.fromOffset(8, 8),
-			ZIndex = 41,
-		})
-		UITheme.Corner(dot, 4)
-		dot.Parent = legend
+		local icon = Icons.Build(kind.Shape, kind.Colour, 14)
+		icon.Position = UDim2.fromOffset(18, y + 8)
+		icon.ZIndex = 46
+		icon.Parent = legend
 
 		local text = UITheme.Label({
 			Text = kind.Label,
 			TextSize = 12,
-			Position = UDim2.fromOffset(26, y),
-			Size = UDim2.fromOffset(196, 16),
-			ZIndex = 41,
+			Position = UDim2.fromOffset(32, y),
+			Size = UDim2.fromOffset(210, 16),
+			ZIndex = 46,
 		})
 		text.Parent = legend
 	end
 end
 
 --==========================================================================
--- Zeichnen, sobald die Daten da sind
+-- Zeichnen
 --==========================================================================
 
 local drawn = false
+local lastPayload: { [string]: any }? = nil
 
 local function fillSurface(surface: Surface, payload: { [string]: any })
 	for _, child in surface.World:GetChildren() do
@@ -17174,128 +19676,221 @@ local function fillSurface(surface: Surface, payload: { [string]: any })
 	end
 end
 
-local function onMapSync(payload: { [string]: any })
+Remotes.MapSync.OnClientEvent:Connect(function(payload)
 	if typeof(payload) ~= "table" or typeof(payload.Edges) ~= "table" then
 		return
 	end
+	lastPayload = payload
 
-	-- Massstab der grossen Karte: die ganze Stadt soll hineinpassen.
-	bigSize = math.min(bigPanel.AbsoluteSize.X, bigPanel.AbsoluteSize.Y)
-	bigScale = (bigSize - M.BigPadding * 2) / (CITY_HALF * 2)
-	big.Scale = math.max(bigScale, 0.01)
+	local side = math.min(bigPanel.AbsoluteSize.X, bigPanel.AbsoluteSize.Y)
+	big.Scale = math.max((side - M.BigPadding * 2) / (CITY_HALF * 2), 0.01)
 
 	fillSurface(mini, payload)
 	fillSurface(big, payload)
-
-	-- Die grosse Karte steht fest: Stadtmitte in die Blattmitte.
-	bigWorld.Position = UDim2.fromScale(0.5, 0.5)
-	bigWorld.Size = UDim2.fromOffset(0, 0) -- Kinder liegen als Offset um (0,0)
-
 	drawn = true
-end
-
-Remotes.MapSync.OnClientEvent:Connect(onMapSync)
-
---==========================================================================
--- Auftrags-Wegpunkt
--- Kommt aus WaypointSync, nicht aus MapSync: er wechselt staendig.
---==========================================================================
-
-local waypoint: Vector3? = nil
-local waypointIcons: { [string]: Frame } = {}
-
-local function setWaypointIcon(surface: Surface, key: string)
-	local existing = waypointIcons[key]
-	if existing then
-		existing:Destroy()
-		waypointIcons[key] = nil
-	end
-	if not waypoint then
-		return
-	end
-
-	local x, z = toPixels(surface, waypoint.X, waypoint.Z)
-	local icon = UITheme.Frame({
-		Name = "Auftrag",
-		BackgroundColor3 = kindColour("WAYPOINT"),
-		AnchorPoint = Vector2.new(0.5, 0.5),
-		Position = UDim2.fromOffset(x, z),
-		Size = UDim2.fromOffset(surface.Icons + 3, surface.Icons + 3),
-		Rotation = 45,
-		ZIndex = 18,
-	})
-	UITheme.Stroke(icon, UITheme.Color.Background, 2)
-	icon.Parent = surface.World
-	waypointIcons[key] = icon
-end
-
-Remotes.WaypointSync.OnClientEvent:Connect(function(payload)
-	if typeof(payload) == "table" and typeof(payload.Position) == "Vector3" then
-		waypoint = payload.Position
-	else
-		waypoint = nil
-	end
-	setWaypointIcon(mini, "mini")
-	setWaypointIcon(big, "big")
 end)
 
 --==========================================================================
--- Bewegung
+-- Auftrags-Symbol und eigenes Ziel
 --==========================================================================
 
-local function alivePosition(): Vector3?
-	local character = player.Character
-	local root = character and character:FindFirstChild("HumanoidRootPart")
-	if root and root:IsA("BasePart") then
-		return root.Position
+local waypoint: Vector3? = nil
+local ownTarget: Vector3? = nil
+local myCar: Vector3? = nil
+local markers: { [string]: Frame } = {}
+
+local function refreshMarker(surface: Surface, key: string, position: Vector3?, shape: string, colour: Color3)
+	local existing = markers[key]
+	if existing then
+		existing:Destroy()
+		markers[key] = nil
 	end
-	return nil
+	if not position then
+		return
+	end
+	local x, z = toPixels(surface, position.X, position.Z)
+	local icon = Icons.Build(shape, colour, surface.Icons + 4)
+	icon.Position = UDim2.fromOffset(x, z)
+	icon.ZIndex = 19
+	icon.Parent = surface.World
+	markers[key] = icon
 end
 
-RunService.RenderStepped:Connect(function()
+local function refreshAllMarkers()
+	local star = kindOf("WAYPOINT")
+	refreshMarker(mini, "mini_wp", waypoint, star.Shape, star.Colour)
+	refreshMarker(big, "big_wp", waypoint, star.Shape, star.Colour)
+	refreshMarker(mini, "mini_own", ownTarget, "Punkt", UITheme.Color.Cyan)
+	refreshMarker(big, "big_own", ownTarget, "Punkt", UITheme.Color.Cyan)
+
+	-- Das eigene Fahrzeug. "Wo ist mein Auto" ist der haeufigste Grund, ein
+	-- Open-World-Spiel zu schliessen - der Marker ist die halbe Antwort.
+	local car = kindOf("MYCAR")
+	refreshMarker(mini, "mini_car", myCar, car.Shape, car.Colour)
+	refreshMarker(big, "big_car", myCar, car.Shape, car.Colour)
+end
+
+Remotes.WaypointSync.OnClientEvent:Connect(function(payload)
+	waypoint = if typeof(payload) == "table" and typeof(payload.Position) == "Vector3"
+		then payload.Position
+		else nil
+	refreshAllMarkers()
+end)
+
+local callFee = 0
+
+Remotes.GarageSync.OnClientEvent:Connect(function(payload)
+	if typeof(payload) ~= "table" then
+		return
+	end
+	myCar = if typeof(payload.SpawnedAt) == "Vector3" then payload.SpawnedAt else nil
+	callFee = if typeof(payload.CallFee) == "number" then payload.CallFee else 0
+	refreshAllMarkers()
+end)
+
+Remotes.RouteSync.OnClientEvent:Connect(function(payload)
+	if typeof(payload) ~= "table" or typeof(payload.Points) ~= "table" then
+		ownTarget = nil
+	else
+		local points = payload.Points
+		ownTarget = points[#points]
+	end
+	refreshAllMarkers()
+end)
+
+--==========================================================================
+-- Bewegung, Drehung, Zoom
+--==========================================================================
+
+local function alivePosition(): (Vector3?, boolean)
+	local character = player.Character
+	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+	local root = character and character:FindFirstChild("HumanoidRootPart")
+	if root and root:IsA("BasePart") then
+		local driving = humanoid ~= nil and humanoid.SeatPart ~= nil and humanoid.SeatPart:IsA("VehicleSeat")
+		return root.Position, driving
+	end
+	return nil, false
+end
+
+local currentRange = M.RangeOnFoot
+
+RunService.RenderStepped:Connect(function(deltaTime)
 	if not drawn then
 		return
 	end
-	local position = alivePosition()
+	local position, driving = alivePosition()
 	if not position then
 		return
 	end
 
-	-- Minikarte: der Inhalt wandert unter dem festen Spielersymbol durch.
-	-- Genau EINE Eigenschaft pro Bild statt hundert Frames neu zu setzen.
-	local px, pz = toPixels(mini, position.X, position.Z)
-	miniWorld.Position = UDim2.new(0.5, -px, 0.5, -pz)
+	-- Zoom weich umschalten. Ein harter Sprung beim Einsteigen sieht aus,
+	-- als waere die Karte kaputtgegangen.
+	local wanted = if driving then M.RangeDriving else M.RangeOnFoot
+	currentRange += (wanted - currentRange) * math.min(1, deltaTime / math.max(M.ZoomLerp, 0.01))
+	local newScale = (M.MiniSize * 0.5) / currentRange
+	if math.abs(newScale - mini.Scale) &gt; 1e-4 and lastPayload then
+		mini.Scale = newScale
+		fillSurface(mini, lastPayload)
+		refreshAllMarkers()
+	end
 
+	local heading = 0
 	local camera = workspace.CurrentCamera
 	if camera then
 		local look = camera.CFrame.LookVector
-		-- Bildschirm-Y ist Welt-Z: deshalb atan2(X, Z) und nicht umgekehrt.
-		local heading = math.deg(math.atan2(look.X, look.Z))
+		-- Bildschirm-Y entspricht Welt-Z, deshalb atan2(X, Z).
+		heading = math.deg(math.atan2(look.X, look.Z))
+	end
+
+	local px, pz = toPixels(mini, position.X, position.Z)
+	if mini.Rotates then
+		-- Der Inhalt dreht sich um den Spieler herum: erst verschieben,
+		-- dann drehen. Genau zwei Eigenschaften pro Bild.
+		local radians = math.rad(heading + 180)
+		local cos, sin = math.cos(radians), math.sin(radians)
+		local rx = -px * cos + pz * sin
+		local rz = -px * sin - pz * cos
+		miniWorld.Position = UDim2.new(0.5, rx, 0.5, rz)
+		miniWorld.Rotation = -(heading + 180)
+		mini.Player.Rotation = 45
+		northArrow.Position = UDim2.new(
+			0.5 + 0.42 * math.sin(math.rad(-(heading + 180))),
+			0,
+			0.5 - 0.42 * math.cos(math.rad(-(heading + 180))),
+			0
+		)
+	else
+		miniWorld.Position = UDim2.new(0.5, -px, 0.5, -pz)
 		mini.Player.Rotation = 45 - heading
-		big.Player.Rotation = 45 - heading
+		northArrow.Position = UDim2.fromScale(0.5, 0.08)
 	end
 
 	if backdrop.Visible then
 		local bx, bz = toPixels(big, position.X, position.Z)
 		big.Player.Position = UDim2.new(0.5, bx, 0.5, bz)
+		big.Player.Rotation = 45 - heading
 	end
 end)
 
 --==========================================================================
--- Auf und zu
+-- Auf, zu, Ziel setzen
 --==========================================================================
 
 local function setOpen(open: boolean)
 	backdrop.Visible = open
+	callButton.Visible = myCar ~= nil
+	if myCar then
+		callButton.Text = ("FAHRZEUG RUFEN (%d CRY)"):format(callFee)
+	end
 end
 
-local function toggle()
+miniButton.Activated:Connect(function()
 	setOpen(not backdrop.Visible)
-end
-
-miniButton.Activated:Connect(toggle)
+end)
 closeButton.Activated:Connect(function()
 	setOpen(false)
+end)
+clearButton.Activated:Connect(function()
+	Remotes.RouteRequest:FireServer({})
+end)
+
+-- Tippen auf die Karte setzt ein Ziel. Der Client schickt nur eine Position -
+-- den Weg dorthin rechnet der Server, und ein Ziel ist ohnehin kein Vorteil.
+bigPanel.Activated:Connect(function()
+	if not drawn or big.Scale &lt;= 0 then
+		return
+	end
+	local mouse = UserInputService:GetMouseLocation()
+	local centre = bigPanel.AbsolutePosition + bigPanel.AbsoluteSize * 0.5
+	-- GetMouseLocation liegt im Bildschirmraum inklusive Inset, AbsolutePosition
+	-- nicht - der Versatz muss raus, sonst landet das Ziel zu weit oben.
+	local inset = game:GetService("GuiService"):GetGuiInset()
+	local local2d = Vector2.new(mouse.X - inset.X, mouse.Y - inset.Y) - centre
+
+	Remotes.RouteRequest:FireServer({
+		X = local2d.X / big.Scale,
+		Z = local2d.Y / big.Scale,
+	})
+	setOpen(false)
+end)
+
+callButton.Activated:Connect(function()
+	local response = Remotes.VehicleAction:InvokeServer({ Action = "CALL" })
+	if typeof(response) == "table" and response.Ok then
+		callButton.Text = "UNTERWEGS"
+	elseif typeof(response) == "table" and response.Reason == "NO_ROAD" then
+		callButton.Text = "KEINE STRASSE IN DER NAEHE"
+	elseif typeof(response) == "table" and response.Reason == "COOLDOWN" then
+		callButton.Text = "GERADE ERST GERUFEN"
+	elseif typeof(response) == "table" and response.Reason == "TOO_EXPENSIVE" then
+		callButton.Text = "ZU TEUER"
+	else
+		callButton.Text = "GEHT GERADE NICHT"
+	end
+	task.delay(2, function()
+		callButton.Text = ("FAHRZEUG RUFEN (%d CRY)"):format(callFee)
+	end)
 end)
 
 UserInputService.InputBegan:Connect(function(input, processed)
@@ -17303,20 +19898,15 @@ UserInputService.InputBegan:Connect(function(input, processed)
 		return
 	end
 	if input.KeyCode == Enum.KeyCode.M then
-		toggle()
+		setOpen(not backdrop.Visible)
 	elseif input.KeyCode == Enum.KeyCode.Escape and backdrop.Visible then
 		setOpen(false)
 	end
 end)
-
--- Beim Fahren stoert die grosse Karte. Minikarte bleibt.
-CollectionService:GetInstanceAddedSignal(Config.VehicleTag):Connect(function()
-	setOpen(false)
-end)
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="LocalScript" referent="GN54">
+<Item class="LocalScript" referent="GN62">
 <Properties>
 <string name="Name">MissionUI</string>
 <ProtectedString name="Source">-- StarterPlayer/StarterPlayerScripts/UI/MissionUI.client.luau
@@ -17684,7 +20274,496 @@ refresh()
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="LocalScript" referent="GN55">
+<Item class="LocalScript" referent="GN63">
+<Properties>
+<string name="Name">PhoneUI</string>
+<ProtectedString name="Source">-- StarterPlayerScripts/UI/PhoneUI.client.luau
+--!strict
+-- GHOSTNET :: Das Telefon und der Auftrags-Tracker.
+--
+-- DAS TELEFON
+--   Ein einziges Element traegt die ganze Story. Der Knopf unten rechts
+--   leuchtet und pulsiert, wenn Wren geschrieben hat. Drinnen steht der
+--   Verlauf - Nachrichten erscheinen einzeln, mit kurzer Tippanimation.
+--   Alte Nachrichten bleiben lesbar: wer eine Woche weg war, kommt zurueck
+--   in die Geschichte.
+--
+-- DER TRACKER
+--   Links oben, klein, dauerhaft: Titel, aktueller Schritt, Entfernung.
+--   Ohne Auftrag steht dort, was zu tun ist - nie eine leere Ecke.
+--   Das ist die Antwort auf "was soll ich jetzt machen".
+--
+-- KEIN NEUES MISSIONSSYSTEM
+--   Hier wird nur angezeigt. Angenommen und abgeschlossen wird weiter
+--   serverseitig im MissionService.
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+
+local Config = require(ReplicatedStorage.Shared.Config)
+local Remotes = require(ReplicatedStorage.Shared.Remotes)
+local UITheme = require(ReplicatedStorage.Shared.UITheme)
+
+local P = Config.Phone
+local C = UITheme.Color
+local player = Players.LocalPlayer
+
+local gui = UITheme.Screen("GhostNetPhone", 9)
+gui.Parent = player:WaitForChild("PlayerGui")
+
+--==========================================================================
+-- Auftrags-Tracker, links oben
+--==========================================================================
+
+local tracker = UITheme.Frame({
+	Name = "Auftrag",
+	BackgroundColor3 = C.Panel,
+	BackgroundTransparency = 0.1,
+	Position = UDim2.fromOffset(14, 14),
+	Size = UDim2.fromOffset(280, 62),
+	ZIndex = 3,
+})
+UITheme.Corner(tracker, 4)
+UITheme.Stroke(tracker, C.Line, 1)
+tracker.Parent = gui
+
+local trackerTitle = UITheme.Label({
+	Name = "Titel",
+	Text = "KEIN AUFTRAG",
+	TextColor3 = C.Cyan,
+	TextSize = 14,
+	Position = UDim2.fromOffset(10, 6),
+	Size = UDim2.fromOffset(260, 18),
+	ZIndex = 4,
+})
+trackerTitle.Parent = tracker
+
+local trackerStep = UITheme.Label({
+	Name = "Schritt",
+	Text = "[M] oeffnet die Karte",
+	TextColor3 = C.Text,
+	TextSize = 12,
+	TextWrapped = true,
+	Position = UDim2.fromOffset(10, 24),
+	Size = UDim2.fromOffset(200, 32),
+	ZIndex = 4,
+})
+trackerStep.Parent = tracker
+
+local trackerDistance = UITheme.Label({
+	Name = "Entfernung",
+	Text = "",
+	TextColor3 = C.Amber,
+	TextSize = 13,
+	TextXAlignment = Enum.TextXAlignment.Right,
+	AnchorPoint = Vector2.new(1, 1),
+	Position = UDim2.new(1, -10, 1, -6),
+	Size = UDim2.fromOffset(80, 16),
+	ZIndex = 4,
+})
+trackerDistance.Parent = tracker
+
+--==========================================================================
+-- Telefon-Knopf, unten rechts
+--==========================================================================
+
+local phoneButton = UITheme.Button({
+	Name = "Telefon",
+	Text = "",
+	BackgroundColor3 = C.Panel,
+	AnchorPoint = Vector2.new(1, 1),
+	Position = UDim2.new(1, -P.Margin, 1, -P.Margin),
+	Size = UDim2.fromOffset(P.ButtonSize, P.ButtonSize),
+	ZIndex = 6,
+})
+UITheme.Corner(phoneButton, 10)
+local phoneStroke = UITheme.Stroke(phoneButton, C.Line, 2)
+phoneButton.Parent = gui
+
+-- Das Symbol: ein Hoerer ist ohne Bild schwer, ein Display mit Antenne
+-- liest sich sofort als Geraet.
+do
+	local screen = UITheme.Frame({
+		Name = "Display",
+		BackgroundColor3 = C.Cyan,
+		BackgroundTransparency = 0.35,
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0.52),
+		Size = UDim2.fromOffset(P.ButtonSize * 0.44, P.ButtonSize * 0.6),
+		ZIndex = 7,
+	})
+	UITheme.Corner(screen, 3)
+	screen.Parent = phoneButton
+end
+
+local badge = UITheme.Frame({
+	Name = "Neu",
+	BackgroundColor3 = C.Magenta,
+	AnchorPoint = Vector2.new(1, 0),
+	Position = UDim2.new(1, 2, 0, -2),
+	Size = UDim2.fromOffset(14, 14),
+	Visible = false,
+	ZIndex = 9,
+})
+UITheme.Corner(badge, 7)
+badge.Parent = phoneButton
+
+--==========================================================================
+-- Chatfenster
+--==========================================================================
+
+local backdrop = UITheme.Frame({
+	Name = "Hintergrund",
+	BackgroundColor3 = C.Background,
+	BackgroundTransparency = 0.35,
+	Size = UDim2.fromScale(1, 1),
+	Visible = false,
+	ZIndex = 40,
+})
+backdrop.Parent = gui
+
+local panel = UITheme.Frame({
+	Name = "Chat",
+	BackgroundColor3 = C.Panel,
+	AnchorPoint = Vector2.new(1, 1),
+	Position = UDim2.new(1, -P.Margin, 1, -P.Margin - P.ButtonSize - 10),
+	Size = UDim2.fromOffset(P.PanelWidth, P.PanelHeight),
+	ZIndex = 41,
+})
+UITheme.Corner(panel, 6)
+UITheme.Stroke(panel, C.Cyan, 1)
+panel.Parent = backdrop
+
+local header = UITheme.Label({
+	Name = "Kopf",
+	Text = "WREN",
+	TextColor3 = C.Magenta,
+	TextSize = 16,
+	Position = UDim2.fromOffset(12, 8),
+	Size = UDim2.fromOffset(200, 20),
+	ZIndex = 42,
+})
+header.Parent = panel
+
+local summaryLabel = UITheme.Label({
+	Name = "Rueckblick",
+	Text = "",
+	TextColor3 = C.TextDim,
+	TextSize = 11,
+	TextWrapped = true,
+	Position = UDim2.fromOffset(12, 28),
+	Size = UDim2.fromOffset(P.PanelWidth - 24, 26),
+	ZIndex = 42,
+})
+summaryLabel.Parent = panel
+
+local scroll = Instance.new("ScrollingFrame")
+scroll.Name = "Verlauf"
+scroll.BackgroundTransparency = 1
+scroll.BorderSizePixel = 0
+scroll.Position = UDim2.fromOffset(10, 58)
+scroll.Size = UDim2.fromOffset(P.PanelWidth - 20, P.PanelHeight - 118)
+scroll.CanvasSize = UDim2.fromOffset(0, 0)
+scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+scroll.ScrollBarThickness = 4
+scroll.ScrollBarImageColor3 = C.Line
+scroll.ZIndex = 42
+scroll.Parent = panel
+
+local layout = Instance.new("UIListLayout")
+layout.SortOrder = Enum.SortOrder.LayoutOrder
+layout.Padding = UDim.new(0, 8)
+layout.Parent = scroll
+
+local acceptButton = UITheme.Button({
+	Name = "Annehmen",
+	Text = "ANNEHMEN",
+	TextColor3 = C.Green,
+	AnchorPoint = Vector2.new(0.5, 1),
+	Position = UDim2.new(0.5, 0, 1, -10),
+	Size = UDim2.fromOffset(P.PanelWidth - 24, 40),
+	Visible = false,
+	ZIndex = 44,
+})
+UITheme.Corner(acceptButton, 4)
+acceptButton.Parent = panel
+
+local closeButton = UITheme.Button({
+	Name = "Schliessen",
+	Text = "X",
+	TextColor3 = C.TextDim,
+	AnchorPoint = Vector2.new(1, 0),
+	Position = UDim2.new(1, -8, 0, 6),
+	Size = UDim2.fromOffset(34, 26),
+	ZIndex = 44,
+})
+UITheme.Corner(closeButton, 4)
+closeButton.Parent = panel
+
+--==========================================================================
+-- Nachrichten zeichnen
+--==========================================================================
+
+local order = 0
+
+local function bubble(from: string, text: string, dim: boolean): Frame
+	order += 1
+	local mine = from == "DU"
+
+	local holder = UITheme.Frame({
+		Name = from,
+		BackgroundColor3 = if mine then C.PanelLight else C.Background,
+		BackgroundTransparency = if dim then 0.5 else 0.05,
+		Size = UDim2.new(0.86, 0, 0, 20),
+		AutomaticSize = Enum.AutomaticSize.Y,
+		LayoutOrder = order,
+		ZIndex = 43,
+	})
+	UITheme.Corner(holder, 5)
+	UITheme.Padding(holder, 8)
+
+	local alignment = Instance.new("UIListLayout")
+	alignment.Parent = holder
+
+	local label = UITheme.Label({
+		Name = "Text",
+		Text = text,
+		TextColor3 = if mine then C.TextDim else C.Text,
+		TextTransparency = if dim then 0.35 else 0,
+		TextSize = 13,
+		TextWrapped = true,
+		Size = UDim2.new(1, 0, 0, 0),
+		AutomaticSize = Enum.AutomaticSize.Y,
+		ZIndex = 44,
+	})
+	label.Parent = holder
+
+	if mine then
+		local push = Instance.new("UIPadding")
+		push.PaddingLeft = UDim.new(0, 40)
+		push.Parent = holder
+	end
+
+	holder.Parent = scroll
+	return holder
+end
+
+-- Tippanimation. Ohne sie fuehlt sich der Chat wie eine Textwand an, mit ihr
+-- wie ein Gespraech - und das ist der ganze Punkt am Telefon.
+local typingToken = 0
+
+local function showTyping(): Frame
+	order += 1
+	local dots = UITheme.Frame({
+		Name = "Tippt",
+		BackgroundColor3 = C.Background,
+		BackgroundTransparency = 0.2,
+		Size = UDim2.fromOffset(56, 24),
+		LayoutOrder = order,
+		ZIndex = 43,
+	})
+	UITheme.Corner(dots, 5)
+
+	local label = UITheme.Label({
+		Text = "...",
+		TextColor3 = C.TextDim,
+		TextSize = 16,
+		TextXAlignment = Enum.TextXAlignment.Center,
+		Size = UDim2.fromScale(1, 1),
+		ZIndex = 44,
+	})
+	label.Parent = dots
+
+	dots.Parent = scroll
+	return dots
+end
+
+local activeMission = ""
+
+local function render(payload: { [string]: any })
+	typingToken += 1
+	local token = typingToken
+
+	for _, child in scroll:GetChildren() do
+		if child:IsA("Frame") then
+			child:Destroy()
+		end
+	end
+	order = 0
+
+	summaryLabel.Text = if typeof(payload.Summary) == "string" then payload.Summary else ""
+
+	local messages = payload.Messages
+	if typeof(messages) ~= "table" then
+		return
+	end
+
+	-- Alles Erledigte sofort und blass. Nur die aktuelle Nachricht wird
+	-- getippt - sonst wartet man beim Wiedereinstieg eine Minute auf
+	-- Nachrichten, die man laengst kennt.
+	local last: { [string]: any }? = nil
+	for _, message in messages do
+		if message.State == "ACTIVE" then
+			last = message
+		else
+			bubble(message.From, message.Text, true)
+		end
+	end
+
+	if not last then
+		acceptButton.Visible = false
+		activeMission = ""
+		return
+	end
+
+	activeMission = last.Mission
+	task.spawn(function()
+		local dots = showTyping()
+		task.wait(P.TypingSeconds)
+		if token ~= typingToken then
+			dots:Destroy()
+			return
+		end
+		dots:Destroy()
+
+		local holder = bubble(last.From, "", false)
+		local label = holder:FindFirstChild("Text")
+		if label and label:IsA("TextLabel") then
+			UITheme.TypeInto(label, last.Text, P.CharsPerSecond, function()
+				return token ~= typingToken
+			end)
+		end
+		if token == typingToken then
+			acceptButton.Visible = true
+		end
+	end)
+end
+
+--==========================================================================
+-- Empfangen
+--==========================================================================
+
+local unread = false
+
+Remotes.PhoneSync.OnClientEvent:Connect(function(payload)
+	if typeof(payload) ~= "table" then
+		return
+	end
+	unread = payload.Unread == true
+	badge.Visible = unread
+	render(payload)
+end)
+
+--== Tracker-Daten =========================================================
+
+local stepText = ""
+local missionTitle = ""
+local waypoint: Vector3? = nil
+
+Remotes.MissionSync.OnClientEvent:Connect(function(payload)
+	if typeof(payload) ~= "table" then
+		return
+	end
+	missionTitle = if typeof(payload.Title) == "string" then payload.Title else ""
+	stepText = if typeof(payload.StepText) == "string" then payload.StepText else ""
+
+	if missionTitle == "" then
+		trackerTitle.Text = "KEIN AUFTRAG"
+		trackerTitle.TextColor3 = C.TextDim
+		trackerStep.Text = "[M] oeffnet die Karte"
+	else
+		trackerTitle.Text = missionTitle:upper()
+		trackerTitle.TextColor3 = C.Cyan
+		trackerStep.Text = stepText
+		-- Kurz aufleuchten, wenn sich etwas getan hat. Sonst dezent.
+		UITheme.Flash(tracker, C.Cyan)
+	end
+end)
+
+Remotes.WaypointSync.OnClientEvent:Connect(function(payload)
+	waypoint = if typeof(payload) == "table" and typeof(payload.Position) == "Vector3"
+		then payload.Position
+		else nil
+end)
+
+--==========================================================================
+-- Laufender Betrieb
+--==========================================================================
+
+local function alivePosition(): Vector3?
+	local character = player.Character
+	local root = character and character:FindFirstChild("HumanoidRootPart")
+	if root and root:IsA("BasePart") then
+		return root.Position
+	end
+	return nil
+end
+
+RunService.RenderStepped:Connect(function()
+	-- Entfernung zum aktuellen Ziel. Der wichtigste Wert im Tracker: er
+	-- sagt dem Spieler, ob er richtig laeuft.
+	local position = alivePosition()
+	if waypoint and position then
+		local flat = Vector3.new(waypoint.X - position.X, 0, waypoint.Z - position.Z)
+		trackerDistance.Text = ("%dm"):format(math.round(flat.Magnitude))
+	else
+		trackerDistance.Text = ""
+	end
+
+	if unread then
+		local pulse = 0.5 + 0.5 * math.sin(os.clock() * P.PulseSpeed)
+		phoneStroke.Color = C.Line:Lerp(C.Magenta, pulse)
+		phoneStroke.Thickness = 2 + P.PulseDepth * pulse * 4
+	else
+		phoneStroke.Color = C.Line
+		phoneStroke.Thickness = 2
+	end
+end)
+
+--==========================================================================
+-- Bedienung
+--==========================================================================
+
+local function setOpen(open: boolean)
+	backdrop.Visible = open
+	if open then
+		Remotes.PhoneRead:FireServer()
+		unread = false
+		badge.Visible = false
+	end
+end
+
+phoneButton.Activated:Connect(function()
+	setOpen(not backdrop.Visible)
+end)
+closeButton.Activated:Connect(function()
+	setOpen(false)
+end)
+
+acceptButton.Activated:Connect(function()
+	if activeMission ~= "" then
+		-- Setzt serverseitig den Wegpunkt - und damit auch die Route.
+		Remotes.MissionAccept:FireServer({ MissionId = activeMission })
+	end
+	setOpen(false)
+end)
+
+UserInputService.InputBegan:Connect(function(input, processed)
+	if processed then
+		return
+	end
+	if input.KeyCode == Enum.KeyCode.T then
+		setOpen(not backdrop.Visible)
+	elseif input.KeyCode == Enum.KeyCode.Escape and backdrop.Visible then
+		setOpen(false)
+	end
+end)
+</ProtectedString>
+</Properties>
+</Item>
+<Item class="LocalScript" referent="GN64">
 <Properties>
 <string name="Name">ShopUI</string>
 <ProtectedString name="Source">-- StarterPlayer/StarterPlayerScripts/UI/ShopUI.client.luau
@@ -18160,7 +21239,7 @@ refresh()
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="LocalScript" referent="GN56">
+<Item class="LocalScript" referent="GN65">
 <Properties>
 <string name="Name">SoundController</string>
 <ProtectedString name="Source">-- StarterPlayer/StarterPlayerScripts/UI/SoundController.client.luau
@@ -18471,7 +21550,7 @@ local _ = player
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="LocalScript" referent="GN57">
+<Item class="LocalScript" referent="GN66">
 <Properties>
 <string name="Name">StoreUI</string>
 <ProtectedString name="Source">-- StarterPlayer/StarterPlayerScripts/UI/StoreUI.client.luau
@@ -18797,7 +21876,7 @@ refresh()
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="LocalScript" referent="GN58">
+<Item class="LocalScript" referent="GN67">
 <Properties>
 <string name="Name">TargetBeacons</string>
 <ProtectedString name="Source">-- StarterPlayer/StarterPlayerScripts/UI/TargetBeacons.client.luau
@@ -18899,7 +21978,7 @@ end)
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="LocalScript" referent="GN59">
+<Item class="LocalScript" referent="GN68">
 <Properties>
 <string name="Name">TutorialUI</string>
 <ProtectedString name="Source">-- StarterPlayer/StarterPlayerScripts/UI/TutorialUI.client.luau
@@ -19234,7 +22313,7 @@ end)
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="LocalScript" referent="GN60">
+<Item class="LocalScript" referent="GN69">
 <Properties>
 <string name="Name">VehicleController</string>
 <ProtectedString name="Source">-- StarterPlayer/StarterPlayerScripts/UI/VehicleController.client.luau
@@ -19409,7 +22488,13 @@ local function collect(seat: VehicleSeat): Ride?
 			elseif descendant:GetAttribute("Steered") ~= nil then
 				table.insert(steers, descendant)
 			end
-		elseif descendant:IsA("BasePart") and descendant.Name == "BrakeLight" then
+		elseif
+			descendant:IsA("BasePart")
+			and (descendant.Name == "BrakeLight" or descendant.Name == "TailL" or descendant.Name == "TailR")
+		then
+			-- Zwei Namen, weil zwei Quellen: der alte Platzhalter heisst
+			-- BrakeLight, ein Modell aus Assets/Vehicles bringt Lights/TailL
+			-- und TailR mit. Beide sollen beim Bremsen aufleuchten.
 			table.insert(brakeLights, descendant)
 		end
 	end
@@ -19648,11 +22733,277 @@ end)
 </Properties>
 </Item>
 </Item>
-<Item class="Folder" referent="GN63">
+<Item class="Folder" referent="GN73">
 <Properties>
 <string name="Name">World</string>
 </Properties>
-<Item class="LocalScript" referent="GN62">
+<Item class="LocalScript" referent="GN71">
+<Properties>
+<string name="Name">RouteMarkers</string>
+<ProtectedString name="Source">-- StarterPlayerScripts/World/RouteMarkers.client.luau
+--!strict
+-- GHOSTNET :: Die Leuchtspur auf der Strasse, die Lichtsaeule und die
+-- Bezirks-Einblendung.
+--
+-- WARUM DAS DER WICHTIGSTE TEIL DER ORIENTIERUNG IST
+--   Ein Marker am Kartenrand reicht nicht, weil niemand Karten liest. Was
+--   funktioniert, ist eine Linie auf der Fahrbahn, der man einfach
+--   hinterherlaeuft, und eine Lichtsaeule, die man ueber die Daecher sieht.
+--
+-- WARUM DER CLIENT DIE TEILE BAUT
+--   Eine Route gehoert genau EINEM Spieler. Serverseitige Parts saehe jeder,
+--   und man liefe durch fremde Wegweiser. Lokal erzeugte Parts sieht nur der,
+--   dem sie gehoeren, und sie kosten den Server nichts.
+--   Gerechnet wird die Route trotzdem serverseitig (RouteService) - der
+--   Client bekommt nur eine fertige Punktliste und legt Bretter darauf.
+--
+-- DAS IST REINE ANZEIGE
+--   Eine Linie ist kein Zugang und keine Belohnung. Wer sie manipuliert,
+--   sieht einen falschen Weg und sonst nichts.
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+
+local Config = require(ReplicatedStorage.Shared.Config)
+local Remotes = require(ReplicatedStorage.Shared.Remotes)
+
+local M = Config.Map
+local S = Config.Signage
+local player = Players.LocalPlayer
+
+local folder = Instance.new("Folder")
+folder.Name = "GhostNet_RouteLokal"
+folder.Parent = workspace
+
+--==========================================================================
+-- Die Spur
+--==========================================================================
+
+local segments: { BasePart } = {}
+local routePoints: { Vector3 } = {}
+
+local function clearRoute()
+	for _, part in segments do
+		part:Destroy()
+	end
+	table.clear(segments)
+	table.clear(routePoints)
+end
+
+local function addSegment(from: Vector3, to: Vector3)
+	local delta = to - from
+	local length = delta.Magnitude
+	if length &lt; 0.5 then
+		return
+	end
+
+	local part = Instance.new("Part")
+	part.Name = "Route"
+	part.Size = Vector3.new(M.RouteWidth, 0.12, length)
+	part.CFrame = CFrame.lookAt(from + delta * 0.5, to) * CFrame.Angles(0, 0, 0)
+	part.Color = M.RouteColour
+	part.Material = Enum.Material.Neon
+	part.Transparency = M.RouteTransparency
+	part.Anchored = true
+	part.CanCollide = false
+	part.CanQuery = false
+	part.CanTouch = false
+	part.CastShadow = false
+	part.Parent = folder
+	table.insert(segments, part)
+end
+
+-- Die Punktliste in kurze Stuecke zerlegen, damit die Spur der Strasse folgt
+-- und einzelne Stuecke hinter dem Spieler verblassen koennen.
+local function buildRoute(points: { Vector3 })
+	clearRoute()
+	if #points &lt; 2 then
+		return
+	end
+
+	local height = Config.City.RoadThickness * 0.5 + M.RouteHeight
+
+	for index = 1, #points - 1 do
+		local a = Vector3.new(points[index].X, height, points[index].Z)
+		local b = Vector3.new(points[index + 1].X, height, points[index + 1].Z)
+		local length = (b - a).Magnitude
+		local steps = math.max(1, math.floor(length / M.RouteSegment))
+		for step = 0, steps - 1 do
+			local from = a:Lerp(b, step / steps)
+			local to = a:Lerp(b, (step + 1) / steps)
+			addSegment(from, to)
+			table.insert(routePoints, (from + to) * 0.5)
+		end
+	end
+end
+
+--==========================================================================
+-- Lichtsaeule ueber dem Ziel
+--==========================================================================
+
+local pillar: BasePart? = nil
+
+local function setPillar(position: Vector3?)
+	if not position then
+		if pillar then
+			pillar:Destroy()
+			pillar = nil
+		end
+		return
+	end
+
+	if not pillar then
+		local part = Instance.new("Part")
+		part.Name = "Lichtsaeule"
+		part.Shape = Enum.PartType.Cylinder
+		part.Size = Vector3.new(S.PillarHeight, S.PillarRadius * 2, S.PillarRadius * 2)
+		part.Color = M.RouteColour
+		part.Material = Enum.Material.Neon
+		part.Transparency = S.PillarTransparency
+		part.Anchored = true
+		part.CanCollide = false
+		part.CanQuery = false
+		part.CanTouch = false
+		part.CastShadow = false
+		part.Parent = folder
+		pillar = part
+	end
+
+	-- Zylinder liegen entlang ihrer X-Achse: aufrichten.
+	;(pillar :: BasePart).CFrame = CFrame.new(position + Vector3.new(0, S.PillarHeight * 0.5, 0))
+		* CFrame.Angles(0, 0, math.rad(90))
+end
+
+--==========================================================================
+-- Empfangen
+--==========================================================================
+
+local target: Vector3? = nil
+
+Remotes.RouteSync.OnClientEvent:Connect(function(payload)
+	if typeof(payload) ~= "table" or typeof(payload.Points) ~= "table" or #payload.Points &lt; 2 then
+		clearRoute()
+		setPillar(nil)
+		target = nil
+		return
+	end
+
+	buildRoute(payload.Points)
+	target = payload.Points[#payload.Points]
+	setPillar(target)
+end)
+
+--==========================================================================
+-- Verblassen hinter dem Spieler, Aufloesen bei Ankunft
+--==========================================================================
+
+local function alivePosition(): Vector3?
+	local character = player.Character
+	local root = character and character:FindFirstChild("HumanoidRootPart")
+	if root and root:IsA("BasePart") then
+		return root.Position
+	end
+	return nil
+end
+
+local accumulator = 0
+
+RunService.Heartbeat:Connect(function(deltaTime)
+	-- Gestaffelt statt jeden Frame: die Spur muss nicht 60x pro Sekunde
+	-- neu bewertet werden, und sie hat bis zu hundert Stuecke.
+	accumulator += deltaTime
+	if accumulator &lt; Config.Traffic.Tick then
+		return
+	end
+	accumulator = 0
+
+	if #segments == 0 then
+		return
+	end
+	local position = alivePosition()
+	if not position then
+		return
+	end
+
+	-- Angekommen: die Spur loest sich auf. Ohne das bleibt sie liegen und
+	-- der Spieler laeuft im Kreis.
+	if target and (Vector3.new(target.X, position.Y, target.Z) - position).Magnitude &lt;= M.RouteArrivalRange then
+		clearRoute()
+		setPillar(nil)
+		target = nil
+		return
+	end
+
+	-- Naechstes Stueck der Spur suchen. Alles davor liegt hinter dem
+	-- Spieler und wird blass - sonst sehen Hin- und Rueckweg gleich aus.
+	local nearest = 1
+	local best = math.huge
+	for index, point in routePoints do
+		local distance = (Vector3.new(point.X, position.Y, point.Z) - position).Magnitude
+		if distance &lt; best then
+			nearest, best = index, distance
+		end
+	end
+
+	for index, part in segments do
+		part.Transparency = if index &lt; nearest then M.RouteFadeBehind else M.RouteTransparency
+	end
+end)
+
+--==========================================================================
+-- Bezirksname beim Betreten
+--==========================================================================
+
+local UITheme = require(ReplicatedStorage.Shared.UITheme)
+
+local toastGui = UITheme.Screen("GhostNetDistrict", 4)
+toastGui.Parent = player:WaitForChild("PlayerGui")
+
+local toast = UITheme.Label({
+	Name = "Bezirk",
+	Text = "",
+	TextColor3 = UITheme.Color.Text,
+	TextSize = 22,
+	TextTransparency = 1,
+	AnchorPoint = Vector2.new(0, 1),
+	Position = UDim2.new(0, 24, 1, -120),
+	Size = UDim2.fromOffset(420, 28),
+	ZIndex = 5,
+})
+toast.Parent = toastGui
+
+local toastToken = 0
+
+Remotes.DistrictEnter.OnClientEvent:Connect(function(payload)
+	if typeof(payload) ~= "table" or typeof(payload.Name) ~= "string" then
+		return
+	end
+
+	toastToken += 1
+	local token = toastToken
+	toast.Text = payload.Name:upper()
+	toast.TextTransparency = 0
+
+	task.delay(S.DistrictToastSeconds, function()
+		if token ~= toastToken then
+			return
+		end
+		-- Ausblenden in kleinen Schritten statt per Tween: ein Tween auf
+		-- TextTransparency waere hier derselbe Aufwand mit mehr Zeilen.
+		for step = 1, 10 do
+			if token ~= toastToken then
+				return
+			end
+			toast.TextTransparency = step / 10
+			task.wait(S.DistrictToastFade / 10)
+		end
+	end)
+end)
+</ProtectedString>
+</Properties>
+</Item>
+<Item class="LocalScript" referent="GN72">
 <Properties>
 <string name="Name">TrafficSmoother</string>
 <ProtectedString name="Source">-- StarterPlayerScripts/World/TrafficSmoother.client.luau

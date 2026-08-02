@@ -41,6 +41,12 @@ local EVENT_NAMES = {
 	"PursuitSync", -- S->C  { level, escaping, seconds }
 	"EndgameChoice", -- C->S  { choice }    Kassieren oder Verbrennen
 	"MapSync", -- S->C  { nodes, edges, pois }   Kartendaten, siehe MapService
+	"RouteSync", -- S->C  { points, label }     Route ueber den Strassengraphen
+	"RouteRequest", -- C->S  { x, z } oder { }  Ziel setzen bzw. loeschen
+	"PhoneSync", -- S->C  { messages, unread }  Chatverlauf mit Wren
+	"PhoneRead", -- C->S  { }                   Spieler hat das Telefon geoeffnet
+	"DistrictEnter", -- S->C  { id, name }      Bezirk betreten (Einblendung)
+	"ArrestSync", -- S->C  { state, seconds, station }   Festnahme und Zelle
 }
 
 local FUNCTION_NAMES: { string } = {

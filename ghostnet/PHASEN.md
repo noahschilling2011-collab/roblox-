@@ -1,8 +1,7 @@
 # GHOSTNET — Bauplan
 
 **Stand: alles abgearbeitet** — Phase 0 bis G, Open-World-Abschnitt 2 und
-Phase 1 bis 7, v2.1.0 „Vantorra bei Tag", v2.2.0 „Rework" und v2.3.0 „Karte"
-(`Config.Version = "2.3.0"`).
+Phase 1 bis 7, v2.1.0 bis v2.4.0 (`Config.Version = "2.4.0"`).
 Was jetzt ansteht, steht ganz unten unter „Offen".
 
 Reihenfolge war bindend. Eine Phase wurde komplett fertig, bevor die nächste
@@ -451,6 +450,43 @@ Blockzahl wächst quadratisch, an jedem Block hängen vier Häuser aus mehreren
 Modulen. Von 5 auf 7 sind das rund 2,25× so viele Gebäude. Erst messen, dann
 weiter hochdrehen — und wenn es ruckelt, ist das die erste Zahl, die wieder
 runtergeht.
+
+---
+
+# v2.4.0 — Orientierung, Story, Polizei
+
+Drei Probleme, in dieser Reihenfolge abgearbeitet.
+
+## Phase 1 — Orientierung ✅
+Minikarte oben rechts (dauerhaft, dreht sich mit der Blickrichtung, zwei
+Zoomstufen), ein festes Symbol je Bedeutung aus `Shared/Icons.luau`,
+**Route als Leuchtspur auf der Fahrbahn** (Dijkstra serverseitig über den
+bestehenden `RoadNetwork`-Graphen, gezeichnet lokal beim Spieler),
+Kompassleiste mit Entfernungen in Metern, Beschilderung der Gebäude,
+Straßenschilder, Bezirksname beim Betreten, „Fahrzeug rufen".
+
+## Phase 2 — Die Story sichtbar machen ✅
+Das Telefon trägt die ganze Geschichte: Chatverlauf mit Wren, Tippanimation,
+„Annehmen" setzt Wegpunkt und Route. Der Verlauf wird aus dem Story-Zustand
+gebaut — **kein neues Speicherfeld, keine Migration**. Auftrags-Tracker links
+oben mit Entfernung, nie eine leere Ecke.
+
+## Phase 3 — Polizei, die aussteigt und festnimmt ✅
+Zwei Wachen als echte Orte. Ab Stufe 3 steigen Polizisten aus und verfolgen zu
+Fuß (`PathfindingService`, Pfad nur alle 0,5 s neu). Festnahme mit Zelle,
+Countdown und Entlassung; Konsequenzen ausschließlich über die bestehenden
+Systeme. Sichtbarer Entkommen-Balken, Vorwarnung vor jedem Zugriff, Zeitlimit.
+Kein Kampf, keine Waffen.
+
+## Phase 4 — Fahrgefühl ✅
+Das meiste war schon da. Neu: tiefer Schwerpunkt (sonst kippt jedes
+Roblox-Fahrzeug in der ersten Kurve), Bremslichter erkennen den Modellvertrag.
+
+## Was Code nicht lösen kann
+`ReplicatedStorage/Assets/` ist leer, deshalb ist alles Sichtbare magenta.
+`ASSETS_TODO.md` listet jedes fehlende Modell mit Ordner, exaktem Namen,
+Pflicht-Kindern, Maßen und Bezugsquelle — sortiert nach Wichtigkeit.
+`AssetLibrary.Report()` schreibt dieselbe Liste beim Serverstart in die Konsole.
 
 ---
 

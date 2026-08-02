@@ -22,6 +22,7 @@ local Types = require(ReplicatedStorage.Shared.Types)
 local Vehicles = require(ReplicatedStorage.Shared.Vehicles)
 
 local EconomyService = require(script.Parent.EconomyService)
+local RoadNetwork = require(script.Parent.RoadNetwork)
 local RateLimiter = require(script.Parent.RateLimiter)
 local SaveService = require(script.Parent.SaveService)
 local TimeService = require(script.Parent.TimeService)
@@ -107,6 +108,9 @@ function VehicleService.Sync(player: Player)
 	Remotes.GarageSync:FireClient(player, {
 		Owned = owned,
 		Spawned = if current and current.Parent then current:GetAttribute("ClassId") else "",
+		-- Damit die Karte einen orangenen Marker setzen kann: wo steht mein Auto?
+		SpawnedAt = if current and current.Parent then current:GetPivot().Position else nil,
+		CallFee = Config.Vehicle.CallFee,
 		MaxSpawned = Config.Vehicle.MaxSpawned,
 		DealerOpen = dealerOpen(),
 		Colours = Config.Dealer.ColourOptions,
@@ -293,6 +297,57 @@ local function repaint(player: Player, classId: string, colour: string): { [stri
 end
 
 --==========================================================================
+-- Fahrzeug rufen
+--
+-- "Wo ist mein Auto" ist der haeufigste Grund, ein Open-World-Spiel zu
+-- schliessen. Der Marker auf der Karte loest das halb; das hier loest den
+-- Rest - gegen Gebuehr, mit Cooldown und nur an einer Strasse, damit es
+-- kein Teleport wird.
+--==========================================================================
+
+local lastCall: { [Player]: number } = {}
+
+local function callVehicle(player: Player): { [string]: any }
+	local model = spawned[player]
+	if not model or not model.Parent then
+		return result(false, "NO_VEHICLE")
+	end
+
+	local now = os.time()
+	local since = now - (lastCall[player] or 0)
+	if since < Config.Vehicle.CallCooldown then
+		return result(false, "COOLDOWN", { Seconds = Config.Vehicle.CallCooldown - since })
+	end
+
+	local position = Geometry.AlivePosition(player)
+	if not position then
+		return result(false, "NO_CHARACTER")
+	end
+
+	-- Nur an einer Strasse. Sonst steht das Auto im Treppenhaus.
+	local node = RoadNetwork.NearestNode(position)
+	if not node or (node.Position - position).Magnitude > Config.Vehicle.CallRoadRange then
+		return result(false, "NO_ROAD")
+	end
+
+	if not EconomyService.SpendBanked(player, Config.Vehicle.CallFee) then
+		return result(false, "TOO_EXPENSIVE", { Cost = Config.Vehicle.CallFee })
+	end
+
+	lastCall[player] = now
+
+	-- Neben den Spieler stellen, in Richtung Strasse. PivotTo, damit das
+	-- ganze Modell mitkommt.
+	local toRoad = node.Position - position
+	local facing = if toRoad.Magnitude > 1 then toRoad.Unit else Vector3.new(0, 0, 1)
+	local drop = position + facing * Config.Vehicle.CallDropDistance
+	model:PivotTo(CFrame.lookAt(Vector3.new(drop.X, position.Y + 3, drop.Z), Vector3.new(drop.X, position.Y + 3, drop.Z) + facing))
+
+	VehicleService.Sync(player)
+	return result(true, "OK", { Cost = Config.Vehicle.CallFee })
+end
+
+--==========================================================================
 -- Remote
 --==========================================================================
 
@@ -312,6 +367,10 @@ local function onAction(player: Player, payload: any): { [string]: any }
 		VehicleService.Despawn(player)
 		VehicleService.Sync(player)
 		return result(true, "OK")
+	end
+
+	if action == "CALL" then
+		return callVehicle(player)
 	end
 
 	if typeof(classId) ~= "string" or not Vehicles.Exists(classId) then

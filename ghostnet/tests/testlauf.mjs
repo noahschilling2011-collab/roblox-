@@ -328,6 +328,66 @@ try {
     );
   }
 
+  // --- Orientierung, Story, Polizei ---
+  {
+    const route = sources.get(join(SRC, "server/Systems/RouteService.luau"));
+    if (route) {
+      check(
+        "Die Route laeuft ueber den bestehenden Strassengraphen",
+        /RoadNetwork\.RouteBetween/.test(codeOnly(route)),
+        "ein zweites Wegenetz wuerde vom ersten abweichen"
+      );
+    }
+    const markers = sources.get(join(SRC, "client/World/RouteMarkers.client.luau"));
+    if (markers) {
+      check(
+        "Die Leuchtspur wird lokal gebaut, nicht serverseitig",
+        /Enum\.Material\.Neon/.test(codeOnly(markers)),
+        "serverseitige Route-Parts saehe jeder Spieler"
+      );
+    }
+    const arrest = sources.get(join(SRC, "server/Systems/ArrestService.luau"));
+    if (arrest) {
+      const code = codeOnly(arrest);
+      check(
+        "Festnahme benutzt die bestehenden Systeme",
+        /EconomyService\.WipeUnsold/.test(code)
+          && /InventoryService\.ConfiscateFraction/.test(code)
+          && /Config\.Trace\.AfterBust/.test(code),
+        "es entsteht ein zweites Straf-System neben dem Bust"
+      );
+      check(
+        "Festnahme braucht eine echte Wache",
+        /PoliceStationTag/.test(code),
+        "ohne Ort ist eine Festnahme nur ein Bildschirmtext"
+      );
+      check(
+        "Keine Waffen bei der Festnahme",
+        !/Tool|Weapon|TakeDamage|Damage/i.test(code),
+        "bewusste Design-Entscheidung: kein Kampf"
+      );
+    }
+    const pursuit = sources.get(join(SRC, "server/Systems/PursuitService.luau"));
+    if (pursuit) {
+      const code = codeOnly(pursuit);
+      check(
+        "Polizisten steigen aus und verfolgen zu Fuss",
+        /PathfindingService/.test(code) && /Instance\.new\("Humanoid"\)/.test(code),
+        "eine Verfolgung, aus der man einfach aussteigt, ist keine"
+      );
+      check(
+        "Der Pfad wird nur getaktet neu gerechnet",
+        /OfficerRepath/.test(code),
+        "eine Wegsuche pro Frame bricht den Server"
+      );
+      check(
+        "Die Verfolgung endet spaetestens nach MaxDuration",
+        /MaxDuration/.test(code),
+        "niemand darf ewig gejagt werden"
+      );
+    }
+  }
+
   // --- Karte ---
   {
     const map = sources.get(join(SRC, "server/Systems/MapService.luau"));
@@ -1304,6 +1364,48 @@ test("Die Karte ist vollstaendig und lesbar", function()
 	expect(M.MiniRange > 0, "die Minikarte zeigt nichts")
 	expect(M.MaxTargets > 0, "keine Ziele auf der Karte")
 	expect(M.SyncDebounce > 0, "Kartendaten wuerden ungebuendelt gesendet")
+end)
+
+test("Die Polizei ist eine Bedrohung, aber fair", function()
+	local P = Config.Pursuit
+	-- Aussteigen muss VOR der hoechsten Stufe passieren, sonst sieht man es nie.
+	expect(P.ExitLevel >= 1 and P.ExitLevel <= P.MaxLevel, "Aussteige-Stufe unerreichbar")
+	expect(P.ArrestSeconds > P.WarnSeconds,
+		"es wird festgenommen, bevor gewarnt wurde - das fuehlt sich nach Willkuer an")
+	expect(P.ArrestRange > 0 and P.ArrestRange < P.SpotRange, "Zugriffsreichweite unbrauchbar")
+	expect(P.JailSeconds > 0, "die Zelle dauert null Sekunden")
+	expect(P.MaxDuration > P.EscapeSeconds,
+		"die Verfolgung endet, bevor man ueberhaupt entkommen koennte")
+	-- Ein Bust darf wehtun, aber niemanden auf null setzen.
+	expect(P.JailFeeFraction > 0 and P.JailFeeFraction < 1, "Gebuehr unbrauchbar")
+	expect(P.JailFeeCap > 0, "Gebuehr ist nicht gedeckelt")
+	expect(P.JailStashFraction > 0 and P.JailStashFraction < 1, "Lagerverlust unbrauchbar")
+	expect(P.OfficerRepath > 0, "Wegsuche jeden Frame")
+end)
+
+test("Die Route ist begrenzt und loest sich auf", function()
+	local M = Config.Map
+	expect(M.RouteMaxNodes > 2, "Route kann keine Strecke abbilden")
+	expect(M.RouteArrivalRange > 0, "die Route loest sich nie auf")
+	expect(M.RouteSegment > 0, "Segmentlaenge null - unendlich viele Teile")
+	expect(M.RouteFadeBehind > M.RouteTransparency,
+		"hinter dem Spieler ist die Spur nicht blasser als vor ihm")
+end)
+
+test("Jede Kartenart hat ein eigenes Symbol", function()
+	local seen = {}
+	for _, kind in Config.Map.Kinds do
+		expect(typeof(kind.Shape) == "string" and kind.Shape ~= "",
+			kind.Id .. ": kein Symbol")
+		seen[kind.Shape] = (seen[kind.Shape] or 0) + 1
+	end
+	-- Ein Symbol darf mehrfach vorkommen (Haus fuer Apartment und Garage),
+	-- aber nicht alles darf dasselbe sein - sonst sagt die Legende nichts.
+	local distinct = 0
+	for _ in seen do
+		distinct += 1
+	end
+	expect(distinct >= 5, "nur " .. distinct .. " verschiedene Symbole fuer alles")
 end)
 
 test("Die Karte passt zur Stadt", function()

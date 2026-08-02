@@ -379,6 +379,27 @@ function VehicleChassis.Build(classId: string, cframe: CFrame, colour: Color3?):
 		prompt.Parent = seat
 	end
 
+	--== Schwerpunkt tief ansetzen =========================================
+	-- Ohne das kippt in Roblox praktisch jedes Fahrzeug in der ersten Kurve
+	-- um. Der Schwerpunkt einer Baugruppe laesst sich nicht direkt setzen -
+	-- also haengt ein schweres, unsichtbares Gewicht tief unter dem Chassis.
+	-- Das ist der billigste und stabilste Weg, und er wirkt sofort.
+	local ballast = Instance.new("Part")
+	ballast.Name = "Ballast"
+	ballast.Size = Vector3.new(class.BodySize.X * 0.5, 0.5, class.BodySize.Z * 0.5)
+	ballast.Transparency = 1
+	ballast.CanCollide = false
+	ballast.CanQuery = false
+	ballast.CanTouch = false
+	ballast.CustomPhysicalProperties = physical(Config.Vehicle.BallastDensity, 0.3, 0)
+	ballast.CFrame = chassis.CFrame * CFrame.new(0, -Config.Vehicle.BallastDrop, 0)
+	ballast.Parent = model
+
+	local ballastWeld = Instance.new("WeldConstraint")
+	ballastWeld.Part0 = chassis
+	ballastWeld.Part1 = ballast
+	ballastWeld.Parent = chassis
+
 	-- Der Sitz haengt fest an der Kollisionsbox. Hier ist eine WeldConstraint
 	-- richtig: beide Teile sind NICHT anchored, es ist echte Physik.
 	local seatWeld = Instance.new("WeldConstraint")

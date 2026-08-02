@@ -100,6 +100,36 @@ end
 -- Bust: das Lager ist genauso heiss wie das Bargeld
 --==========================================================================
 
+-- Nimmt einen Anteil des Lagers weg. Wird vom Bust benutzt und - mit einem
+-- eigenen Anteil - von der Festnahme: heisse Ware nehmen sie mit.
+function InventoryService.ConfiscateFraction(player: Player, fraction: number): number
+	if fraction <= 0 then
+		return 0
+	end
+	local profile = SaveService.Get(player)
+	if not profile then
+		return 0
+	end
+
+	local lost = 0
+	for goodId, amount in profile.Stash do
+		local remove = math.floor(amount * fraction + 0.5)
+		if remove > 0 then
+			profile.Stash[goodId] = math.max(0, amount - remove)
+			if profile.Stash[goodId] == 0 then
+				profile.Stash[goodId] = nil
+			end
+			lost += remove
+		end
+	end
+
+	if lost > 0 then
+		InventoryService.Sync(player)
+		SaveService.RequestSave(player)
+	end
+	return lost
+end
+
 local function onBust(player: Player)
 	if Config.Market.BustStashLossPercent <= 0 then
 		return
