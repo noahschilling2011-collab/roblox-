@@ -53,10 +53,35 @@ lassen (Scope offiziell erweitern) oder für den ersten Launch deaktivieren.
 ## Bekannte Bugs 🐞
 - (keine offen erfasst; letzter Testlauf 24/24 grün)
 
-## Nebenprojekt im selben Repo 📦
-- Unter `turmfall/` liegt ein zweites, eigenständiges Spiel (TURMFALL, physik-basiertes
-  Rundenspiel) mit eigener `Turmfall.rbxlx`. Es ist von PlanetForge unabhängig und wird
-  von diesem Bauplan NICHT abgedeckt.
+## Nebenprojekte im selben Repo 📦
+Beide sind von PlanetForge unabhängig und werden von diesem Bauplan NICHT abgedeckt.
+Sie haben eigene `CLAUDE.md`/`PHASEN.md`/`STATUS.md` in ihrem Ordner — die gelten dort
+vor dieser Datei.
+- `turmfall/` — TURMFALL, physik-basiertes Rundenspiel, eigene `Turmfall.rbxlx`.
+- `ghostnet/` — GHOSTNET, Hacking-Spiel (helle Stadt, dunkles Fake-OS), eigene `GhostNet.rbxlx`.
+  Stand: v2.6.0 — zwei weitere Minispiele, prozeduraler Weltgenerator,
+  Tagesziele (Schema 5 -> 6) und Ranglisten. Darunter v2.5.0 — Fahrzeuge
+  bauen sich wieder selbst (echte Silhouette statt
+  magenta Kasten), Raeder fliegen nicht mehr weg. Darunter v2.4.0 —
+  Orientierung, Story und Polizei: drehbare Minikarte oben
+  rechts, Route als Leuchtspur auf der Straße, Kompassleiste, beschilderte
+  Gebäude, Telefon-Chat mit Wren als Story-Träger, und eine Polizei, die ab
+  Stufe 3 aussteigt, zu Fuß verfolgt und in einer echten Wache festnimmt.
+  Darunter v2.3.0 — Karte und größere Stadt (720 statt 480 Studs Kante). Darunter v2.2.0 — Rework von Optik und Verkehr: der Dach-Bug (WeldConstraint
+  zwischen Anchored-Teilen) ist an allen vier Stellen behoben, Modelle bewegen
+  sich über `PivotTo`, und sichtbare Geometrie kommt jetzt als Vorlage aus
+  `ReplicatedStorage/Assets` statt aus Parts. Solange dort keine Modelle
+  liegen, steht überall ein magenta Platzhalter — Absicht, nicht Defekt.
+  Darunter v2.1.0 — helle Stadt bei dauerhaftem Tag (der Nachtbonus hängt
+  am Ort statt an der Uhrzeit: offene Ziele zahlen mehr und kosten mehr Trace).
+  Darunter v2.0.0, der Umbau zur offenen Stadt: Bezirke mit gerechnetem
+  Straßengraph, Verkehr und Fußgänger (gepoolt, ohne PathfindingService),
+  Fahrzeugbesitz mit Autohaus und Garage, Bankraub mit drei Wegen, Polizei-
+  Verfolgung ohne Waffen und eine 10-Missionen-Story mit Entscheidung am Ende.
+  Profil-Schema steht auf Version 6 (zuletzt Migration 5 → 6: Tagesziele).
+  Testlauf 784/784 grün. **Bildrate ist ungemessen** — dafür braucht es den
+  MicroProfiler in Studio, nicht die Luau-VM des Testlaufs.
+  Alle Asset-/Produkt-IDs sind noch Platzhalter.
 
 ## Manuelle Schritte außerhalb des Codes (Noah) 🔑
 - Publishing + Creator Dashboard: Gamepässe/Produkte anlegen, echte IDs in
