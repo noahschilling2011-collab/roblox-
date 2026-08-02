@@ -132,36 +132,28 @@ end
 -- Antrieb. Kulisse, die sich bewegt.
 local function buildCarShell(): (Model, BasePart, string)
 	local class = randomClass()
-	local model = AssetLibrary.Clone("Vehicles", class.Asset, class.BodySize)
+	-- Dieselbe Karosserie wie ein Spielerfahrzeug, nur ohne Physik. Genau
+	-- deshalb sieht man beim Kurzschliessen keinen Formwechsel.
+	local model = VehicleChassis.BuildShell(class.Id)
+	if not model then
+		-- Kann nur passieren, wenn der Katalog kaputt ist. Dann lieber ein
+		-- leeres Modell als ein Absturz mitten im Verkehrstakt.
+		warn(("[GHOSTNET] Verkehr: Klasse '%s' liefert keine Huelle."):format(class.Id))
+		model = Instance.new("Model")
+	end
 	model.Name = "TrafficCar"
 
-	local pivot = model.PrimaryPart
+	local pivot = model.PrimaryPart or model:FindFirstChildWhichIsA("BasePart", true)
 	if not pivot then
-		local chassis = AssetLibrary.Find(model, "Chassis")
-		if chassis and chassis:IsA("BasePart") then
-			pivot = chassis
-		else
-			-- Ohne Pivot koennte PivotTo nur die Bounding-Box benutzen und
-			-- das Auto stuende schief in der Strasse. Lieber laut sein.
-			warn(("[GHOSTNET] Verkehrsvorlage '%s' hat weder PrimaryPart noch Chassis."):format(class.Asset))
-			pivot = model:FindFirstChildWhichIsA("BasePart", true)
-		end
+		warn("[GHOSTNET] Verkehrshuelle enthaelt keinen BasePart.")
+		local fallback = Instance.new("Part")
+		fallback.Size = class.BodySize
+		fallback.Anchored = true
+		fallback.Parent = model
+		pivot = fallback
 	end
 	local body = pivot :: BasePart
 	model.PrimaryPart = body
-
-	-- Kulisse: nichts rechnet Physik, nichts wird abgefragt.
-	for _, descendant in model:GetDescendants() do
-		if descendant:IsA("BasePart") then
-			descendant.Anchored = true
-			descendant.CanTouch = false
-			descendant.CanQuery = false
-			descendant.CanCollide = descendant == body
-			if descendant ~= body then
-				descendant.CastShadow = false
-			end
-		end
-	end
 	body.CanQuery = true -- der Diebstahl-Prompt braucht Abfragbarkeit
 
 	-- Der Diebstahl-Prompt. Halten statt tippen, damit es nicht aus Versehen
@@ -519,8 +511,10 @@ function TrafficService.HandleSteal(player: Player)
 
 	-- Die Lackierung mitnehmen, damit es dasselbe Auto bleibt. Die Farbe
 	-- steht an der Karosserie, nicht am Chassis.
+	-- Die Karosserie liegt bei einem gebauten Fahrzeug unter BodyParts, bei
+	-- einem Fremdmodell direkt im Modell. Beide Faelle abdecken.
 	local paint: Color3? = nil
-	local shellBody = AssetLibrary.Find(target.Model, "Body")
+	local shellBody = target.Model:FindFirstChild("Body", true)
 	if shellBody and shellBody:IsA("BasePart") then
 		paint = shellBody.Color
 	end

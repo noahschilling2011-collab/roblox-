@@ -27,6 +27,7 @@ local AssetLibrary = require(ReplicatedStorage.Shared.AssetLibrary)
 
 local ArrestService = require(script.Parent.ArrestService)
 local RoadNetwork = require(script.Parent.RoadNetwork)
+local VehicleChassis = require(script.Parent.VehicleChassis)
 local SaveService = require(script.Parent.SaveService)
 local TraceService = require(script.Parent.TraceService)
 
@@ -79,33 +80,51 @@ end
 --==========================================================================
 
 local function buildUnit(): Unit
-	-- Derselbe Weg wie beim Verkehr: Vorlage klonen, nicht bauen. Fehlt sie,
-	-- steht hier ein magenta Platzhalter - unuebersehbar, aber fahrbereit.
-	local model = AssetLibrary.Clone("Vehicles", P.UnitAsset, P.UnitSize)
-	model.Name = "Streifenwagen"
-
-	local pivot = model.PrimaryPart
-	if not pivot then
-		local chassis = AssetLibrary.Find(model, "Chassis")
-		if chassis and chassis:IsA("BasePart") then
-			pivot = chassis
-		else
-			warn(("[GHOSTNET] Streifenwagenvorlage '%s' hat weder PrimaryPart noch Chassis."):format(P.UnitAsset))
-			pivot = model:FindFirstChildWhichIsA("BasePart", true)
+	-- Gibt es ein eigenes Polizeimodell in Assets/Vehicles, wird das benutzt.
+	-- Sonst kommt die Karosserie aus demselben Bauplan wie jedes andere Auto -
+	-- ein Streifenwagen soll aussehen wie ein Fahrzeug, nicht wie ein Klotz.
+	local model: Model?
+	if AssetLibrary.Has("Vehicles", P.UnitAsset) then
+		model = AssetLibrary.Clone("Vehicles", P.UnitAsset, P.UnitSize)
+		if model then
+			for _, descendant in model:GetDescendants() do
+				if descendant:IsA("BasePart") then
+					descendant.Anchored = true
+					descendant.CanTouch = false
+					descendant.CanQuery = false
+				end
+			end
 		end
+	else
+		model = VehicleChassis.BuildShell(P.UnitClass)
+	end
+
+	if not model then
+		warn("[GHOSTNET] Streifenwagen: keine Karosserie verfuegbar.")
+		model = Instance.new("Model")
+	end
+	local unitModel = model :: Model
+	unitModel.Name = "Streifenwagen"
+
+	local pivot = unitModel.PrimaryPart or unitModel:FindFirstChildWhichIsA("BasePart", true)
+	if not pivot then
+		local fallback = Instance.new("Part")
+		fallback.Size = P.UnitSize
+		fallback.Anchored = true
+		fallback.Parent = unitModel
+		pivot = fallback
 	end
 	local body = pivot :: BasePart
-	model.PrimaryPart = body
+	unitModel.PrimaryPart = body
+	model = unitModel
 
-	-- Kulisse: Anchored, keine Physik, keine Abfrage.
-	for _, descendant in model:GetDescendants() do
-		if descendant:IsA("BasePart") then
-			descendant.Anchored = true
-			descendant.CanTouch = false
-			descendant.CanQuery = false
-			descendant.CanCollide = descendant == body
-			if descendant ~= body then
-				descendant.CastShadow = false
+	-- Polizeilack: die geliehene Karosserie wird umgefaerbt, sonst faehrt
+	-- eine zivile Limousine mit Blaulicht durch die Stadt.
+	local bodyParts = unitModel:FindFirstChild("BodyParts")
+	if bodyParts then
+		for _, part in bodyParts:GetChildren() do
+			if part:IsA("BasePart") and (part.Name == "Body" or part.Name == "Cabin" or part.Name == "Hood") then
+				part.Color = P.UnitColour
 			end
 		end
 	end
@@ -113,12 +132,12 @@ local function buildUnit(): Unit
 	-- Blaulicht. Neonflaechen statt Lichtquellen fuer die Farbe, EIN
 	-- PointLight fuer den Schein - mehr braucht es nicht und mehr kostet
 	-- zu viel. Bringt die Vorlage schon Lichter mit, bleibt es dabei.
-	if not AssetLibrary.Find(model, "Lights/Blau") then
-		local lights = model:FindFirstChild("Lights")
+	if not AssetLibrary.Find(unitModel, "Lights/Blau") then
+		local lights = unitModel:FindFirstChild("Lights")
 		if not lights then
 			local folder = Instance.new("Folder")
 			folder.Name = "Lights"
-			folder.Parent = model
+			folder.Parent = unitModel
 			lights = folder
 		end
 		for index, side in { -1, 1 } do
@@ -145,13 +164,13 @@ local function buildUnit(): Unit
 		light.Parent = body
 	end
 
-	model.Parent = ensureContainer()
-	CollectionService:AddTag(model, Config.SmoothTag)
+	unitModel.Parent = ensureContainer()
+	CollectionService:AddTag(unitModel, Config.SmoothTag)
 	return {
-		Model = model,
+		Model = unitModel,
 		Body = body,
 		GroundOffset = Config.City.RoadThickness * 0.5
-			+ model:GetExtentsSize().Y * 0.5
+			+ unitModel:GetExtentsSize().Y * 0.5
 			+ Config.Traffic.GroundClearance,
 		From = 1,
 		To = 1,

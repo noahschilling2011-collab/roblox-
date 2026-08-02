@@ -1,13 +1,18 @@
 # ASSETS_TODO — was noch gebaut oder besorgt werden muss
 
-> **Das ist die einzige Sache am Projekt, die Code nicht lösen kann.**
-> `ReplicatedStorage/Assets/` ist leer. Deshalb steht überall im Spiel ein
-> knallmagenta `MISSING_ASSET_…`. Das ist Absicht: ein Platzhalter, den man
-> übersehen kann, ist kein Platzhalter — und aus Parts nachgebaute Ersatzautos
-> sind genau das Problem, das die Asset-Pipeline beseitigt hat.
+> `ReplicatedStorage/Assets/` ist leer. Was das heißt, ist seit v2.5.0
+> **unterschiedlich**:
 >
-> Das Spiel ist trotzdem **vollständig spielbar**: die Klötze haben die
-> richtigen Maße, Kollisionen, Tags und Attribute. Sobald ein Modell im
+> - **Fahrzeuge sind nicht mehr magenta.** `VehicleChassis` baut eine echte
+>   Silhouette aus Parts und Wedges — Motorhaube, abfallende Dachlinie,
+>   Kotflügel, Fenster, Lichter, Grill. Ein hochgeladenes Modell hat trotzdem
+>   Vorrang und ist die bessere Lösung; die Liste unten bleibt also gültig,
+>   sie ist nur kein Notfall mehr.
+> - **Gebäude, Props und Figuren sind weiter magenta.** Die werden bewusst
+>   *nicht* nachgebaut: ein Platzhalter, den man übersehen kann, ist kein
+>   Platzhalter.
+>
+> Das Spiel ist in beiden Fällen **vollständig spielbar**. Sobald ein Modell im
 > richtigen Ordner unter dem richtigen Namen liegt, wird es beim nächsten
 > Serverstart automatisch benutzt. Kein Code muss angefasst werden.
 
@@ -40,11 +45,12 @@ nicht fünf Bezirke halb.
 
 ---
 
-# 1. Fahrzeuge — das Wichtigste
+# 1. Fahrzeuge — der größte optische Gewinn
 
-Ohne die sind alle Autos magenta Kästen. Sie tauchen im Verkehr, beim Händler,
-in der Garage und als Streifenwagen auf — ein Modell wirkt also an vier
-Stellen gleichzeitig.
+Seit v2.5.0 baut der Code selbst ein ordentliches Auto, also ist hier nichts
+mehr dringend. Ein richtiges Modell sieht trotzdem deutlich besser aus, und es
+wirkt an vier Stellen gleichzeitig: Verkehr, Händler, Garage, Streifenwagen —
+alle holen dieselbe Karosserie.
 
 **Alle sechs teilen denselben Aufbau.** `Chassis` ist eine einfache,
 unsichtbare Box, etwas kleiner als die Karosserie: die Physik rechnet mit

@@ -59,7 +59,9 @@ Sie haben eigene `CLAUDE.md`/`PHASEN.md`/`STATUS.md` in ihrem Ordner — die gel
 vor dieser Datei.
 - `turmfall/` — TURMFALL, physik-basiertes Rundenspiel, eigene `Turmfall.rbxlx`.
 - `ghostnet/` — GHOSTNET, Hacking-Spiel (helle Stadt, dunkles Fake-OS), eigene `GhostNet.rbxlx`.
-  Stand: v2.4.0 — Orientierung, Story und Polizei: drehbare Minikarte oben
+  Stand: v2.5.0 — Fahrzeuge bauen sich wieder selbst (echte Silhouette statt
+  magenta Kasten), Raeder fliegen nicht mehr weg. Darunter v2.4.0 —
+  Orientierung, Story und Polizei: drehbare Minikarte oben
   rechts, Route als Leuchtspur auf der Straße, Kompassleiste, beschilderte
   Gebäude, Telefon-Chat mit Wren als Story-Träger, und eine Polizei, die ab
   Stufe 3 aussteigt, zu Fuß verfolgt und in einer echten Wache festnimmt.
@@ -75,7 +77,7 @@ vor dieser Datei.
   Fahrzeugbesitz mit Autohaus und Garage, Bankraub mit drei Wegen, Polizei-
   Verfolgung ohne Waffen und eine 10-Missionen-Story mit Entscheidung am Ende.
   Profil-Schema steht auf Version 5 (Migration 4 → 5: Garage + Allegiance).
-  Testlauf 719/719 grün. **Bildrate ist ungemessen** — dafür braucht es den
+  Testlauf 725/725 grün. **Bildrate ist ungemessen** — dafür braucht es den
   MicroProfiler in Studio, nicht die Luau-VM des Testlaufs.
   Alle Asset-/Produkt-IDs sind noch Platzhalter.
 

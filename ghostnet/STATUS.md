@@ -3,8 +3,8 @@
 > Wird am Ende jeder Session aktualisiert. Erstes, was eine neue Session liest.
 
 ## Aktuelle Phase
-**Alles abgearbeitet, zuletzt v2.4.0 „Orientierung, Story, Polizei"**
-(`Config.Version = "2.4.0"`). Aus dem Hacking-Spiel ist ein Hacking-Spiel mit
+**Alles abgearbeitet, zuletzt v2.5.0 „Fahrzeuge"**
+(`Config.Version = "2.5.0"`). Aus dem Hacking-Spiel ist ein Hacking-Spiel mit
 offener Stadt geworden — Bezirke, Verkehr, Autobesitz, ein Bankraub mit drei
 Wegen, eine Polizei ohne Waffen und eine 10-Missionen-Story mit Entscheidung
 am Ende. Seit v2.1.0 spielt das Ganze bei **hellem Tag**.
@@ -15,7 +15,7 @@ Warnung direkt darunter und Punkt 0 am Ende von `PHASEN.md`.
 ## ⚠️ Was ich NICHT prüfen konnte
 Der Bauplan verlangt nach jeder Phase eine **gemessene Bildrate**. Das kann ich
 nicht liefern und erfinde die Zahl auch nicht: Ich habe keine Roblox-Laufzeit,
-nur eine Luau-VM für Syntax und Logik. Die 719 Prüfungen sagen **nichts** über
+nur eine Luau-VM für Syntax und Logik. Die 725 Prüfungen sagen **nichts** über
 Bildrate, Fahrverhalten oder Physikstabilität aus. Das muss Noah im
 MicroProfiler messen, und zwar besonders jetzt — Verkehr, Fußgänger,
 Streifenwagen und eine gebaute Stadt sind zusammen der teuerste Teil des
@@ -34,6 +34,43 @@ gegenüber dem alten Standardzustand. Gegengerechnet: die PointLights an den
 Neonschildern entfallen bei Tag komplett.
 
 ## Fertig ✅
+
+### v2.5.0 — Fahrzeuge sehen aus wie Fahrzeuge (Noahs Fassung)
+Noah hat eine komplette `VehicleChassis` geliefert und damit zwei Dinge
+korrigiert, die ich falsch hatte.
+
+**1. Die Räder sind weggeflogen — drei Fehler auf einmal:**
+- Zylinderräder wurden um 90° um Z gedreht. Ein Roblox-Zylinder dreht um seine
+  **lokale X-Achse**, und die seitliche Achse des Fahrzeugs *ist* X. Die
+  Drehung hat das Rad flach wie einen Teller gelegt und die Antriebsachse nach
+  oben gekippt — der Motor drehte das Rad um die falsche Achse.
+- `SpringConstraint` und `CylindricalConstraint` hingen am **selben
+  Attachment-Paar**, beide mit `LimitsEnabled`. Zwei Limit-Solver auf einem
+  Freiheitsgrad schaukeln sich auf. Jetzt führt nur der Cylindrical die
+  Grenzen, die Feder liefert nur Kraft.
+- `MotorMaxAngularAcceleration = math.huge` — unendlich ist im Solver ein
+  NaN-Generator, und ein NaN schleudert die ganze Baugruppe ins Nichts.
+
+**2. Die Asset-Regel war zu streng.** Ich hatte alles auf fertige Modelle
+umgestellt und den Platzhalterpfad als Absperrung gebaut. Nur: die Ordner
+blieben leer, also lief *jedes* Auto über den Platzhalter. Jetzt baut
+`buildBody()` eine echte Silhouette — Motorhaube, abfallende Dachlinie,
+Kotflügel, Fenster, Grill, Lichter — aus einem Profil je Klasse. Ein
+hochgeladenes Modell hat weiter Vorrang.
+
+**Zwei Ergänzungen von mir:**
+- Die zwei neuen Zahlen (`90000`, `500`) stehen jetzt als
+  `Config.Vehicle.SteerServoTorque` und `MotorMaxAcceleration` in Config —
+  Regel 3 gilt auch für Bugfixes.
+- **`VehicleChassis.BuildShell`**: Verkehr und Streifenwagen holen ihre
+  Karosserie aus demselben Bauplan. Ohne das hätte der Spieler ein richtiges
+  Auto und der Verkehr weiter magenta Klötze — und ein gestohlenes Auto hätte
+  beim Kurzschließen sichtbar die Form gewechselt. Der Streifenwagen bekommt
+  dabei einen hellen Polizeilack (`Config.Pursuit.UnitColour`).
+
+Projektgedächtnis Regel 7 ist entsprechend umgeschrieben, Regel 8 hält die drei
+Physik-Fallen fest. Fünf neue Testlauf-Einträge verhindern, dass die
+Radrotation, `math.huge` oder das geteilte Attachment-Paar zurückkommen.
 
 ### v2.4.0 — Orientierung, Story, Polizei
 Drei Probleme, in dieser Reihenfolge: niemand wusste, wo etwas ist; die Story
@@ -586,7 +623,7 @@ Testlauf prüft das.
   Hack kostet — auch das wird geprüft.
 
 ## Tests
-`cd ghostnet/tests && npm install && node testlauf.mjs` → **719/719 grün**.
+`cd ghostnet/tests && npm install && node testlauf.mjs` → **725/725 grün**.
 Drei Stufen:
 1. **Syntax** — `luau-compile` über jede `.luau`-Datei.
 2. **Struktur** — `--!strict` überall, keine veralteten APIs, jede Remote
@@ -638,7 +675,7 @@ Der Bauplan aus dem Prompt ist abgearbeitet. Was fehlt, fehlt mit Absicht:
   fertig, dann den nächsten" — und der Testlauf hält sie fest.
 - **Zwei weitere Minispiele**, **prozeduraler Weltgenerator**, **Tagesziele**
   und **Ranglisten** — Details am Ende von `PHASEN.md`.
-- **Kein echter Spielertest.** Alles ist im Code umgesetzt und durch 719
+- **Kein echter Spielertest.** Alles ist im Code umgesetzt und durch 725
   automatische Prüfungen abgesichert, aber noch nicht von einem Menschen in
   Studio durchgespielt.
 

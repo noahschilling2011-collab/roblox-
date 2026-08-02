@@ -434,9 +434,34 @@ try {
     if (chassis) {
       const code = codeOnly(chassis);
       check(
-        "VehicleChassis klont Vorlagen statt Karosserien zu bauen",
-        /AssetLibrary\.(Clone|Has)\(/.test(code),
-        "baut die Karosserie noch selbst - aus zwei Kaesten wird nie ein Auto"
+        "Ein fertiges Modell hat Vorrang vor der gebauten Karosserie",
+        /AssetLibrary\.Has\("Vehicles"/.test(code),
+        "ein hochgeladenes Modell wuerde ignoriert"
+      );
+      check(
+        "Die gebaute Karosserie hat eine echte Silhouette",
+        /Windscreen/.test(code) && /Cabin/.test(code) && /Arch/.test(code),
+        "aus zwei Kaesten wird nie ein Auto"
+      );
+      check(
+        "Raeder werden nicht fehlrotiert",
+        !/Shape = Enum\.PartType\.Cylinder[\s\S]{0,400}CFrame\.Angles\(0, 0, math\.rad\(90\)\)/.test(code),
+        "ein Roblox-Zylinder dreht um seine lokale X-Achse - eine Drehung legt das Rad flach"
+      );
+      check(
+        "Keine unendliche Winkelbeschleunigung",
+        !/MotorMaxAngularAcceleration = math\.huge/.test(code),
+        "math.huge erzeugt im Solver ein NaN und schleudert die Baugruppe ins Nichts"
+      );
+      check(
+        "Feder und Fuehrung teilen sich kein Attachment-Paar",
+        /SpringTop/.test(code) && /GuideTop/.test(code),
+        "zwei Limit-Solver auf einem Freiheitsgrad schaukeln sich auf"
+      );
+      check(
+        "Verkehr und Polizei benutzen denselben Bauplan",
+        /function VehicleChassis\.BuildShell/.test(code),
+        "sonst wechselt ein gestohlenes Auto beim Kurzschliessen die Form"
       );
       check(
         "VehicleChassis prueft den Modellvertrag",

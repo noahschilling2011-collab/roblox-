@@ -30,29 +30,40 @@ früheren Nachtbonus, seit die Stadt dauerhaft hell ist.
 6. **Ein Hack-Ziel ist nur ein BasePart mit Tag `GhostNetHackable` + Attributen.**
    Ein Hehler ist nur ein BasePart mit Tag `GhostNetFence`. Neue Objekte
    brauchen keinen Code.
-7. **Code platziert Geometrie. Code baut keine Geometrie.** Alles, was ein
-   Spieler bewusst ansieht, liegt als Modell unter `ReplicatedStorage/Assets`
-   und wird über `AssetLibrary` geklont. `Instance.new("Part")` ist nur
-   erlaubt für Unsichtbares: Kollisionsboxen, Trigger, Wegpunkte, Radträger —
-   und im ausdrücklichen Platzhalterpfad. Fehlt ein Modell, wird es **nicht**
-   aus Parts nachgebaut, sondern zu einem magenta `MISSING_ASSET_…`.
-8. **Ein Modell wird über `Model:PivotTo` bewegt, nie über die `.CFrame` eines
+7. **Ein fertiges Modell hat Vorrang, aber Code baut trotzdem etwas
+   Vernünftiges.** Liegt eine Vorlage unter `ReplicatedStorage/Assets`, wird
+   sie geklont. Fehlt sie, gilt: **Fahrzeuge** baut `VehicleChassis` selbst
+   mit einer echten Silhouette (Motorhaube, Dachlinie, Kotflügel, Fenster) —
+   die Asset-Ordner waren monatelang leer, und magenta Klötze sind schlimmer
+   als ein einfaches, aber richtiges Auto. **Alles andere** (Gebäudemodule,
+   Props, Figuren) wird weiterhin *nicht* nachgebaut, sondern zu einem
+   magenta `MISSING_ASSET_…`, damit man es nicht übersieht.
+   Verkehr und Streifenwagen holen ihre Karosserie über
+   `VehicleChassis.BuildShell` aus demselben Bauplan — sonst wechselt ein
+   gestohlenes Auto beim Kurzschließen sichtbar die Form.
+8. **Physik-Fallen, die dieses Projekt schon zweimal getroffen haben:**
+   Ein Roblox-Zylinder dreht um seine **lokale X-Achse** — ein Rad braucht
+   deshalb *keine* Zusatzdrehung. Zwei Constraints mit `LimitsEnabled` am
+   **selben Attachment-Paar** schaukeln sich auf, bis die Baugruppe
+   auseinanderfliegt. `math.huge` in `MotorMaxAngularAcceleration` erzeugt
+   ein NaN und schleudert alle Teile ins Nichts.
+9. **Ein Modell wird über `Model:PivotTo` bewegt, nie über die `.CFrame` eines
    Einzelteils.** Eine `WeldConstraint` zwischen zwei `Anchored`-Teilen tut
    nichts — sie gilt für die Physiksimulation, und direktes CFrame-Setzen ist
    keine. Genau daran haben die Verkehrsautos ihr Dach verloren.
-9. **Minispiele halten die Schnittstelle ein:**
+10. **Minispiele halten die Schnittstelle ein:**
    `Generate(difficulty, rng) -> publicState, serverState`,
    `Input(serverState, payload) -> InputResult`, `Label() -> string`.
    `publicState` enthält **nie** die Lösung.
-10. **`--!strict` bleibt überall an.**
-11. **Eine Kulissenänderung darf nie stillschweigend eine Mechanik mitnehmen.**
+11. **`--!strict` bleibt überall an.**
+12. **Eine Kulissenänderung darf nie stillschweigend eine Mechanik mitnehmen.**
    Als der Tag-/Nachtzyklus abgeschaltet wurde, ist der Nachtbonus nicht
    verschwunden, sondern an den Ort gewandert (`Config.Cover`). Wer etwas
    Optisches abschaltet, prüft zuerst, welche Regel daran hing.
-12. **Zeit:** Alles, was einen Serverwechsel überleben muss, benutzt `os.time()`.
+13. **Zeit:** Alles, was einen Serverwechsel überleben muss, benutzt `os.time()`.
    `os.clock()` nur für serverinterne Kurzzeit-Timer (`DownUntil`, Rate-Limits,
    Bust-Sperre).
-13. `task.wait` / `task.spawn` / `task.delay` — nie `wait()` / `spawn()` / `delay()`.
+14. `task.wait` / `task.spawn` / `task.delay` — nie `wait()` / `spawn()` / `delay()`.
 
 ## Arbeitsweise
 - Eine Phase aus `PHASEN.md` komplett abarbeiten, dann erst die nächste.

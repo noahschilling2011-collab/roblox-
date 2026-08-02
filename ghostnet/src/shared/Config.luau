@@ -6,7 +6,7 @@
 
 local Config = {}
 
-Config.Version = "2.4.0" -- Orientierung, Story sichtbar, Polizei nimmt fest
+Config.Version = "2.5.0" -- Fahrzeuge sehen aus wie Fahrzeuge, Raeder bleiben dran
 
 -- CollectionService-Tags. Ein Part mit dem Tag ist ein Hack-Ziel, ein Hehler,
 -- ein Missions-Wegpunkt oder ein ansprechbarer Kontakt. Kein Code pro Objekt.
@@ -557,6 +557,16 @@ Config.Vehicle = {
 	BallastDensity = 6,
 	BallastDrop = 1.6,
 
+	-- Drehmoment des Lenkservos an der Hochachse. War frueher
+	-- class.Acceleration * 4 - beim Sportwagen ueber 46000 und damit fuer
+	-- einen fast masselosen Radtraeger voellig ueberzogen: das Rad hat
+	-- gezappelt. Hoch = knallharte Lenkung, zu niedrig = das Rad folgt nicht.
+	SteerServoTorque = 90000,
+	-- Maximale Winkelbeschleunigung des Antriebs. NIEMALS math.huge: der
+	-- Solver erzeugt daraus ein NaN, und ein NaN schleudert die ganze
+	-- Baugruppe ins Nichts. Genau daran sind die Raeder weggeflogen.
+	MotorMaxAcceleration = 500,
+
 	WheelDensity = 0.4,
 	CarrierDensity = 0.05, -- Radtraeger fast masselos, sonst schlingert es
 	WheelFriction = 2.0,
@@ -739,6 +749,11 @@ Config.Pursuit = {
 	-- Streifenwagen benutzt dieselbe Asset-Pipeline wie alles andere.
 	-- Fehlt Assets/Vehicles/Police, steht dort ein magenta Platzhalter.
 	UnitAsset = "Police",
+	-- Welche Fahrzeugklasse die Karosserie liefert, solange kein eigenes
+	-- Polizeimodell existiert. So sieht ein Streifenwagen aus wie ein Auto
+	-- und nicht wie ein Klotz.
+	UnitClass = "SEDAN",
+	UnitColour = Color3.fromRGB(232, 236, 242), -- Polizeilack, hell
 	UnitSize = Vector3.new(6.4, 2.9, 13), -- nur Platzhaltergroesse
 	LightBarSize = Vector3.new(1.6, 0.5, 1.2),
 	LightBlue = Color3.fromRGB(40, 90, 255),
