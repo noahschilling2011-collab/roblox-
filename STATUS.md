@@ -58,6 +58,11 @@ lassen (Scope offiziell erweitern) oder für den ersten Launch deaktivieren.
   Rundenspiel) mit eigener `Turmfall.rbxlx`. Es ist von PlanetForge unabhängig und wird
   von diesem Bauplan NICHT abgedeckt.
 
+## Konzept-Notizen (kein Code) 📝
+- `docs/KEYCAP_RUSH_BEWERTUNG.md` — kritische Bewertung des KEYCAP-RUSH-Konzepts
+  (eigenes Spielkonzept, liegt NICHT im Repo). Enthält am Ende einen Nachtrag mit den
+  Schwachstellen der Bewertung selbst. Kein Einfluss auf PlanetForge oder TURMFALL.
+
 ## Manuelle Schritte außerhalb des Codes (Noah) 🔑
 - Publishing + Creator Dashboard: Gamepässe/Produkte anlegen, echte IDs in
   `src/shared/Config/MonetizationConfig.luau` eintragen (statt der 0-Platzhalter).
