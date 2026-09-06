@@ -94,6 +94,18 @@ local EconomyConfig = {
 	-- offline risikofrei - genau das Loch, das die per-Taste-Aenderung
 	-- schliessen soll. Gespeichert werden Wins, Slots und Tasten.
 	PERSIST_VORRAT = false,
+
+	-- ---------------------------------------------------------------
+	-- NPC-Plots [ENTSCHEIDUNG]
+	-- Absichtlich schwach: sie sollen den leeren Server ueberbruecken,
+	-- nicht die beste Einnahmequelle sein. Deshalb nur die zwei untersten
+	-- Seltenheiten, gedeckelter Vorrat und eine lange Abklingzeit.
+	-- ---------------------------------------------------------------
+	NPC_KEY_COUNT = 4,
+	NPC_RARITIES = { "Common", "Common", "Uncommon", "Common" },
+	NPC_VORRAT_CAP = 1200, -- gedeckelt: kein Horten fuer den Dieb
+	NPC_RESPAWN_SECONDS = 60, -- geklaute NPC-Taste kommt danach wieder
+	NPC_PAIR_COOLDOWN_SECONDS = 45, -- eigene Abklingzeit pro Dieb und NPC-Plot
 }
 
 return EconomyConfig

@@ -10,9 +10,9 @@ Klau-Ablauf, Datenschema, UI — ist **von mir entschieden**, nicht aus deinem K
 Im Code steht an jedem Wert, woher er kommt: `[KONZEPT]`, `[GEMESSEN]`, `[ABGELEITET]`,
 `[ENTSCHEIDUNG]`.
 
-**Nichts davon lief je in Roblox.** Geprüft sind: Syntax aller 18 Dateien im echten
-Luau-Compiler, und 30 Logik-/Balancing-Tests in einer echten Luau-VM. Nicht geprüft ist
-jeder Roblox-API-Aufruf zur Laufzeit — Instanzen, Prompts, DataStore, Replikation.
+**Nichts davon lief je in Roblox.** Geprüft sind: Syntax aller 21 Dateien im echten
+Luau-Compiler, und 39 Logik-/Balancing-Tests in einer echten Luau-VM. Nicht geprüft ist
+jeder Roblox-API-Aufruf zur Laufzeit — Instanzen, Prompts, Welds, DataStore, Replikation.
 Der erste Studio-Start wird Fehler zeigen.
 
 ## Was gebaut ist
@@ -31,6 +31,9 @@ Der erste Studio-Start wird Fehler zeigen.
 | `server/SpeedService` | setzt WalkSpeed aus dem Vorrat, Trage-Malus |
 | `server/CourseService` | Speed-Tore und Cash-Out-Pads (ProximityPrompt) |
 | `server/StealService` | Klau mit Paar-Cooldown, Anwesenheit, Schild |
+| `server/CarryService` | geklaute Taste sichtbar über dem Kopf des Diebes |
+| `server/NpcPlotService` | NPC-Plots als Klau-Ziele auf leeren Servern |
+| `server/RunTimerService` | misst Rundlaufzeiten und gibt die Config-Zeile aus |
 | `server/ShopService` | Tasten und Steckplätze kaufen |
 | `server/StateService` | schickt den Zustand an die Clients |
 | `client/HudController` | Vorrat, Rate, Wins, Schild-Knopf |
@@ -91,12 +94,41 @@ Klau (Änderung aus Abschnitt 6 der Bewertung): jede Taste hält ihren eigenen
 Vorrat, der Plot-Vorrat ist die Summe. Ein Dieb bekommt 50 % des Tastenvorrats,
 gedeckelt bei 5.000 — der Rest verfällt. Damit ist Horten nicht mehr gratis.
 
-## Die eine Zahl, die noch fehlt
+## Die eine Zahl, die noch fehlt — und wie du sie bekommst
 
-`EconomyConfig.STAGE_RUN_SECONDS = { 40, 80, 140 }` ist **geschätzt**. Sobald der
-Parcours in Studio steht: einmal mit der Stoppuhr Plot → Pad → Plot messen und
-eintragen. Alle Faktoren und die Schilddauer rechnen sich daraus neu, es muss
-sonst nichts angefasst werden.
+`EconomyConfig.STAGE_RUN_SECONDS = { 40, 80, 140 }` ist **geschätzt**. Alle
+Auszahlungsfaktoren und die Schilddauer hängen daran.
+
+Du brauchst dafür keine Stoppuhr: `RunTimerService` misst mit. Er startet die Uhr,
+wenn du deinen Plot verlässt, und stoppt sie, wenn du zurück bist — aber nur, wenn du
+unterwegs **genau einmal** ausgezahlt hast (wer erst an Stage 1 und dann an Stage 3
+kassiert, liefert für beide eine zu lange Zeit; solche Runden wirft er weg). Nach je
+drei sauberen Läufen pro Stage schreibt er die fertige Zeile ins Output-Fenster:
+
+```
+[KEYCAP] STAGE_RUN_SECONDS = { 44 (3 Laeufe), 91 (3 Laeufe), 152 (3 Laeufe) }
+```
+
+Die Zahlen aus den Klammern in `EconomyConfig` eintragen, fertig. Sonst muss nichts
+angefasst werden.
+
+## NPC-Plots
+
+Die Bewertung: *„Der Loop braucht Mitspieler und du hast keine."* Drei Plots am Ende
+der Reihe gehören NPCs (`Alte Tastatur`, `Fundbüro`, `Schrottplatz`) und sind immer
+beklaubar. Bewusst schwach gehalten, damit sie echte Spieler nicht ersetzen: nur
+Common und Uncommon, Vorrat gedeckelt bei 1.200, eigene Abklingzeit von 45 s, und eine
+geklaute Taste bleibt 60 s leer stehen statt zu verschwinden — so gehen dem Server nie
+die Ziele aus. Ein NPC-Klau bringt an Stage 1 rund 12 Wins: genug für eine
+Common-Taste, zu wenig, um damit hochzukommen.
+
+## Part-Budget
+
+Der schlimmste Fall — 12 Plots, alle Steckplätze voll, jeder Spieler trägt Beute —
+liegt bei rund 240 Parts von 3.000. Der Server gibt die tatsächliche Zahl beim Start
+aus. *Ungeprüft:* auf dem Handy ist vermutlich die Zahl gleichzeitiger
+ProximityPrompts (~200 im Vollausbau) das engere Limit als die Part-Zahl. Nicht
+gemessen — nur eine Schranke im Test, damit ein Zuwachs auffällt.
 
 ## Tests
 
@@ -106,7 +138,7 @@ npm install
 npm test
 ```
 
-30 Tests in einer echten Luau-VM (WASM) plus Syntaxprüfung aller `src/`-Dateien im
+39 Tests in einer echten Luau-VM (WASM) plus Syntaxprüfung aller `src/`-Dateien im
 echten Luau-Compiler. Exit-Code 0 = alles grün. Geprüft werden unter anderem die Zahlen
 aus der Bewertung: Gates bei 700 / 1.700 / 2.950 Vorrat, Deckel bei 4.200, Stützwerte
 90R / 150R / 174R — und dass jedes Tor vor seinem Pad steht und alle Steckplätze auf
@@ -122,13 +154,17 @@ den Plot passen.
 ```
 [KEYCAP] Server startet ...
 [KEYCAP] DataService bereit (Schema 1)
+[KEYCAP] NpcPlotService: 3 NPC-Plots, Vorrat gedeckelt bei 1200
 [KEYCAP] PlotService: 12 Plots gebaut
 [KEYCAP] CourseService: 3 Stages gebaut, Schild 140s/280s
 [KEYCAP] ProductionService laeuft (Label-Takt 2s)
 [KEYCAP] SpeedService laeuft
+[KEYCAP] CarryService laeuft (8s sichtbar)
 [KEYCAP] StealService laeuft
 [KEYCAP] ShopService laeuft
+[KEYCAP] RunTimerService misst Rundlaufzeiten
 [KEYCAP] StateService sendet alle 0.5s
+[KEYCAP] Parts in workspace: ... von 3000 erlaubt
 [KEYCAP] Server bereit.
 [KEYCAP] Client bereit.
 ```
@@ -137,7 +173,10 @@ den Plot passen.
    drauf, links oben zählt „Vorrat" hoch. Nach etwa 6 Minuten öffnet sich Stage 1.
    Zum Testen `START_KEY_SLOTS`-Tasten vorab geben oder `Common.vorratPerSecond`
    kurzzeitig hochsetzen — sonst dauert der erste Durchlauf zu lang zum Debuggen.
-5. Klauen testen: zweiter Spieler über **Test → Players → 2** starten.
+5. Klauen testen: du brauchst dafür **keinen** zweiten Spieler mehr — lauf ans Ende
+   der Plotreihe zu `Alte Tastatur` und halte dort den Klau-Prompt. Über deinem Kopf
+   muss danach eine farbige Taste mit „BEUTE: …" hängen und du läufst sichtbar
+   langsamer. Für Klau zwischen echten Spielern: **Test → Players → 2**.
 
 **Wichtig:** Studio-DataStores brauchen *Studio Access to API Services* in den
 Spieleinstellungen. Ohne das schlägt jedes Speichern fehl und du wirst mit
@@ -145,6 +184,6 @@ Spieleinstellungen. Ohne das schlägt jedes Speichern fehl und du wirst mit
 
 ## Servergröße
 
-Der Loop braucht Mitspieler. Stell die Platzgröße im Creator Dashboard auf **8–12**
-(`WorldConfig.PLOT_COUNT` ist auf 12 und muss mindestens so groß sein). Auf einem
-leeren Server ist KEYCAP RUSH ein reines Farm-Spiel.
+Stell die Platzgröße im Creator Dashboard auf **8–12**. `WorldConfig.PLOT_COUNT` ist 12,
+davon gehen 3 an NPC-Plots — es bleiben 9 Spielerplots. Wer als zehnter joint, wird
+mit „Der Server ist voll" abgewiesen, stell die Platzgröße also nicht höher als 9.

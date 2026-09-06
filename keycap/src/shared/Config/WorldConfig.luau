@@ -40,6 +40,19 @@ local WorldConfig = {
 
 	-- Wie oft der Server den Zustand an die Clients schickt.
 	STATE_PUSH_INTERVAL = 0.5,
+
+	-- NPC-Plots [ENTSCHEIDUNG]
+	-- Die Bewertung: "Der Loop braucht Mitspieler und du hast keine."
+	-- Auf einem leeren Server waere KEYCAP RUSH ein Farm-Spiel. NPC-Plots
+	-- sind immer da und immer beklaubar - sie fuellen die Luecke, ohne den
+	-- Wettbewerb zwischen echten Spielern zu ersetzen.
+	NPC_PLOT_COUNT = 3, -- belegen die letzten Plots der Reihe
+	NPC_NAMES = { "Alte Tastatur", "Fundbuero", "Schrottplatz" },
+
+	-- Part-Budget: obere Schranke fuer alles, was der Server baut.
+	-- Auf dem Handy ist die Zahl gleichzeitig sichtbarer ProximityPrompts
+	-- oft das engere Limit als die reine Part-Zahl. UNGEPRUEFT - nicht gemessen.
+	PART_BUDGET = 3000,
 }
 
 return WorldConfig

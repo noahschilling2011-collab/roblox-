@@ -1,6 +1,10 @@
 --!strict
--- Baut die Plots, vergibt sie an Spieler und haelt die Tasten-Parts
--- synchron mit dem Profil. Jede Taste ist ein Part mit eigenem Vorrat.
+-- Baut die Plots, vergibt sie an Spieler oder an NPC-Besitzer und haelt die
+-- Tasten-Parts synchron mit der jeweiligen Tastenliste.
+--
+-- Ein Plot gehoert entweder niemandem, einem Spieler oder einem NPC. Die
+-- Tasten-Parts sehen in allen Faellen gleich aus - ein Dieb soll nicht auf
+-- den ersten Blick erkennen, ob es sich "lohnt", sondern hinlaufen muessen.
 
 local Players = game:GetService("Players")
 
@@ -12,19 +16,22 @@ local DataService = require(script.Parent.DataService)
 
 local PlotService = {}
 
-type Plot = {
+export type OwnerKind = "none" | "player" | "npc"
+export type Plot = {
 	index: number,
 	model: Model,
 	base: BasePart,
 	keyFolder: Folder,
+	ownerKind: OwnerKind,
 	ownerUserId: number?,
 	signLabel: TextLabel,
 }
+export type KeyRef = { kind: OwnerKind, userId: number?, plotIndex: number, index: number }
 
 local plots: { Plot } = {}
 local plotByUser: { [number]: Plot } = {}
--- Rueckweg vom Part zum Profil-Eintrag, damit StealService nichts raten muss.
-local keyOwner: { [BasePart]: { userId: number, index: number } } = {}
+-- Rueckweg vom Part zum Eintrag, damit StealService nichts raten muss.
+local keyOwner: { [BasePart]: KeyRef } = {}
 
 local function plotPosition(index: number): Vector3
 	local origin = WorldConfig.PLOT_ORIGIN
@@ -45,7 +52,16 @@ local function slotPosition(plot: Plot, slotIndex: number): Vector3
 	return Vector3.new(center.X + xOffset, top, center.Z + zOffset)
 end
 
+local built = false
+
+-- Idempotent: init darf buildWorld vor NpcPlotService rufen, PlotService.start
+-- ruft es danach nochmal. Zweimal bauen wuerde doppelte Plots erzeugen.
 function PlotService.buildWorld()
+	if built then
+		return
+	end
+	built = true
+
 	local container = Instance.new("Folder")
 	container.Name = "Plots"
 
@@ -102,6 +118,7 @@ function PlotService.buildWorld()
 			model = model,
 			base = base,
 			keyFolder = keyFolder,
+			ownerKind = "none",
 			ownerUserId = nil,
 			signLabel = label,
 		}
@@ -119,21 +136,12 @@ local function clearKeys(plot: Plot)
 	end
 end
 
--- Baut die Tasten-Parts neu aus dem Profil. Wird nach jeder Aenderung an
--- der Tastenliste aufgerufen (Kauf, Klau, Verlust).
-function PlotService.rebuildKeys(userId: number)
-	local plot = plotByUser[userId]
-	if not plot then
-		return
-	end
-	local player = Players:GetPlayerByUserId(userId)
-	local profile = if player then DataService.get(player) else nil
+-- Baut die Tasten-Parts eines Plots neu. `keys` ist die Liste, die dieser
+-- Plot gerade haelt - beim Spieler das Profil, beim NPC die NPC-Liste.
+function PlotService.renderKeys(plot: Plot, keys: { { rarity: string, vorrat: number } })
 	clearKeys(plot)
-	if not profile then
-		return
-	end
 
-	for index, key in profile.keys do
+	for index, key in keys do
 		local part = Instance.new("Part")
 		part.Name = "Key" .. index
 		part.Size = WorldConfig.KEY_SIZE
@@ -172,24 +180,39 @@ function PlotService.rebuildKeys(userId: number)
 		prompt.Parent = part
 
 		part.Parent = plot.keyFolder
-		keyOwner[part] = { userId = userId, index = index }
+		keyOwner[part] = {
+			kind = plot.ownerKind,
+			userId = plot.ownerUserId,
+			plotIndex = plot.index,
+			index = index,
+		}
 	end
 end
 
--- Beschriftung der Tasten aktualisieren (eigener Takt, damit nicht jede
--- Sekunde 240 Labels repliziert werden).
-function PlotService.refreshKeyLabels(userId: number)
+-- Bequemer Weg fuer den Spielerfall: Liste kommt aus dem Profil.
+function PlotService.rebuildKeys(userId: number)
 	local plot = plotByUser[userId]
-	local player = Players:GetPlayerByUserId(userId)
-	local profile = if player then DataService.get(player) else nil
-	if not plot or not profile then
+	if not plot then
 		return
 	end
-	for part, ref in keyOwner do
-		if ref.userId ~= userId or part.Parent == nil then
+	local player = Players:GetPlayerByUserId(userId)
+	local profile = if player then DataService.get(player) else nil
+	if not profile then
+		clearKeys(plot)
+		return
+	end
+	PlotService.renderKeys(plot, profile.keys)
+end
+
+-- Beschriftungen aktualisieren (eigener Takt, damit nicht jede Sekunde
+-- hunderte Labels repliziert werden).
+function PlotService.refreshLabels(plot: Plot, keys: { { rarity: string, vorrat: number } })
+	for _, part in plot.keyFolder:GetChildren() do
+		if not part:IsA("BasePart") then
 			continue
 		end
-		local key = profile.keys[ref.index]
+		local ref = keyOwner[part]
+		local key = if ref then keys[ref.index] else nil
 		local billboard = part:FindFirstChild("Info")
 		local label = if billboard then billboard:FindFirstChild("Vorrat") else nil
 		if key and label and label:IsA("TextLabel") then
@@ -198,12 +221,38 @@ function PlotService.refreshKeyLabels(userId: number)
 	end
 end
 
+function PlotService.refreshKeyLabels(userId: number)
+	local plot = plotByUser[userId]
+	local player = Players:GetPlayerByUserId(userId)
+	local profile = if player then DataService.get(player) else nil
+	if plot and profile then
+		PlotService.refreshLabels(plot, profile.keys)
+	end
+end
+
+-- NPC-Plots belegen die letzten Plots der Reihe, damit die Spieler vorne
+-- nebeneinander stehen.
+function PlotService.claimForNpc(slot: number, name: string): Plot?
+	local index = WorldConfig.PLOT_COUNT - slot + 1
+	local plot = plots[index]
+	if not plot or plot.ownerKind ~= "none" then
+		return nil
+	end
+	plot.ownerKind = "npc"
+	plot.ownerUserId = nil
+	plot.signLabel.Text = name
+	plot.signLabel.TextColor3 = Theme.TEXT_MUTED
+	return plot
+end
+
 function PlotService.assign(player: Player): boolean
 	for _, plot in plots do
-		if plot.ownerUserId == nil then
+		if plot.ownerKind == "none" then
+			plot.ownerKind = "player"
 			plot.ownerUserId = player.UserId
 			plotByUser[player.UserId] = plot
 			plot.signLabel.Text = player.DisplayName
+			plot.signLabel.TextColor3 = Theme.TEXT
 			PlotService.rebuildKeys(player.UserId)
 			return true
 		end
@@ -220,16 +269,21 @@ function PlotService.release(userId: number)
 		return
 	end
 	clearKeys(plot)
+	plot.ownerKind = "none"
 	plot.ownerUserId = nil
 	plot.signLabel.Text = "Frei"
 	plotByUser[userId] = nil
 end
 
-function PlotService.getPlot(userId: number)
+function PlotService.getPlot(userId: number): Plot?
 	return plotByUser[userId]
 end
 
-function PlotService.keyRefFromPart(part: BasePart)
+function PlotService.plotAt(index: number): Plot?
+	return plots[index]
+end
+
+function PlotService.keyRefFromPart(part: BasePart): KeyRef?
 	return keyOwner[part]
 end
 
@@ -254,6 +308,17 @@ function PlotService.spawnPositionFor(userId: number): Vector3?
 		return nil
 	end
 	return plot.base.Position + Vector3.new(0, 6, WorldConfig.PLOT_SIZE.Z / 2 - 4)
+end
+
+-- Zaehlt alles, was der Server gebaut hat - fuer das Part-Budget.
+function PlotService.countParts(): number
+	local count = 0
+	for _, descendant in workspace:GetDescendants() do
+		if descendant:IsA("BasePart") then
+			count += 1
+		end
+	end
+	return count
 end
 
 -- Plot zuweisen, sobald das Profil geladen ist, und den Spieler dorthin

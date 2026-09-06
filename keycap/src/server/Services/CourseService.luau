@@ -14,6 +14,7 @@ local Theme = require(Shared.Theme)
 local Remotes = require(Shared.Remotes)
 local DataService = require(script.Parent.DataService)
 local ProductionService = require(script.Parent.ProductionService)
+local RunTimerService = require(script.Parent.RunTimerService)
 
 local CourseService = {}
 
@@ -119,6 +120,7 @@ local function cashOut(player: Player, stageIndex: number, pad: BasePart)
 	end
 
 	DataService.syncLeaderstats(player)
+	RunTimerService.markCashOut(player, stageIndex)
 	notify(player, ("+%d Wins ausgezahlt (Stage %d)."):format(wins, stageIndex))
 end
 

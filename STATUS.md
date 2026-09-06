@@ -64,12 +64,14 @@ lassen (Scope offiziell erweitern) oder für den ersten Launch deaktivieren.
   Schwachstellen der Bewertung selbst. Kein Einfluss auf PlanetForge oder TURMFALL.
 - `keycap/` — KEYCAP RUSH, spielbarer Kern: Plots mit Tasten-Steckplätzen, Produktion
   pro Taste, Speed-Tore, Cash-Out-Pads, Klau mit Paar-Cooldown und Schild, Laden,
-  DataService mit Session-Lock. 18 Luau-Dateien, eigenes `default.project.json`.
-  `cd keycap/tests && npm install && npm test` → 30 Tests + Syntaxprüfung aller Dateien.
+  DataService mit Session-Lock. 21 Luau-Dateien, eigenes `default.project.json`.
+  Dazu NPC-Plots als Klau-Ziele, sichtbares Tragen der Beute, Rundlaufzeit-Messung
+  und ein Part-Budget-Check beim Serverstart.
+  `cd keycap/tests && npm install && npm test` → 39 Tests + Syntaxprüfung aller Dateien.
   **Nie in Roblox gelaufen** — nur Syntax und reine Logik geprüft.
   Nicht drin: Monetarisierung, Tutorial, Sounds/Effekte.
-  Offene Zahl: `STAGE_RUN_SECONDS` ist geschätzt, muss in Studio gemessen werden —
-  daran hängen alle Auszahlungsfaktoren und die Schilddauer.
+  Offene Zahl: `STAGE_RUN_SECONDS` ist geschätzt — `RunTimerService` misst sie im Spiel
+  und gibt die fertige Config-Zeile ins Output-Fenster aus, sie muss nur übernommen werden.
   Das Konzeptdokument fehlt weiterhin im Repo; Kartenaufbau, Datenschema und UI sind
   daher Entscheidungen, keine Vorgaben (im Code markiert).
 

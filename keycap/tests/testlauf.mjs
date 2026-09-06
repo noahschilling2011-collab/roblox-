@@ -294,6 +294,79 @@ test("Rate-Limit vergisst einen Spieler beim Verlassen", function()
 	expect(RateLimit.allow(777, "c", 2), "Eimer nach forget nicht zurueckgesetzt")
 end)
 
+-- 9) NPC-Plots: fuellen den leeren Server, ohne ihn zu ersetzen.
+test("NPC-Plots lassen genug Platz fuer echte Spieler", function()
+	expect(World.NPC_PLOT_COUNT < World.PLOT_COUNT, "NPC-Plots belegen alles")
+	local frei = World.PLOT_COUNT - World.NPC_PLOT_COUNT
+	expect(frei >= 8, "nur " .. frei .. " Plots fuer Spieler - Servergroesse 8-12 passt nicht")
+end)
+
+test("Jeder NPC-Plot hat einen Namen", function()
+	for slot = 1, World.NPC_PLOT_COUNT do
+		expect(World.NPC_NAMES[slot] ~= nil, "Name fehlt fuer NPC-Plot " .. slot)
+	end
+end)
+
+test("NPC-Tastenliste passt zur Tastenzahl und kennt nur echte Seltenheiten", function()
+	expect(#Config.NPC_RARITIES == Config.NPC_KEY_COUNT, "NPC_RARITIES passt nicht zu NPC_KEY_COUNT")
+	for _, name in Config.NPC_RARITIES do
+		expect(Config.RARITIES[name] ~= nil, "unbekannte NPC-Seltenheit: " .. name)
+	end
+end)
+
+test("NPC-Tasten sind bewusst schwach", function()
+	-- Sie sollen den leeren Server ueberbruecken, nicht die beste Quelle sein.
+	local staerkste = 0
+	for _, name in Config.NPC_RARITIES do
+		staerkste = math.max(staerkste, Logic.rarity(name).vorratPerSecond)
+	end
+	local bestesSpielerKey = Logic.rarity(Config.RARITY_ORDER[#Config.RARITY_ORDER]).vorratPerSecond
+	expect(staerkste <= bestesSpielerKey / 10, "NPC-Tasten zu stark: " .. staerkste)
+end)
+
+test("Ein NPC-Klau lohnt sich, macht aber nicht reich", function()
+	local mitgenommen = Logic.stealTransfer(Config.NPC_VORRAT_CAP)
+	local wins = Logic.payout(mitgenommen, 1)
+	expect(wins >= Logic.rarity("Common").price, "NPC-Klau bringt weniger als eine Common-Taste: " .. wins)
+	expect(wins < Logic.rarity("Rare").price, "NPC-Klau finanziert zu viel: " .. wins)
+end)
+
+test("NPC-Abklingzeit ist kuerzer als bei Spielern, aber keine Dauerquelle", function()
+	expect(Config.NPC_PAIR_COOLDOWN_SECONDS < Config.STEAL_PAIR_COOLDOWN_SECONDS, "NPC-Cooldown nicht kuerzer")
+	expect(Config.NPC_PAIR_COOLDOWN_SECONDS >= 30, "NPC-Plots sind eine Dauerquelle")
+	expect(Config.NPC_RESPAWN_SECONDS > 0, "NPC-Tasten fuellen sich sofort wieder")
+end)
+
+-- 10) Part-Budget.
+test("Die Karte bleibt im Part-Budget - auch im schlimmsten Fall", function()
+	local spielerPlots = World.PLOT_COUNT - World.NPC_PLOT_COUNT
+	local parts = 0
+	parts += World.PLOT_COUNT * 2 -- Base + Sign je Plot
+	parts += spielerPlots * Config.MAX_KEY_SLOTS -- alle Steckplaetze voll
+	parts += World.NPC_PLOT_COUNT * Config.NPC_KEY_COUNT
+	parts += #World.STAGE_GATE_POSITIONS + #World.STAGE_PAD_POSITIONS
+	parts += World.PLOT_COUNT -- jeder Spieler traegt gleichzeitig Beute
+	expect(parts <= World.PART_BUDGET, "Part-Budget gerissen: " .. parts .. " von " .. World.PART_BUDGET)
+end)
+
+test("Klau-Prompts bleiben zaehlbar", function()
+	-- Auf dem Handy ist die Zahl gleichzeitiger ProximityPrompts oft das
+	-- engere Limit als die Part-Zahl. UNGEPRUEFT als Zahl - hier nur eine
+	-- Schranke, damit ein Zuwachs auffaellt.
+	local spielerPlots = World.PLOT_COUNT - World.NPC_PLOT_COUNT
+	local prompts = spielerPlots * Config.MAX_KEY_SLOTS
+		+ World.NPC_PLOT_COUNT * Config.NPC_KEY_COUNT
+		+ #World.STAGE_PAD_POSITIONS
+	expect(prompts <= 300, "zu viele gleichzeitige Prompts: " .. prompts)
+end)
+
+-- 11) Tragen der Beute.
+test("Trage-Fenster ist kuerzer als die kuerzeste Abklingzeit", function()
+	-- Sonst koennte man dauerhaft als Dieb markiert herumlaufen.
+	expect(Config.CARRY_SECONDS < Config.NPC_PAIR_COOLDOWN_SECONDS, "Trage-Fenster zu lang")
+	expect(Config.CARRY_SECONDS > 0, "Beute ist nie sichtbar")
+end)
+
 table.insert(results, "")
 table.insert(results, "ERGEBNIS: " .. passed .. " bestanden, " .. failed .. " fehlgeschlagen (" .. (passed + failed) .. " Tests)")
 return table.concat(results, "\\n"), failed

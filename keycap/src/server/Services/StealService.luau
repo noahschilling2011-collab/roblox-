@@ -16,6 +16,8 @@ local RateLimit = require(Shared.RateLimit)
 local DataService = require(script.Parent.DataService)
 local PlotService = require(script.Parent.PlotService)
 local SpeedService = require(script.Parent.SpeedService)
+local CarryService = require(script.Parent.CarryService)
+local NpcPlotService = require(script.Parent.NpcPlotService)
 
 local StealService = {}
 
@@ -51,23 +53,72 @@ local function activateShield(player: Player)
 	notify(player, ("Schild an - %ds geschuetzt."):format(duration))
 end
 
-local function attemptSteal(thief: Player, part: BasePart)
-	local ref = PlotService.keyRefFromPart(part)
-	if not ref then
+-- Gemeinsame Vorpruefungen fuer jeden Klau. Gibt das Profil des Diebes
+-- zurueck, oder nil mit dem Grund als Meldung.
+local function checkThief(thief: Player, part: BasePart): any
+	if not RateLimit.allow(thief.UserId, "steal", EconomyConfig.REMOTE_RATE_LIMIT) then
+		return nil
+	end
+	local profile = DataService.get(thief)
+	if not profile then
+		return nil
+	end
+	if #profile.keys >= profile.slots then
+		notify(thief, "Kein freier Steckplatz - erst einen Slot kaufen.")
+		return nil
+	end
+	-- Distanz serverseitig pruefen, nicht dem Prompt vertrauen.
+	local character = thief.Character
+	local root = character and character:FindFirstChild("HumanoidRootPart")
+	if not root or not root:IsA("BasePart") then
+		return nil
+	end
+	if (root.Position - part.Position).Magnitude > 16 then
+		return nil
+	end
+	return profile
+end
+
+local function stealFromNpc(thief: Player, part: BasePart, ref)
+	local thiefProfile = checkThief(thief, part)
+	if not thiefProfile then
 		return
 	end
+
+	local pairId = thief.UserId .. "|npc" .. ref.plotIndex
+	local now = os.clock()
+	if (pairCooldown[pairId] or 0) > now then
+		local left = math.ceil((pairCooldown[pairId] :: number) - now)
+		notify(thief, ("An diesem Plot erst wieder in %ds."):format(left))
+		return
+	end
+
+	local taken = NpcPlotService.takeKey(ref.plotIndex, ref.index)
+	if not taken then
+		notify(thief, "Diese Taste ist gerade leer.")
+		return
+	end
+
+	table.insert(thiefProfile.keys, { rarity = taken.rarity, vorrat = taken.vorrat })
+	thiefProfile.totalStolen += 1
+	pairCooldown[pairId] = now + EconomyConfig.NPC_PAIR_COOLDOWN_SECONDS
+
+	SpeedService.setCarrying(thief.UserId, EconomyConfig.CARRY_SECONDS)
+	CarryService.show(thief, taken.rarity, taken.vorrat)
+	PlotService.rebuildKeys(thief.UserId)
+	DataService.syncLeaderstats(thief)
+	notify(thief, ("Mitgenommen: %s mit %d Vorrat."):format(taken.rarity, taken.vorrat))
+end
+
+local function stealFromPlayer(thief: Player, part: BasePart, ref)
 	if ref.userId == thief.UserId then
 		notify(thief, "Das ist deine eigene Taste.")
-		return
-	end
-	if not RateLimit.allow(thief.UserId, "steal", EconomyConfig.REMOTE_RATE_LIMIT) then
 		return
 	end
 
 	local victim = Players:GetPlayerByUserId(ref.userId)
 	local victimProfile = if victim then DataService.get(victim) else nil
-	local thiefProfile = DataService.get(thief)
-	if not victim or not victimProfile or not thiefProfile then
+	if not victim or not victimProfile then
 		return
 	end
 
@@ -86,24 +137,14 @@ local function attemptSteal(thief: Player, part: BasePart)
 		return
 	end
 
-	if #thiefProfile.keys >= thiefProfile.slots then
-		notify(thief, "Kein freier Steckplatz - erst einen Slot kaufen.")
+	local thiefProfile = checkThief(thief, part)
+	if not thiefProfile then
 		return
 	end
 
 	local key = victimProfile.keys[ref.index]
 	if not key then
 		return -- Liste hat sich zwischenzeitlich geaendert
-	end
-
-	-- Distanz serverseitig pruefen, nicht dem Prompt vertrauen.
-	local character = thief.Character
-	local root = character and character:FindFirstChild("HumanoidRootPart")
-	if not root or not root:IsA("BasePart") then
-		return
-	end
-	if (root.Position - part.Position).Magnitude > 16 then
-		return
 	end
 
 	local carried = EconomyLogic.stealTransfer(key.vorrat)
@@ -114,6 +155,7 @@ local function attemptSteal(thief: Player, part: BasePart)
 
 	pairCooldown[pairId] = now + EconomyConfig.STEAL_PAIR_COOLDOWN_SECONDS
 	SpeedService.setCarrying(thief.UserId, EconomyConfig.CARRY_SECONDS)
+	CarryService.show(thief, key.rarity, carried)
 
 	PlotService.rebuildKeys(victim.UserId)
 	PlotService.rebuildKeys(thief.UserId)
@@ -123,10 +165,23 @@ local function attemptSteal(thief: Player, part: BasePart)
 	notify(victim, ("%s hat deine %s geklaut (%d Vorrat weg)."):format(thief.DisplayName, key.rarity, lost))
 end
 
+local function attemptSteal(thief: Player, part: BasePart)
+	local ref = PlotService.keyRefFromPart(part)
+	if not ref then
+		return
+	end
+	if ref.kind == "npc" then
+		stealFromNpc(thief, part, ref)
+	elseif ref.kind == "player" and ref.userId then
+		stealFromPlayer(thief, part, ref)
+	end
+end
+
 -- Anwesenheit des Besitzers verdoppelt die Klau-Dauer. ProximityPrompt hat
 -- keine Einstellung pro Spieler, also wird die Dauer am Prompt selbst
 -- nachgezogen.
 local function refreshHoldDurations()
+	-- Nur Spielerplots: an einem NPC-Plot ist nie jemand zuhause.
 	for _, player in Players:GetPlayers() do
 		local plot = PlotService.getPlot(player.UserId)
 		if not plot then
