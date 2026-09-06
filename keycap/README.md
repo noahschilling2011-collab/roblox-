@@ -1,21 +1,58 @@
-# KEYCAP RUSH — Ökonomie-Kern
+# KEYCAP RUSH
 
-Eigenständiges Projekt im selben Repo (wie `turmfall/`). Berührt PlanetForge nicht.
+Eigenständiges Spiel im selben Repo (wie `turmfall/`). Berührt PlanetForge nicht.
 
-## Was hier drin ist — und was nicht
+## Warnung vorweg
 
-Gebaut ist **nur die Ökonomie-Rechnung**, nicht das Spiel. Grund: das
-KEYCAP-RUSH-Konzeptdokument liegt nicht im Repo. Bekannt sind daraus nur die
-Formeln, die in `docs/KEYCAP_RUSH_BEWERTUNG.md` wörtlich zitiert werden. Plots,
-Parcours, Klau-Ablauf, DataStore und UI stehen deshalb noch nicht hier — die
-würden zu großen Teilen erfunden.
+Das KEYCAP-RUSH-Konzeptdokument liegt **nicht** im Repo. Bekannt sind daraus nur die
+Formeln, die `docs/KEYCAP_RUSH_BEWERTUNG.md` wörtlich zitiert. Alles andere — Kartenaufbau,
+Klau-Ablauf, Datenschema, UI — ist **von mir entschieden**, nicht aus deinem Konzept.
+Im Code steht an jedem Wert, woher er kommt: `[KONZEPT]`, `[GEMESSEN]`, `[ABGELEITET]`,
+`[ENTSCHEIDUNG]`.
 
-Die Bewertung hat zwei Löcher benannt. Beide sind hier geschlossen:
+**Nichts davon lief je in Roblox.** Geprüft sind: Syntax aller 18 Dateien im echten
+Luau-Compiler, und 30 Logik-/Balancing-Tests in einer echten Luau-VM. Nicht geprüft ist
+jeder Roblox-API-Aufruf zur Laufzeit — Instanzen, Prompts, DataStore, Replikation.
+Der erste Studio-Start wird Fehler zeigen.
 
-| Loch aus der Bewertung | Antwort hier |
+## Was gebaut ist
+
+| Datei | Was sie macht |
 |---|---|
-| Tastenpreis und `speedPerSecond` fehlen | `EconomyConfig.RARITIES` — 5 Stufen mit Rate und Preis |
-| 0,01 / 0,025 / 0,05 macht Stage 3 alternativlos (5× für 3,5× Zeit) | Faktoren werden aus den Rundlaufzeiten **abgeleitet** statt gesetzt |
+| `shared/Config/EconomyConfig` | alle Balancing-Werte, mit Herkunftsmarkierung |
+| `shared/Config/WorldConfig` | Plot-Raster, Torpositionen, Padpositionen |
+| `shared/EconomyLogic` | reine Rechenlogik, läuft in Server und Test identisch |
+| `shared/Remotes` | einziger Ort, an dem RemoteEvents entstehen |
+| `shared/RateLimit` | Token-Eimer pro Spieler und Kanal |
+| `shared/Theme` | Farben und Font, nichts wird in Controllern hardcodiert |
+| `server/DataService` | Profil, **Session-Lock**, Autosave 45 s, `BindToClose` |
+| `server/PlotService` | baut Plots, vergibt sie, hält Tasten-Parts synchron |
+| `server/ProductionService` | jede Taste produziert ihren eigenen Vorrat |
+| `server/SpeedService` | setzt WalkSpeed aus dem Vorrat, Trage-Malus |
+| `server/CourseService` | Speed-Tore und Cash-Out-Pads (ProximityPrompt) |
+| `server/StealService` | Klau mit Paar-Cooldown, Anwesenheit, Schild |
+| `server/ShopService` | Tasten und Steckplätze kaufen |
+| `server/StateService` | schickt den Zustand an die Clients |
+| `client/HudController` | Vorrat, Rate, Wins, Schild-Knopf |
+| `client/ShopController` | Laden-Panel |
+
+Server-autoritativ: der Client schickt nur `BuyKey`, `BuySlot`, `ActivateShield` — ohne
+Beträge. Preis, Kontostand, Distanz, Besitz, Cooldown und Rate-Limit prüft der Server.
+
+## Was NICHT gebaut ist
+
+Monetarisierung (kein `ProcessReceipt`, keine Gamepässe), Tutorial, Sounds, Effekte,
+Tageslogin, Rebirth. Das Konzept schließt Rebirth aus, der Rest ist schlicht nicht drin.
+
+## Drei Entscheidungen, die du kippen kannst
+
+1. **Vorrat wird beim Verlassen nicht gespeichert** (`PERSIST_VORRAT = false`).
+   Sonst wäre Horten offline risikofrei — genau das Loch, das die Taste-hält-Vorrat-
+   Änderung schließen soll. Gespeichert werden Wins, Slots und Tasten.
+2. **Verlassene Plots verschwinden mit dem Besitzer.** Sonst wären sie unbewachte
+   Beutekisten und der Anwesenheits-Bonus wäre wertlos. Im Konzept war das undefiniert.
+3. **Leaderstats zeigen `Wins` und `Beute`** (Zahl geklauter Tasten), nicht den Vorrat.
+   Die Rangliste eines Klau-Spiels soll Beute zeigen.
 
 ## Die abgeleiteten Zahlen
 
@@ -69,6 +106,45 @@ npm install
 npm test
 ```
 
-Lädt die echten Module in eine echte Luau-VM (WASM). Exit-Code 0 = alles grün.
-Prüft unter anderem die Zahlen aus der Bewertung gegen: Gates bei 700 / 1.700 /
-2.950 Vorrat, Deckel bei 4.200, und die Stützwerte 90R / 150R / 174R.
+30 Tests in einer echten Luau-VM (WASM) plus Syntaxprüfung aller `src/`-Dateien im
+echten Luau-Compiler. Exit-Code 0 = alles grün. Geprüft werden unter anderem die Zahlen
+aus der Bewertung: Gates bei 700 / 1.700 / 2.950 Vorrat, Deckel bei 4.200, Stützwerte
+90R / 150R / 174R — und dass jedes Tor vor seinem Pad steht und alle Steckplätze auf
+den Plot passen.
+
+## In Studio starten
+
+1. In VS Code die Rojo-Extension auf `keycap/default.project.json` zeigen lassen
+   (**nicht** auf die PlanetForge-Datei im Wurzelverzeichnis) und `Serve` starten.
+2. Neues, leeres Place in Studio öffnen, im Rojo-Plugin `Connect`.
+3. Play drücken. Im Output müssen diese Zeilen stehen:
+
+```
+[KEYCAP] Server startet ...
+[KEYCAP] DataService bereit (Schema 1)
+[KEYCAP] PlotService: 12 Plots gebaut
+[KEYCAP] CourseService: 3 Stages gebaut, Schild 140s/280s
+[KEYCAP] ProductionService laeuft (Label-Takt 2s)
+[KEYCAP] SpeedService laeuft
+[KEYCAP] StealService laeuft
+[KEYCAP] ShopService laeuft
+[KEYCAP] StateService sendet alle 0.5s
+[KEYCAP] Server bereit.
+[KEYCAP] Client bereit.
+```
+
+4. Erster Sichtcheck: du stehst auf einem creme-weißen Plot, zwei graue Tasten stehen
+   drauf, links oben zählt „Vorrat" hoch. Nach etwa 6 Minuten öffnet sich Stage 1.
+   Zum Testen `START_KEY_SLOTS`-Tasten vorab geben oder `Common.vorratPerSecond`
+   kurzzeitig hochsetzen — sonst dauert der erste Durchlauf zu lang zum Debuggen.
+5. Klauen testen: zweiter Spieler über **Test → Players → 2** starten.
+
+**Wichtig:** Studio-DataStores brauchen *Studio Access to API Services* in den
+Spieleinstellungen. Ohne das schlägt jedes Speichern fehl und du wirst mit
+„Deine Daten werden noch von einem anderen Server benutzt" gekickt.
+
+## Servergröße
+
+Der Loop braucht Mitspieler. Stell die Platzgröße im Creator Dashboard auf **8–12**
+(`WorldConfig.PLOT_COUNT` ist auf 12 und muss mindestens so groß sein). Auf einem
+leeren Server ist KEYCAP RUSH ein reines Farm-Spiel.

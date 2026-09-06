@@ -78,6 +78,22 @@ local EconomyConfig = {
 	-- fuer die es da ist. Siehe EconomyLogic.shieldWindow().
 	-- ---------------------------------------------------------------
 	SHIELD_COOLDOWN_RATIO = 2, -- Abklingzeit = 2x Schilddauer -> jeder 2. Lauf geschuetzt
+
+	-- ---------------------------------------------------------------
+	-- Interaktion [ENTSCHEIDUNG, nicht aus dem Konzept]
+	-- ---------------------------------------------------------------
+	STEAL_HOLD_SECONDS = 4, -- Halten am Klau-Prompt (x2 wenn Besitzer zuhause)
+	CASHOUT_HOLD_SECONDS = 0.6, -- kurzes Halten statt Beruehrung [KONZEPT]
+	CARRY_SECONDS = 8, -- so lange traegt man die geklaute Taste sichtbar
+	SHOP_HOLD_SECONDS = 0.3,
+
+	-- Rate-Limit pro Spieler und Remote (Anfragen pro Sekunde).
+	REMOTE_RATE_LIMIT = 6,
+
+	-- Vorrat wird beim Verlassen NICHT gespeichert. Sonst waere Horten
+	-- offline risikofrei - genau das Loch, das die per-Taste-Aenderung
+	-- schliessen soll. Gespeichert werden Wins, Slots und Tasten.
+	PERSIST_VORRAT = false,
 }
 
 return EconomyConfig

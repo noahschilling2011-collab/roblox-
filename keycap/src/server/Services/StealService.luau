@@ -1,0 +1,189 @@
+--!strict
+-- Diebstahl und Schild.
+--
+-- Geklaut wird eine TASTE MITSAMT IHREM VORRAT (Abschnitt 6 der Bewertung).
+-- Der Dieb bekommt nur einen Anteil, der Rest verfaellt - sonst waere ein
+-- Klau bei einem Horter ein Sofortsieg.
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+
+local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
+local EconomyConfig = require(Shared.Config.EconomyConfig)
+local EconomyLogic = require(Shared.EconomyLogic)
+local Remotes = require(Shared.Remotes)
+local RateLimit = require(Shared.RateLimit)
+local DataService = require(script.Parent.DataService)
+local PlotService = require(script.Parent.PlotService)
+local SpeedService = require(script.Parent.SpeedService)
+
+local StealService = {}
+
+local pairCooldown: { [string]: number } = {} -- "dieb|opfer" -> os.clock
+local shieldUntil: { [number]: number } = {}
+local shieldReadyAt: { [number]: number } = {}
+
+local function notify(player: Player, text: string)
+	Remotes.get("Notify"):FireClient(player, text)
+end
+
+function StealService.isShielded(userId: number): boolean
+	return (shieldUntil[userId] or 0) > os.clock()
+end
+
+function StealService.shieldState(userId: number): (number, number)
+	local now = os.clock()
+	return math.max(0, (shieldUntil[userId] or 0) - now), math.max(0, (shieldReadyAt[userId] or 0) - now)
+end
+
+local function activateShield(player: Player)
+	if not RateLimit.allow(player.UserId, "shield", EconomyConfig.REMOTE_RATE_LIMIT) then
+		return
+	end
+	local now = os.clock()
+	if (shieldReadyAt[player.UserId] or 0) > now then
+		notify(player, "Schild laedt noch.")
+		return
+	end
+	local duration, cooldown = EconomyLogic.shieldWindow()
+	shieldUntil[player.UserId] = now + duration
+	shieldReadyAt[player.UserId] = now + cooldown
+	notify(player, ("Schild an - %ds geschuetzt."):format(duration))
+end
+
+local function attemptSteal(thief: Player, part: BasePart)
+	local ref = PlotService.keyRefFromPart(part)
+	if not ref then
+		return
+	end
+	if ref.userId == thief.UserId then
+		notify(thief, "Das ist deine eigene Taste.")
+		return
+	end
+	if not RateLimit.allow(thief.UserId, "steal", EconomyConfig.REMOTE_RATE_LIMIT) then
+		return
+	end
+
+	local victim = Players:GetPlayerByUserId(ref.userId)
+	local victimProfile = if victim then DataService.get(victim) else nil
+	local thiefProfile = DataService.get(thief)
+	if not victim or not victimProfile or not thiefProfile then
+		return
+	end
+
+	if StealService.isShielded(victim.UserId) then
+		notify(thief, "Der Plot ist geschuetzt.")
+		return
+	end
+
+	-- Abklingzeit pro Dieb-Opfer-Paar: verhindert, dass ein starker Spieler
+	-- einen schwachen dauerhaft leerraeumt.
+	local pairId = thief.UserId .. "|" .. victim.UserId
+	local now = os.clock()
+	if (pairCooldown[pairId] or 0) > now then
+		local left = math.ceil((pairCooldown[pairId] :: number) - now)
+		notify(thief, ("Bei diesem Spieler erst wieder in %ds."):format(left))
+		return
+	end
+
+	if #thiefProfile.keys >= thiefProfile.slots then
+		notify(thief, "Kein freier Steckplatz - erst einen Slot kaufen.")
+		return
+	end
+
+	local key = victimProfile.keys[ref.index]
+	if not key then
+		return -- Liste hat sich zwischenzeitlich geaendert
+	end
+
+	-- Distanz serverseitig pruefen, nicht dem Prompt vertrauen.
+	local character = thief.Character
+	local root = character and character:FindFirstChild("HumanoidRootPart")
+	if not root or not root:IsA("BasePart") then
+		return
+	end
+	if (root.Position - part.Position).Magnitude > 16 then
+		return
+	end
+
+	local carried = EconomyLogic.stealTransfer(key.vorrat)
+	local lost = math.floor(key.vorrat)
+	table.remove(victimProfile.keys, ref.index)
+	table.insert(thiefProfile.keys, { rarity = key.rarity, vorrat = carried })
+	thiefProfile.totalStolen += 1
+
+	pairCooldown[pairId] = now + EconomyConfig.STEAL_PAIR_COOLDOWN_SECONDS
+	SpeedService.setCarrying(thief.UserId, EconomyConfig.CARRY_SECONDS)
+
+	PlotService.rebuildKeys(victim.UserId)
+	PlotService.rebuildKeys(thief.UserId)
+	DataService.syncLeaderstats(thief)
+
+	notify(thief, ("Geklaut: %s mit %d Vorrat."):format(key.rarity, carried))
+	notify(victim, ("%s hat deine %s geklaut (%d Vorrat weg)."):format(thief.DisplayName, key.rarity, lost))
+end
+
+-- Anwesenheit des Besitzers verdoppelt die Klau-Dauer. ProximityPrompt hat
+-- keine Einstellung pro Spieler, also wird die Dauer am Prompt selbst
+-- nachgezogen.
+local function refreshHoldDurations()
+	for _, player in Players:GetPlayers() do
+		local plot = PlotService.getPlot(player.UserId)
+		if not plot then
+			continue
+		end
+		local factor = if PlotService.isOwnerHome(player.UserId) then EconomyConfig.PRESENCE_HOLD_FACTOR else 1
+		local duration = EconomyConfig.STEAL_HOLD_SECONDS * factor
+		for _, part in plot.keyFolder:GetChildren() do
+			local prompt = part:FindFirstChild("Steal")
+			if prompt and prompt:IsA("ProximityPrompt") then
+				prompt.HoldDuration = duration
+			end
+		end
+	end
+end
+
+function StealService.start()
+	local plots = workspace:WaitForChild("Plots")
+
+	local function hook(descendant: Instance)
+		if not descendant:IsA("ProximityPrompt") or descendant.Name ~= "Steal" then
+			return
+		end
+		local part = descendant.Parent
+		if part and part:IsA("BasePart") then
+			descendant.Triggered:Connect(function(thief)
+				attemptSteal(thief, part)
+			end)
+		end
+	end
+
+	plots.DescendantAdded:Connect(hook)
+	-- Prompts, die vor diesem Verbinden schon existierten, nachziehen:
+	-- PlotService vergibt Plots asynchron und kann schneller sein.
+	for _, descendant in plots:GetDescendants() do
+		hook(descendant)
+	end
+
+	Remotes.get("ActivateShield").OnServerEvent:Connect(activateShield)
+
+	Players.PlayerRemoving:Connect(function(player)
+		shieldUntil[player.UserId] = nil
+		shieldReadyAt[player.UserId] = nil
+		RateLimit.forget(player.UserId)
+		SpeedService.clearCarrying(player.UserId)
+	end)
+
+	local accumulator = 0
+	RunService.Heartbeat:Connect(function(deltaTime)
+		accumulator += deltaTime
+		if accumulator >= 1 then
+			accumulator = 0
+			refreshHoldDurations()
+		end
+	end)
+
+	print("[KEYCAP] StealService laeuft")
+end
+
+return StealService

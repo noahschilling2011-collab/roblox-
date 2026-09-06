@@ -2,6 +2,7 @@
 // Luau-VM (luau-web/WASM) und prueft die Oekonomie - ohne Roblox Studio.
 import { LuauState } from "luau-web";
 import { readFileSync } from "fs";
+import { execSync } from "child_process";
 
 const ROOT = new URL("..", import.meta.url).pathname.replace(/\/$/, "");
 
@@ -16,9 +17,15 @@ function loadModule(relPath) {
 const modules = [
   ["EconomyConfig", "src/shared/Config/EconomyConfig.luau"],
   ["EconomyLogic", "src/shared/EconomyLogic.luau"],
+  ["WorldConfig", "src/shared/Config/WorldConfig.luau"],
+  ["RateLimit", "src/shared/RateLimit.luau"],
 ];
 
-let body = "local __deps = {}\n";
+// Stubs fuer die Roblox-Globals, die die Shared-Module anfassen.
+let body = `
+local Vector3 = { new = function(x, y, z) return { X = x or 0, Y = y or 0, Z = z or 0 } end }
+local __deps = {}
+`;
 for (const [name, path] of modules) {
   body += `\n__deps["${name}"] = (function()\n${loadModule(path)}\nend)()\n`;
 }
@@ -26,6 +33,8 @@ for (const [name, path] of modules) {
 const tests = `
 local Config = __deps["EconomyConfig"]
 local Logic = __deps["EconomyLogic"]
+local World = __deps["WorldConfig"]
+local RateLimit = __deps["RateLimit"]
 
 local results = {}
 local passed, failed = 0, 0
@@ -216,17 +225,110 @@ test("Schild schuetzt hoechstens jeden zweiten Lauf", function()
 	expect(duration / cooldown <= 0.5, "Schild deckt zu viel ab")
 end)
 
+-- 7) Karte: die Bauzahlen muessen zueinander passen.
+test("Plots ueberlappen sich nicht", function()
+	expect(World.PLOT_SPACING > World.PLOT_SIZE.X, "Plotabstand kleiner als Plotbreite")
+end)
+
+test("Alle Steckplaetze passen auf den Plot", function()
+	local rows = math.ceil(Config.MAX_KEY_SLOTS / World.SLOT_COLUMNS)
+	local breite = (World.SLOT_COLUMNS - 1) * World.SLOT_SPACING + World.KEY_SIZE.X
+	local tiefe = (rows - 1) * World.SLOT_SPACING + World.KEY_SIZE.Z
+	expect(breite <= World.PLOT_SIZE.X, "Tasten stehen seitlich ueber: " .. breite)
+	expect(tiefe <= World.PLOT_SIZE.Z, "Tasten stehen hinten ueber: " .. tiefe)
+end)
+
+test("Zuhause-Radius bleibt auf dem eigenen Plot", function()
+	expect(World.PRESENCE_RADIUS < World.PLOT_SPACING, "Zuhause-Radius reicht zum Nachbarn")
+end)
+
+test("Jedes Tor steht vor seinem Pad, Pads werden weiter", function()
+	local vorher = 0
+	for i = 1, #World.STAGE_PAD_POSITIONS do
+		local gate = World.STAGE_GATE_POSITIONS[i]
+		local pad = World.STAGE_PAD_POSITIONS[i]
+		expect(gate ~= nil, "Tor " .. i .. " fehlt")
+		-- Der Parcours laeuft nach -Z, das Tor muss also naeher an den Plots sein.
+		expect(gate.Z > pad.Z, "Tor " .. i .. " steht hinter seinem Pad")
+		local entfernung = -pad.Z
+		expect(entfernung > vorher, "Pad " .. i .. " ist nicht weiter weg als das vorige")
+		vorher = entfernung
+	end
+end)
+
+test("Es gibt fuer jede Stage genau ein Tor und ein Pad", function()
+	expect(#World.STAGE_GATE_POSITIONS == #Config.STAGE_GATES, "Torzahl passt nicht zu den Gates")
+	expect(#World.STAGE_PAD_POSITIONS == #Config.STAGE_GATES, "Padzahl passt nicht zu den Gates")
+	expect(#Config.STAGE_RUN_SECONDS == #Config.STAGE_GATES, "Laufzeiten fehlen fuer eine Stage")
+end)
+
+test("Plotzahl reicht fuer die Servergroesse", function()
+	expect(World.PLOT_COUNT >= 8, "zu wenige Plots fuer einen vollen Server")
+end)
+
+-- 8) Rate-Limit am Server-Eingang.
+test("Rate-Limit laesst einen Burst durch und blockt danach", function()
+	local erlaubt = 0
+	for _ = 1, 20 do
+		if RateLimit.allow(4242, "test", 6) then
+			erlaubt += 1
+		end
+	end
+	expect(erlaubt >= 5 and erlaubt <= 7, "Burst falsch bemessen: " .. erlaubt)
+end)
+
+test("Rate-Limit trennt Spieler und Kanaele", function()
+	for _ = 1, 20 do
+		RateLimit.allow(1, "a", 3)
+	end
+	expect(RateLimit.allow(2, "a", 3), "anderer Spieler wird mitgeblockt")
+	expect(RateLimit.allow(1, "b", 3), "anderer Kanal wird mitgeblockt")
+end)
+
+test("Rate-Limit vergisst einen Spieler beim Verlassen", function()
+	for _ = 1, 20 do
+		RateLimit.allow(777, "c", 2)
+	end
+	expect(not RateLimit.allow(777, "c", 2), "Spieler nicht geblockt")
+	RateLimit.forget(777)
+	expect(RateLimit.allow(777, "c", 2), "Eimer nach forget nicht zurueckgesetzt")
+end)
+
 table.insert(results, "")
 table.insert(results, "ERGEBNIS: " .. passed .. " bestanden, " .. failed .. " fehlgeschlagen (" .. (passed + failed) .. " Tests)")
 return table.concat(results, "\\n"), failed
 `;
+
+// Syntaxpruefung: jede Luau-Datei des Spiels muss im echten Luau-Compiler
+// durchgehen. Faengt Tippfehler, die sonst erst in Studio auffallen.
+function syntaxCheck(state) {
+  const files = execSync(`find ${ROOT}/src -name '*.luau'`).toString().trim().split("\n").filter(Boolean).sort();
+  const broken = [];
+  for (const file of files) {
+    try {
+      state.loadstring(readFileSync(file, "utf8"), file.split("/").pop(), true);
+    } catch (e) {
+      broken.push(`${file.replace(ROOT + "/", "")} -> ${(e.message ?? e).toString().split("\n")[0]}`);
+    }
+  }
+  return { count: files.length, broken };
+}
 
 const state = await LuauState.createAsync();
 try {
   const fn = state.loadstring(body + tests, "keycap-rush-tests", true);
   const [report, failedCount] = await fn();
   console.log(report);
-  process.exit(failedCount > 0 ? 1 : 0);
+
+  const syntax = syntaxCheck(state);
+  console.log("");
+  if (syntax.broken.length === 0) {
+    console.log(`SYNTAX: ${syntax.count} Luau-Dateien kompilieren.`);
+  } else {
+    for (const line of syntax.broken) console.log("FAIL | " + line);
+    console.log(`SYNTAX: ${syntax.broken.length} von ${syntax.count} Dateien kaputt.`);
+  }
+  process.exit(failedCount > 0 || syntax.broken.length > 0 ? 1 : 0);
 } catch (e) {
   console.error("HARNESS-FEHLER:", e.message ?? e);
   process.exit(2);
