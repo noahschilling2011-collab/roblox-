@@ -62,6 +62,11 @@ lassen (Scope offiziell erweitern) oder für den ersten Launch deaktivieren.
 - `docs/KEYCAP_RUSH_BEWERTUNG.md` — kritische Bewertung des KEYCAP-RUSH-Konzepts
   (eigenes Spielkonzept, liegt NICHT im Repo). Enthält am Ende einen Nachtrag mit den
   Schwachstellen der Bewertung selbst. Kein Einfluss auf PlanetForge oder TURMFALL.
+- `keycap/` — Ökonomie-Kern von KEYCAP RUSH (Config + reine Rechenlogik + 21 Tests in
+  echter Luau-VM, `cd keycap/tests && npm install && npm test`). Schließt die zwei
+  Balancing-Lücken aus der Bewertung. **Noch kein Spiel:** keine Plots, kein Parcours,
+  kein Klau-Ablauf, kein DataStore, keine UI — dafür fehlt das Konzeptdokument.
+  Offene Zahl: `STAGE_RUN_SECONDS` ist geschätzt und muss in Studio gemessen werden.
 
 ## Manuelle Schritte außerhalb des Codes (Noah) 🔑
 - Publishing + Creator Dashboard: Gamepässe/Produkte anlegen, echte IDs in
