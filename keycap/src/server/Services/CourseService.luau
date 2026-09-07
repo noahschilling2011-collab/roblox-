@@ -213,7 +213,7 @@ local function buildGround()
 		part.TopSurface = Enum.SurfaceType.Smooth
 		part.BottomSurface = Enum.SurfaceType.Smooth
 		part.Material = Enum.Material.SmoothPlastic
-		part.Color = Theme.PANEL_EDGE
+		part.Color = Theme.GROUND
 		part.Parent = workspace
 	end
 

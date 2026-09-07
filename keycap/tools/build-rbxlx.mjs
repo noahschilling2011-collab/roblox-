@@ -122,9 +122,9 @@ local function part(name, size, position, color, legende)
 end
 
 local promenade = Layout.promenade()
-part("Promenade", promenade.size, promenade.position, Theme.PANEL_EDGE)
+part("Promenade", promenade.size, promenade.position, Theme.GROUND)
 local weg = Layout.path()
-part("Path", weg.size, weg.position, Theme.PANEL_EDGE)
+part("Path", weg.size, weg.position, Theme.GROUND)
 
 for index = 1, World.PLOT_COUNT do
 	local mitte = Layout.plotPosition(index)

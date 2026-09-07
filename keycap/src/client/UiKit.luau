@@ -67,6 +67,17 @@ function UiKit.stroke(target: Instance, color: Color3, thickness: number?): UISt
 end
 
 -- Linearer Verlauf ueber eine Achse. 90 = oben nach unten.
+-- Dieselbe Farbe um GRADIENT_LIFT aufgehellt. Der Verlauf von hier nach
+-- unten gibt einer Flaeche die Plastik, die Roblox-UI ohne Schatten fehlt.
+function UiKit.lift(color: Color3): Color3
+	local factor = 1 + Theme.GRADIENT_LIFT
+	return Color3.new(
+		math.min(1, color.R * factor),
+		math.min(1, color.G * factor),
+		math.min(1, color.B * factor)
+	)
+end
+
 function UiKit.gradient(target: Instance, from: Color3, to: Color3, rotation: number?): UIGradient
 	local gradient = Instance.new("UIGradient")
 	gradient.Color = ColorSequence.new(from, to)
@@ -83,7 +94,10 @@ function UiKit.panel(parent: Instance, size: UDim2, position: UDim2): Frame
 	frame.BackgroundColor3 = Theme.PANEL
 	frame.BorderSizePixel = 0
 	round(frame)
-	UiKit.stroke(frame, Theme.PANEL_EDGE, 2)
+	-- Umrandung in Tinte statt zarter Kante: ohne sie schwimmt eine helle
+	-- Flaeche im Bild, mit ihr steht sie darauf. Der groesste einzelne
+	-- Unterschied zum bisherigen Pastell-Look.
+	UiKit.stroke(frame, Theme.INK, Theme.OUTLINE_THICKNESS)
 	frame.Parent = parent
 	return frame
 end
@@ -149,9 +163,14 @@ function UiKit.button(parent: Instance, options: ButtonOptions): TextButton
 	button.Font = Theme.FONT
 	button.TextScaled = false
 	button.TextSize = options.textSize or Theme.TEXT_SIZE.BODY
-	button.TextColor3 = options.textColor or Theme.TEXT
+	button.TextColor3 = options.textColor or Theme.INK
 	button.Text = options.text
 	round(button)
+	-- Verlauf oben heller, dazu dieselbe Tinten-Umrandung wie die Panels.
+	-- Zusammen mit der dunkleren Unterkante im Halter ergibt das drei
+	-- Tiefenebenen ohne einen einzigen Schatten.
+	UiKit.gradient(button, UiKit.lift(options.base), options.base)
+	UiKit.stroke(button, Theme.INK, Theme.OUTLINE_THICKNESS)
 
 	local raised = UDim2.new(0, 0, 0, 0)
 	local pressed = UDim2.new(0, 0, 0, Theme.BUTTON_EDGE_HEIGHT)
@@ -178,6 +197,11 @@ function UiKit.setButtonColors(button: TextButton, base: Color3, edge: Color3)
 	local holder = button.Parent
 	if holder and holder:IsA("Frame") then
 		holder.BackgroundColor3 = edge
+	end
+	-- Ohne das behaelt ein umgefaerbter Knopf den Verlauf der alten Farbe.
+	local gradient = button:FindFirstChildOfClass("UIGradient")
+	if gradient then
+		gradient.Color = ColorSequence.new(UiKit.lift(base), base)
 	end
 end
 
@@ -240,7 +264,10 @@ function UiKit.keycap(parent: Instance, options: KeycapOptions): Frame
 	top.BackgroundColor3 = base
 	top.BorderSizePixel = 0
 	round(top)
-	UiKit.gradient(top, base:Lerp(Color3.new(1, 1, 1), 0.3), base, 90)
+	-- Derselbe Aufhell-Faktor wie bei den Knoepfen. Vorher stand hier ein
+	-- eigener Wert (0.3 Richtung Weiss) - damit waren Tasten im Laden
+	-- anders hell als Knoepfe daneben.
+	UiKit.gradient(top, UiKit.lift(base), base, 90)
 	top.Parent = holder
 
 	local letter = Instance.new("TextLabel")

@@ -13,6 +13,14 @@ local Theme = {
 	-- ---------------------------------------------------------------
 	PANEL = Color3.fromRGB(252, 249, 240), -- creme-weiss
 	PANEL_EDGE = Color3.fromRGB(214, 206, 188),
+	-- Tinte. Eine einzige fast-schwarze Farbe fuer Schrift auf bunten
+	-- Flaechen, fuer die Umrandung um jedes Element und fuer die Kante
+	-- unter jedem Knopf. Dass sie ueberall wiederkehrt, ist das, was den
+	-- Look zusammenhaelt - siehe DESIGN.md.
+	INK = Color3.fromRGB(24, 20, 18),
+	OUTLINE_THICKNESS = 3, -- Umrandung von Panels und Knoepfen
+	GRADIENT_LIFT = 0.14, -- Verlauf: oben um diesen Anteil heller
+
 	TEXT = Color3.fromRGB(58, 52, 44),
 	TEXT_MUTED = Color3.fromRGB(108, 100, 88),
 
@@ -21,14 +29,16 @@ local Theme = {
 	-- Hellen unlesbar. Dunkle Schrift schafft ueberall mindestens 4,5:1,
 	-- und die Akzente bleiben so kraeftig, wie sie sein sollen.
 	-- Nachgerechnet im Testlauf, nicht geschaetzt.
-	GREEN = Color3.fromRGB(86, 190, 96),
-	GREEN_DARK = Color3.fromRGB(58, 146, 68),
-	BLUE = Color3.fromRGB(108, 186, 240),
-	BLUE_DARK = Color3.fromRGB(62, 132, 190),
-	GOLD = Color3.fromRGB(248, 196, 62),
-	GOLD_DARK = Color3.fromRGB(206, 152, 32),
-	RED = Color3.fromRGB(230, 96, 88), -- nur fuer Flaechen
-	RED_DARK = Color3.fromRGB(168, 60, 54), -- Kante unter einer roten Flaeche
+	GREEN = Color3.fromRGB(64, 196, 86),
+	GREEN_DARK = Color3.fromRGB(38, 138, 56),
+	BLUE = Color3.fromRGB(56, 166, 246),
+	BLUE_DARK = Color3.fromRGB(30, 112, 182),
+	GOLD = Color3.fromRGB(255, 190, 32),
+	GOLD_DARK = Color3.fromRGB(200, 138, 12),
+	RED = Color3.fromRGB(246, 84, 74), -- nur fuer Flaechen
+	RED_DARK = Color3.fromRGB(180, 48, 40), -- Kante unter einer roten Flaeche
+	PURPLE = Color3.fromRGB(176, 102, 244),
+	PURPLE_DARK = Color3.fromRGB(126, 62, 190),
 
 	-- Textfarben der Akzente. Bewusst eigene Werte statt der _DARK-Kanten:
 	-- eine Knopfkante muss nur dunkler sein als ihre Flaeche, eine Schrift
@@ -51,9 +61,11 @@ local Theme = {
 	-- darunter, Tiefe durch den Ueberstand - nicht durch Schatten, die
 	-- Roblox-Oberflaechen ohnehin nicht werfen wuerden.
 	-- ---------------------------------------------------------------
+	GROUND = Color3.fromRGB(104, 190, 92), -- Boden: das Gruen, das dieses Genre unter den Fuessen hat
+	GROUND_EDGE = Color3.fromRGB(66, 146, 62),
 	PLOT_DECK = Color3.fromRGB(206, 198, 182), -- Chassis unter der Plotplatte
 	PLOT_DECK_EDGE = Color3.fromRGB(168, 160, 146),
-	SLOT_MARKER = Color3.fromRGB(224, 218, 204), -- leere Mulde
+	SLOT_MARKER = Color3.fromRGB(214, 206, 188), -- leere Mulde
 	SIGN_BOARD = Color3.fromRGB(248, 244, 232),
 	SIGN_BOARD_EDGE = Color3.fromRGB(196, 188, 172),
 	PAD_RING = Color3.fromRGB(206, 152, 32), -- Podest unter dem Pad
@@ -122,7 +134,7 @@ local Theme = {
 	-- ---------------------------------------------------------------
 	-- Formen
 	-- ---------------------------------------------------------------
-	CORNER = UDim.new(0, 12),
+	CORNER = UDim.new(0, 16), -- gross wirkt nach Spielzeug, klein nach Technik
 	BUTTON_EDGE_HEIGHT = 4, -- dunklere Unterkante fuer den 3D-Effekt
 	-- Kleinstes Touch-Ziel. Alles Anklickbare ist mindestens so hoch -
 	-- darunter trifft ein Kinderdaumen auf dem Handy nicht zuverlaessig.

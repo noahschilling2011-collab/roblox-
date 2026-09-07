@@ -526,16 +526,35 @@ test("Jede Schrift-auf-Flaeche-Kombination schafft 4,5:1", function()
 		return (a + 0.05) / (b + 0.05)
 	end
 
+	-- Dieselbe Rechnung wie UiKit.lift.
+	local function lift(color)
+		local factor = 1 + Theme.GRADIENT_LIFT
+		return {
+			R = math.min(1, color.R * factor),
+			G = math.min(1, color.G * factor),
+			B = math.min(1, color.B * factor),
+		}
+	end
+
 	local kombinationen = {
 		{ "Text auf Panel", Theme.TEXT, Theme.PANEL },
+		{ "Tinte auf Panel", Theme.INK, Theme.PANEL },
 		{ "Nebentext auf Panel", Theme.TEXT_MUTED, Theme.PANEL },
 		{ "Warnung auf Panel", Theme.RED_TEXT, Theme.PANEL },
 		{ "Wins auf Panel", Theme.GOLD_TEXT, Theme.PANEL },
 		{ "Erfolg auf Panel", Theme.GREEN_TEXT, Theme.PANEL },
-		{ "Knopfschrift auf Gruen", Theme.TEXT, Theme.GREEN },
-		{ "Knopfschrift auf Blau", Theme.TEXT, Theme.BLUE },
-		{ "Knopfschrift auf Gold", Theme.TEXT, Theme.GOLD },
-		{ "Knopfschrift auf Panel", Theme.TEXT, Theme.PANEL },
+		{ "Knopfschrift auf Gruen", Theme.INK, Theme.GREEN },
+		{ "Knopfschrift auf Blau", Theme.INK, Theme.BLUE },
+		{ "Knopfschrift auf Gold", Theme.INK, Theme.GOLD },
+		{ "Knopfschrift auf Rot", Theme.INK, Theme.RED },
+		{ "Knopfschrift auf Lila", Theme.INK, Theme.PURPLE },
+		{ "Knopfschrift auf Panel", Theme.INK, Theme.PANEL },
+		-- Der Verlauf hellt die Flaeche oben auf. Wenn die Schrift oben
+		-- durchfaellt, nuetzt der Wert unten nichts.
+		{ "Knopfschrift auf Gruen (Verlauf oben)", Theme.INK, lift(Theme.GREEN) },
+		{ "Knopfschrift auf Blau (Verlauf oben)", Theme.INK, lift(Theme.BLUE) },
+		{ "Knopfschrift auf Gold (Verlauf oben)", Theme.INK, lift(Theme.GOLD) },
+		{ "Knopfschrift auf Rot (Verlauf oben)", Theme.INK, lift(Theme.RED) },
 	}
 	for _, name in Config.RARITY_ORDER do
 		table.insert(kombinationen, { "Knopfschrift auf " .. name, Theme.TEXT, Theme.RARITY_COLORS[name] })
@@ -591,6 +610,41 @@ test("Die Welt spricht dieselbe Sprache wie das HUD", function()
 	-- Die leere Mulde muss sich von der Plotplatte abheben, sonst sieht ein
 	-- Dieb aus der Entfernung nicht, wie voll ein Plot ist.
 	expect(luminance(Theme.SLOT_MARKER) < luminance(Theme.PANEL), "Steckplatz-Mulde hebt sich nicht ab")
+	expect(luminance(Theme.GROUND_EDGE) < luminance(Theme.GROUND), "Bodenkante ist nicht dunkler")
+	-- Die Tinte muss dunkler sein als alles, was sie umrandet - sonst ist
+	-- die Umrandung eine Aufhellung statt einer Kante.
+	for _, name in { "PANEL", "GREEN", "BLUE", "GOLD", "RED", "PURPLE", "GROUND" } do
+		expect(luminance(Theme.INK) < luminance(Theme[name]),
+			"INK ist nicht dunkler als " .. name)
+	end
+end)
+
+test("Der Verlauf hellt auf, er verdunkelt nicht", function()
+	local function channel(value)
+		if value <= 0.03928 then
+			return value / 12.92
+		end
+		return ((value + 0.055) / 1.055) ^ 2.4
+	end
+	local function luminance(color)
+		return 0.2126 * channel(color.R) + 0.7152 * channel(color.G) + 0.0722 * channel(color.B)
+	end
+	expect(Theme.GRADIENT_LIFT > 0, "kein Verlauf")
+	expect(Theme.GRADIENT_LIFT < 0.4, "Verlauf so stark, dass oben eine andere Farbe steht")
+	for _, name in { "GREEN", "BLUE", "GOLD", "RED", "PURPLE" } do
+		local basis = Theme[name]
+		local oben = {
+			R = math.min(1, basis.R * (1 + Theme.GRADIENT_LIFT)),
+			G = math.min(1, basis.G * (1 + Theme.GRADIENT_LIFT)),
+			B = math.min(1, basis.B * (1 + Theme.GRADIENT_LIFT)),
+		}
+		expect(luminance(oben) >= luminance(basis), name .. ": Verlauf oben nicht heller")
+	end
+end)
+
+test("Umrandung ist dick genug, um zu wirken", function()
+	expect(Theme.OUTLINE_THICKNESS >= 2, "Umrandung zu duenn: " .. Theme.OUTLINE_THICKNESS)
+	expect(Theme.OUTLINE_THICKNESS * Theme.SCALE_MIN >= 1.5, "Umrandung verschwindet auf dem Handy")
 end)
 
 test("Chassis und Podest stehen unter ihrer Flaeche, nicht daneben", function()
