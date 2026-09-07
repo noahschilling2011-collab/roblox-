@@ -363,7 +363,11 @@ test("Die Karte bleibt im Part-Budget - auch im schlimmsten Fall", function()
 	parts += spielerPlots * Config.MAX_KEY_SLOTS * PARTS_PRO_TASTE
 	parts += World.NPC_PLOT_COUNT * Config.NPC_KEY_COUNT * PARTS_PRO_TASTE
 	parts += #World.STAGE_GATE_POSITIONS + #World.STAGE_PAD_POSITIONS * 2 -- Pad + Podest
-	parts += 2 -- Promenade und Weg
+	parts += 1 -- Promenade
+	for stageIndex in World.STAGES do
+		parts += #Layout.stagePlatforms(stageIndex) * 2 -- Koerper und Deckplatte
+	end
+	parts += World.PLOT_COUNT * 2 -- Schildkuppel und Leuchtturm je Plot
 	parts += World.PLOT_COUNT -- jeder Spieler traegt gleichzeitig Beute
 	expect(parts <= World.PART_BUDGET, "Part-Budget gerissen: " .. parts .. " von " .. World.PART_BUDGET)
 end)
@@ -797,22 +801,6 @@ test("Die Promenade verbindet alle Plots", function()
 	expect(World.PROMENADE_DEPTH > 0, "keine Promenade")
 end)
 
-test("Der Weg ist breit genug und reicht ueber das letzte Pad hinaus", function()
-	expect(World.PATH_WIDTH >= World.STAGE_PAD_SIZE.X, "Weg schmaler als ein Pad")
-	expect(World.PATH_MARGIN > 0, "Weg endet genau am Pad")
-end)
-
-test("Jedes Pad und jedes Tor liegt ueber dem Weg", function()
-	local halbe = World.PATH_WIDTH / 2
-	for index, pad in World.STAGE_PAD_POSITIONS do
-		expect(math.abs(pad.X - World.PLOT_ORIGIN.X) + World.STAGE_PAD_SIZE.X / 2 <= halbe,
-			"Pad " .. index .. " haengt neben dem Weg")
-	end
-	for index, gate in World.STAGE_GATE_POSITIONS do
-		expect(math.abs(gate.X - World.PLOT_ORIGIN.X) <= halbe, "Tor " .. index .. " steht neben dem Weg")
-	end
-end)
-
 test("Alles steht auf derselben Hoehe - keine Stufen im Parcours", function()
 	local hoehe = World.PLOT_ORIGIN.Y
 	for index, pad in World.STAGE_PAD_POSITIONS do
@@ -844,16 +832,6 @@ test("Tasten stehen auf dem Plot, nicht daneben oder darin", function()
 		local erwarteteHoehe = mitte.Y + World.PLOT_SIZE.Y / 2 + World.KEY_SIZE.Y / 2
 		expect(math.abs(position.Y - erwarteteHoehe) < 0.001, "Taste schwebt oder steckt im Plot")
 	end
-end)
-
-test("Promenade und Weg beruehren sich luechenlos", function()
-	local promenade = Layout.promenade()
-	local weg = Layout.path()
-	local promenadeVorderkante = promenade.position.Z + promenade.size.Z / 2
-	local wegHinterkante = weg.position.Z + weg.size.Z / 2
-	expect(math.abs(promenadeVorderkante - wegHinterkante) < 0.001,
-		"Luecke zwischen Promenade und Weg: " .. (promenadeVorderkante - wegHinterkante))
-	expect(promenade.position.Y == weg.position.Y, "Promenade und Weg auf verschiedenen Hoehen")
 end)
 
 test("Die Promenade schliesst an die Plots an", function()
@@ -893,6 +871,89 @@ test("Der Stem sitzt im Sockel, nicht darunter in der Luft", function()
 	-- steckt er unten heraus.
 	expect(World.KEY_STEM_HEIGHT <= World.PLOT_SIZE.Y,
 		"Stem-Ring ragt unter der Plotplatte heraus")
+end)
+
+-- 17) Der Parcours. Die Sprungweite IST das Gate.
+test("Die Sprungweiten stimmen mit der Physik ueberein", function()
+	-- Schiefer Wurf: t = 2 * v0 / g, d = speed * t. Gegen die Werte aus
+	-- dem Kommentar in WorldConfig.
+	expect(math.abs(Layout.jumpDistance(16) - 8.2) < 0.1, "Startsprung: " .. Layout.jumpDistance(16))
+	expect(math.abs(Layout.jumpDistance(30) - 15.3) < 0.1, "Gate 1: " .. Layout.jumpDistance(30))
+	expect(math.abs(Layout.jumpDistance(50) - 25.5) < 0.1, "Gate 2: " .. Layout.jumpDistance(50))
+	expect(math.abs(Layout.jumpDistance(75) - 38.2) < 0.1, "Gate 3: " .. Layout.jumpDistance(75))
+end)
+
+test("Jede Luecke laesst eine Marge, ist aber nicht geschenkt", function()
+	for stageIndex, stage in World.STAGES do
+		local gate = Config.STAGE_GATES[stageIndex]
+		local maximal = Layout.jumpDistance(gate)
+		local anteil = Layout.stageJumpDistance(stageIndex) / maximal
+		expect(anteil <= World.JUMP_MARGIN + 0.01,
+			"Stage " .. stageIndex .. ": Luecke " .. stage.gap .. " ist " .. anteil .. " der Maximalweite")
+		expect(anteil >= 0.6,
+			"Stage " .. stageIndex .. ": Luecke zu klein, das Gate bedeutet nichts")
+		-- Weiches Gate: wer knapp unter dem Gate-Speed liegt, kommt durch.
+		local noetig = Layout.speedForGap(Layout.stageJumpDistance(stageIndex))
+		expect(noetig < gate, "Stage " .. stageIndex .. ": Luecke verlangt mehr als das Gate")
+	end
+end)
+
+test("Jede Stage hat mehrere Plattformen und wird schmaler", function()
+	local letzteBreite, letzteTiefe = math.huge, math.huge
+	for stageIndex, stage in World.STAGES do
+		local platforms = Layout.stagePlatforms(stageIndex)
+		expect(#platforms >= 3, "Stage " .. stageIndex .. " hat nur " .. #platforms .. " Plattformen")
+		expect(stage.width < letzteBreite, "Stage " .. stageIndex .. " wird nicht schmaler")
+		expect(stage.depth <= letzteTiefe, "Stage " .. stageIndex .. " wird nicht knapper")
+		letzteBreite, letzteTiefe = stage.width, stage.depth
+	end
+end)
+
+test("Die Luecken werden von Stage zu Stage groesser", function()
+	local vorher = 0
+	for stageIndex, stage in World.STAGES do
+		expect(stage.gap > vorher, "Stage " .. stageIndex .. ": Luecke nicht groesser als vorher")
+		vorher = stage.gap
+	end
+end)
+
+test("Plattformen liegen hintereinander und ueberlappen nicht", function()
+	for stageIndex in World.STAGES do
+		local platforms = Layout.stagePlatforms(stageIndex)
+		for i = 2, #platforms do
+			local vorne = platforms[i - 1]
+			local hinten = platforms[i]
+			expect(hinten.position.Z < vorne.position.Z, "Stage " .. stageIndex .. ": Plattform " .. i .. " liegt nicht dahinter")
+			local luecke = (vorne.position.Z - vorne.size.Z / 2) - (hinten.position.Z + hinten.size.Z / 2)
+			expect(luecke > 0, "Stage " .. stageIndex .. ": Plattformen ueberlappen")
+		end
+	end
+end)
+
+test("Der Seitenversatz bleibt in Sprungreichweite", function()
+	-- Wer seitlich versetzt springt, legt die Diagonale zurueck. Die darf
+	-- die Maximalweite nicht ueberschreiten.
+	for stageIndex, stage in World.STAGES do
+		if stage.sideways > 0 then
+			local diagonale = Layout.stageJumpDistance(stageIndex)
+			local maximal = Layout.jumpDistance(Config.STAGE_GATES[stageIndex])
+			expect(diagonale <= maximal,
+				"Stage " .. stageIndex .. ": Diagonale " .. diagonale .. " ueber Maximalweite " .. maximal)
+		end
+	end
+end)
+
+test("Nur die letzte Stage bewegt sich, und nur ein Teil davon", function()
+	expect(World.STAGES[1].moves == false, "Stage 1 bewegt sich")
+	expect(World.STAGES[#World.STAGES].moves == true, "letzte Stage bewegt sich nicht")
+	expect(World.MOVING_EVERY >= 2, "jede Plattform bewegt sich")
+	-- Klein und langsam, weil das Tragen des Spielers ungeprueft ist.
+	expect(World.MOVING_AMPLITUDE <= 6, "Hub zu gross fuer eine ungepruefte Mechanik")
+	expect(World.MOVING_SECONDS >= 2, "Bewegung zu schnell")
+end)
+
+test("Die Absturzschwelle liegt unter der Spielflaeche", function()
+	expect(World.FALL_Y < World.PLOT_ORIGIN.Y - 20, "Absturzschwelle zu hoch: " .. World.FALL_Y)
 end)
 
 table.insert(results, "")

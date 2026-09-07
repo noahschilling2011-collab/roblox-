@@ -203,6 +203,14 @@ end
 -- Anwesenheit des Besitzers verdoppelt die Klau-Dauer. ProximityPrompt hat
 -- keine Einstellung pro Spieler, also wird die Dauer am Prompt selbst
 -- nachgezogen.
+-- Schildzustand an PlotService melden, damit Kuppel und Leuchtturm
+-- umschalten. Laeuft im selben Sekundentakt wie die Haltedauern.
+local function refreshShields()
+	for _, player in Players:GetPlayers() do
+		PlotService.setShielded(player.UserId, StealService.isShielded(player.UserId))
+	end
+end
+
 local function refreshHoldDurations()
 	-- Nur Spielerplots: an einem NPC-Plot ist nie jemand zuhause.
 	for _, player in Players:GetPlayers() do
@@ -258,6 +266,7 @@ function StealService.start()
 		if accumulator >= 1 then
 			accumulator = 0
 			refreshHoldDurations()
+			refreshShields()
 		end
 	end)
 

@@ -5,6 +5,8 @@
 -- ein versehentlicher Vorrat-Reset waere der schlimmste Moment im Spiel.
 
 local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
 
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
 local EconomyConfig = require(Shared.Config.EconomyConfig)
@@ -27,64 +29,44 @@ local function notify(player: Player, text: string)
 	Remotes.get("Notify"):FireClient(player, text)
 end
 
-local function buildGate(stageIndex: number)
-	local gate = Instance.new("Part")
-	gate.Name = "Gate" .. stageIndex
-	gate.Size = WorldConfig.STAGE_GATE_SIZE
-	gate.Position = WorldConfig.STAGE_GATE_POSITIONS[stageIndex]
-	gate.Anchored = true
-	gate.CanCollide = false
-	gate.Transparency = 0.55
-	gate.Material = Enum.Material.Neon
-	gate.Color = Theme.WORLD.SIGNAL_DIM
-	gate.Parent = workspace
+-- Kein Tor mehr, sondern ein Schild. Die alte Wand war CanCollide = false
+-- und schob bei Beruehrung 12 Studs zurueck, entprellt mit 1,5 s - ein
+-- Spieler mit Basis-Speed 16 legt in dieser Zeit 24 Studs zurueck und kam
+-- mit +12 Studs pro Zyklus einfach durch. Jetzt ist die Sprungweite das
+-- Gate, und das Schild sagt nur, was man dafuer braucht.
+local function buildSign(stageIndex: number)
+	-- Die Diagonale, nicht die Luecke - sonst nennt das Schild eine zu
+	-- niedrige Zahl und der Spieler faellt trotzdem.
+	local noetig = WorldLayout.speedForGap(WorldLayout.stageJumpDistance(stageIndex))
+
+	local board = Instance.new("Part")
+	board.Name = "StageSign" .. stageIndex
+	board.Size = WorldConfig.STAGE_GATE_SIZE
+	board.Position = WorldConfig.STAGE_GATE_POSITIONS[stageIndex]
+	board.Anchored = true
+	board.CanCollide = false
+	board.CanQuery = false
+	board.Material = Enum.Material.Neon
+	board.Color = Theme.WORLD.SIGNAL_DIM
+	board.Transparency = 0.35
+	board.Parent = workspace
 
 	local billboard = Instance.new("BillboardGui")
-	billboard.Size = UDim2.new(0, 260, 0, 70)
+	billboard.Size = UDim2.new(0, 320, 0, 90)
 	billboard.StudsOffset = Vector3.new(0, 8, 0)
 	billboard.AlwaysOnTop = true
-	billboard.MaxDistance = 300
+	billboard.MaxDistance = 400
 
 	local label = Instance.new("TextLabel")
 	label.Size = UDim2.new(1, 0, 1, 0)
 	label.BackgroundTransparency = 1
 	label.Font = Theme.FONT
 	label.TextScaled = true
-	label.TextColor3 = Theme.TEXT
-	label.TextStrokeTransparency = 0.4
-	label.Text = ("Stage %d\nab Tempo %d"):format(stageIndex, EconomyConfig.STAGE_GATES[stageIndex])
+	label.TextColor3 = Theme.WORLD.SIGNAL
+	label.TextStrokeTransparency = 0.3
+	label.Text = ("STAGE %d\nSpruenge ab Tempo %d"):format(stageIndex, math.ceil(noetig))
 	label.Parent = billboard
-	billboard.Parent = gate
-
-	-- Wer zu langsam ist, wird zurueckgesetzt. Kein Kick, kein Schaden -
-	-- das Tor ist eine Mautstation, keine Strafe.
-	gate.Touched:Connect(function(hit)
-		local character = hit.Parent
-		local player = character and Players:GetPlayerFromCharacter(character)
-		if not player then
-			return
-		end
-		local root = character:FindFirstChild("HumanoidRootPart")
-		if not root or not root:IsA("BasePart") then
-			return
-		end
-		local profile = DataService.get(player)
-		if not profile then
-			return
-		end
-		local vorrat = ProductionService.totalVorrat(profile)
-		if EconomyLogic.canEnterStage(vorrat, stageIndex) then
-			return
-		end
-		local now = os.clock()
-		if (lastBlock[player.UserId] or 0) + 1.5 > now then
-			return
-		end
-		lastBlock[player.UserId] = now
-		root.CFrame = root.CFrame + Vector3.new(0, 0, 12) -- zurueck Richtung Plots
-		local needed = EconomyLogic.vorratForStage(stageIndex)
-		notify(player, ("Zu langsam fuer Stage %d - du brauchst %d Vorrat."):format(stageIndex, needed))
-	end)
+	billboard.Parent = board
 end
 
 local function cashOut(player: Player, stageIndex: number, pad: BasePart)
@@ -203,32 +185,123 @@ end
 -- in der Luft - ohne diese beiden Flaechen faellt jeder Spieler beim ersten
 -- Schritt vom Plot herunter. Die Masse kommen aus WorldLayout, damit die
 -- Vorschau in der Studio-Datei exakt dasselbe zeigt.
+local function slab(name: string, box, farbe: Color3, material: Enum.Material): BasePart
+	local part = Instance.new("Part")
+	part.Name = name
+	part.Size = box.size
+	part.Position = box.position
+	part.Anchored = true
+	part.TopSurface = Enum.SurfaceType.Smooth
+	part.BottomSurface = Enum.SurfaceType.Smooth
+	part.Material = material
+	part.Color = farbe
+	part.Parent = workspace
+	return part
+end
+
+-- Die Promenade verbindet die Plots. Der lange, ebene Weg dahinter ist
+-- WEG - an seiner Stelle steht jetzt der Parcours. Ein huebscher leerer
+-- Gang bleibt ein leerer Gang.
 local function buildGround()
-	local function slab(name: string, box)
-		local part = Instance.new("Part")
-		part.Name = name
-		part.Size = box.size
-		part.Position = box.position
-		part.Anchored = true
-		part.TopSurface = Enum.SurfaceType.Smooth
-		part.BottomSurface = Enum.SurfaceType.Smooth
-		part.Material = Theme.WORLD.PATH_MATERIAL
-		part.Color = Theme.WORLD.PATH
-		part.Parent = workspace
+	slab("Promenade", WorldLayout.promenade(), Theme.WORLD.PATH, Theme.WORLD.PATH_MATERIAL)
+end
+
+-- Eine Plattform ist eine Riesen-Tastenkappe: Koerper plus schmalere
+-- Deckplatte, dieselbe Silhouette wie die Tasten auf den Plots.
+local function buildPlatform(stageIndex: number, index: number, platform): BasePart
+	local koerper = Instance.new("Part")
+	koerper.Name = ("Stage%dPlatform%d"):format(stageIndex, index)
+	koerper.Size = platform.size
+	koerper.Position = platform.position
+	koerper.Anchored = true
+	koerper.TopSurface = Enum.SurfaceType.Smooth
+	koerper.Material = Theme.WORLD.PLATE_MATERIAL
+	koerper.Color = Theme.WORLD.PLATE
+	koerper.Parent = workspace
+
+	local deckel = Instance.new("Part")
+	deckel.Name = koerper.Name .. "Top"
+	deckel.Size = Vector3.new(
+		platform.size.X * WorldConfig.KEY_TOP_INSET,
+		WorldConfig.KEY_TOP_HEIGHT,
+		platform.size.Z * WorldConfig.KEY_TOP_INSET
+	)
+	deckel.Position = platform.position
+		+ Vector3.new(0, platform.size.Y / 2 + WorldConfig.KEY_TOP_HEIGHT / 2, 0)
+	deckel.Anchored = true
+	deckel.TopSurface = Enum.SurfaceType.Smooth
+	deckel.Material = Theme.WORLD.CHASSIS_MATERIAL
+	deckel.Color = Theme.WORLD.CHASSIS
+	deckel.Parent = workspace
+
+	if platform.moves then
+		-- Senkrecht, langsam, kleine Amplitude.
+		-- ungeprueft: ob ein verankerter Part per CFrame-Tween den Spieler
+		-- zuverlaessig traegt. Die Recherche sagt: waagerecht nein,
+		-- senkrecht ueber die Kollisionsaufloesung ruckelig ja. Deshalb
+		-- nur 4 Studs Hub und 2,6 s pro Richtung.
+		local info = TweenInfo.new(
+			WorldConfig.MOVING_SECONDS,
+			Enum.EasingStyle.Sine,
+			Enum.EasingDirection.InOut,
+			-1, -- endlos
+			true -- hin und zurueck
+		)
+		local hub = Vector3.new(0, WorldConfig.MOVING_AMPLITUDE, 0)
+		TweenService:Create(koerper, info, { Position = platform.position + hub }):Play()
+		TweenService:Create(deckel, info, { Position = deckel.Position + hub }):Play()
 	end
 
-	slab("Promenade", WorldLayout.promenade())
-	slab("Path", WorldLayout.path())
+	return koerper
+end
+
+-- Absturz setzt an den Anfang DER STAGE zurueck, nicht auf den Plot.
+-- Fehler kostet Zeit, nicht den Lauf.
+function CourseService.startFallWatch()
+	local accumulator = 0
+	RunService.Heartbeat:Connect(function(deltaTime)
+		accumulator += deltaTime
+		if accumulator < 0.25 then
+			return
+		end
+		accumulator = 0
+
+		for _, player in Players:GetPlayers() do
+			local character = player.Character
+			local root = character and character:FindFirstChild("HumanoidRootPart")
+			if not root or not root:IsA("BasePart") or root.Position.Y > WorldConfig.FALL_Y then
+				continue
+			end
+			-- Welche Stage war das? Die, deren Plattformen den Absturzort
+			-- in Z umschliessen; sonst zurueck auf die Promenade.
+			local ziel = WorldLayout.promenade().position + Vector3.new(0, 6, 0)
+			for stageIndex = 1, #WorldConfig.STAGES do
+				local platforms = WorldLayout.stagePlatforms(stageIndex)
+				local erste, letzte = platforms[1], platforms[#platforms]
+				if erste and letzte and root.Position.Z <= erste.position.Z and root.Position.Z >= letzte.position.Z then
+					ziel = erste.position + Vector3.new(0, 6, 0)
+					break
+				end
+			end
+			character:PivotTo(CFrame.new(ziel))
+		end
+	end)
 end
 
 function CourseService.start()
 	buildGround()
-	for stageIndex = 1, #EconomyConfig.STAGE_GATES do
-		buildGate(stageIndex)
+	local plattformen = 0
+	for stageIndex = 1, #WorldConfig.STAGES do
+		buildSign(stageIndex)
 		buildPad(stageIndex)
+		for index, platform in WorldLayout.stagePlatforms(stageIndex) do
+			buildPlatform(stageIndex, index, platform)
+			plattformen += 1
+		end
 	end
+	CourseService.startFallWatch()
 	local duration, cooldown = EconomyLogic.shieldWindow()
-	print(("[KEYCAP] CourseService: %d Stages gebaut, Schild %ds/%ds"):format(#pads, duration, cooldown))
+	print(("[KEYCAP] CourseService: %d Stages, %d Plattformen, Schild %ds/%ds"):format(#pads, plattformen, duration, cooldown))
 end
 
 return CourseService

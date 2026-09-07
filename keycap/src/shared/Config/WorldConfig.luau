@@ -14,6 +14,23 @@ local WorldConfig = {
 	-- die Tasten stecken.
 	PLOT_DECK_OVERHANG = 3, -- wie weit das Chassis seitlich ueber die Platte steht
 	PLOT_DECK_HEIGHT = 1.6,
+	-- Umlaufender erhoehter Rand. Kostet KEINEN zusaetzlichen Part: das
+	-- Chassis wird nach oben verlaengert, die Platte sitzt darin.
+	PLOT_RIM_HEIGHT = 1,
+
+	-- Schildkuppel ueber dem Plot. Nur sichtbar, solange das Schild laeuft.
+	SHIELD_DOME_SCALE = 1.15, -- Durchmesser relativ zur Plotbreite
+
+	-- Beute-Leuchtturm: Lichtsaeule ueber dem Plot, deren Hoehe mit dem
+	-- Vorrat waechst. Ein Dieb auf Stage 2 sieht drei Saeulen und weiss
+	-- sofort, wohin - ohne in ein Menue zu schauen.
+	BEACON_WIDTH = 3,
+	BEACON_MIN_HEIGHT = 8,
+	BEACON_MAX_HEIGHT = 160,
+	-- Bei welchem Vorrat der Leuchtturm seine volle Hoehe hat. Gekoppelt
+	-- an den Speed-Deckel: wer so viel hat, ist maximal schnell und
+	-- maximal interessant.
+	BEACON_FULL_VORRAT = 4200,
 
 	-- Leerer Steckplatz: flache, dunkle Mulde. Damit sieht man aus der
 	-- Entfernung, wie voll ein Plot ist - fuer einen Dieb die wichtigste
@@ -77,7 +94,56 @@ local WorldConfig = {
 	-- Laufwege. Ohne die faellt man ins Leere: zwischen zwei Plots liegen
 	-- PLOT_SPACING - PLOT_SIZE.X = 16 Studs Luecke, und zwischen Plotreihe
 	-- und Stage 1 war ueberhaupt nichts.
-	PATH_WIDTH = 40, -- Breite des Wegs zu den Stages
+	PATH_WIDTH = 40, -- Breite der Promenade vor den Plots
+
+	-- ---------------------------------------------------------------
+	-- Der Parcours. Riesige Tastenkappen mit Luecken dazwischen, die man
+	-- nur mit genug WalkSpeed ueberspringt. Die Sprungweite IST das Gate.
+	--
+	-- Rechnung (Workspace.Gravity 196.2, Humanoid.JumpPower 50, das ist
+	-- der Engine-Standard bei UseJumpPower = true):
+	--   Anfangsgeschwindigkeit v0 = 50
+	--   Flugzeit t = 2 * v0 / g = 2 * 50 / 196.2 = 0,5097 s
+	--   Weite   d = WalkSpeed * t
+	--     Speed 16 (Start) ->  8,2 Studs
+	--     Speed 30 (Gate 1) -> 15,3 Studs
+	--     Speed 50 (Gate 2) -> 25,5 Studs
+	--     Speed 75 (Gate 3) -> 38,2 Studs
+	--
+	-- Die Luecken liegen bei 85 % der Maximalweite des jeweiligen
+	-- Gate-Speeds. Damit ist das Tor weich: wer knapp darunter liegt,
+	-- kommt auch durch, wer deutlich darunter liegt, faellt. Auf 100 %
+	-- gesetzt gaebe es keine Marge und jeder Fehltritt waere ein Absturz -
+	-- das widerspricht "Landeflaechen grosszuegig, kein Overshoot-Fail".
+	-- ACHTUNG: massgeblich ist die DIAGONALE, nicht die Luecke. Wer
+	-- seitlich versetzt springt, legt sqrt(luecke^2 + (2*versatz)^2)
+	-- zurueck. Mit Versatz 7 und Luecke 21,7 waeren das 25,8 Studs bei
+	-- 25,5 Maximalweite - genau auf Gate-Speed kaeme niemand rueber.
+	-- Die Luecke bezahlt den Versatz deshalb mit:
+	--   Stage 1: Versatz 0  -> Luecke 13,0  Diagonale 13,0  ab Speed 25,5
+	--   Stage 2: Versatz 7  -> Luecke 16,5  Diagonale 21,7  ab Speed 42,5
+	--   Stage 3: Versatz 11 -> Luecke 23,9  Diagonale 32,5  ab Speed 63,8
+	-- ---------------------------------------------------------------
+	JUMP_GRAVITY = 196.2, -- ungeprueft: bitte in Studio gegen Workspace.Gravity abgleichen
+	JUMP_POWER = 50, -- ungeprueft: haengt an StarterPlayer.CharacterUseJumpPower
+	JUMP_MARGIN = 0.85, -- Anteil der Maximalweite, den eine Luecke ausmacht
+
+	STAGES = {
+		{ gap = 13, depth = 20, width = 34, sideways = 0, moves = false },
+		{ gap = 16.5, depth = 16, width = 26, sideways = 7, moves = false },
+		{ gap = 23.9, depth = 13, width = 22, sideways = 11, moves = true },
+	},
+	-- Bewegliche Kappen in Stage 3: nur senkrecht, langsam, kleine
+	-- Amplitude. ungeprueft: ob ein verankerter Part per CFrame den
+	-- Spieler zuverlaessig traegt - die Recherche sagt "waagerecht nein,
+	-- senkrecht ruckelig ja". Deshalb klein und langsam.
+	MOVING_AMPLITUDE = 4,
+	MOVING_SECONDS = 2.6,
+	MOVING_EVERY = 3, -- jede dritte Kappe bewegt sich
+
+	-- Absturz: unter diese Hoehe gefallen heisst zurueck an den
+	-- Stage-Anfang, nicht auf den Plot. Fehler kostet Zeit, nicht den Lauf.
+	FALL_Y = -60,
 	PROMENADE_DEPTH = 24, -- Streifen vor der Plotreihe, verbindet alle Plots
 	PATH_MARGIN = 12, -- wie weit der Weg ueber das letzte Pad hinausgeht
 

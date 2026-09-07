@@ -65,4 +65,69 @@ function WorldLayout.path(): Box
 	}
 end
 
+-- Maximale Sprungweite bei gegebener WalkSpeed. Schiefer Wurf, gleiche
+-- Hoehe: t = 2 * v0 / g, d = speed * t.
+function WorldLayout.jumpDistance(speed: number): number
+	local flugzeit = 2 * WorldConfig.JUMP_POWER / WorldConfig.JUMP_GRAVITY
+	return speed * flugzeit
+end
+
+-- Wie schnell muss man mindestens sein, um diese Luecke zu schaffen?
+function WorldLayout.speedForGap(gap: number): number
+	local flugzeit = 2 * WorldConfig.JUMP_POWER / WorldConfig.JUMP_GRAVITY
+	return gap / flugzeit
+end
+
+-- Die tatsaechlich zu ueberspringende Strecke einer Stage. Nicht die
+-- Luecke: wer seitlich versetzt springt, legt die Diagonale zurueck.
+function WorldLayout.stageJumpDistance(stageIndex: number): number
+	local stage = WorldConfig.STAGES[stageIndex]
+	assert(stage ~= nil, "unbekannte Stage: " .. tostring(stageIndex))
+	local seitlich = stage.sideways * 2
+	return math.sqrt(stage.gap ^ 2 + seitlich ^ 2)
+end
+
+-- Die Plattformen einer Stage, von der Promenade weg Richtung Pad.
+-- Jede Plattform ist eine Riesen-Tastenkappe; zwischen ihnen liegt die
+-- Luecke aus WorldConfig.STAGES.
+export type Platform = { size: Vector3, position: Vector3, moves: boolean }
+
+function WorldLayout.stagePlatforms(stageIndex: number): { Platform }
+	local stage = WorldConfig.STAGES[stageIndex]
+	assert(stage ~= nil, "unbekannte Stage: " .. tostring(stageIndex))
+
+	local origin = WorldConfig.PLOT_ORIGIN
+	-- Start: hinter der Promenade bei Stage 1, sonst hinter dem vorigen Pad.
+	local startZ
+	if stageIndex == 1 then
+		local promenade = WorldLayout.promenade()
+		startZ = promenade.position.Z - WorldConfig.PROMENADE_DEPTH / 2
+	else
+		local vorigesPad = WorldConfig.STAGE_PAD_POSITIONS[stageIndex - 1]
+		startZ = vorigesPad.Z - WorldConfig.STAGE_PAD_SIZE.Z / 2
+	end
+	local endZ = WorldConfig.STAGE_PAD_POSITIONS[stageIndex].Z + WorldConfig.STAGE_PAD_SIZE.Z / 2
+
+	local schritt = stage.depth + stage.gap
+	local strecke = startZ - endZ
+	local anzahl = math.max(1, math.floor(strecke / schritt))
+
+	local platforms: { Platform } = {}
+	for i = 1, anzahl do
+		-- Erste Plattform eine Luecke hinter dem Start, letzte eine Luecke
+		-- vor dem Pad - so ist der Ein- und Ausstieg derselbe Sprung.
+		local z = startZ - stage.gap - stage.depth / 2 - (i - 1) * schritt
+		local seitlich = 0
+		if stage.sideways > 0 then
+			seitlich = if i % 2 == 0 then stage.sideways else -stage.sideways
+		end
+		table.insert(platforms, {
+			size = Vector3.new(stage.width, WorldConfig.PLOT_SIZE.Y, stage.depth),
+			position = Vector3.new(origin.X + seitlich, origin.Y, z),
+			moves = stage.moves and i % WorldConfig.MOVING_EVERY == 0,
+		})
+	end
+	return platforms
+end
+
 return WorldLayout

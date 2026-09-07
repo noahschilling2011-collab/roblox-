@@ -24,6 +24,8 @@ export type Plot = {
 	base: BasePart,
 	keyFolder: Folder,
 	slotFolder: Folder,
+	dome: BasePart,
+	beacon: BasePart,
 	ownerKind: OwnerKind,
 	ownerUserId: number?,
 	signLabel: TextLabel,
@@ -34,6 +36,10 @@ local plots: { Plot } = {}
 local plotByUser: { [number]: Plot } = {}
 -- Rueckweg vom Part zum Eintrag, damit StealService nichts raten muss.
 local keyOwner: { [BasePart]: KeyRef } = {}
+-- Schildzustand je Spieler. StealService MELDET ihn hierher, statt dass
+-- PlotService ihn dort abfragt - sonst wuerden sich die beiden Module
+-- gegenseitig require-n.
+local shielded: { [number]: boolean } = {}
 
 function PlotService.buildWorld()
 	if built then
@@ -64,13 +70,17 @@ function PlotService.buildWorld()
 		-- Scheibe. Dieselbe Sprache wie die Knopf-Unterkante im HUD.
 		local deck = Instance.new("Part")
 		deck.Name = "Deck"
+		-- Das Chassis ist eine Wanne, kein Sockel: es reicht PLOT_RIM_HEIGHT
+		-- ueber die Plattenoberkante und bildet damit den umlaufenden Rand
+		-- einer Tastaturplatte - ohne einen zusaetzlichen Part.
+		local deckHoehe = WorldConfig.PLOT_DECK_HEIGHT + WorldConfig.PLOT_SIZE.Y + WorldConfig.PLOT_RIM_HEIGHT
 		deck.Size = Vector3.new(
 			WorldConfig.PLOT_SIZE.X + WorldConfig.PLOT_DECK_OVERHANG * 2,
-			WorldConfig.PLOT_DECK_HEIGHT,
+			deckHoehe,
 			WorldConfig.PLOT_SIZE.Z + WorldConfig.PLOT_DECK_OVERHANG * 2
 		)
 		deck.Position = base.Position
-			- Vector3.new(0, WorldConfig.PLOT_SIZE.Y / 2 + WorldConfig.PLOT_DECK_HEIGHT / 2, 0)
+			+ Vector3.new(0, WorldConfig.PLOT_SIZE.Y / 2 + WorldConfig.PLOT_RIM_HEIGHT - deckHoehe / 2, 0)
 		deck.Anchored = true
 		deck.TopSurface = Enum.SurfaceType.Smooth
 		deck.BottomSurface = Enum.SurfaceType.Smooth
@@ -146,6 +156,48 @@ function PlotService.buildWorld()
 		label.Parent = billboard
 		billboard.Parent = sign
 
+		-- Schildkuppel. Halbdurchsichtig, mit sichtbarem Rand, normalerweise
+		-- unsichtbar. Ein Text, der sagt "Schild ist an", waere aus zehn
+		-- Metern nicht lesbar - eine Kuppel schon.
+		local dome = Instance.new("Part")
+		dome.Name = "Shield"
+		dome.Shape = Enum.PartType.Ball
+		local domeSize = WorldConfig.PLOT_SIZE.X * WorldConfig.SHIELD_DOME_SCALE
+		dome.Size = Vector3.new(domeSize, domeSize, domeSize)
+		dome.Position = base.Position
+		dome.Anchored = true
+		dome.CanCollide = false
+		dome.CanQuery = false
+		dome.CastShadow = false
+		dome.Material = Enum.Material.Glass
+		dome.Color = Theme.WORLD.SIGNAL
+		dome.Transparency = 1 -- aus, bis das Schild laeuft
+		dome.Parent = model
+
+		local domeRim = Instance.new("SelectionBox")
+		domeRim.Adornee = dome
+		domeRim.Color3 = Theme.WORLD.SIGNAL
+		domeRim.LineThickness = 0.08
+		domeRim.SurfaceTransparency = 1
+		domeRim.Visible = false
+		domeRim.Parent = dome
+
+		-- Beute-Leuchtturm. Als schmaler Neon-Part gebaut, NICHT als Beam:
+		-- ein Beam wird jeden Frame kameraabhaengig neu ausgerichtet, ein
+		-- verankerter Neon-Part kostet auf dem Handy nichts.
+		local beacon = Instance.new("Part")
+		beacon.Name = "Beacon"
+		beacon.Size = Vector3.new(WorldConfig.BEACON_WIDTH, WorldConfig.BEACON_MIN_HEIGHT, WorldConfig.BEACON_WIDTH)
+		beacon.Position = base.Position + Vector3.new(0, WorldConfig.BEACON_MIN_HEIGHT / 2, 0)
+		beacon.Anchored = true
+		beacon.CanCollide = false
+		beacon.CanQuery = false
+		beacon.CastShadow = false
+		beacon.Material = Enum.Material.Neon
+		beacon.Color = Theme.WORLD.SIGNAL
+		beacon.Transparency = 1 -- aus, solange der Plot niemandem gehoert
+		beacon.Parent = model
+
 		local keyFolder = Instance.new("Folder")
 		keyFolder.Name = "Keys"
 		keyFolder.Parent = model
@@ -159,6 +211,8 @@ function PlotService.buildWorld()
 			base = base,
 			keyFolder = keyFolder,
 			slotFolder = slotFolder,
+			dome = dome,
+			beacon = beacon,
 			ownerKind = "none",
 			ownerUserId = nil,
 			signLabel = label,
@@ -365,6 +419,49 @@ end
 
 -- Beschriftungen aktualisieren (eigener Takt, damit nicht jede Sekunde
 -- hunderte Labels repliziert werden).
+-- Der Leuchtturm waechst mit dem Vorrat des Plots. Das ist keine Deko: das
+-- Design sagt, die Rangliste soll eine Beutekarte sein - eine Lichtsaeule
+-- sagt dasselbe, aber man sieht sie quer ueber die Karte, ohne ein Menue
+-- zu oeffnen. Bei einem geschuetzten Plot geht sie aus, dann sieht man von
+-- weitem, dass sich der Weg nicht lohnt.
+function PlotService.updateBeacon(plot: Plot, vorrat: number, geschuetzt: boolean)
+	local beacon = plot.beacon
+	if plot.ownerKind == "none" or geschuetzt then
+		beacon.Transparency = 1
+		return
+	end
+
+	local anteil = math.clamp(vorrat / WorldConfig.BEACON_FULL_VORRAT, 0, 1)
+	local hoehe = WorldConfig.BEACON_MIN_HEIGHT
+		+ (WorldConfig.BEACON_MAX_HEIGHT - WorldConfig.BEACON_MIN_HEIGHT) * anteil
+	beacon.Size = Vector3.new(WorldConfig.BEACON_WIDTH, hoehe, WorldConfig.BEACON_WIDTH)
+	beacon.Position = plot.base.Position + Vector3.new(0, hoehe / 2, 0)
+	-- Leerer Plot: schwach sichtbar. Voller Plot: kraeftig.
+	beacon.Transparency = 0.75 - 0.45 * anteil
+end
+
+-- Kuppel an oder aus. Ein Text "Schild ist an" waere aus zehn Metern nicht
+-- lesbar, eine Kuppel schon.
+function PlotService.isShielded(userId: number): boolean
+	return shielded[userId] == true
+end
+
+function PlotService.setShielded(userId: number, aktiv: boolean)
+	shielded[userId] = aktiv
+	local plot = plotByUser[userId]
+	if not plot then
+		return
+	end
+	plot.dome.Transparency = if aktiv then 0.82 else 1
+	local rim = plot.dome:FindFirstChildOfClass("SelectionBox")
+	if rim then
+		rim.Visible = aktiv
+	end
+	if aktiv then
+		plot.beacon.Transparency = 1
+	end
+end
+
 function PlotService.refreshLabels(plot: Plot, keys: { { rarity: string, vorrat: number } })
 	for _, part in plot.keyFolder:GetChildren() do
 		if not part:IsA("BasePart") then
@@ -388,6 +485,11 @@ function PlotService.refreshKeyLabels(userId: number)
 	local profile = if player then DataService.get(player) else nil
 	if plot and profile then
 		PlotService.refreshLabels(plot, profile.keys)
+		local vorrat = 0
+		for _, key in profile.keys do
+			vorrat += key.vorrat
+		end
+		PlotService.updateBeacon(plot, vorrat, PlotService.isShielded(userId))
 	end
 end
 
@@ -431,6 +533,9 @@ function PlotService.release(userId: number)
 	end
 	clearKeys(plot)
 	updateSlotMarkers(plot, 0, 0)
+	plot.beacon.Transparency = 1
+	plot.dome.Transparency = 1
+	shielded[userId] = nil
 	plot.ownerKind = "none"
 	plot.ownerUserId = nil
 	plot.signLabel.Text = "Frei"

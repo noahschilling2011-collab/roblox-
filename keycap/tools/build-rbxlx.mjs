@@ -124,8 +124,16 @@ end
 
 local promenade = Layout.promenade()
 part("Promenade", promenade.size, promenade.position, Theme.WORLD.PATH)
-local weg = Layout.path()
-part("Path", weg.size, weg.position, Theme.WORLD.PATH)
+-- Kein langer Weg mehr: an seiner Stelle steht der Parcours.
+for stageIndex in World.STAGES do
+	for index, platform in Layout.stagePlatforms(stageIndex) do
+		part(("Stage%dPlatform%d"):format(stageIndex, index), platform.size, platform.position, Theme.WORLD.PLATE)
+		part(("Stage%dPlatform%dTop"):format(stageIndex, index),
+			Vector3.new(platform.size.X * World.KEY_TOP_INSET, World.KEY_TOP_HEIGHT, platform.size.Z * World.KEY_TOP_INSET),
+			Vector3.new(platform.position.X, platform.position.Y + platform.size.Y / 2 + World.KEY_TOP_HEIGHT / 2, platform.position.Z),
+			Theme.WORLD.CHASSIS)
+	end
+end
 
 for index = 1, World.PLOT_COUNT do
 	local mitte = Layout.plotPosition(index)
@@ -195,7 +203,7 @@ for index, position in World.STAGE_PAD_POSITIONS do
 		Theme.WORLD.SIGNAL_DIM)
 end
 for index, position in World.STAGE_GATE_POSITIONS do
-	part("Gate" .. index, World.STAGE_GATE_SIZE, position, Theme.WORLD.SIGNAL_DIM)
+	part("StageSign" .. index, World.STAGE_GATE_SIZE, position, Theme.WORLD.SIGNAL_DIM)
 end
 
 return table.concat(zeilen, "\\n")
