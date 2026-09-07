@@ -216,8 +216,15 @@ local WorldConfig = {
 		MONITOR_SIZE = Vector3.new(2, 320, 560),
 		MONITOR_POSITION = Vector3.new(-720, 170, -180),
 		MONITOR_COLOR = Color3.fromRGB(150, 180, 255),
-		MONITOR_LIGHT_BRIGHTNESS = 2.2,
-		MONITOR_LIGHT_RANGE = 900,
+		-- Range 120 ist die dokumentierte Obergrenze des Studio-Sliders
+		-- (ReflectionMetadata: Light.Range UIMaximum 120, Light.Brightness
+		-- UIMaximum 40). Ob die Engine darueber hinaus clamped, ist NICHT
+		-- dokumentiert - deshalb bleibe ich innerhalb der belegten Grenze.
+		-- Folge fuer den Entwurf: der Monitor leuchtet die Karte NICHT aus,
+		-- er ist ein Akzent an einer Kante. Das Grundniveau der Szene macht
+		-- Ambient/OutdoorAmbient, nicht diese Lampe.
+		MONITOR_LIGHT_BRIGHTNESS = 8,
+		MONITOR_LIGHT_RANGE = 120,
 		MONITOR_TRANSPARENCY = 0.15,
 	},
 

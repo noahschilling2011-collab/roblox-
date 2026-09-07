@@ -112,6 +112,10 @@ local function buildDust(parent: Instance): number
 	emitter.Transparency = NumberSequence.new(0.6)
 	emitter.Color = ColorSequence.new(Theme.WORLD.DUST)
 	emitter.LightEmission = 0.6
+	-- Explizit, weil der Standard zwischen Studio-Insert und Instance.new
+	-- unterschiedlich ist. 1 = der Staub wird vom Szenenlicht beeinflusst,
+	-- er soll im Dunkeln dunkel sein.
+	emitter.LightInfluence = 1
 	emitter.Rotation = NumberRange.new(0, 360)
 	emitter.SpreadAngle = Vector2.new(180, 180)
 	emitter.Parent = anker

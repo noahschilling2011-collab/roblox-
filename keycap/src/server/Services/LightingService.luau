@@ -73,14 +73,21 @@ function LightingService.start()
 
 	LightingService.buildMonitor()
 
-	-- Lighting.Technology laesst sich nach meinem Kenntnisstand NICHT zur
-	-- Laufzeit setzen - es ist eine Eigenschaft der Place-Datei, nicht der
-	-- Szene. Deshalb steht hier keine Zuweisung, sondern eine Meldung:
-	-- Noah muss das einmal in Studio klicken. Wo, steht in der README.
-	-- ungeprueft: bitte verifizieren, ob Technology doch schreibbar ist
+	-- Lighting.Technology wird hier NICHT gesetzt, und zwar aus zwei
+	-- belegten Gruenden: es steht auf RobloxScriptSecurity fuer Lesen UND
+	-- Schreiben (ein normales Script kommt nicht einmal lesend heran), und
+	-- es ist deprecated. Der aktuelle Lighting-Guide erwaehnt es gar nicht
+	-- mehr; an seiner Stelle stehen Lighting.LightingStyle und
+	-- Lighting.PrioritizeLightingQuality. Beide sind lesbar, aber ebenfalls
+	-- nur mit RobloxScriptSecurity SCHREIBBAR - also auch ein Studio-Klick,
+	-- nur an einer anderen Stelle.
+	-- ungeprueft: ob Studio in der aktuellen Version ueberhaupt noch ein
+	-- Technology-Dropdown zeigt oder nur noch die beiden Nachfolger.
 	print(("[KEYCAP] LightingService: Nacht (Uhrzeit %.1f, Helligkeit %.1f, Bloom-Schwelle %.2f)")
 		:format(config.CLOCK_TIME, config.BRIGHTNESS, config.BLOOM_THRESHOLD))
-	print("[KEYCAP] HINWEIS: Lighting.Technology muss EINMAL in Studio auf Future gestellt werden.")
+	print("[KEYCAP] HINWEIS: In Studio EINMAL unter Lighting setzen:")
+	print("[KEYCAP]   LightingStyle = Realistic   und   PrioritizeLightingQuality = true")
+	print("[KEYCAP]   (Technology ist deprecated und per Script nicht erreichbar.)")
 end
 
 -- Der Monitor am Rand. Kein Objekt zum Anschauen, sondern die Lichtquelle,

@@ -1569,8 +1569,15 @@ local WorldConfig = {
 		MONITOR_SIZE = Vector3.new(2, 320, 560),
 		MONITOR_POSITION = Vector3.new(-720, 170, -180),
 		MONITOR_COLOR = Color3.fromRGB(150, 180, 255),
-		MONITOR_LIGHT_BRIGHTNESS = 2.2,
-		MONITOR_LIGHT_RANGE = 900,
+		-- Range 120 ist die dokumentierte Obergrenze des Studio-Sliders
+		-- (ReflectionMetadata: Light.Range UIMaximum 120, Light.Brightness
+		-- UIMaximum 40). Ob die Engine darueber hinaus clamped, ist NICHT
+		-- dokumentiert - deshalb bleibe ich innerhalb der belegten Grenze.
+		-- Folge fuer den Entwurf: der Monitor leuchtet die Karte NICHT aus,
+		-- er ist ein Akzent an einer Kante. Das Grundniveau der Szene macht
+		-- Ambient/OutdoorAmbient, nicht diese Lampe.
+		MONITOR_LIGHT_BRIGHTNESS = 8,
+		MONITOR_LIGHT_RANGE = 120,
 		MONITOR_TRANSPARENCY = 0.15,
 	},
 
@@ -2550,6 +2557,10 @@ local function buildDust(parent: Instance): number
 	emitter.Transparency = NumberSequence.new(0.6)
 	emitter.Color = ColorSequence.new(Theme.WORLD.DUST)
 	emitter.LightEmission = 0.6
+	-- Explizit, weil der Standard zwischen Studio-Insert und Instance.new
+	-- unterschiedlich ist. 1 = der Staub wird vom Szenenlicht beeinflusst,
+	-- er soll im Dunkeln dunkel sein.
+	emitter.LightInfluence = 1
 	emitter.Rotation = NumberRange.new(0, 360)
 	emitter.SpreadAngle = Vector2.new(180, 180)
 	emitter.Parent = anker
@@ -3342,14 +3353,21 @@ function LightingService.start()
 
 	LightingService.buildMonitor()
 
-	-- Lighting.Technology laesst sich nach meinem Kenntnisstand NICHT zur
-	-- Laufzeit setzen - es ist eine Eigenschaft der Place-Datei, nicht der
-	-- Szene. Deshalb steht hier keine Zuweisung, sondern eine Meldung:
-	-- Noah muss das einmal in Studio klicken. Wo, steht in der README.
-	-- ungeprueft: bitte verifizieren, ob Technology doch schreibbar ist
+	-- Lighting.Technology wird hier NICHT gesetzt, und zwar aus zwei
+	-- belegten Gruenden: es steht auf RobloxScriptSecurity fuer Lesen UND
+	-- Schreiben (ein normales Script kommt nicht einmal lesend heran), und
+	-- es ist deprecated. Der aktuelle Lighting-Guide erwaehnt es gar nicht
+	-- mehr; an seiner Stelle stehen Lighting.LightingStyle und
+	-- Lighting.PrioritizeLightingQuality. Beide sind lesbar, aber ebenfalls
+	-- nur mit RobloxScriptSecurity SCHREIBBAR - also auch ein Studio-Klick,
+	-- nur an einer anderen Stelle.
+	-- ungeprueft: ob Studio in der aktuellen Version ueberhaupt noch ein
+	-- Technology-Dropdown zeigt oder nur noch die beiden Nachfolger.
 	print(("[KEYCAP] LightingService: Nacht (Uhrzeit %.1f, Helligkeit %.1f, Bloom-Schwelle %.2f)")
 		:format(config.CLOCK_TIME, config.BRIGHTNESS, config.BLOOM_THRESHOLD))
-	print("[KEYCAP] HINWEIS: Lighting.Technology muss EINMAL in Studio auf Future gestellt werden.")
+	print("[KEYCAP] HINWEIS: In Studio EINMAL unter Lighting setzen:")
+	print("[KEYCAP]   LightingStyle = Realistic   und   PrioritizeLightingQuality = true")
+	print("[KEYCAP]   (Technology ist deprecated und per Script nicht erreichbar.)")
 end
 
 -- Der Monitor am Rand. Kein Objekt zum Anschauen, sondern die Lichtquelle,

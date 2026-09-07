@@ -533,8 +533,11 @@ test("Der Monitor steht ausserhalb der Spielflaeche und zeigt darauf", function(
 	local halbeReihe = World.PLOT_COUNT * World.PLOT_SPACING / 2
 	expect(math.abs(licht.MONITOR_POSITION.X) > halbeReihe,
 		"Monitor steht in der Plotreihe: X=" .. licht.MONITOR_POSITION.X)
-	-- Er muss die ganze Flaeche erreichen, sonst leuchtet nur eine Ecke.
-	expect(licht.MONITOR_LIGHT_RANGE >= halbeReihe, "Monitorlicht reicht nicht ueber die Karte")
+	-- Innerhalb der belegten Studio-Grenzen bleiben: Light.Range UIMaximum
+	-- 120, Light.Brightness UIMaximum 40. Ob die Engine darueber clamped,
+	-- ist nicht dokumentiert - also gar nicht erst darueber gehen.
+	expect(licht.MONITOR_LIGHT_RANGE <= 120, "Monitor-Range ueber der belegten Obergrenze: " .. licht.MONITOR_LIGHT_RANGE)
+	expect(licht.MONITOR_LIGHT_BRIGHTNESS <= 40, "Monitor-Helligkeit ueber der belegten Obergrenze")
 	expect(licht.MONITOR_LIGHT_BRIGHTNESS > 0, "Monitor leuchtet nicht")
 	-- Er steht links, sein Licht muss also nach rechts fallen.
 	expect(licht.MONITOR_POSITION.X < 0, "Monitor steht rechts, das Licht ist auf Face Right gesetzt")
@@ -1015,6 +1018,16 @@ test("Die Zahl der Lichtquellen bleibt bezahlbar", function()
 	local maximal = World.PLOT_COUNT * Theme.MAX_LIGHTS_PER_PLOT + 1
 	expect(maximal <= 60, "zu viele Lichtquellen im Vollausbau: " .. maximal)
 	expect(Theme.MAX_LIGHTS_PER_PLOT >= 2, "zu wenige - dann faellt der Unterschied nicht auf")
+end)
+
+test("Alle Lichtquellen bleiben in den belegten Grenzen", function()
+	-- ReflectionMetadata: Light.Range UIMaximum 120, Light.Brightness
+	-- UIMaximum 40. Das sind Slider-Grenzen, keine Engine-Clamps - aber
+	-- ausserhalb belegter Werte zu bauen heisst raten.
+	for _, name in Config.RARITY_ORDER do
+		expect(Theme.RARITY_LIGHT_RANGE[name] <= 120, name .. ": Lichtreichweite ueber 120")
+	end
+	expect(Theme.RARITY_LIGHT_BRIGHTNESS <= 40, "Tastenlicht ueber der belegten Helligkeitsgrenze")
 end)
 
 table.insert(results, "")
