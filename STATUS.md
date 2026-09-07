@@ -72,7 +72,9 @@ lassen (Scope offiziell erweitern) oder für den ersten Launch deaktivieren.
   Text, Knopf, UIScale), Tastenbuchstaben auf den Parts, `LightingService`.
   Kontrast wird im Testlauf nach WCAG nachgerechnet — vier Lesbarkeitsfehler behoben,
   darunter die Wins-Zahl mit 2,45:1.
-  `cd keycap/tests && npm install && npm test` → 55 Tests + Syntaxprüfung aller Dateien.
+  `node keycap/tools/build-rbxlx.mjs` erzeugt `keycap/KeycapRush.rbxlx` (direkt in
+  Studio öffenbar, kein Rojo nötig).
+  `cd keycap/tests && npm install && npm test` → 59 Tests + Syntaxprüfung aller Dateien.
   **Nie in Roblox gelaufen** — nur Syntax und reine Logik geprüft.
   Nicht drin: Monetarisierung, Sounds/Effekte.
   Offene Zahl: `STAGE_RUN_SECONDS` ist geschätzt — `RunTimerService` misst sie im Spiel

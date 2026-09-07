@@ -561,6 +561,37 @@ test("Jede Knopfkante ist dunkler als ihre Flaeche", function()
 	expect(luminance(Theme.PANEL_EDGE) < luminance(Theme.PANEL), "PANEL_EDGE ist nicht dunkler")
 end)
 
+-- 15) Boden. Ohne durchgehende Flaeche faellt der Spieler ins Leere.
+test("Die Promenade verbindet alle Plots", function()
+	local breite = World.PLOT_COUNT * World.PLOT_SPACING
+	local reihe = (World.PLOT_COUNT - 1) * World.PLOT_SPACING + World.PLOT_SIZE.X
+	expect(breite >= reihe, "Promenade (" .. breite .. ") kuerzer als die Plotreihe (" .. reihe .. ")")
+	expect(World.PROMENADE_DEPTH > 0, "keine Promenade")
+end)
+
+test("Der Weg ist breit genug und reicht ueber das letzte Pad hinaus", function()
+	expect(World.PATH_WIDTH >= World.STAGE_PAD_SIZE.X, "Weg schmaler als ein Pad")
+	expect(World.PATH_MARGIN > 0, "Weg endet genau am Pad")
+end)
+
+test("Jedes Pad und jedes Tor liegt ueber dem Weg", function()
+	local halbe = World.PATH_WIDTH / 2
+	for index, pad in World.STAGE_PAD_POSITIONS do
+		expect(math.abs(pad.X - World.PLOT_ORIGIN.X) + World.STAGE_PAD_SIZE.X / 2 <= halbe,
+			"Pad " .. index .. " haengt neben dem Weg")
+	end
+	for index, gate in World.STAGE_GATE_POSITIONS do
+		expect(math.abs(gate.X - World.PLOT_ORIGIN.X) <= halbe, "Tor " .. index .. " steht neben dem Weg")
+	end
+end)
+
+test("Alles steht auf derselben Hoehe - keine Stufen im Parcours", function()
+	local hoehe = World.PLOT_ORIGIN.Y
+	for index, pad in World.STAGE_PAD_POSITIONS do
+		expect(pad.Y == hoehe, "Pad " .. index .. " liegt auf anderer Hoehe: " .. pad.Y)
+	end
+end)
+
 table.insert(results, "")
 table.insert(results, "ERGEBNIS: " .. passed .. " bestanden, " .. failed .. " fehlgeschlagen (" .. (passed + failed) .. " Tests)")
 return table.concat(results, "\\n"), failed

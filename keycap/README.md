@@ -11,7 +11,7 @@ Im Code steht an jedem Wert, woher er kommt: `[KONZEPT]`, `[GEMESSEN]`, `[ABGELE
 `[ENTSCHEIDUNG]`.
 
 **Nichts davon lief je in Roblox.** Geprüft sind: Syntax aller 25 Dateien im echten
-Luau-Compiler, und 55 Logik-/Balancing-/Design-Tests in einer echten Luau-VM. Nicht geprüft ist
+Luau-Compiler, und 59 Logik-/Balancing-/Design-Tests in einer echten Luau-VM. Nicht geprüft ist
 jeder Roblox-API-Aufruf zur Laufzeit — Instanzen, Prompts, Welds, DataStore, Replikation.
 Der erste Studio-Start wird Fehler zeigen.
 
@@ -142,7 +142,7 @@ npm install
 npm test
 ```
 
-55 Tests in einer echten Luau-VM (WASM) plus Syntaxprüfung aller `src/`-Dateien im
+59 Tests in einer echten Luau-VM (WASM) plus Syntaxprüfung aller `src/`-Dateien im
 echten Luau-Compiler. Exit-Code 0 = alles grün. Geprüft werden unter anderem die Zahlen
 aus der Bewertung: Gates bei 700 / 1.700 / 2.950 Vorrat, Deckel bei 4.200, Stützwerte
 90R / 150R / 174R — und dass jedes Tor vor seinem Pad steht und alle Steckplätze auf
@@ -150,10 +150,16 @@ den Plot passen.
 
 ## In Studio starten
 
-1. In VS Code die Rojo-Extension auf `keycap/default.project.json` zeigen lassen
-   (**nicht** auf die PlanetForge-Datei im Wurzelverzeichnis) und `Serve` starten.
-2. Neues, leeres Place in Studio öffnen, im Rojo-Plugin `Connect`.
-3. Play drücken. Im Output müssen diese Zeilen stehen:
+**Der schnelle Weg:** `keycap/KeycapRush.rbxlx` doppelklicken. Die Datei enthält alle
+25 Scripts an der richtigen Stelle — kein Rojo, kein Setup. Neu bauen nach Codeänderungen
+mit `node keycap/tools/build-rbxlx.mjs`.
+
+**Der Arbeitsweg (wenn du weiterentwickelst):** Rojo-Extension in VS Code auf
+`keycap/default.project.json` zeigen lassen (**nicht** auf die PlanetForge-Datei im
+Wurzelverzeichnis), `Serve` starten, in Studio `Connect`. Dann landen Codeänderungen
+sofort im laufenden Studio.
+
+In beiden Fällen: Play drücken, im Output müssen diese Zeilen stehen:
 
 ```
 [KEYCAP] Server startet ...

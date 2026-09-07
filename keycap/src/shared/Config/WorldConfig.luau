@@ -35,8 +35,12 @@ local WorldConfig = {
 	},
 	STAGE_GATE_SIZE = Vector3.new(40, 12, 2),
 
-	-- Laufweg zwischen Plotreihe und Stage 1.
-	PATH_WIDTH = 40,
+	-- Laufwege. Ohne die faellt man ins Leere: zwischen zwei Plots liegen
+	-- PLOT_SPACING - PLOT_SIZE.X = 16 Studs Luecke, und zwischen Plotreihe
+	-- und Stage 1 war ueberhaupt nichts.
+	PATH_WIDTH = 40, -- Breite des Wegs zu den Stages
+	PROMENADE_DEPTH = 24, -- Streifen vor der Plotreihe, verbindet alle Plots
+	PATH_MARGIN = 12, -- wie weit der Weg ueber das letzte Pad hinausgeht
 
 	-- Wie oft der Server den Zustand an die Clients schickt.
 	STATE_PUSH_INTERVAL = 0.5,

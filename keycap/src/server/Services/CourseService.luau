@@ -169,7 +169,50 @@ local function buildPad(stageIndex: number)
 	end)
 end
 
+-- Boden. Die Plots stehen mit Luecke nebeneinander und der Parcours haengt
+-- in der Luft - ohne diese beiden Flaechen faellt jeder Spieler beim ersten
+-- Schritt vom Plot herunter.
+local function buildGround()
+	local origin = WorldConfig.PLOT_ORIGIN
+	local promenadeZ = origin.Z + WorldConfig.PLOT_SIZE.Z / 2 + WorldConfig.PROMENADE_DEPTH / 2
+
+	local promenade = Instance.new("Part")
+	promenade.Name = "Promenade"
+	promenade.Size = Vector3.new(
+		WorldConfig.PLOT_COUNT * WorldConfig.PLOT_SPACING,
+		WorldConfig.PLOT_SIZE.Y,
+		WorldConfig.PROMENADE_DEPTH
+	)
+	promenade.Position = Vector3.new(origin.X, origin.Y, promenadeZ)
+	promenade.Anchored = true
+	promenade.TopSurface = Enum.SurfaceType.Smooth
+	promenade.BottomSurface = Enum.SurfaceType.Smooth
+	promenade.Material = Enum.Material.SmoothPlastic
+	promenade.Color = Theme.PANEL_EDGE
+	promenade.Parent = workspace
+
+	-- Weg von der Promenade bis hinter das letzte Pad.
+	local farthestZ = 0
+	for _, position in WorldConfig.STAGE_PAD_POSITIONS do
+		farthestZ = math.min(farthestZ, position.Z)
+	end
+	local startZ = promenadeZ + WorldConfig.PROMENADE_DEPTH / 2
+	local endZ = farthestZ - WorldConfig.STAGE_PAD_SIZE.Z / 2 - WorldConfig.PATH_MARGIN
+
+	local path = Instance.new("Part")
+	path.Name = "Path"
+	path.Size = Vector3.new(WorldConfig.PATH_WIDTH, WorldConfig.PLOT_SIZE.Y, startZ - endZ)
+	path.Position = Vector3.new(origin.X, origin.Y, (startZ + endZ) / 2)
+	path.Anchored = true
+	path.TopSurface = Enum.SurfaceType.Smooth
+	path.BottomSurface = Enum.SurfaceType.Smooth
+	path.Material = Enum.Material.SmoothPlastic
+	path.Color = Theme.PANEL_EDGE
+	path.Parent = workspace
+end
+
 function CourseService.start()
+	buildGround()
 	for stageIndex = 1, #EconomyConfig.STAGE_GATES do
 		buildGate(stageIndex)
 		buildPad(stageIndex)
