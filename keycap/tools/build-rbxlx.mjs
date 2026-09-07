@@ -139,7 +139,15 @@ for slot = 1, World.NPC_PLOT_COUNT do
 	local mitte = Layout.plotPosition(plotIndex)
 	for keyIndex = 1, Economy.NPC_KEY_COUNT do
 		local rarity = Economy.NPC_RARITIES[keyIndex] or "Common"
-		part("Key" .. keyIndex, World.KEY_SIZE, Layout.slotPosition(mitte, keyIndex),
+		-- Dieselbe Rechnung wie in PlotService.renderKeys: die Grundflaeche
+		-- bleibt, die Taste waechst nach oben. Ohne das steht in der Vorschau
+		-- eine andere Welt als im laufenden Spiel.
+		local crown = Theme.KEY_CROWN[rarity] or 1
+		local extra = World.KEY_SIZE.Y * (crown - 1)
+		local basis = Layout.slotPosition(mitte, keyIndex)
+		part("Key" .. keyIndex,
+			Vector3.new(World.KEY_SIZE.X, World.KEY_SIZE.Y * crown, World.KEY_SIZE.Z),
+			Vector3.new(basis.X, basis.Y + extra / 2, basis.Z),
 			Theme.RARITY_COLORS[rarity], World.KEY_LEGENDS[keyIndex] or "?")
 	end
 end

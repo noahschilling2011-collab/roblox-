@@ -193,8 +193,8 @@
 <Properties>
 <string name="Name">Key3</string>
 <bool name="Anchored">true</bool>
-<Vector3 name="size"><X>6</X><Y>3</Y><Z>6</Z></Vector3>
-<CoordinateFrame name="CFrame"><X>352</X><Y>10.5</Y><Z>-9</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
+<Vector3 name="size"><X>6</X><Y>3.6</Y><Z>6</Z></Vector3>
+<CoordinateFrame name="CFrame"><X>352</X><Y>10.8</Y><Z>-9</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
 <Color3uint8 name="Color3uint8">4286107256</Color3uint8>
 </Properties>
 <Item class="SurfaceGui" referent="KC21">
@@ -285,8 +285,8 @@
 <Properties>
 <string name="Name">Key3</string>
 <bool name="Anchored">true</bool>
-<Vector3 name="size"><X>6</X><Y>3</Y><Z>6</Z></Vector3>
-<CoordinateFrame name="CFrame"><X>288</X><Y>10.5</Y><Z>-9</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
+<Vector3 name="size"><X>6</X><Y>3.6</Y><Z>6</Z></Vector3>
+<CoordinateFrame name="CFrame"><X>288</X><Y>10.8</Y><Z>-9</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
 <Color3uint8 name="Color3uint8">4286107256</Color3uint8>
 </Properties>
 <Item class="SurfaceGui" referent="KC33">
@@ -377,8 +377,8 @@
 <Properties>
 <string name="Name">Key3</string>
 <bool name="Anchored">true</bool>
-<Vector3 name="size"><X>6</X><Y>3</Y><Z>6</Z></Vector3>
-<CoordinateFrame name="CFrame"><X>224</X><Y>10.5</Y><Z>-9</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
+<Vector3 name="size"><X>6</X><Y>3.6</Y><Z>6</Z></Vector3>
+<CoordinateFrame name="CFrame"><X>224</X><Y>10.8</Y><Z>-9</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
 <Color3uint8 name="Color3uint8">4286107256</Color3uint8>
 </Properties>
 <Item class="SurfaceGui" referent="KC45">
@@ -578,6 +578,14 @@ local EconomyConfig = {
 	CASHOUT_HOLD_SECONDS = 0.6, -- kurzes Halten statt Beruehrung [KONZEPT]
 	CARRY_SECONDS = 8, -- so lange traegt man die geklaute Taste sichtbar
 	SHOP_HOLD_SECONDS = 0.3,
+
+	-- ---------------------------------------------------------------
+	-- Serverweite Ankuendigung [ENTSCHEIDUNG]
+	-- Nur die beiden obersten Seltenheiten. Bei jedem Common-Klau waere
+	-- die Zeile Rauschen und niemand liest sie mehr - und genau diese
+	-- Zeile ist der Screenshot, den Spieler posten.
+	-- ---------------------------------------------------------------
+	ANNOUNCE_RARITIES = { Epic = true, Legendary = true },
 
 	-- Rate-Limit pro Spieler und Remote (Anfragen pro Sekunde).
 	REMOTE_RATE_LIMIT = 6,
@@ -987,6 +995,8 @@ local EVENTS = {
 	"BuyKey", -- Client -&gt; Server: rarityName
 	"BuySlot", -- Client -&gt; Server: (keine Argumente)
 	"ActivateShield", -- Client -&gt; Server: (keine Argumente)
+	"Alert", -- Server -&gt; Client: {kind, title, body} - grosse Einblendung
+	"Announce", -- Server -&gt; alle: {rarity, text} - serverweite Zeile
 }
 
 local Remotes = {}
@@ -1079,6 +1089,54 @@ local Theme = {
 		Legendary = Color3.fromRGB(248, 186, 70),
 	},
 
+	-- Dunkle Kante je Seltenheit. Ohne die ist eine Taste eine flache
+	-- Flaeche - weder der 3D-Effekt der Knoepfe noch das Kantenlicht der
+	-- Tasten in der Welt haben sonst einen Wert, aus dem sie sich rechnen.
+	RARITY_EDGE = {
+		Common = Color3.fromRGB(168, 168, 168),
+		Uncommon = Color3.fromRGB(78, 158, 78),
+		Rare = Color3.fromRGB(78, 136, 196),
+		Epic = Color3.fromRGB(144, 104, 196),
+		Legendary = Color3.fromRGB(196, 138, 30),
+	},
+
+	-- Schrift AUF der jeweiligen Seltenheitsfarbe. Nachgerechnet gegen die
+	-- eigene Flaeche: Common 6,2:1 - Uncommon 5,1:1 - Rare 4,6:1 -
+	-- Epic 5,4:1 - Legendary 5,1:1. Weiss waere auf allen fuenf unlesbar.
+	RARITY_INK = {
+		Common = Color3.fromRGB(74, 66, 56),
+		Uncommon = Color3.fromRGB(30, 76, 30),
+		Rare = Color3.fromRGB(30, 74, 120),
+		Epic = Color3.fromRGB(74, 46, 108),
+		Legendary = Color3.fromRGB(106, 66, 4),
+	},
+
+	-- Rang 1-5. Traegt alles, was die Seltenheit OHNE Farbe zeigt:
+	-- Zahl der Punkte im Laden, Rahmenstaerke, Kantenlicht in der Welt.
+	-- Farbe allein reicht auf einem billigen Display in der Sonne nicht.
+	RARITY_RANK = {
+		Common = 1,
+		Uncommon = 2,
+		Rare = 3,
+		Epic = 4,
+		Legendary = 5,
+	},
+
+	-- Hoehenfaktor der Taste in der Welt (mal WorldConfig.KEY_SIZE.Y).
+	-- Die Grundflaeche bleibt gleich, damit das Steckplatz-Raster passt -
+	-- unterschiedlich ist die Hoehe. Aus 20 m ist das der erste Unterschied,
+	-- den man sieht, noch vor der Farbe.
+	KEY_CROWN = {
+		Common = 1,
+		Uncommon = 1.2,
+		Rare = 1.5,
+		Epic = 1.9,
+		Legendary = 2.4,
+	},
+	KEY_RIM_BASE = 0.04, -- Kantenlicht Grundstaerke (Studs)
+	KEY_RIM_STEP = 0.03, -- plus je Rang
+	KEY_LABEL_DISTANCE = 160, -- Sichtweite der schwebenden Vorratszahl
+
 	-- ---------------------------------------------------------------
 	-- Abstaende. Eine Skala, keine krummen Zwischenwerte.
 	-- ---------------------------------------------------------------
@@ -1087,7 +1145,10 @@ local Theme = {
 	-- ---------------------------------------------------------------
 	-- Schriftgroessen in Pixeln (bei UIScale 1).
 	-- ---------------------------------------------------------------
-	TEXT_SIZE = { SMALL = 16, BODY = 20, LEAD = 24, TITLE = 30, HERO = 38 },
+	-- DISPLAY und BLAST sind neu. HERO 38 war der groesste Grad; der Vorrat
+	-- ist aber die Zahl, um die sich das ganze Spiel dreht, und muss die
+	-- groesste auf dem Bildschirm sein. BLAST nur fuer den Cash-Out.
+	TEXT_SIZE = { SMALL = 16, BODY = 20, LEAD = 24, TITLE = 30, HERO = 38, DISPLAY = 56, BLAST = 96 },
 
 	-- ---------------------------------------------------------------
 	-- Formen
@@ -1101,9 +1162,70 @@ local Theme = {
 	-- ---------------------------------------------------------------
 	-- Layout des HUD
 	-- ---------------------------------------------------------------
+	-- Reservierte Bildschirmbereiche. Oben links sitzt der Roblox-Menue-
+	-- knopf: die Statuskarte lag vorher bei y=16 und damit darunter.
+	HUD_TOP_INSET = 72, -- ab hier faengt eigene UI oben an
+	HUD_BOTTOM_INSET = 120, -- darunter: Stick links, Sprung-Knopf rechts
+
 	HUD_PANEL_WIDTH = 320,
-	HUD_STATS_HEIGHT = 156, -- Statuskarte; die Knoepfe darunter richten sich danach
-	SHOP_PANEL_WIDTH = 400,
+	-- 156 -&gt; 240: der Tempo-Balken mit den drei Tor-Markierungen und der
+	-- groessere Vorrat (DISPLAY 56 statt HERO 38) brauchen die Hoehe.
+	HUD_STATS_HEIGHT = 240,
+
+	-- Handy quer: Statuskarte wird zum Streifen oben mittig, die Knoepfe
+	-- wandern an den rechten Rand. Sonst liegt das HUD unter dem Stick.
+	HUD_STATS_COMPACT_HEIGHT = 108,
+	HUD_COMPACT_WIDTH = 320,
+	HUD_COMPACT_BUTTON_WIDTH = 76,
+	COMPACT_MAX_WIDTH = 900,
+	COMPACT_MAX_HEIGHT = 520,
+
+	HUD_TUTORIAL_WIDTH = 720,
+	HUD_TUTORIAL_COMPACT_WIDTH = 460,
+	HUD_TUTORIAL_HEIGHT = 96,
+
+	-- Tempo-Balken
+	BAR_HEIGHT = 20,
+	BAR_HEIGHT_COMPACT = 12,
+	BAR_MARK_WIDTH = 4,
+
+	-- Seltenheitspunkte
+	PIP = 10,
+	PIP_GAP = 4,
+	PIP_CORNER = 3,
+
+	-- Taste als Bild im Laden
+	KEYCAP_EDGE = 8, -- Unterkante der kleinen Taste
+	KEY_THUMB = 64, -- Hoehe einer Legendary
+	KEY_THUMB_STEP = 6, -- je Rang niedriger
+
+	-- 400 -&gt; 560: eine Zeile traegt Tastenbild, Name, Punkte, Produktion
+	-- und Kaufknopf. Bei 400 stand der Preis im Namen - genau das war der
+	-- Grund, warum man die Seltenheit lesen musste statt sie zu sehen.
+	SHOP_PANEL_WIDTH = 560,
+	SHOP_ROW_HEIGHT = 88,
+	SHOP_ROW_STROKE = 1, -- plus Rang: Common 2, Legendary 6
+	SHOP_LIST_HEIGHT = 472,
+	SHOP_LIST_HEIGHT_COMPACT = 208,
+	SHOP_BUY_WIDTH = 128,
+	SCROLLBAR = 6,
+
+	-- Meldungen
+	TOAST_WIDTH = 520,
+	TOAST_HEIGHT = 40,
+	BANNER_WIDTH = 640, -- laesst links das Menue und rechts den Chat frei
+	BANNER_HEIGHT = 44,
+	BANNER_SECONDS = 4,
+	ALERT_WIDTH = 560,
+	ALERT_HEIGHT = 168,
+	ALERT_BAR = 8,
+	ALERT_SECONDS = 4,
+
+	-- Bewegung
+	BUMP_SCALE = 1.08, -- Vorrat-Zahl beim Wachsen
+	FLOAT_RISE = 52, -- wie weit die +Zahl steigt
+	CRAWLER_WIDTH = 80,
+	CRAWLER_HEIGHT = 4,
 
 	-- ---------------------------------------------------------------
 	-- UIScale: das HUD ist in festen Pixeln gebaut und wird fuer kleine
@@ -1521,6 +1643,13 @@ local function cashOut(player: Player, stageIndex: number, pad: BasePart)
 	RunTimerService.markCashOut(player, stageIndex)
 	TutorialService.report(player, "cashout")
 	notify(player, ("+%d Wins ausgezahlt (Stage %d)."):format(wins, stageIndex))
+	-- Die Belohnung braucht mehr als eine Zeile oben am Rand: der Vorrat
+	-- ist gerade komplett weg, das muss sich gross anfuehlen.
+	Remotes.get("Alert"):FireClient(player, {
+		kind = "cashout",
+		title = ("+%d"):format(wins),
+		body = ("Wins - Vorrat %d geleert an Stage %d"):format(vorrat, stageIndex),
+	})
 end
 
 local function buildPad(stageIndex: number)
@@ -2162,31 +2291,63 @@ function PlotService.renderKeys(plot: Plot, keys: { { rarity: string, vorrat: nu
 	clearKeys(plot)
 
 	for index, key in keys do
+		-- Hoehe, Kantenlicht und Material haengen an der Seltenheit. Eine
+		-- Legendary muss sich aus 20 m von einer Common unterscheiden
+		-- lassen - daran haengt, ob ein Dieb weiss, wo der Weg sich lohnt.
+		local rank = Theme.RARITY_RANK[key.rarity] or 1
+		local crown = Theme.KEY_CROWN[key.rarity] or 1
+		local extra = WorldConfig.KEY_SIZE.Y * (crown - 1)
+
 		local part = Instance.new("Part")
 		part.Name = "Key" .. index
-		part.Size = WorldConfig.KEY_SIZE
-		part.Position = WorldLayout.slotPosition(plot.base.Position, index)
+		part.Size = Vector3.new(WorldConfig.KEY_SIZE.X, WorldConfig.KEY_SIZE.Y * crown, WorldConfig.KEY_SIZE.Z)
+		-- Grundflaeche bleibt, die Taste waechst nach oben: das Raster aus
+		-- WorldLayout.slotPosition passt weiter.
+		part.Position = WorldLayout.slotPosition(plot.base.Position, index) + Vector3.new(0, extra / 2, 0)
 		part.Anchored = true
 		part.TopSurface = Enum.SurfaceType.Smooth
-		part.Material = Enum.Material.SmoothPlastic
+		part.Material = if rank &gt;= 5 then Enum.Material.Neon else Enum.Material.SmoothPlastic
 		part.Color = Theme.RARITY_COLORS[key.rarity] or Theme.PANEL
+
+		-- Kantenlicht statt Schatten: Roblox-UI kann keinen Schatten, und
+		-- in der Welt zeichnet eine SelectionBox die Kanten sauber nach.
+		local rim = Instance.new("SelectionBox")
+		rim.Adornee = part
+		rim.Color3 = Theme.RARITY_EDGE[key.rarity] or Theme.PANEL_EDGE
+		rim.LineThickness = Theme.KEY_RIM_BASE + Theme.KEY_RIM_STEP * rank
+		rim.SurfaceTransparency = 1
+		rim.Parent = part
 
 		local billboard = Instance.new("BillboardGui")
 		billboard.Name = "Info"
-		billboard.Size = UDim2.new(0, 150, 0, 44)
-		billboard.StudsOffset = Vector3.new(0, 3, 0)
+		billboard.Size = UDim2.new(0, 190, 0, 68)
+		billboard.StudsOffset = Vector3.new(0, 2.6 + extra / 2, 0)
 		billboard.AlwaysOnTop = false
-		billboard.MaxDistance = 120
+		billboard.MaxDistance = Theme.KEY_LABEL_DISTANCE
+
+		-- Seltenheit klein darueber, Vorrat gross darunter. Aus der Ferne
+		-- bleibt nur die Zahl lesbar - und genau die entscheidet.
+		local rarityLabel = Instance.new("TextLabel")
+		rarityLabel.Name = "Rarity"
+		rarityLabel.Size = UDim2.new(1, 0, 0.36, 0)
+		rarityLabel.BackgroundTransparency = 1
+		rarityLabel.Font = Theme.FONT
+		rarityLabel.TextScaled = true
+		rarityLabel.TextColor3 = Theme.RARITY_COLORS[key.rarity] or Theme.PANEL
+		rarityLabel.TextStrokeTransparency = 0.25
+		rarityLabel.Text = string.upper(key.rarity)
+		rarityLabel.Parent = billboard
 
 		local label = Instance.new("TextLabel")
 		label.Name = "Vorrat"
-		label.Size = UDim2.new(1, 0, 1, 0)
+		label.Size = UDim2.new(1, 0, 0.64, 0)
+		label.Position = UDim2.new(0, 0, 0.36, 0)
 		label.BackgroundTransparency = 1
 		label.Font = Theme.FONT
 		label.TextScaled = true
-		label.TextColor3 = Theme.TEXT
-		label.TextStrokeTransparency = 0.5
-		label.Text = key.rarity
+		label.TextColor3 = Theme.PANEL
+		label.TextStrokeTransparency = 0.2
+		label.Text = "0"
 		label.Parent = billboard
 		billboard.Parent = part
 
@@ -2202,7 +2363,7 @@ function PlotService.renderKeys(plot: Plot, keys: { { rarity: string, vorrat: nu
 		letter.BackgroundTransparency = 1
 		letter.Font = Theme.FONT
 		letter.TextScaled = true
-		letter.TextColor3 = Theme.TEXT
+		letter.TextColor3 = Theme.RARITY_INK[key.rarity] or Theme.TEXT
 		letter.Text = WorldConfig.KEY_LEGENDS[index] or "?"
 		letter.Parent = legend
 		legend.Parent = part
@@ -2253,7 +2414,9 @@ function PlotService.refreshLabels(plot: Plot, keys: { { rarity: string, vorrat:
 		local billboard = part:FindFirstChild("Info")
 		local label = if billboard then billboard:FindFirstChild("Vorrat") else nil
 		if key and label and label:IsA("TextLabel") then
-			label.Text = ("%s\n%d"):format(key.rarity, math.floor(key.vorrat))
+			-- Nur noch die Zahl: die Seltenheit steht im eigenen Label
+			-- darueber und aendert sich nicht.
+			label.Text = tostring(math.floor(key.vorrat))
 		end
 	end
 end
@@ -3024,6 +3187,26 @@ local function stealFromPlayer(thief: Player, part: BasePart, ref)
 	TutorialService.report(thief, "steal")
 	notify(thief, ("Geklaut: %s mit %d Vorrat."):format(key.rarity, carried))
 	notify(victim, ("%s hat deine %s geklaut (%d Vorrat weg)."):format(thief.DisplayName, key.rarity, lost))
+
+	-- Das Opfer soll nicht informiert werden, sondern wuetend: Name des
+	-- Diebs gross, die verlorene Zahl darunter, rote Kante, Ruettler.
+	Remotes.get("Alert"):FireClient(victim, {
+		kind = "stolen",
+		title = string.upper(thief.DisplayName),
+		body = ("hat deine %s geklaut - %d Vorrat weg"):format(key.rarity, lost),
+	})
+
+	if EconomyConfig.ANNOUNCE_RARITIES[key.rarity] then
+		Remotes.get("Announce"):FireAllClients({
+			rarity = key.rarity,
+			text = ("%s reisst bei %s eine %s - %d Vorrat unterwegs"):format(
+				thief.DisplayName,
+				victim.DisplayName,
+				string.upper(key.rarity),
+				carried
+			),
+		})
+	end
 end
 
 local function attemptSteal(thief: Player, part: BasePart)
@@ -3239,15 +3422,28 @@ print("[KEYCAP] Client bereit.")
 <Properties>
 <string name="Name">HudController</string>
 <ProtectedString name="Source">--!strict
--- HUD: Vorrat, Rate, Wins, naechstes Tor, Schild, Tutorial-Karte.
--- Baut ausschliesslich mit UiKit - hier steht keine eigene Farbe und
--- keine eigene Pixelzahl.
+-- HUD: Vorrat, Rate, Wins, Tempo-Balken, Schild, Onboarding, Meldungen.
+-- Baut ausschliesslich mit UiKit - hier steht keine eigene Farbe und keine
+-- eigene Pixelzahl, die nicht aus Theme kommt.
+--
+-- Zwei Layouts, ein Codepfad:
+--   breit    Statuskarte links unter dem Roblox-Menue, Knoepfe darunter
+--   compact  Statuskarte als Streifen oben mittig, Knoepfe am rechten Rand
+--
+-- Reservierte Bildschirmbereiche, in die nichts gehoert: oben links der
+-- Roblox-Menueknopf (deshalb HUD_TOP_INSET), oben rechts der Chat, unten
+-- links der Stick und unten rechts der Sprung-Knopf (HUD_BOTTOM_INSET).
+--
+-- [BEKANNTE LUECKE] Das Layout wird beim Start einmal gewaehlt. Dreht ein
+-- Spieler das Handy im Spiel, wechselt es erst beim naechsten Respawn.
 
 local Players = game:GetService("Players")
 
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
 local Theme = require(Shared:WaitForChild("Theme"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
+local EconomyConfig = require(Shared:WaitForChild("Config"):WaitForChild("EconomyConfig"))
+local TutorialConfig = require(Shared:WaitForChild("Config"):WaitForChild("TutorialConfig"))
 local UiKit = require(script.Parent.Parent.UiKit)
 
 local HudController = {}
@@ -3255,6 +3451,14 @@ local HudController = {}
 local player = Players.LocalPlayer
 
 local TOAST_SECONDS = 3.5
+local FLOAT_COOLDOWN = 0.6 -- so oft darf hoechstens eine +Zahl aufsteigen
+
+-- Bruchteil der Tempo-Skala. Sie laeuft von BASE_WALK_SPEED bis
+-- BASE_WALK_SPEED + MAX_SPEED_BONUS - dieselbe Rechnung fuer den Balken
+-- und fuer die Markierungen der Tore, damit beide zusammenpassen.
+local function speedFraction(speed: number): number
+	return math.clamp((speed - EconomyConfig.BASE_WALK_SPEED) / EconomyConfig.MAX_SPEED_BONUS, 0, 1)
+end
 
 function HudController.start()
 	local gui = Instance.new("ScreenGui")
@@ -3263,70 +3467,181 @@ function HudController.start()
 	gui.IgnoreGuiInset = true
 	UiKit.autoScale(gui)
 
+	local compact = UiKit.compact()
 	local margin = Theme.SPACE.L
-	local width = Theme.HUD_PANEL_WIDTH
+	local pad = Theme.SPACE.M
 
-	-- Statuskarte oben links. Die Zeilen sind nach Wichtigkeit gestaffelt:
-	-- Vorrat ist die Zahl, auf die der Spieler schaut, Wins die zweite.
-	local stats = UiKit.panel(gui, UDim2.new(0, width, 0, Theme.HUD_STATS_HEIGHT), UDim2.new(0, margin, 0, margin))
-	local inner = UDim2.new(1, -Theme.SPACE.XL, 0, 0)
-	local left = Theme.SPACE.M
+	local width = if compact then Theme.HUD_COMPACT_WIDTH else Theme.HUD_PANEL_WIDTH
+	local height = if compact then Theme.HUD_STATS_COMPACT_HEIGHT else Theme.HUD_STATS_HEIGHT
+	local statsPosition = if compact
+		then UDim2.new(0.5, -width / 2, 0, Theme.SPACE.S)
+		else UDim2.new(0, margin, 0, Theme.HUD_TOP_INSET)
 
-	local vorratLabel = UiKit.text(stats, {
-		size = inner + UDim2.new(0, 0, 0, 44),
-		position = UDim2.new(0, left, 0, Theme.SPACE.S),
-		textSize = Theme.TEXT_SIZE.HERO,
-		text = "Vorrat 0",
+	local stats = UiKit.panel(gui, UDim2.new(0, width, 0, height), statsPosition)
+	local inner = UDim2.new(1, -pad * 2, 0, 0)
+
+	-- Zeilenraster der Statuskarte. Zwei Rhythmen, einer je Layout.
+	local yLabel = if compact then 6 else 12
+	local yVorrat = if compact then 24 else 34
+	local yRate = if compact then 66 else 96
+	local yBar = if compact then 86 else 168
+
+	UiKit.text(stats, {
+		size = inner + UDim2.new(0, 0, 0, 20),
+		position = UDim2.new(0, pad, 0, yLabel),
+		textSize = Theme.TEXT_SIZE.SMALL,
+		color = Theme.TEXT_MUTED,
+		text = "VORRAT",
 	})
+
+	-- Wins sind die zweite Zahl: klein, aber in Gold, damit sie nicht mit
+	-- dem Vorrat konkurriert und trotzdem sofort gefunden wird.
+	local winsLabel = UiKit.text(stats, {
+		size = inner + UDim2.new(0, 0, 0, 30),
+		position = UDim2.new(0, pad, 0, yLabel - Theme.SPACE.XS),
+		textSize = if compact then Theme.TEXT_SIZE.BODY else Theme.TEXT_SIZE.TITLE,
+		color = Theme.GOLD_TEXT,
+		align = Enum.TextXAlignment.Right,
+		text = "0 Wins",
+	})
+
+	-- Die groesste Zahl auf dem Bildschirm. Alles andere ordnet sich ihr
+	-- unter - sie ist der Grund, warum jemand ueberhaupt hier steht.
+	local vorratLabel = UiKit.text(stats, {
+		size = inner + UDim2.new(0, 0, 0, (if compact then 44 else 60)),
+		position = UDim2.new(0, pad, 0, yVorrat),
+		textSize = if compact then Theme.TEXT_SIZE.HERO else Theme.TEXT_SIZE.DISPLAY,
+		text = "0",
+	})
+	local bumpVorrat = UiKit.bump(vorratLabel)
+
 	local rateLabel = UiKit.text(stats, {
-		size = inner + UDim2.new(0, 0, 0, 24),
-		position = UDim2.new(0, left, 0, 54),
+		size = inner + UDim2.new(0, 0, 0, 20),
+		position = UDim2.new(0, pad, 0, yRate),
 		textSize = Theme.TEXT_SIZE.SMALL,
 		color = Theme.TEXT_MUTED,
 		text = "+0 pro Sekunde",
 	})
-	local winsLabel = UiKit.text(stats, {
-		size = inner + UDim2.new(0, 0, 0, 34),
-		position = UDim2.new(0, left, 0, 84),
-		textSize = Theme.TEXT_SIZE.TITLE,
-		color = Theme.GOLD_TEXT,
-		text = "0 Wins",
-	})
-	local hintLabel = UiKit.text(stats, {
-		size = inner + UDim2.new(0, 0, 0, 22),
-		position = UDim2.new(0, left, 0, 124),
-		textSize = Theme.TEXT_SIZE.SMALL,
-		color = Theme.TEXT_MUTED,
-		text = "",
+
+	local tempoLabel: TextLabel? = nil
+	local hintLabel: TextLabel? = nil
+
+	if not compact then
+		local divider = Instance.new("Frame")
+		divider.Size = UDim2.new(1, -pad * 2, 0, 1)
+		divider.Position = UDim2.new(0, pad, 0, 124)
+		divider.BackgroundColor3 = Theme.PANEL_EDGE
+		divider.BorderSizePixel = 0
+		divider.Parent = stats
+
+		tempoLabel = UiKit.text(stats, {
+			size = inner + UDim2.new(0, 0, 0, 26),
+			position = UDim2.new(0, pad, 0, 136),
+			textSize = Theme.TEXT_SIZE.BODY,
+			text = "TEMPO 16",
+		})
+		hintLabel = UiKit.text(stats, {
+			size = inner + UDim2.new(0, 0, 0, 22),
+			position = UDim2.new(0, pad, 0, 138),
+			textSize = Theme.TEXT_SIZE.SMALL,
+			color = Theme.TEXT_MUTED,
+			align = Enum.TextXAlignment.Right,
+			text = "",
+		})
+	end
+
+	-- Eigene Flaeche fuer den Balken: die Bruchteile der Tor-Markierungen
+	-- muessen sich auf die Balkenbreite beziehen, nicht auf die Karte.
+	local barArea = Instance.new("Frame")
+	barArea.BackgroundTransparency = 1
+	barArea.Size = UDim2.new(1, -pad * 2, 0, (if compact then Theme.BAR_HEIGHT_COMPACT else 44))
+	barArea.Position = UDim2.new(0, pad, 0, yBar)
+	barArea.Parent = stats
+
+	local marks: { number } = {}
+	for _, gate in EconomyConfig.STAGE_GATES do
+		table.insert(marks, speedFraction(gate))
+	end
+
+	local bar = UiKit.speedBar(barArea, {
+		size = UDim2.new(1, 0, 0, (if compact then Theme.BAR_HEIGHT_COMPACT else Theme.BAR_HEIGHT)),
+		marks = marks,
 	})
 
+	-- Beschriftung der Tore. Auf dem Handy fallen sie weg: dort tragen die
+	-- Markierungen allein, sonst frisst die Zeile die halbe Karte.
+	if not compact then
+		for _, gate in EconomyConfig.STAGE_GATES do
+			UiKit.text(barArea, {
+				size = UDim2.new(0, 40, 0, 20),
+				position = UDim2.new(speedFraction(gate), -20, 0, Theme.BAR_HEIGHT + Theme.SPACE.XS),
+				textSize = Theme.TEXT_SIZE.SMALL,
+				color = Theme.TEXT_MUTED,
+				align = Enum.TextXAlignment.Center,
+				text = tostring(gate),
+			})
+		end
+	end
+
+	-- Schild-Knopf. Drei Zustaende, drei Farben, jeweils dunkle Schrift.
+	local buttonWidth = if compact then Theme.HUD_COMPACT_BUTTON_WIDTH else width
+	local shieldPosition = if compact
+		then UDim2.new(1, -(buttonWidth + pad), 0, Theme.HUD_TOP_INSET)
+		else UDim2.new(0, margin, 0, Theme.HUD_TOP_INSET + Theme.HUD_STATS_HEIGHT + Theme.SPACE.S)
+
 	local shieldButton = UiKit.button(gui, {
-		size = UDim2.new(0, width, 0, Theme.TOUCH_MIN),
-		position = UDim2.new(0, margin, 0, Theme.HUD_STATS_HEIGHT + margin + Theme.SPACE.S),
+		size = UDim2.new(0, buttonWidth, 0, Theme.TOUCH_MIN),
+		position = shieldPosition,
 		text = "Schild",
+		textSize = if compact then Theme.TEXT_SIZE.SMALL else Theme.TEXT_SIZE.BODY,
 		base = Theme.BLUE,
 		edge = Theme.BLUE_DARK,
 	})
 
-	-- Tutorial-Karte unten mittig. Der Abstand nach unten laesst den
-	-- Sprung-Knopf frei, der auf dem Handy unten rechts sitzt.
-	local tutorialCard = UiKit.panel(gui, UDim2.new(0.9, 0, 0, 84), UDim2.new(0.05, 0, 1, -200))
+	-- Onboarding-Karte unten mittig, oberhalb der Daumen-Zone. Jede Karte
+	-- traegt einen Satz, die Schritt-Punkte und einen wandernden Balken -
+	-- ohne Bewegung liest ein neuer Spieler den Text nicht.
+	local tutorialWidth = if compact then Theme.HUD_TUTORIAL_COMPACT_WIDTH else Theme.HUD_TUTORIAL_WIDTH
+	local tutorialCard = UiKit.panel(
+		gui,
+		UDim2.new(0, tutorialWidth, 0, Theme.HUD_TUTORIAL_HEIGHT),
+		UDim2.new(0.5, -tutorialWidth / 2, 1, -(Theme.HUD_TUTORIAL_HEIGHT + Theme.HUD_BOTTOM_INSET))
+	)
 	tutorialCard.Visible = false
+	tutorialCard.ClipsDescendants = true
+
 	local tutorialText = UiKit.text(tutorialCard, {
-		size = UDim2.new(1, -Theme.SPACE.XL, 1, -Theme.SPACE.L),
-		position = UDim2.new(0, Theme.SPACE.M, 0, Theme.SPACE.S),
+		size = UDim2.new(1, -Theme.SPACE.XL, 0, 52),
+		position = UDim2.new(0, pad, 0, pad),
 		textSize = Theme.TEXT_SIZE.LEAD,
 		align = Enum.TextXAlignment.Center,
 		wrapped = true,
 	})
+	local stepCount = #TutorialConfig.STEPS
+	local dotsWidth = stepCount * Theme.PIP + (stepCount - 1) * Theme.PIP_GAP
+	local tutorialDots = UiKit.dots(tutorialCard, {
+		count = stepCount,
+		position = UDim2.new(0.5, -dotsWidth / 2, 0, 68),
+	})
+	UiKit.crawler(tutorialCard, Theme.GOLD)
 
+	-- Meldungen: kurze Zeile fuer den Spieler selbst, Banner fuer den
+	-- ganzen Server, Karte fuer Klau und Auszahlung.
+	local toastY = if compact then Theme.HUD_STATS_COMPACT_HEIGHT + Theme.SPACE.L else Theme.SPACE.XXL + Theme.SPACE.XL
 	local toast = UiKit.text(gui, {
-		size = UDim2.new(0, 520, 0, 40),
-		position = UDim2.new(0.5, -260, 0, Theme.SPACE.XL),
+		size = UDim2.new(0, Theme.TOAST_WIDTH, 0, Theme.TOAST_HEIGHT),
+		position = UDim2.new(0.5, -Theme.TOAST_WIDTH / 2, 0, toastY),
 		textSize = Theme.TEXT_SIZE.LEAD,
 		align = Enum.TextXAlignment.Center,
 	})
 	toast.TextStrokeTransparency = 0.4
+	toast.ZIndex = 3
+
+	-- Breit sitzt die serverweite Zeile oben mittig. Auf dem Handy liegt
+	-- dort der Statusstreifen, also rutscht sie unter die Toast-Zeile.
+	local bannerY = if compact then toastY + Theme.TOAST_HEIGHT + Theme.SPACE.S else Theme.SPACE.S
+	local showBanner = UiKit.banner(gui, UDim2.new(0.5, -Theme.BANNER_WIDTH / 2, 0, bannerY))
+	local showAlert = UiKit.alert(gui)
 
 	gui.Parent = player:WaitForChild("PlayerGui")
 
@@ -3334,35 +3649,80 @@ function HudController.start()
 		Remotes.get("ActivateShield"):FireServer()
 	end)
 
-	Remotes.get("StateChanged").OnClientEvent:Connect(function(state)
-		vorratLabel.Text = ("Vorrat %d"):format(state.vorrat)
-		rateLabel.Text = ("+%d pro Sekunde   ·   Tempo %d"):format(state.rate, math.floor(state.speed))
-		winsLabel.Text = ("%d Wins"):format(state.wins)
+	local lastVorrat = 0
+	local lastFloat = 0
 
-		if state.carrying then
-			hintLabel.Text = "Du traegst Beute - lauf nach Hause!"
-			hintLabel.TextColor3 = Theme.RED_TEXT
-		elseif state.nextStage then
-			hintLabel.Text = ("Stage %d ab %d Vorrat"):format(state.nextStage, state.nextStageVorrat)
-			hintLabel.TextColor3 = Theme.TEXT_MUTED
+	Remotes.get("StateChanged").OnClientEvent:Connect(function(state)
+		local vorrat = math.floor(state.vorrat)
+		vorratLabel.Text = UiKit.number(vorrat)
+		winsLabel.Text = ("%s Wins"):format(UiKit.number(state.wins))
+		if compact and state.carrying then
+			-- Im schmalen Layout gibt es keine Hinweiszeile: die Ratenzeile
+			-- uebernimmt den einen Zustand, der wirklich draengt.
+			rateLabel.Text = "BEUTE - lauf nach Hause!"
+			rateLabel.TextColor3 = Theme.RED_TEXT
+		elseif compact then
+			rateLabel.Text = ("+%d pro Sekunde   ·   Tempo %d"):format(state.rate, math.floor(state.speed))
+			rateLabel.TextColor3 = Theme.TEXT_MUTED
 		else
-			hintLabel.Text = "Alle Tore offen - lauf zu Stage 3!"
-			hintLabel.TextColor3 = Theme.GREEN_TEXT
+			rateLabel.Text = ("+%d pro Sekunde"):format(state.rate)
+		end
+
+		-- Wachsen sichtbar machen: die Zahl selbst zuckt, daneben steigt
+		-- der Zuwachs auf. Hoechstens alle FLOAT_COOLDOWN Sekunden, sonst
+		-- flimmert die Karte.
+		local gained = vorrat - lastVorrat
+		if gained &gt; 0 then
+			bumpVorrat()
+			local now = os.clock()
+			if now - lastFloat &gt;= FLOAT_COOLDOWN then
+				lastFloat = now
+				UiKit.floatUp(stats, {
+					text = ("+%s"):format(UiKit.number(gained)),
+					position = UDim2.new(1, -(140 + Theme.SPACE.M), 0, yVorrat),
+				})
+			end
+		end
+		lastVorrat = vorrat
+
+		bar.set(speedFraction(state.speed))
+
+		if tempoLabel then
+			tempoLabel.Text = ("TEMPO %d"):format(math.floor(state.speed))
+		end
+
+		if hintLabel then
+			if state.carrying then
+				hintLabel.Text = "Beute! Lauf nach Hause"
+				hintLabel.TextColor3 = Theme.RED_TEXT
+			elseif state.nextStage then
+				hintLabel.Text = ("Stage %d ab %s"):format(state.nextStage, UiKit.number(state.nextStageVorrat))
+				hintLabel.TextColor3 = Theme.TEXT_MUTED
+			else
+				hintLabel.Text = "Alle Tore offen"
+				hintLabel.TextColor3 = Theme.GREEN_TEXT
+			end
 		end
 
 		if state.tutorial then
 			tutorialCard.Visible = true
-			tutorialText.Text = ("Schritt %d: %s"):format(state.tutorial.step, state.tutorial.text)
+			tutorialText.Text = state.tutorial.text
+			tutorialDots.set(state.tutorial.step)
 		else
 			tutorialCard.Visible = false
 		end
 
 		if state.shieldLeft &gt; 0 then
-			shieldButton.Text = ("Schild aktiv - %ds"):format(state.shieldLeft)
+			-- Laeuft: gruen. Gruen heisst im ganzen Spiel "das ist gut fuer
+			-- dich", und geschuetzt zu sein ist der gute Zustand.
+			shieldButton.Text = ("Schild %ds"):format(state.shieldLeft)
+			UiKit.setButtonColors(shieldButton, Theme.GREEN, Theme.GREEN_DARK)
 		elseif state.shieldCooldown &gt; 0 then
-			shieldButton.Text = ("Schild laedt - %ds"):format(state.shieldCooldown)
+			shieldButton.Text = ("Laedt %ds"):format(state.shieldCooldown)
+			UiKit.setButtonColors(shieldButton, Theme.PANEL_EDGE, Theme.TEXT_MUTED)
 		else
-			shieldButton.Text = "Schild einschalten"
+			shieldButton.Text = if compact then "Schild" else "Schild einschalten"
+			UiKit.setButtonColors(shieldButton, Theme.BLUE, Theme.BLUE_DARK)
 		end
 	end)
 
@@ -3377,6 +3737,20 @@ function HudController.start()
 			end
 		end)
 	end)
+
+	Remotes.get("Alert").OnClientEvent:Connect(function(payload)
+		if typeof(payload) ~= "table" then
+			return
+		end
+		showAlert(tostring(payload.kind), tostring(payload.title), tostring(payload.body))
+	end)
+
+	Remotes.get("Announce").OnClientEvent:Connect(function(payload)
+		if typeof(payload) ~= "table" then
+			return
+		end
+		showBanner(tostring(payload.text), payload.rarity)
+	end)
 end
 
 return HudController
@@ -3389,6 +3763,12 @@ return HudController
 <ProtectedString name="Source">--!strict
 -- Laden: Tasten und Steckplaetze kaufen. Die Preise hier sind nur Anzeige -
 -- was ein Kauf kostet, entscheidet allein der Server.
+--
+-- Das Gestaltungsproblem dieser Liste: die Seltenheit muss auf einen Blick
+-- erkennbar sein, ohne dass man liest. Deshalb traegt sie vier Signale
+-- gleichzeitig (in UiKit.keyRow): Farbe, Rahmenstaerke, Zahl der Punkte
+-- und Hoehe der Taste. Farbe allein reicht nicht - das Spiel wird auf
+-- billigen Displays in der Sonne gespielt.
 
 local Players = game:GetService("Players")
 
@@ -3396,6 +3776,7 @@ local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
 local Theme = require(Shared:WaitForChild("Theme"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 local EconomyConfig = require(Shared:WaitForChild("Config"):WaitForChild("EconomyConfig"))
+local WorldConfig = require(Shared:WaitForChild("Config"):WaitForChild("WorldConfig"))
 local UiKit = require(script.Parent.Parent.UiKit)
 
 local ShopController = {}
@@ -3409,22 +3790,39 @@ function ShopController.start()
 	gui.IgnoreGuiInset = true
 	UiKit.autoScale(gui)
 
+	local compact = UiKit.compact()
 	local margin = Theme.SPACE.L
-	-- Sitzt in der linken Spalte unter der Statuskarte und dem Schild-Knopf.
-	local shieldBottom = Theme.HUD_STATS_HEIGHT + margin + Theme.SPACE.S + Theme.TOUCH_MIN
+	local pad = Theme.SPACE.M
+
+	-- Sitzt in derselben Spalte wie das HUD: breit unter dem Schild-Knopf,
+	-- auf dem Handy als zweiter Knopf am rechten Rand.
+	local buttonWidth = if compact then Theme.HUD_COMPACT_BUTTON_WIDTH else Theme.HUD_PANEL_WIDTH
+	local shieldBottom = Theme.HUD_TOP_INSET + Theme.HUD_STATS_HEIGHT + Theme.SPACE.S + Theme.TOUCH_MIN
+	local openPosition = if compact
+		then UDim2.new(1, -(buttonWidth + pad), 0, Theme.HUD_TOP_INSET + Theme.TOUCH_MIN + Theme.SPACE.S)
+		else UDim2.new(0, margin, 0, shieldBottom + Theme.SPACE.S)
+
 	local openButton = UiKit.button(gui, {
-		size = UDim2.new(0, Theme.HUD_PANEL_WIDTH, 0, Theme.TOUCH_MIN),
-		position = UDim2.new(0, margin, 0, shieldBottom + Theme.SPACE.S),
+		size = UDim2.new(0, buttonWidth, 0, Theme.TOUCH_MIN),
+		position = openPosition,
 		text = "Laden",
+		textSize = if compact then Theme.TEXT_SIZE.SMALL else Theme.TEXT_SIZE.BODY,
 		base = Theme.GREEN,
 		edge = Theme.GREEN_DARK,
 	})
 
 	-- Hoehe nicht ausrechnen, sondern vom Layout bestimmen lassen - sonst
-	-- passt sie nicht mehr, sobald eine Seltenheit dazukommt.
-	local panel = UiKit.panel(gui, UDim2.new(0, Theme.SHOP_PANEL_WIDTH, 0, 0), UDim2.new(0.5, -Theme.SHOP_PANEL_WIDTH / 2, 0.5, -240))
+	-- passt sie nicht mehr, sobald eine Seltenheit dazukommt. Oben
+	-- verankert, damit das Panel auf 360 px Hoehe nicht unten rausfaellt.
+	local panelWidth = if compact then Theme.HUD_TUTORIAL_COMPACT_WIDTH else Theme.SHOP_PANEL_WIDTH
+	local panel = UiKit.panel(
+		gui,
+		UDim2.new(0, panelWidth, 0, 0),
+		UDim2.new(0.5, -panelWidth / 2, 0, Theme.SPACE.L)
+	)
 	panel.AutomaticSize = Enum.AutomaticSize.Y
 	panel.Visible = false
+	panel.ZIndex = 2
 	UiKit.stack(panel)
 
 	UiKit.text(panel, {
@@ -3435,16 +3833,32 @@ function ShopController.start()
 		layoutOrder = 0,
 	})
 
+	-- Scrollflaeche: fuenf Zeilen a 88 px passen breit hin, auf einem
+	-- Handy quer nicht. Statt zwei Layouts scrollt die Liste.
+	local list = Instance.new("ScrollingFrame")
+	list.Size = UDim2.new(1, 0, 0, (if compact then Theme.SHOP_LIST_HEIGHT_COMPACT else Theme.SHOP_LIST_HEIGHT))
+	list.BackgroundTransparency = 1
+	list.BorderSizePixel = 0
+	list.CanvasSize = UDim2.new(0, 0, 0, 0)
+	list.AutomaticCanvasSize = Enum.AutomaticSize.Y
+	list.ScrollBarThickness = Theme.SCROLLBAR
+	list.ScrollBarImageColor3 = Theme.PANEL_EDGE
+	list.ScrollingDirection = Enum.ScrollingDirection.Y
+	list.LayoutOrder = 1
+	list.Parent = panel
+	UiKit.column(list)
+
 	for index, rarityName in EconomyConfig.RARITY_ORDER do
 		local rarity = EconomyConfig.RARITIES[rarityName]
-		local button = UiKit.button(panel, {
-			size = UDim2.new(1, 0, 0, Theme.TOUCH_MIN),
-			text = ("%s   +%d/s   %d Wins"):format(rarityName, rarity.vorratPerSecond, rarity.price),
-			base = Theme.RARITY_COLORS[rarityName] or Theme.PANEL,
-			edge = Theme.PANEL_EDGE,
+		local buy = UiKit.keyRow(list, {
+			rarity = rarityName,
+			letter = WorldConfig.KEY_LEGENDS[index] or "A",
+			title = rarityName,
+			rateText = ("+%d Vorrat pro Sekunde"):format(rarity.vorratPerSecond),
+			priceText = ("%s Wins"):format(UiKit.number(rarity.price)),
 			layoutOrder = index,
 		})
-		button.Activated:Connect(function()
+		buy.Activated:Connect(function()
 			Remotes.get("BuyKey"):FireServer(rarityName)
 		end)
 	end
@@ -3454,7 +3868,7 @@ function ShopController.start()
 		text = "Steckplatz kaufen",
 		base = Theme.GOLD,
 		edge = Theme.GOLD_DARK,
-		layoutOrder = #EconomyConfig.RARITY_ORDER + 1,
+		layoutOrder = 2,
 	})
 	slotButton.Activated:Connect(function()
 		Remotes.get("BuySlot"):FireServer()
@@ -3465,7 +3879,7 @@ function ShopController.start()
 		text = "Schliessen",
 		base = Theme.PANEL,
 		edge = Theme.PANEL_EDGE,
-		layoutOrder = #EconomyConfig.RARITY_ORDER + 2,
+		layoutOrder = 3,
 	})
 	closeButton.Activated:Connect(function()
 		panel.Visible = false
@@ -3479,11 +3893,13 @@ function ShopController.start()
 
 	Remotes.get("StateChanged").OnClientEvent:Connect(function(state)
 		if state.slotPrice then
-			slotButton.Text = ("Steckplatz %d   %d Wins"):format(state.slots + 1, state.slotPrice)
+			slotButton.Text = ("Steckplatz %d   %s Wins"):format(state.slots + 1, UiKit.number(state.slotPrice))
 		else
 			slotButton.Text = "Alle Steckplaetze gekauft"
 		end
-		openButton.Text = ("Laden   %d von %d Tasten"):format(state.keyCount, state.slots)
+		openButton.Text = if compact
+			then ("Laden %d/%d"):format(state.keyCount, state.slots)
+			else ("Laden   %d von %d Tasten"):format(state.keyCount, state.slots)
 	end)
 end
 
@@ -3501,19 +3917,78 @@ return ShopController
 --
 -- Alle Werte kommen aus Theme. In dieser Datei steht keine Farbe und keine
 -- Pixelzahl, die nicht von dort kommt.
+--
+-- Was Roblox-UI NICHT kann und was hier deshalb fehlt: kein Blur hinter
+-- Elementen, kein Schatten als Effekt, kein Radialverlauf. Die Trennung
+-- zwischen Panel und Welt macht der Rahmen, Tiefe macht die dunklere
+-- Unterkante, Verlaeufe laufen linear ueber eine Achse.
+
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
 
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
 local Theme = require(Shared:WaitForChild("Theme"))
 
 local UiKit = {}
 
-local function round(instance: Instance)
+local function round(instance: Instance, radius: UDim?)
 	local corner = Instance.new("UICorner")
-	corner.CornerRadius = Theme.CORNER
+	corner.CornerRadius = radius or Theme.CORNER
 	corner.Parent = instance
 end
 
--- Creme-weisse Flaeche mit runden Ecken.
+-- Handy quer: schmaler Bildschirm, Daumen an beiden unteren Ecken. Dann
+-- baut das HUD anders auf. Wird beim Start einmal gefragt.
+function UiKit.compact(): boolean
+	if not UserInputService.TouchEnabled then
+		return false
+	end
+	local camera = workspace.CurrentCamera
+	if not camera then
+		return false
+	end
+	local viewport = camera.ViewportSize
+	return viewport.X &lt; Theme.COMPACT_MAX_WIDTH or viewport.Y &lt; Theme.COMPACT_MAX_HEIGHT
+end
+
+-- Tausenderpunkte. "2.470" liest ein Kind schneller als "2470", und der
+-- Vorrat ist im Normalfall vierstellig.
+function UiKit.number(value: number): string
+	local text = tostring(math.floor(math.abs(value)))
+	local out = ""
+	local count = 0
+	for i = #text, 1, -1 do
+		out = string.sub(text, i, i) .. out
+		count += 1
+		if count % 3 == 0 and i &gt; 1 then
+			out = "." .. out
+		end
+	end
+	if value &lt; 0 then
+		return "-" .. out
+	end
+	return out
+end
+
+function UiKit.stroke(target: Instance, color: Color3, thickness: number?): UIStroke
+	local stroke = Instance.new("UIStroke")
+	stroke.Color = color
+	stroke.Thickness = thickness or 2
+	stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	stroke.Parent = target
+	return stroke
+end
+
+-- Linearer Verlauf ueber eine Achse. 90 = oben nach unten.
+function UiKit.gradient(target: Instance, from: Color3, to: Color3, rotation: number?): UIGradient
+	local gradient = Instance.new("UIGradient")
+	gradient.Color = ColorSequence.new(from, to)
+	gradient.Rotation = rotation or 90
+	gradient.Parent = target
+	return gradient
+end
+
+-- Creme-weisse Flaeche mit runden Ecken und Kante.
 function UiKit.panel(parent: Instance, size: UDim2, position: UDim2): Frame
 	local frame = Instance.new("Frame")
 	frame.Size = size
@@ -3521,6 +3996,7 @@ function UiKit.panel(parent: Instance, size: UDim2, position: UDim2): Frame
 	frame.BackgroundColor3 = Theme.PANEL
 	frame.BorderSizePixel = 0
 	round(frame)
+	UiKit.stroke(frame, Theme.PANEL_EDGE, 2)
 	frame.Parent = parent
 	return frame
 end
@@ -3608,6 +4084,16 @@ function UiKit.button(parent: Instance, options: ButtonOptions): TextButton
 	return button
 end
 
+-- Farbe eines bestehenden Knopfes umsetzen (Zustaende des Schild-Knopfes).
+-- Die Kante sitzt im Halter darunter, deshalb beide.
+function UiKit.setButtonColors(button: TextButton, base: Color3, edge: Color3)
+	button.BackgroundColor3 = base
+	local holder = button.Parent
+	if holder and holder:IsA("Frame") then
+		holder.BackgroundColor3 = edge
+	end
+end
+
 -- Untereinander-Layout mit gleichmaessigem Abstand und Innenrand.
 function UiKit.stack(parent: Instance, padding: number?)
 	local layout = Instance.new("UIListLayout")
@@ -3624,6 +4110,443 @@ function UiKit.stack(parent: Instance, padding: number?)
 	inset.Parent = parent
 
 	return layout
+end
+
+-- Nur Layout, kein Innenrand - fuer Listen in einer Scrollflaeche und fuer
+-- Reihen, die von links nach rechts laufen.
+function UiKit.column(parent: Instance, padding: number?): UIListLayout
+	local layout = Instance.new("UIListLayout")
+	layout.Padding = UDim.new(0, padding or Theme.SPACE.S)
+	layout.SortOrder = Enum.SortOrder.LayoutOrder
+	layout.Parent = parent
+	return layout
+end
+
+export type KeycapOptions = {
+	size: UDim2,
+	position: UDim2?,
+	rarity: string,
+	letter: string?,
+	layoutOrder: number?,
+}
+
+-- Kleine Taste als Bild: Unterkante in der Kantenfarbe, Oberseite mit
+-- linearem Verlauf, Buchstabe in der dunklen Seltenheitsfarbe. Gleiche
+-- Bauweise wie die Knoepfe, damit der Laden zur Welt passt.
+function UiKit.keycap(parent: Instance, options: KeycapOptions): Frame
+	local base = Theme.RARITY_COLORS[options.rarity] or Theme.PANEL
+	local edge = Theme.RARITY_EDGE[options.rarity] or Theme.PANEL_EDGE
+	local ink = Theme.RARITY_INK[options.rarity] or Theme.TEXT
+	local level = Theme.RARITY_RANK[options.rarity] or 1
+
+	local holder = Instance.new("Frame")
+	holder.Size = options.size
+	holder.Position = options.position or UDim2.new(0, 0, 0, 0)
+	holder.BackgroundColor3 = edge
+	holder.BorderSizePixel = 0
+	holder.LayoutOrder = options.layoutOrder or 0
+	round(holder)
+
+	local top = Instance.new("Frame")
+	top.Size = UDim2.new(1, -Theme.SPACE.S, 1, -Theme.KEYCAP_EDGE)
+	top.Position = UDim2.new(0, Theme.SPACE.XS, 0, 0)
+	top.BackgroundColor3 = base
+	top.BorderSizePixel = 0
+	round(top)
+	UiKit.gradient(top, base:Lerp(Color3.new(1, 1, 1), 0.3), base, 90)
+	top.Parent = holder
+
+	local letter = Instance.new("TextLabel")
+	letter.Size = UDim2.new(1, 0, 1, 0)
+	letter.BackgroundTransparency = 1
+	letter.Font = Theme.FONT
+	letter.TextScaled = true
+	letter.TextColor3 = ink
+	letter.Text = options.letter or "A"
+	letter.Parent = top
+
+	-- Legendary bekommt zusaetzlich einen Rahmen mit Verlauf. Ein Rahmen
+	-- darf einen Verlauf haben, eine Flaeche kein Leuchten - das ist in
+	-- Roblox-UI der einzige Weg, "es leuchtet" zu sagen.
+	if level &gt;= 5 then
+		local rim = UiKit.stroke(holder, edge, 3)
+		UiKit.gradient(rim, Theme.GOLD, edge, 90)
+	end
+
+	holder.Parent = parent
+	return holder
+end
+
+-- Fuenf Punkte, davon so viele gefuellt wie der Rang. Die Seltenheit muss
+-- ohne Lesen erkennbar sein, und Farbe allein reicht auf einem billigen
+-- Display in der Sonne nicht.
+function UiKit.pips(parent: Instance, options: { rarity: string, position: UDim2 }): Frame
+	local level = Theme.RARITY_RANK[options.rarity] or 1
+	local fill = Theme.RARITY_EDGE[options.rarity] or Theme.PANEL_EDGE
+
+	local row = Instance.new("Frame")
+	row.BackgroundTransparency = 1
+	row.Size = UDim2.new(0, Theme.PIP * 5 + Theme.PIP_GAP * 4, 0, Theme.PIP)
+	row.Position = options.position
+	UiKit.column(row, Theme.PIP_GAP).FillDirection = Enum.FillDirection.Horizontal
+
+	for index = 1, 5 do
+		local pip = Instance.new("Frame")
+		pip.Size = UDim2.new(0, Theme.PIP, 0, Theme.PIP)
+		pip.BorderSizePixel = 0
+		pip.LayoutOrder = index
+		pip.BackgroundColor3 = if index &lt;= level then fill else Theme.PANEL_EDGE
+		pip.BackgroundTransparency = if index &lt;= level then 0 else 0.55
+		round(pip, UDim.new(0, Theme.PIP_CORNER))
+		pip.Parent = row
+	end
+
+	row.Parent = parent
+	return row
+end
+
+export type SpeedBarOptions = {
+	size: UDim2,
+	position: UDim2?,
+	marks: { number },
+}
+
+-- Tempo-Balken mit Markierungen an den Stage-Toren: der Spieler soll
+-- sehen, wie weit er kommt, ohne zwei Zahlen zu vergleichen.
+function UiKit.speedBar(parent: Instance, options: SpeedBarOptions)
+	local track = Instance.new("Frame")
+	track.Size = options.size
+	track.Position = options.position or UDim2.new(0, 0, 0, 0)
+	track.BackgroundColor3 = Theme.PANEL_EDGE
+	track.BorderSizePixel = 0
+	track.ClipsDescendants = true
+	round(track, UDim.new(1, 0))
+
+	local fill = Instance.new("Frame")
+	fill.Size = UDim2.new(0, 0, 1, 0)
+	fill.BackgroundColor3 = Theme.GREEN
+	fill.BorderSizePixel = 0
+	round(fill, UDim.new(1, 0))
+	UiKit.gradient(fill, Theme.GREEN, Theme.GOLD, 0)
+	fill.Parent = track
+
+	for _, fraction in options.marks do
+		local mark = Instance.new("Frame")
+		mark.Size = UDim2.new(0, Theme.BAR_MARK_WIDTH, 1, 0)
+		mark.Position = UDim2.new(fraction, -Theme.BAR_MARK_WIDTH / 2, 0, 0)
+		mark.BackgroundColor3 = Theme.TEXT
+		mark.BorderSizePixel = 0
+		mark.ZIndex = 2
+		mark.Parent = track
+	end
+
+	track.Parent = parent
+
+	local api = {}
+	function api.set(fraction: number)
+		TweenService:Create(fill, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+			Size = UDim2.new(math.clamp(fraction, 0, 1), 0, 1, 0),
+		}):Play()
+	end
+	return api
+end
+
+-- Die Vorrat-Zahl muss beim Wachsen spuerbar sein: 90 ms hoch auf 1.08,
+-- 130 ms zurueck. Kurz genug, dass es bei jedem Tick nicht nervt.
+function UiKit.bump(target: GuiObject)
+	local scale = Instance.new("UIScale")
+	scale.Parent = target
+	local up = TweenService:Create(scale, TweenInfo.new(0.09, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+		Scale = Theme.BUMP_SCALE,
+	})
+	local down = TweenService:Create(scale, TweenInfo.new(0.13, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+		Scale = 1,
+	})
+	up.Completed:Connect(function()
+		down:Play()
+	end)
+	return function()
+		up:Play()
+	end
+end
+
+-- Steigende Plus-Zahl: macht den Zuwachs sichtbar, ohne die grosse Zahl zu
+-- stoeren. Steigt FLOAT_RISE Pixel in 700 ms und blendet dabei aus.
+function UiKit.floatUp(parent: Instance, options: { text: string, position: UDim2, color: Color3? })
+	local label = UiKit.text(parent, {
+		size = UDim2.new(0, 140, 0, 26),
+		position = options.position,
+		text = options.text,
+		textSize = Theme.TEXT_SIZE.BODY,
+		color = options.color or Theme.GREEN_TEXT,
+	})
+	label.ZIndex = 5
+
+	local target = UDim2.new(
+		options.position.X.Scale,
+		options.position.X.Offset,
+		options.position.Y.Scale,
+		options.position.Y.Offset - Theme.FLOAT_RISE
+	)
+	TweenService:Create(label, TweenInfo.new(0.7, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+		Position = target,
+		TextTransparency = 1,
+	}):Play()
+	task.delay(0.8, function()
+		label:Destroy()
+	end)
+end
+
+-- Endlos wandernder Balken. Auf jeder Onboarding-Karte muss sich etwas
+-- bewegen - ein neuer Spieler darf nie auf einen Text starren, der
+-- stillsteht.
+function UiKit.crawler(parent: Instance, color: Color3): Frame
+	local bar = Instance.new("Frame")
+	bar.Size = UDim2.new(0, Theme.CRAWLER_WIDTH, 0, Theme.CRAWLER_HEIGHT)
+	bar.Position = UDim2.new(0, 0, 1, -Theme.CRAWLER_HEIGHT)
+	bar.BackgroundColor3 = color
+	bar.BorderSizePixel = 0
+	bar.Parent = parent
+
+	TweenService:Create(
+		bar,
+		TweenInfo.new(2.2, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true),
+		{ Position = UDim2.new(1, -Theme.CRAWLER_WIDTH, 1, -Theme.CRAWLER_HEIGHT) }
+	):Play()
+	return bar
+end
+
+-- Schritt-Punkte des Onboardings: zeigt, dass es endlich ist.
+function UiKit.dots(parent: Instance, options: { count: number, position: UDim2 })
+	local row = Instance.new("Frame")
+	row.BackgroundTransparency = 1
+	row.Size = UDim2.new(0, options.count * Theme.PIP + (options.count - 1) * Theme.PIP_GAP, 0, Theme.PIP)
+	row.Position = options.position
+	UiKit.column(row, Theme.PIP_GAP).FillDirection = Enum.FillDirection.Horizontal
+
+	local dots: { Frame } = {}
+	for index = 1, options.count do
+		local dot = Instance.new("Frame")
+		dot.Size = UDim2.new(0, Theme.PIP, 0, Theme.PIP)
+		dot.BorderSizePixel = 0
+		dot.LayoutOrder = index
+		dot.BackgroundColor3 = Theme.PANEL_EDGE
+		round(dot, UDim.new(1, 0))
+		dot.Parent = row
+		table.insert(dots, dot)
+	end
+	row.Parent = parent
+
+	local api = {}
+	function api.set(step: number)
+		for index, dot in dots do
+			dot.BackgroundColor3 = if index &lt;= step then Theme.GREEN else Theme.PANEL_EDGE
+		end
+	end
+	return api
+end
+
+-- Serverweite Zeile. Faehrt ein, bleibt BANNER_SECONDS, faehrt aus. Farbe
+-- kommt aus der Seltenheit, damit man ohne Lesen weiss, wie fett der Klau
+-- war.
+function UiKit.banner(parent: Instance, position: UDim2)
+	local hidden = UDim2.new(position.X.Scale, position.X.Offset, 0, -Theme.BANNER_HEIGHT)
+
+	local holder = Instance.new("Frame")
+	holder.Size = UDim2.new(0, Theme.BANNER_WIDTH, 0, Theme.BANNER_HEIGHT)
+	holder.Position = hidden
+	holder.BackgroundColor3 = Theme.GOLD
+	holder.BorderSizePixel = 0
+	holder.Visible = false
+	holder.ZIndex = 4
+	round(holder)
+	local stroke = UiKit.stroke(holder, Theme.GOLD_DARK, 3)
+
+	local label = UiKit.text(holder, {
+		size = UDim2.new(1, -Theme.SPACE.XL, 1, 0),
+		position = UDim2.new(0, Theme.SPACE.M, 0, 0),
+		textSize = Theme.TEXT_SIZE.BODY,
+		align = Enum.TextXAlignment.Center,
+	})
+	holder.Parent = parent
+
+	local token = 0
+	return function(text: string, rarity: string?)
+		local base = if rarity then Theme.RARITY_COLORS[rarity] else nil
+		local edge = if rarity then Theme.RARITY_EDGE[rarity] else nil
+		local ink = if rarity then Theme.RARITY_INK[rarity] else nil
+		holder.BackgroundColor3 = base or Theme.GOLD
+		stroke.Color = edge or Theme.GOLD_DARK
+		label.TextColor3 = ink or Theme.GOLD_TEXT
+		label.Text = text
+
+		token += 1
+		local mine = token
+		holder.Visible = true
+		holder.Position = hidden
+		TweenService:Create(holder, TweenInfo.new(0.28, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+			Position = position,
+		}):Play()
+
+		task.delay(Theme.BANNER_SECONDS, function()
+			if token ~= mine then
+				return
+			end
+			TweenService:Create(holder, TweenInfo.new(0.22, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+				Position = hidden,
+			}):Play()
+			task.delay(0.25, function()
+				if token == mine then
+					holder.Visible = false
+				end
+			end)
+		end)
+	end
+end
+
+-- Grosse Einblendung fuer Klau und Auszahlung.
+--
+-- Die Flaeche bleibt creme-weiss, die Farbe steckt in Kante, Kopfbalken
+-- und Schrift: Rot als Textfarbe schafft auf dem Panel 4,9:1, dunkle
+-- Schrift auf einer roten Flaeche nur 3,6:1. Rot ist im Theme
+-- ausdruecklich "nur fuer Flaechen" - also traegt hier der Balken das Rot
+-- und nicht der Text.
+function UiKit.alert(parent: Instance)
+	local shown = UDim2.new(0.5, -Theme.ALERT_WIDTH / 2, 0.2, 0)
+
+	local card = UiKit.panel(parent, UDim2.new(0, Theme.ALERT_WIDTH, 0, Theme.ALERT_HEIGHT), shown)
+	card.Visible = false
+	card.ZIndex = 6
+	card.ClipsDescendants = true
+	-- Panel bringt seine Kante schon mit: umfaerben, nicht verdoppeln.
+	local stroke = card:FindFirstChildOfClass("UIStroke") or UiKit.stroke(card, Theme.RED_DARK, 4)
+	stroke.Color = Theme.RED_DARK
+	stroke.Thickness = 4
+
+	local bar = Instance.new("Frame")
+	bar.Size = UDim2.new(1, 0, 0, Theme.ALERT_BAR)
+	bar.BackgroundColor3 = Theme.RED
+	bar.BorderSizePixel = 0
+	bar.Parent = card
+
+	local title = UiKit.text(card, {
+		size = UDim2.new(1, -Theme.SPACE.XL, 0, 68),
+		position = UDim2.new(0, Theme.SPACE.M, 0, Theme.SPACE.L),
+		textSize = Theme.TEXT_SIZE.TITLE,
+		color = Theme.RED_TEXT,
+		align = Enum.TextXAlignment.Center,
+	})
+	local body = UiKit.text(card, {
+		size = UDim2.new(1, -Theme.SPACE.XL, 0, 52),
+		position = UDim2.new(0, Theme.SPACE.M, 0, 96),
+		textSize = Theme.TEXT_SIZE.LEAD,
+		align = Enum.TextXAlignment.Center,
+		wrapped = true,
+	})
+	local bumpTitle = UiKit.bump(title)
+
+	local token = 0
+	return function(kind: string, titleText: string, bodyText: string)
+		local cashout = kind == "cashout"
+		stroke.Color = if cashout then Theme.GOLD_DARK else Theme.RED_DARK
+		bar.BackgroundColor3 = if cashout then Theme.GOLD else Theme.RED
+		title.TextColor3 = if cashout then Theme.GOLD_TEXT else Theme.RED_TEXT
+		title.TextSize = if cashout then Theme.TEXT_SIZE.BLAST else Theme.TEXT_SIZE.TITLE
+		title.Text = titleText
+		body.Text = bodyText
+
+		card.Visible = true
+		card.Position = shown
+		bumpTitle()
+
+		-- Ruettler beim Klau: zwei kurze Ausschlaege, dann steht die Karte.
+		if not cashout then
+			local left = UDim2.new(0.5, -Theme.ALERT_WIDTH / 2 - Theme.SPACE.S, 0.2, 0)
+			local right = UDim2.new(0.5, -Theme.ALERT_WIDTH / 2 + Theme.SPACE.S, 0.2, 0)
+			task.spawn(function()
+				for _, target in { left, right, shown } do
+					TweenService:Create(card, TweenInfo.new(0.06, Enum.EasingStyle.Linear), {
+						Position = target,
+					}):Play()
+					task.wait(0.07)
+				end
+			end)
+		end
+
+		token += 1
+		local mine = token
+		task.delay(Theme.ALERT_SECONDS, function()
+			if token == mine then
+				card.Visible = false
+			end
+		end)
+	end
+end
+
+export type KeyRowOptions = {
+	rarity: string,
+	letter: string,
+	title: string,
+	rateText: string,
+	priceText: string,
+	layoutOrder: number?,
+}
+
+-- Eine Ladenzeile. Die Seltenheit steht viermal drin, ohne dass man ein
+-- Wort lesen muss: Farbe, Rahmenstaerke, Punkte und Hoehe der Taste.
+function UiKit.keyRow(parent: Instance, options: KeyRowOptions): TextButton
+	local level = Theme.RARITY_RANK[options.rarity] or 1
+	local edge = Theme.RARITY_EDGE[options.rarity] or Theme.PANEL_EDGE
+	local pad = Theme.SPACE.M
+
+	local row = Instance.new("Frame")
+	row.Size = UDim2.new(1, -(Theme.SCROLLBAR + Theme.SPACE.XS), 0, Theme.SHOP_ROW_HEIGHT)
+	row.BackgroundColor3 = Theme.PANEL
+	row.BorderSizePixel = 0
+	row.LayoutOrder = options.layoutOrder or 0
+	round(row)
+	UiKit.stroke(row, edge, Theme.SHOP_ROW_STROKE + level)
+
+	local thumbHeight = Theme.KEY_THUMB - (5 - level) * Theme.KEY_THUMB_STEP
+	UiKit.keycap(row, {
+		size = UDim2.new(0, Theme.KEY_THUMB, 0, thumbHeight),
+		-- unten ausgerichtet: die Hoehenleiter der Seltenheiten ist im
+		-- Laden dieselbe wie auf dem Plot.
+		position = UDim2.new(0, pad, 0, Theme.SHOP_ROW_HEIGHT - pad - thumbHeight),
+		rarity = options.rarity,
+		letter = options.letter,
+	})
+
+	local textLeft = pad + Theme.KEY_THUMB + Theme.SPACE.M
+	local textWidth = -(textLeft + Theme.SHOP_BUY_WIDTH + pad * 2)
+	UiKit.text(row, {
+		size = UDim2.new(1, textWidth, 0, 24),
+		position = UDim2.new(0, textLeft, 0, Theme.SPACE.M),
+		textSize = Theme.TEXT_SIZE.BODY,
+		text = options.title,
+	})
+	UiKit.pips(row, {
+		rarity = options.rarity,
+		position = UDim2.new(0, textLeft, 0, 42),
+	})
+	UiKit.text(row, {
+		size = UDim2.new(1, textWidth, 0, 20),
+		position = UDim2.new(0, textLeft, 0, 58),
+		textSize = Theme.TEXT_SIZE.SMALL,
+		color = Theme.TEXT_MUTED,
+		text = options.rateText,
+	})
+
+	local buy = UiKit.button(row, {
+		size = UDim2.new(0, Theme.SHOP_BUY_WIDTH, 0, Theme.TOUCH_MIN),
+		position = UDim2.new(1, -(Theme.SHOP_BUY_WIDTH + pad), 0, (Theme.SHOP_ROW_HEIGHT - Theme.TOUCH_MIN) / 2),
+		text = options.priceText,
+		base = Theme.GREEN,
+		edge = Theme.GREEN_DARK,
+	})
+
+	row.Parent = parent
+	return buy
 end
 
 -- Skaliert das ganze HUD fuer kleine Bildschirme. Ohne das ist das HUD auf

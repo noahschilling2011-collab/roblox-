@@ -166,6 +166,26 @@ local function stealFromPlayer(thief: Player, part: BasePart, ref)
 	TutorialService.report(thief, "steal")
 	notify(thief, ("Geklaut: %s mit %d Vorrat."):format(key.rarity, carried))
 	notify(victim, ("%s hat deine %s geklaut (%d Vorrat weg)."):format(thief.DisplayName, key.rarity, lost))
+
+	-- Das Opfer soll nicht informiert werden, sondern wuetend: Name des
+	-- Diebs gross, die verlorene Zahl darunter, rote Kante, Ruettler.
+	Remotes.get("Alert"):FireClient(victim, {
+		kind = "stolen",
+		title = string.upper(thief.DisplayName),
+		body = ("hat deine %s geklaut - %d Vorrat weg"):format(key.rarity, lost),
+	})
+
+	if EconomyConfig.ANNOUNCE_RARITIES[key.rarity] then
+		Remotes.get("Announce"):FireAllClients({
+			rarity = key.rarity,
+			text = ("%s reisst bei %s eine %s - %d Vorrat unterwegs"):format(
+				thief.DisplayName,
+				victim.DisplayName,
+				string.upper(key.rarity),
+				carried
+			),
+		})
+	end
 end
 
 local function attemptSteal(thief: Player, part: BasePart)

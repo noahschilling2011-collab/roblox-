@@ -14,6 +14,8 @@ local EVENTS = {
 	"BuyKey", -- Client -> Server: rarityName
 	"BuySlot", -- Client -> Server: (keine Argumente)
 	"ActivateShield", -- Client -> Server: (keine Argumente)
+	"Alert", -- Server -> Client: {kind, title, body} - grosse Einblendung
+	"Announce", -- Server -> alle: {rarity, text} - serverweite Zeile
 }
 
 local Remotes = {}

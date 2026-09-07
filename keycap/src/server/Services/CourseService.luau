@@ -125,6 +125,13 @@ local function cashOut(player: Player, stageIndex: number, pad: BasePart)
 	RunTimerService.markCashOut(player, stageIndex)
 	TutorialService.report(player, "cashout")
 	notify(player, ("+%d Wins ausgezahlt (Stage %d)."):format(wins, stageIndex))
+	-- Die Belohnung braucht mehr als eine Zeile oben am Rand: der Vorrat
+	-- ist gerade komplett weg, das muss sich gross anfuehlen.
+	Remotes.get("Alert"):FireClient(player, {
+		kind = "cashout",
+		title = ("+%d"):format(wins),
+		body = ("Wins - Vorrat %d geleert an Stage %d"):format(vorrat, stageIndex),
+	})
 end
 
 local function buildPad(stageIndex: number)

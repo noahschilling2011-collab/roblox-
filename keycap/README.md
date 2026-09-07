@@ -11,7 +11,7 @@ Im Code steht an jedem Wert, woher er kommt: `[KONZEPT]`, `[GEMESSEN]`, `[ABGELE
 `[ENTSCHEIDUNG]`.
 
 **Nichts davon lief je in Roblox.** Geprüft sind: Syntax aller 25 Dateien im echten
-Luau-Compiler, und 63 Logik-/Balancing-/Design-Tests in einer echten Luau-VM. Nicht geprüft ist
+Luau-Compiler, und 66 Logik-/Balancing-/Design-Tests in einer echten Luau-VM. Nicht geprüft ist
 jeder Roblox-API-Aufruf zur Laufzeit — Instanzen, Prompts, Welds, DataStore, Replikation.
 Der erste Studio-Start wird Fehler zeigen.
 
@@ -143,7 +143,7 @@ npm install
 npm test
 ```
 
-63 Tests in einer echten Luau-VM (WASM) plus Syntaxprüfung aller `src/`-Dateien im
+66 Tests in einer echten Luau-VM (WASM) plus Syntaxprüfung aller `src/`-Dateien im
 echten Luau-Compiler. Exit-Code 0 = alles grün. Geprüft werden unter anderem die Zahlen
 aus der Bewertung: Gates bei 700 / 1.700 / 2.950 Vorrat, Deckel bei 4.200, Stützwerte
 90R / 150R / 174R — und dass jedes Tor vor seinem Pad steht und alle Steckplätze auf

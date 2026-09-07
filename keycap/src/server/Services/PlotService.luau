@@ -120,31 +120,63 @@ function PlotService.renderKeys(plot: Plot, keys: { { rarity: string, vorrat: nu
 	clearKeys(plot)
 
 	for index, key in keys do
+		-- Hoehe, Kantenlicht und Material haengen an der Seltenheit. Eine
+		-- Legendary muss sich aus 20 m von einer Common unterscheiden
+		-- lassen - daran haengt, ob ein Dieb weiss, wo der Weg sich lohnt.
+		local rank = Theme.RARITY_RANK[key.rarity] or 1
+		local crown = Theme.KEY_CROWN[key.rarity] or 1
+		local extra = WorldConfig.KEY_SIZE.Y * (crown - 1)
+
 		local part = Instance.new("Part")
 		part.Name = "Key" .. index
-		part.Size = WorldConfig.KEY_SIZE
-		part.Position = WorldLayout.slotPosition(plot.base.Position, index)
+		part.Size = Vector3.new(WorldConfig.KEY_SIZE.X, WorldConfig.KEY_SIZE.Y * crown, WorldConfig.KEY_SIZE.Z)
+		-- Grundflaeche bleibt, die Taste waechst nach oben: das Raster aus
+		-- WorldLayout.slotPosition passt weiter.
+		part.Position = WorldLayout.slotPosition(plot.base.Position, index) + Vector3.new(0, extra / 2, 0)
 		part.Anchored = true
 		part.TopSurface = Enum.SurfaceType.Smooth
-		part.Material = Enum.Material.SmoothPlastic
+		part.Material = if rank >= 5 then Enum.Material.Neon else Enum.Material.SmoothPlastic
 		part.Color = Theme.RARITY_COLORS[key.rarity] or Theme.PANEL
+
+		-- Kantenlicht statt Schatten: Roblox-UI kann keinen Schatten, und
+		-- in der Welt zeichnet eine SelectionBox die Kanten sauber nach.
+		local rim = Instance.new("SelectionBox")
+		rim.Adornee = part
+		rim.Color3 = Theme.RARITY_EDGE[key.rarity] or Theme.PANEL_EDGE
+		rim.LineThickness = Theme.KEY_RIM_BASE + Theme.KEY_RIM_STEP * rank
+		rim.SurfaceTransparency = 1
+		rim.Parent = part
 
 		local billboard = Instance.new("BillboardGui")
 		billboard.Name = "Info"
-		billboard.Size = UDim2.new(0, 150, 0, 44)
-		billboard.StudsOffset = Vector3.new(0, 3, 0)
+		billboard.Size = UDim2.new(0, 190, 0, 68)
+		billboard.StudsOffset = Vector3.new(0, 2.6 + extra / 2, 0)
 		billboard.AlwaysOnTop = false
-		billboard.MaxDistance = 120
+		billboard.MaxDistance = Theme.KEY_LABEL_DISTANCE
+
+		-- Seltenheit klein darueber, Vorrat gross darunter. Aus der Ferne
+		-- bleibt nur die Zahl lesbar - und genau die entscheidet.
+		local rarityLabel = Instance.new("TextLabel")
+		rarityLabel.Name = "Rarity"
+		rarityLabel.Size = UDim2.new(1, 0, 0.36, 0)
+		rarityLabel.BackgroundTransparency = 1
+		rarityLabel.Font = Theme.FONT
+		rarityLabel.TextScaled = true
+		rarityLabel.TextColor3 = Theme.RARITY_COLORS[key.rarity] or Theme.PANEL
+		rarityLabel.TextStrokeTransparency = 0.25
+		rarityLabel.Text = string.upper(key.rarity)
+		rarityLabel.Parent = billboard
 
 		local label = Instance.new("TextLabel")
 		label.Name = "Vorrat"
-		label.Size = UDim2.new(1, 0, 1, 0)
+		label.Size = UDim2.new(1, 0, 0.64, 0)
+		label.Position = UDim2.new(0, 0, 0.36, 0)
 		label.BackgroundTransparency = 1
 		label.Font = Theme.FONT
 		label.TextScaled = true
-		label.TextColor3 = Theme.TEXT
-		label.TextStrokeTransparency = 0.5
-		label.Text = key.rarity
+		label.TextColor3 = Theme.PANEL
+		label.TextStrokeTransparency = 0.2
+		label.Text = "0"
 		label.Parent = billboard
 		billboard.Parent = part
 
@@ -160,7 +192,7 @@ function PlotService.renderKeys(plot: Plot, keys: { { rarity: string, vorrat: nu
 		letter.BackgroundTransparency = 1
 		letter.Font = Theme.FONT
 		letter.TextScaled = true
-		letter.TextColor3 = Theme.TEXT
+		letter.TextColor3 = Theme.RARITY_INK[key.rarity] or Theme.TEXT
 		letter.Text = WorldConfig.KEY_LEGENDS[index] or "?"
 		letter.Parent = legend
 		legend.Parent = part
@@ -211,7 +243,9 @@ function PlotService.refreshLabels(plot: Plot, keys: { { rarity: string, vorrat:
 		local billboard = part:FindFirstChild("Info")
 		local label = if billboard then billboard:FindFirstChild("Vorrat") else nil
 		if key and label and label:IsA("TextLabel") then
-			label.Text = ("%s\n%d"):format(key.rarity, math.floor(key.vorrat))
+			-- Nur noch die Zahl: die Seltenheit steht im eigenen Label
+			-- darueber und aendert sich nicht.
+			label.Text = tostring(math.floor(key.vorrat))
 		end
 	end
 end

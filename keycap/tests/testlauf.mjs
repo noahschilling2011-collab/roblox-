@@ -537,6 +537,9 @@ test("Jede Schrift-auf-Flaeche-Kombination schafft 4,5:1", function()
 	}
 	for _, name in Config.RARITY_ORDER do
 		table.insert(kombinationen, { "Knopfschrift auf " .. name, Theme.TEXT, Theme.RARITY_COLORS[name] })
+		-- Eigene Schriftfarbe je Seltenheit: die Kommentare im Theme nennen
+		-- konkrete Verhaeltnisse, also werden sie auch nachgerechnet.
+		table.insert(kombinationen, { "Seltenheitsschrift auf " .. name, Theme.RARITY_INK[name], Theme.RARITY_COLORS[name] })
 	end
 
 	for _, eintrag in kombinationen do
@@ -561,6 +564,56 @@ test("Jede Knopfkante ist dunkler als ihre Flaeche", function()
 		expect(dunkel < hell, name .. "_DARK ist nicht dunkler - der 3D-Effekt kippt")
 	end
 	expect(luminance(Theme.PANEL_EDGE) < luminance(Theme.PANEL), "PANEL_EDGE ist nicht dunkler")
+	for _, name in Config.RARITY_ORDER do
+		expect(luminance(Theme.RARITY_EDGE[name]) < luminance(Theme.RARITY_COLORS[name]),
+			"RARITY_EDGE." .. name .. " ist nicht dunkler als die Flaeche")
+	end
+end)
+
+test("Seltenheit ist auch ohne Farbe erkennbar", function()
+	-- Farbe allein reicht auf einem billigen Display in der Sonne nicht -
+	-- Rang und Tastenhoehe muessen dieselbe Information doppelt tragen.
+	local letzterRang, letzteHoehe = 0, 0
+	for _, name in Config.RARITY_ORDER do
+		local rang = Theme.RARITY_RANK[name]
+		local hoehe = Theme.KEY_CROWN[name]
+		expect(rang ~= nil, "kein Rang fuer " .. name)
+		expect(hoehe ~= nil, "keine Tastenhoehe fuer " .. name)
+		expect(rang > letzterRang, "Rang steigt nicht bei " .. name)
+		expect(hoehe > letzteHoehe, "Tastenhoehe steigt nicht bei " .. name)
+		letzterRang, letzteHoehe = rang, hoehe
+	end
+end)
+
+test("Jede Tastenhoehe steht buendig auf dem Plot, keine schwebt", function()
+	-- Das ist die Invariante, die KEY_CROWN brechen koennte: die Taste
+	-- waechst nach oben, ihre Unterkante muss auf der Plotoberflaeche
+	-- bleiben. Rechnung wie in PlotService.renderKeys.
+	local mitte = Layout.plotPosition(1)
+	local plotOberflaeche = mitte.Y + World.PLOT_SIZE.Y / 2
+	for _, name in Config.RARITY_ORDER do
+		local crown = Theme.KEY_CROWN[name]
+		local extra = World.KEY_SIZE.Y * (crown - 1)
+		local mittelpunkt = Layout.slotPosition(mitte, 1).Y + extra / 2
+		local unterkante = mittelpunkt - World.KEY_SIZE.Y * crown / 2
+		expect(math.abs(unterkante - plotOberflaeche) < 0.001,
+			name .. ": Unterkante " .. unterkante .. " statt " .. plotOberflaeche)
+	end
+end)
+
+test("Keine Taste ragt in das Plot-Schild", function()
+	-- Das Schild steht an der Vorderkante, die Tasten stehen im Raster
+	-- dahinter. Hoehe allein ist also kein Problem, solange sie sich in Z
+	-- nicht ueberschneiden - genau das wird hier geprueft.
+	local mitte = Layout.plotPosition(1)
+	local schild = Layout.signPosition(mitte)
+	local schildVorderkante = schild.Z - 0.5 -- Schild ist 1 Stud tief
+	local hinterste = 0
+	for slot = 1, Config.MAX_KEY_SLOTS do
+		hinterste = math.max(hinterste, Layout.slotPosition(mitte, slot).Z + World.KEY_SIZE.Z / 2)
+	end
+	expect(hinterste < schildVorderkante,
+		"Taste reicht bis Z=" .. hinterste .. ", Schild beginnt bei " .. schildVorderkante)
 end)
 
 -- 15) Boden. Ohne durchgehende Flaeche faellt der Spieler ins Leere.

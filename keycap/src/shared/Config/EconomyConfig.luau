@@ -87,6 +87,14 @@ local EconomyConfig = {
 	CARRY_SECONDS = 8, -- so lange traegt man die geklaute Taste sichtbar
 	SHOP_HOLD_SECONDS = 0.3,
 
+	-- ---------------------------------------------------------------
+	-- Serverweite Ankuendigung [ENTSCHEIDUNG]
+	-- Nur die beiden obersten Seltenheiten. Bei jedem Common-Klau waere
+	-- die Zeile Rauschen und niemand liest sie mehr - und genau diese
+	-- Zeile ist der Screenshot, den Spieler posten.
+	-- ---------------------------------------------------------------
+	ANNOUNCE_RARITIES = { Epic = true, Legendary = true },
+
 	-- Rate-Limit pro Spieler und Remote (Anfragen pro Sekunde).
 	REMOTE_RATE_LIMIT = 6,
 
