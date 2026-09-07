@@ -13,7 +13,10 @@ local RunService = game:GetService("RunService")
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
 local EconomyConfig = require(Shared.Config.EconomyConfig)
 
-local SCHEMA_VERSION = 1
+-- 2: tutorialStep dazu. Profile aus Version 1 bekommen ihn per Migration
+-- auf 1 gesetzt und laufen das Tutorial einmal - das Spiel ist nie
+-- veroeffentlicht worden, es gibt also niemanden, den das stoert.
+local SCHEMA_VERSION = 2
 local STORE_NAME = "KeycapRush_Profiles_v1"
 local LOCK_STALE_SECONDS = 120 -- aelterer Lock gilt als abgestuerzter Server
 -- Ein Schreibvorgang erneuert Daten UND Lock, deshalb nur ein Intervall.
@@ -30,6 +33,7 @@ export type Profile = {
 	keys: { Key },
 	totalStolen: number,
 	totalCashedOut: number,
+	tutorialStep: number,
 }
 
 local DataService = {}
@@ -52,6 +56,7 @@ local function defaultProfile(): Profile
 		keys = keys,
 		totalStolen = 0,
 		totalCashedOut = 0,
+		tutorialStep = 1,
 	}
 end
 

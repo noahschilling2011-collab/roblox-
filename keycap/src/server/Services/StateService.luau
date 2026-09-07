@@ -12,6 +12,7 @@ local DataService = require(script.Parent.DataService)
 local ProductionService = require(script.Parent.ProductionService)
 local SpeedService = require(script.Parent.SpeedService)
 local StealService = require(script.Parent.StealService)
+local TutorialService = require(script.Parent.TutorialService)
 
 local StateService = {}
 
@@ -50,6 +51,8 @@ function StateService.start()
 					-- naechstes Tor, das noch nicht offen ist (nil = alle offen)
 					nextStage = nextStage,
 					nextStageVorrat = if nextStage then EconomyLogic.vorratForStage(nextStage) else nil,
+					-- nil = Tutorial durch
+					tutorial = TutorialService.stateFor(player),
 				})
 			end
 		end

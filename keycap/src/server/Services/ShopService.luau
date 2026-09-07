@@ -11,6 +11,7 @@ local Remotes = require(Shared.Remotes)
 local RateLimit = require(Shared.RateLimit)
 local DataService = require(script.Parent.DataService)
 local PlotService = require(script.Parent.PlotService)
+local TutorialService = require(script.Parent.TutorialService)
 
 local ShopService = {}
 
@@ -50,6 +51,7 @@ local function onBuyKey(player: Player, rarityName: any)
 	table.insert(profile.keys, { rarity = rarityName, vorrat = 0 })
 	PlotService.rebuildKeys(player.UserId)
 	DataService.syncLeaderstats(player)
+	TutorialService.report(player, "buy")
 	notify(player, ("%s gekauft (-%d Wins)."):format(rarityName, price))
 end
 

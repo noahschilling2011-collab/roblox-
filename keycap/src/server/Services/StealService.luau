@@ -18,6 +18,7 @@ local PlotService = require(script.Parent.PlotService)
 local SpeedService = require(script.Parent.SpeedService)
 local CarryService = require(script.Parent.CarryService)
 local NpcPlotService = require(script.Parent.NpcPlotService)
+local TutorialService = require(script.Parent.TutorialService)
 
 local StealService = {}
 
@@ -107,6 +108,7 @@ local function stealFromNpc(thief: Player, part: BasePart, ref)
 	CarryService.show(thief, taken.rarity, taken.vorrat)
 	PlotService.rebuildKeys(thief.UserId)
 	DataService.syncLeaderstats(thief)
+	TutorialService.report(thief, "steal")
 	notify(thief, ("Mitgenommen: %s mit %d Vorrat."):format(taken.rarity, taken.vorrat))
 end
 
@@ -161,6 +163,7 @@ local function stealFromPlayer(thief: Player, part: BasePart, ref)
 	PlotService.rebuildKeys(thief.UserId)
 	DataService.syncLeaderstats(thief)
 
+	TutorialService.report(thief, "steal")
 	notify(thief, ("Geklaut: %s mit %d Vorrat."):format(key.rarity, carried))
 	notify(victim, ("%s hat deine %s geklaut (%d Vorrat weg)."):format(thief.DisplayName, key.rarity, lost))
 end

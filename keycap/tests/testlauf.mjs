@@ -19,6 +19,7 @@ const modules = [
   ["EconomyLogic", "src/shared/EconomyLogic.luau"],
   ["WorldConfig", "src/shared/Config/WorldConfig.luau"],
   ["RateLimit", "src/shared/RateLimit.luau"],
+  ["TutorialConfig", "src/shared/Config/TutorialConfig.luau"],
 ];
 
 // Stubs fuer die Roblox-Globals, die die Shared-Module anfassen.
@@ -35,6 +36,7 @@ local Config = __deps["EconomyConfig"]
 local Logic = __deps["EconomyLogic"]
 local World = __deps["WorldConfig"]
 local RateLimit = __deps["RateLimit"]
+local Tutorial = __deps["TutorialConfig"]
 
 local results = {}
 local passed, failed = 0, 0
@@ -365,6 +367,55 @@ test("Trage-Fenster ist kuerzer als die kuerzeste Abklingzeit", function()
 	-- Sonst koennte man dauerhaft als Dieb markiert herumlaufen.
 	expect(Config.CARRY_SECONDS < Config.NPC_PAIR_COOLDOWN_SECONDS, "Trage-Fenster zu lang")
 	expect(Config.CARRY_SECONDS > 0, "Beute ist nie sichtbar")
+end)
+
+-- 12) Onboarding.
+test("Tutorial hat Schritte, jeder mit Text und Abschluss-Ereignis", function()
+	expect(#Tutorial.STEPS >= 3, "zu wenige Schritte")
+	expect(#Tutorial.STEPS <= 6, "zu viele Schritte - unter einer Minute soll es gehen")
+	local gesehen = {}
+	for index, step in Tutorial.STEPS do
+		expect(type(step.id) == "string" and step.id ~= "", "Schritt " .. index .. " ohne id")
+		expect(type(step.text) == "string" and #step.text > 20, "Schritt " .. index .. " ohne brauchbaren Text")
+		expect(type(step.event) == "string", "Schritt " .. index .. " ohne Ereignis")
+		expect(gesehen[step.id] == nil, "doppelte Schritt-id: " .. step.id)
+		gesehen[step.id] = true
+	end
+end)
+
+test("Nur der erste Schritt haengt an einer Zahl, der Rest an Handlungen", function()
+	expect(Tutorial.STEPS[1].event == "vorrat", "erster Schritt ist keine Wartezeit")
+	expect(Tutorial.STEPS[1].requiresVorratForStage ~= nil, "erstem Schritt fehlt die Stage")
+	for index = 2, #Tutorial.STEPS do
+		expect(Tutorial.STEPS[index].event ~= "vorrat", "Schritt " .. index .. " wartet nur")
+		expect(Tutorial.STEPS[index].requiresVorratForStage == nil, "Schritt " .. index .. " haengt an einer Zahl")
+	end
+end)
+
+test("Die Ereignisse decken die drei Kernhandlungen ab", function()
+	local events = {}
+	for _, step in Tutorial.STEPS do
+		events[step.event] = true
+	end
+	for _, needed in { "cashout", "buy", "steal" } do
+		expect(events[needed], "Tutorial erklaert '" .. needed .. "' nicht")
+	end
+end)
+
+test("Der erste Schritt verlangt eine erreichbare Stage", function()
+	local stage = Tutorial.STEPS[1].requiresVorratForStage
+	expect(Config.STAGE_GATES[stage] ~= nil, "unbekannte Stage im ersten Schritt: " .. tostring(stage))
+	expect(stage == 1, "neuer Spieler soll nicht auf Stage " .. stage .. " warten")
+end)
+
+test("Tutorial-Belohnung reicht fuer ein paar Tasten, macht aber nicht reich", function()
+	local common = Logic.rarity("Common").price
+	expect(Tutorial.REWARD_WINS >= common * 3, "Belohnung zu klein: " .. Tutorial.REWARD_WINS)
+	expect(Tutorial.REWARD_WINS < Logic.rarity("Rare").price, "Belohnung ueberspringt das Spiel")
+end)
+
+test("Der Abschlusstext existiert", function()
+	expect(type(Tutorial.DONE_TEXT) == "string" and #Tutorial.DONE_TEXT > 20, "kein Abschlusstext")
 end)
 
 table.insert(results, "")

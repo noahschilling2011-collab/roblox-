@@ -91,6 +91,17 @@ function HudController.start()
 		Theme.BLUE_DARK
 	)
 
+	-- Tutorial-Karte unten mittig: gut lesbar, weit weg von den Statuszahlen
+	-- oben links. Der Abstand nach unten muss den Sprung-Knopf freilassen,
+	-- der auf dem Handy unten rechts sitzt.
+	local tutorialCard = panel(gui, UDim2.new(0.9, 0, 0, 84), UDim2.new(0.05, 0, 1, -200))
+	tutorialCard.Visible = false
+	local tutorialText = label(tutorialCard, UDim2.new(1, -24, 1, -16), UDim2.new(0, 12, 0, 8), "")
+	tutorialText.TextXAlignment = Enum.TextXAlignment.Center
+	tutorialText.TextWrapped = true
+	tutorialText.TextScaled = false
+	tutorialText.TextSize = 22
+
 	local toast = label(gui, UDim2.new(0, 460, 0, 40), UDim2.new(0.5, -230, 0, 24), "")
 	toast.TextXAlignment = Enum.TextXAlignment.Center
 	toast.TextStrokeTransparency = 0.4
@@ -116,6 +127,13 @@ function HudController.start()
 		else
 			hintLabel.Text = "Alle Tore offen - lauf zu Stage 3!"
 			hintLabel.TextColor3 = Theme.GREEN_DARK
+		end
+
+		if state.tutorial then
+			tutorialCard.Visible = true
+			tutorialText.Text = ("Schritt %d: %s"):format(state.tutorial.step, state.tutorial.text)
+		else
+			tutorialCard.Visible = false
 		end
 
 		if state.shieldLeft > 0 then
