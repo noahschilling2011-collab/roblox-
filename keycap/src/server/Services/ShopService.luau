@@ -49,7 +49,8 @@ local function onBuyKey(player: Player, rarityName: any)
 
 	profile.wins -= price
 	table.insert(profile.keys, { rarity = rarityName, vorrat = 0 })
-	PlotService.rebuildKeys(player.UserId)
+	-- Die neue Taste faellt sichtbar in ihren Sockel.
+	PlotService.rebuildKeys(player.UserId, #profile.keys)
 	DataService.syncLeaderstats(player)
 	TutorialService.report(player, "buy")
 	notify(player, ("%s gekauft (-%d Wins)."):format(rarityName, price))

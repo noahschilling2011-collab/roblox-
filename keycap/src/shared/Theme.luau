@@ -19,6 +19,19 @@ local Theme = {
 	-- Look zusammenhaelt - siehe DESIGN.md.
 	INK = Color3.fromRGB(24, 20, 18),
 	OUTLINE_THICKNESS = 3, -- Umrandung von Panels und Knoepfen
+
+	-- Bewegung. Jede Animation bleibt unter 0,4 s - beim zwanzigsten Mal
+	-- darf sie nicht nerven. Alles ueber TweenService, nichts ueber
+	-- while-true-Schleifen.
+	MOTION = {
+		DROP_SECONDS = 0.34, -- gekaufte Taste faellt in den Sockel
+		DROP_HEIGHT = 26,
+		PULSE_SECONDS = 1.1, -- volle Taste, langsam - das darf auffallen
+		PULSE_SCALE = 1.08,
+		COLLAPSE_SECONDS = 0.38, -- Lichtsaeule bricht beim Auszahlen zusammen
+		DOME_SECONDS = 0.3, -- Kuppel waechst von unten
+		FLASH_SECONDS = 0.18, -- kurzer Blitz beim gelungenen Klau
+	},
 	GRADIENT_LIFT = 0.14, -- Verlauf: oben um diesen Anteil heller
 
 	TEXT = Color3.fromRGB(58, 52, 44),
@@ -95,6 +108,14 @@ local Theme = {
 		-- kommt die Farbe sonst nirgends vor.
 		SIGNAL = Color3.fromRGB(61, 224, 224),
 		SIGNAL_DIM = Color3.fromRGB(28, 128, 128),
+
+		-- Hintergrund. Alles nur wenig heller als die Matte - es sind
+		-- Silhouetten im Gegenlicht, keine Objekte zum Anschauen.
+		CUP = Color3.fromRGB(58, 58, 74),
+		CUP_COFFEE = Color3.fromRGB(24, 16, 14),
+		CABLE = Color3.fromRGB(30, 30, 40),
+		MOUSE = Color3.fromRGB(44, 44, 56),
+		DUST = Color3.fromRGB(150, 165, 200),
 	},
 
 	-- Dunkle Kante je Seltenheit. Ohne die ist eine Taste eine flache
@@ -149,6 +170,12 @@ local Theme = {
 		Legendary = 24,
 	},
 	RARITY_LIGHT_BRIGHTNESS = 1.4,
+	-- Nur die wertvollsten Tasten eines Plots leuchten. Ohne diese Grenze
+	-- waeren es im Vollausbau 181 PointLights (9 Spielerplots x 20
+	-- Steckplaetze plus Monitor) - das ist auf dem Handy nicht bezahlbar.
+	-- Mit 4 je Plot sind es hoechstens 48. Wer die teuersten Tasten
+	-- leuchten sieht, sieht genau das, was ihn als Dieb interessiert.
+	MAX_LIGHTS_PER_PLOT = 4,
 
 	RARITY_RANK = {
 		Common = 1,

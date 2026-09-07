@@ -7,6 +7,7 @@
 -- den ersten Blick erkennen, ob es sich "lohnt", sondern hinlaufen muessen.
 
 local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
 
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
 local EconomyConfig = require(Shared.Config.EconomyConfig)
@@ -250,9 +251,31 @@ end
 
 -- Baut die Tasten-Parts eines Plots neu. `keys` ist die Liste, die dieser
 -- Plot gerade haelt - beim Spieler das Profil, beim NPC die NPC-Liste.
-function PlotService.renderKeys(plot: Plot, keys: { { rarity: string, vorrat: number } }, slots: number?)
+function PlotService.renderKeys(plot: Plot, keys: { { rarity: string, vorrat: number } }, slots: number?, dropIndex: number?)
 	clearKeys(plot)
 	updateSlotMarkers(plot, #keys, slots or #keys)
+
+	-- Nur die wertvollsten Tasten bekommen ein Licht. Reihenfolge nach
+	-- Rang, bei Gleichstand nach Vorrat - das ist genau, was einen Dieb
+	-- interessiert.
+	local leuchtend: { [number]: boolean } = {}
+	do
+		local kandidaten = {}
+		for index, key in keys do
+			if (Theme.RARITY_LIGHT_RANGE[key.rarity] or 0) > 0 then
+				table.insert(kandidaten, { index = index, rank = Theme.RARITY_RANK[key.rarity] or 1, vorrat = key.vorrat })
+			end
+		end
+		table.sort(kandidaten, function(a, b)
+			if a.rank ~= b.rank then
+				return a.rank > b.rank
+			end
+			return a.vorrat > b.vorrat
+		end)
+		for i = 1, math.min(#kandidaten, Theme.MAX_LIGHTS_PER_PLOT) do
+			leuchtend[kandidaten[i].index] = true
+		end
+	end
 
 	for index, key in keys do
 		-- Hoehe, Kantenlicht und Material haengen an der Seltenheit. Eine
@@ -312,7 +335,7 @@ function PlotService.renderKeys(plot: Plot, keys: { { rarity: string, vorrat: nu
 		-- die Tastaturplatte nur 2,89 bzw. 2,82:1 - ohne eigenes Licht
 		-- verschwinden sie auf dem dunklen Untergrund.
 		local reichweite = Theme.RARITY_LIGHT_RANGE[key.rarity] or 0
-		if reichweite > 0 then
+		if reichweite > 0 and leuchtend[index] then
 			local glow = Instance.new("PointLight")
 			glow.Color = Theme.RARITY_COLORS[key.rarity] or Theme.WORLD.SIGNAL
 			glow.Range = reichweite
@@ -393,6 +416,19 @@ function PlotService.renderKeys(plot: Plot, keys: { { rarity: string, vorrat: nu
 		prompt.Parent = part
 
 		part.Parent = plot.keyFolder
+
+		-- Gekaufte Taste faellt von oben in den Sockel. Nur die neue, nicht
+		-- alle - renderKeys baut bei jedem Kauf und jedem Klau komplett neu.
+		if dropIndex == index then
+			local ziel = { part.Position, top.Position, stem.Position }
+			local hub = Vector3.new(0, Theme.MOTION.DROP_HEIGHT, 0)
+			local info = TweenInfo.new(Theme.MOTION.DROP_SECONDS, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
+			for i, teil in { part, top, stem } do
+				teil.Position = ziel[i] + hub
+				TweenService:Create(teil, info, { Position = ziel[i] }):Play()
+			end
+		end
+
 		keyOwner[part] = {
 			kind = plot.ownerKind,
 			userId = plot.ownerUserId,
@@ -403,7 +439,7 @@ function PlotService.renderKeys(plot: Plot, keys: { { rarity: string, vorrat: nu
 end
 
 -- Bequemer Weg fuer den Spielerfall: Liste kommt aus dem Profil.
-function PlotService.rebuildKeys(userId: number)
+function PlotService.rebuildKeys(userId: number, dropIndex: number?)
 	local plot = plotByUser[userId]
 	if not plot then
 		return
@@ -414,7 +450,7 @@ function PlotService.rebuildKeys(userId: number)
 		clearKeys(plot)
 		return
 	end
-	PlotService.renderKeys(plot, profile.keys, profile.slots)
+	PlotService.renderKeys(plot, profile.keys, profile.slots, dropIndex)
 end
 
 -- Beschriftungen aktualisieren (eigener Takt, damit nicht jede Sekunde
@@ -452,7 +488,15 @@ function PlotService.setShielded(userId: number, aktiv: boolean)
 	if not plot then
 		return
 	end
-	plot.dome.Transparency = if aktiv then 0.82 else 1
+	local voll = WorldConfig.PLOT_SIZE.X * WorldConfig.SHIELD_DOME_SCALE
+	local info = TweenInfo.new(Theme.MOTION.DOME_SECONDS, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+	if aktiv then
+		plot.dome.Size = Vector3.new(voll * 0.2, voll * 0.2, voll * 0.2)
+		plot.dome.Transparency = 0.82
+		TweenService:Create(plot.dome, info, { Size = Vector3.new(voll, voll, voll) }):Play()
+	else
+		TweenService:Create(plot.dome, info, { Transparency = 1 }):Play()
+	end
 	local rim = plot.dome:FindFirstChildOfClass("SelectionBox")
 	if rim then
 		rim.Visible = aktiv
@@ -471,12 +515,50 @@ function PlotService.refreshLabels(plot: Plot, keys: { { rarity: string, vorrat:
 		local key = if ref then keys[ref.index] else nil
 		local billboard = part:FindFirstChild("Info")
 		local label = if billboard then billboard:FindFirstChild("Vorrat") else nil
-		if key and label and label:IsA("TextLabel") then
-			-- Nur noch die Zahl: die Seltenheit steht im eigenen Label
-			-- darueber und aendert sich nicht.
-			label.Text = tostring(math.floor(key.vorrat))
+		if not (key and label and label:IsA("TextLabel")) then
+			continue
+		end
+
+		-- Die Vorratszahl ist ein Zustand, kein Text. Wenig Vorrat: klein
+		-- und gedaempft. Beim Fuellen waechst sie mit und die Farbe wandert
+		-- zur Signalfarbe. Voll: sie pulsiert langsam - eine volle Taste
+		-- muss von weitem schreien "hol mich".
+		local anteil = math.clamp(key.vorrat / EconomyConfig.KEY_PULSE_VORRAT, 0, 1)
+		label.Text = tostring(math.floor(key.vorrat))
+		label.TextTransparency = 0.45 - 0.45 * anteil
+		label.TextColor3 = Theme.PANEL:Lerp(Theme.WORLD.SIGNAL, anteil)
+		label.TextSize = 0 -- TextScaled bestimmt die Groesse, die Skala macht die Box
+		billboard.Size = UDim2.new(0, 150 + 60 * anteil, 0, 54 + 24 * anteil)
+
+		local voll = key.vorrat >= EconomyConfig.KEY_PULSE_VORRAT
+		local pulst = part:GetAttribute("Pulst") == true
+		if voll and not pulst then
+			part:SetAttribute("Pulst", true)
+			local info = TweenInfo.new(
+				Theme.MOTION.PULSE_SECONDS,
+				Enum.EasingStyle.Sine,
+				Enum.EasingDirection.InOut,
+				-1,
+				true
+			)
+			TweenService:Create(part, info, { Size = part.Size * Theme.MOTION.PULSE_SCALE }):Play()
 		end
 	end
+end
+
+-- Beim Auszahlen bricht die Lichtsaeule zusammen. Der Vorrat ist weg, das
+-- muss man von weitem sehen - auch als Dieb, der gerade unterwegs war.
+function PlotService.collapseBeacon(userId: number)
+	local plot = plotByUser[userId]
+	if not plot then
+		return
+	end
+	local info = TweenInfo.new(Theme.MOTION.COLLAPSE_SECONDS, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
+	TweenService:Create(plot.beacon, info, {
+		Size = Vector3.new(WorldConfig.BEACON_WIDTH, WorldConfig.BEACON_MIN_HEIGHT, WorldConfig.BEACON_WIDTH),
+		Position = plot.base.Position + Vector3.new(0, WorldConfig.BEACON_MIN_HEIGHT / 2, 0),
+		Transparency = 1,
+	}):Play()
 end
 
 function PlotService.refreshKeyLabels(userId: number)
@@ -577,15 +659,25 @@ function PlotService.spawnPositionFor(userId: number): Vector3?
 	return plot.base.Position + Vector3.new(0, 6, WorldConfig.PLOT_SIZE.Z / 2 - 4)
 end
 
--- Zaehlt alles, was der Server gebaut hat - fuer das Part-Budget.
-function PlotService.countParts(): number
-	local count = 0
+-- Zaehlt, was der Server gebaut hat. Parts allein sagen zu wenig: auf dem
+-- Handy ist die Zahl gleichzeitig aktiver ProximityPrompts und die Zahl
+-- der GUIs oft das engere Limit. Beide zaehlten bisher gar nicht mit.
+export type PartCount = { parts: number, prompts: number, guis: number, lights: number }
+
+function PlotService.countParts(): PartCount
+	local zaehler: PartCount = { parts = 0, prompts = 0, guis = 0, lights = 0 }
 	for _, descendant in workspace:GetDescendants() do
 		if descendant:IsA("BasePart") then
-			count += 1
+			zaehler.parts += 1
+		elseif descendant:IsA("ProximityPrompt") then
+			zaehler.prompts += 1
+		elseif descendant:IsA("LayerCollector") or descendant:IsA("BillboardGui") or descendant:IsA("SurfaceGui") then
+			zaehler.guis += 1
+		elseif descendant:IsA("Light") then
+			zaehler.lights += 1
 		end
 	end
-	return count
+	return zaehler
 end
 
 -- Plot zuweisen, sobald das Profil geladen ist, und den Spieler dorthin

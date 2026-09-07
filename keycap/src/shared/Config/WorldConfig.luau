@@ -221,6 +221,38 @@ local WorldConfig = {
 		MONITOR_TRANSPARENCY = 0.15,
 	},
 
+	-- ---------------------------------------------------------------
+	-- Hintergrund. Hier kommt der Massstab her: eine Kaffeetasse am
+	-- Horizont, so hoch wie ein Hochhaus, sagt in einer halben Sekunde,
+	-- wie klein man ist. Kein Text kann das.
+	-- Alles weit weg, nichts betretbar, nichts kollidiert.
+	-- ---------------------------------------------------------------
+	BACKDROP = {
+		CUP_POSITION = Vector3.new(620, 150, -760),
+		CUP_RADIUS = 150,
+		CUP_HEIGHT = 300,
+		CUP_HANDLE_PARTS = 4,
+		CUP_HANDLE_RADIUS = 70,
+
+		CABLE_START = Vector3.new(-520, 4, 420),
+		CABLE_END = Vector3.new(760, 4, -980),
+		CABLE_SEGMENTS = 15,
+		CABLE_THICKNESS = 14,
+		CABLE_ARC = 120, -- Hoehe des Bogens in der Mitte
+
+		MOUSE_POSITION = Vector3.new(-380, 30, -900),
+		MOUSE_SIZE = Vector3.new(120, 60, 190),
+		MOUSE_WHEEL_SIZE = Vector3.new(10, 26, 26),
+
+		DUST_POSITION = Vector3.new(0, 90, -200),
+		DUST_RATE = 3, -- sehr wenige
+		DUST_LIFETIME = 14, -- sehr langsam
+		DUST_SPEED = 1.5,
+		DUST_SIZE = 0.8,
+	},
+
+	BACKDROP_BUDGET = 120, -- Obergrenze fuer die Kulisse
+
 	-- Part-Budget: obere Schranke fuer alles, was der Server baut.
 	-- Auf dem Handy ist die Zahl gleichzeitig sichtbarer ProximityPrompts
 	-- oft das engere Limit als die reine Part-Zahl. UNGEPRUEFT - nicht gemessen.

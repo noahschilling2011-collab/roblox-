@@ -956,6 +956,67 @@ test("Die Absturzschwelle liegt unter der Spielflaeche", function()
 	expect(World.FALL_Y < World.PLOT_ORIGIN.Y - 20, "Absturzschwelle zu hoch: " .. World.FALL_Y)
 end)
 
+-- 18) Bewegung und Kulisse.
+test("Keine Animation nervt beim zwanzigsten Mal", function()
+	local m = Theme.MOTION
+	for _, name in { "DROP_SECONDS", "COLLAPSE_SECONDS", "DOME_SECONDS", "FLASH_SECONDS" } do
+		expect(m[name] ~= nil, "Dauer fehlt: " .. name)
+		expect(m[name] < 0.4, name .. " ist " .. m[name] .. "s - ueber der 0,4-s-Grenze")
+		expect(m[name] > 0, name .. " ist null")
+	end
+	-- Ausnahme mit Grund: das Pulsieren einer vollen Taste SOLL auffallen
+	-- und laeuft dauerhaft, nicht als Reaktion auf eine Handlung.
+	expect(m.PULSE_SECONDS >= 0.8, "Pulsieren zu hektisch")
+	expect(m.PULSE_SCALE > 1 and m.PULSE_SCALE < 1.2, "Pulsieren zu stark: " .. m.PULSE_SCALE)
+end)
+
+test("Die Kulisse bleibt in ihrem Budget und ausserhalb der Spielflaeche", function()
+	local b = World.BACKDROP
+	-- Tasse 1 + Kaffee 1 + Henkel, Kabel, Maus 2, Staub 1
+	local kulisse = 2 + b.CUP_HANDLE_PARTS + b.CABLE_SEGMENTS + 2 + 1
+	expect(kulisse <= World.BACKDROP_BUDGET,
+		"Kulisse " .. kulisse .. " ueber Budget " .. World.BACKDROP_BUDGET)
+
+	local halbeReihe = World.PLOT_COUNT * World.PLOT_SPACING / 2
+	local hintenAn = World.STAGE_PAD_POSITIONS[#World.STAGE_PAD_POSITIONS].Z
+	for _, name in { "CUP_POSITION", "MOUSE_POSITION" } do
+		local pos = b[name]
+		local weitGenug = math.abs(pos.X) > halbeReihe or pos.Z < hintenAn
+		expect(weitGenug, name .. " steht in der Spielflaeche")
+	end
+end)
+
+test("Der Staub ist sparsam und langsam", function()
+	local b = World.BACKDROP
+	expect(b.DUST_RATE <= 10, "zu viele Staubkoerner: " .. b.DUST_RATE)
+	expect(b.DUST_SPEED <= 4, "Staub zu schnell, das wirkt wie Regen")
+	expect(b.DUST_LIFETIME >= 5, "Staub verschwindet zu schnell")
+end)
+
+test("Eine volle Taste pulsiert erst, wenn sie sich lohnt", function()
+	-- Die Schwelle muss unter dem liegen, was ein Plot ueberhaupt haelt,
+	-- sonst pulsiert nie etwas.
+	expect(Config.KEY_PULSE_VORRAT > 0, "keine Pulsschwelle")
+	expect(Config.KEY_PULSE_VORRAT < World.BEACON_FULL_VORRAT,
+		"Pulsschwelle ueber der Leuchtturm-Vollhoehe - einzelne Tasten erreichen sie nie")
+end)
+
+test("Der Leuchtturm waechst, bleibt aber unter der Kulisse", function()
+	expect(World.BEACON_MAX_HEIGHT > World.BEACON_MIN_HEIGHT, "Leuchtturm waechst nicht")
+	expect(World.BEACON_WIDTH < World.PLOT_SIZE.X / 4, "Leuchtturm zu breit, er verdeckt den Plot")
+	expect(World.BEACON_MAX_HEIGHT < World.BACKDROP.CUP_HEIGHT,
+		"Leuchtturm ueberragt die Kaffeetasse - der Massstab kippt")
+end)
+
+test("Die Zahl der Lichtquellen bleibt bezahlbar", function()
+	-- Ohne Grenze waeren es 9 Spielerplots x 20 Steckplaetze = 180 Lichter
+	-- plus Monitor. Das ist auf dem Handy nicht bezahlbar.
+	expect(Theme.MAX_LIGHTS_PER_PLOT ~= nil, "keine Lichtgrenze je Plot")
+	local maximal = World.PLOT_COUNT * Theme.MAX_LIGHTS_PER_PLOT + 1
+	expect(maximal <= 60, "zu viele Lichtquellen im Vollausbau: " .. maximal)
+	expect(Theme.MAX_LIGHTS_PER_PLOT >= 2, "zu wenige - dann faellt der Unterschied nicht auf")
+end)
+
 table.insert(results, "")
 table.insert(results, "ERGEBNIS: " .. passed .. " bestanden, " .. failed .. " fehlgeschlagen (" .. (passed + failed) .. " Tests)")
 return table.concat(results, "\\n"), failed

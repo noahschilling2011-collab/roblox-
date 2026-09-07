@@ -16,6 +16,7 @@ local Services = script:WaitForChild("Services")
 
 local DataService = require(Services.DataService)
 local LightingService = require(Services.LightingService)
+local BackdropService = require(Services.BackdropService)
 local PlotService = require(Services.PlotService)
 local NpcPlotService = require(Services.NpcPlotService)
 local ProductionService = require(Services.ProductionService)
@@ -41,6 +42,7 @@ end
 
 DataService.start()
 LightingService.start()
+BackdropService.start()
 PlotService.buildWorld()
 NpcPlotService.start()
 PlotService.start()
@@ -57,11 +59,14 @@ StateService.start()
 -- Part-Budget: die Bewertung nennt 3000 als Ziel. Hier steht, wo wir
 -- wirklich landen - wenn die Zahl beim Bauen der Karte steigt, faellt es
 -- beim Serverstart auf und nicht erst auf dem Handy.
-local parts = PlotService.countParts()
-if parts > WorldConfig.PART_BUDGET then
-	warn(("[KEYCAP] Part-Budget gerissen: %d von %d"):format(parts, WorldConfig.PART_BUDGET))
+local zaehler = PlotService.countParts()
+local gesamt = zaehler.parts
+if gesamt > WorldConfig.PART_BUDGET then
+	warn(("[KEYCAP] Part-Budget gerissen: %d von %d"):format(gesamt, WorldConfig.PART_BUDGET))
 else
-	print(("[KEYCAP] Parts in workspace: %d von %d erlaubt"):format(parts, WorldConfig.PART_BUDGET))
+	print(("[KEYCAP] Parts %d von %d erlaubt"):format(gesamt, WorldConfig.PART_BUDGET))
 end
+print(("[KEYCAP] Dazu: %d ProximityPrompts, %d GUIs, %d Lichtquellen")
+	:format(zaehler.prompts, zaehler.guis, zaehler.lights))
 
 print("[KEYCAP] Server bereit.")

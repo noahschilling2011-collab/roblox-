@@ -1,9 +1,9 @@
 <roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4">
-<Item class="Workspace" referent="KC165">
+<Item class="Workspace" referent="KC166">
 <Properties>
 <string name="Name">Workspace</string>
 </Properties>
-<Item class="SpawnLocation" referent="KC164">
+<Item class="SpawnLocation" referent="KC165">
 <Properties>
 <string name="Name">Start</string>
 <bool name="Anchored">true</bool>
@@ -1159,7 +1159,7 @@
 </Item>
 </Item>
 </Item>
-<Item class="ReplicatedStorage" referent="KC166">
+<Item class="ReplicatedStorage" referent="KC167">
 <Properties>
 <string name="Name">ReplicatedStorage</string>
 </Properties>
@@ -1278,6 +1278,10 @@ local EconomyConfig = {
 	-- offline risikofrei - genau das Loch, das die per-Taste-Aenderung
 	-- schliessen soll. Gespeichert werden Wins, Slots und Tasten.
 	PERSIST_VORRAT = false,
+
+	-- Ab diesem Vorrat gilt eine Taste als voll und faengt an zu pulsieren.
+	-- Eine volle Taste muss von weitem schreien "hol mich".
+	KEY_PULSE_VORRAT = 800,
 
 	-- ---------------------------------------------------------------
 	-- NPC-Plots [ENTSCHEIDUNG]
@@ -1569,6 +1573,38 @@ local WorldConfig = {
 		MONITOR_LIGHT_RANGE = 900,
 		MONITOR_TRANSPARENCY = 0.15,
 	},
+
+	-- ---------------------------------------------------------------
+	-- Hintergrund. Hier kommt der Massstab her: eine Kaffeetasse am
+	-- Horizont, so hoch wie ein Hochhaus, sagt in einer halben Sekunde,
+	-- wie klein man ist. Kein Text kann das.
+	-- Alles weit weg, nichts betretbar, nichts kollidiert.
+	-- ---------------------------------------------------------------
+	BACKDROP = {
+		CUP_POSITION = Vector3.new(620, 150, -760),
+		CUP_RADIUS = 150,
+		CUP_HEIGHT = 300,
+		CUP_HANDLE_PARTS = 4,
+		CUP_HANDLE_RADIUS = 70,
+
+		CABLE_START = Vector3.new(-520, 4, 420),
+		CABLE_END = Vector3.new(760, 4, -980),
+		CABLE_SEGMENTS = 15,
+		CABLE_THICKNESS = 14,
+		CABLE_ARC = 120, -- Hoehe des Bogens in der Mitte
+
+		MOUSE_POSITION = Vector3.new(-380, 30, -900),
+		MOUSE_SIZE = Vector3.new(120, 60, 190),
+		MOUSE_WHEEL_SIZE = Vector3.new(10, 26, 26),
+
+		DUST_POSITION = Vector3.new(0, 90, -200),
+		DUST_RATE = 3, -- sehr wenige
+		DUST_LIFETIME = 14, -- sehr langsam
+		DUST_SPEED = 1.5,
+		DUST_SIZE = 0.8,
+	},
+
+	BACKDROP_BUDGET = 120, -- Obergrenze fuer die Kulisse
 
 	-- Part-Budget: obere Schranke fuer alles, was der Server baut.
 	-- Auf dem Handy ist die Zahl gleichzeitig sichtbarer ProximityPrompts
@@ -1885,6 +1921,19 @@ local Theme = {
 	-- Look zusammenhaelt - siehe DESIGN.md.
 	INK = Color3.fromRGB(24, 20, 18),
 	OUTLINE_THICKNESS = 3, -- Umrandung von Panels und Knoepfen
+
+	-- Bewegung. Jede Animation bleibt unter 0,4 s - beim zwanzigsten Mal
+	-- darf sie nicht nerven. Alles ueber TweenService, nichts ueber
+	-- while-true-Schleifen.
+	MOTION = {
+		DROP_SECONDS = 0.34, -- gekaufte Taste faellt in den Sockel
+		DROP_HEIGHT = 26,
+		PULSE_SECONDS = 1.1, -- volle Taste, langsam - das darf auffallen
+		PULSE_SCALE = 1.08,
+		COLLAPSE_SECONDS = 0.38, -- Lichtsaeule bricht beim Auszahlen zusammen
+		DOME_SECONDS = 0.3, -- Kuppel waechst von unten
+		FLASH_SECONDS = 0.18, -- kurzer Blitz beim gelungenen Klau
+	},
 	GRADIENT_LIFT = 0.14, -- Verlauf: oben um diesen Anteil heller
 
 	TEXT = Color3.fromRGB(58, 52, 44),
@@ -1961,6 +2010,14 @@ local Theme = {
 		-- kommt die Farbe sonst nirgends vor.
 		SIGNAL = Color3.fromRGB(61, 224, 224),
 		SIGNAL_DIM = Color3.fromRGB(28, 128, 128),
+
+		-- Hintergrund. Alles nur wenig heller als die Matte - es sind
+		-- Silhouetten im Gegenlicht, keine Objekte zum Anschauen.
+		CUP = Color3.fromRGB(58, 58, 74),
+		CUP_COFFEE = Color3.fromRGB(24, 16, 14),
+		CABLE = Color3.fromRGB(30, 30, 40),
+		MOUSE = Color3.fromRGB(44, 44, 56),
+		DUST = Color3.fromRGB(150, 165, 200),
 	},
 
 	-- Dunkle Kante je Seltenheit. Ohne die ist eine Taste eine flache
@@ -2015,6 +2072,12 @@ local Theme = {
 		Legendary = 24,
 	},
 	RARITY_LIGHT_BRIGHTNESS = 1.4,
+	-- Nur die wertvollsten Tasten eines Plots leuchten. Ohne diese Grenze
+	-- waeren es im Vollausbau 181 PointLights (9 Spielerplots x 20
+	-- Steckplaetze plus Monitor) - das ist auf dem Handy nicht bezahlbar.
+	-- Mit 4 je Plot sind es hoechstens 48. Wer die teuersten Tasten
+	-- leuchten sieht, sieht genau das, was ihn als Dieb interessiert.
+	MAX_LIGHTS_PER_PLOT = 4,
 
 	RARITY_RANK = {
 		Common = 1,
@@ -2285,11 +2348,11 @@ return WorldLayout
 </Item>
 </Item>
 </Item>
-<Item class="ServerScriptService" referent="KC167">
+<Item class="ServerScriptService" referent="KC168">
 <Properties>
 <string name="Name">ServerScriptService</string>
 </Properties>
-<Item class="Script" referent="KC158">
+<Item class="Script" referent="KC159">
 <Properties>
 <string name="Name">KeycapRush</string>
 <ProtectedString name="Source">--!strict
@@ -2310,6 +2373,7 @@ local Services = script:WaitForChild("Services")
 
 local DataService = require(Services.DataService)
 local LightingService = require(Services.LightingService)
+local BackdropService = require(Services.BackdropService)
 local PlotService = require(Services.PlotService)
 local NpcPlotService = require(Services.NpcPlotService)
 local ProductionService = require(Services.ProductionService)
@@ -2335,6 +2399,7 @@ end
 
 DataService.start()
 LightingService.start()
+BackdropService.start()
 PlotService.buildWorld()
 NpcPlotService.start()
 PlotService.start()
@@ -2351,21 +2416,165 @@ StateService.start()
 -- Part-Budget: die Bewertung nennt 3000 als Ziel. Hier steht, wo wir
 -- wirklich landen - wenn die Zahl beim Bauen der Karte steigt, faellt es
 -- beim Serverstart auf und nicht erst auf dem Handy.
-local parts = PlotService.countParts()
-if parts &gt; WorldConfig.PART_BUDGET then
-	warn(("[KEYCAP] Part-Budget gerissen: %d von %d"):format(parts, WorldConfig.PART_BUDGET))
+local zaehler = PlotService.countParts()
+local gesamt = zaehler.parts
+if gesamt &gt; WorldConfig.PART_BUDGET then
+	warn(("[KEYCAP] Part-Budget gerissen: %d von %d"):format(gesamt, WorldConfig.PART_BUDGET))
 else
-	print(("[KEYCAP] Parts in workspace: %d von %d erlaubt"):format(parts, WorldConfig.PART_BUDGET))
+	print(("[KEYCAP] Parts %d von %d erlaubt"):format(gesamt, WorldConfig.PART_BUDGET))
 end
+print(("[KEYCAP] Dazu: %d ProximityPrompts, %d GUIs, %d Lichtquellen")
+	:format(zaehler.prompts, zaehler.guis, zaehler.lights))
 
 print("[KEYCAP] Server bereit.")
 </ProtectedString>
 </Properties>
-<Item class="Folder" referent="KC157">
+<Item class="Folder" referent="KC158">
 <Properties>
 <string name="Name">Services</string>
 </Properties>
 <Item class="ModuleScript" referent="KC144">
+<Properties>
+<string name="Name">BackdropService</string>
+<ProtectedString name="Source">--!strict
+-- Der Hintergrund. Hier kommt der Massstab her: eine Kaffeetasse am
+-- Horizont, so hoch wie ein Hochhaus, sagt in einer halben Sekunde, wie
+-- klein man ist. Kein Text kann das.
+--
+-- Alles steht hinter der Spielflaeche, nichts kollidiert, nichts ist
+-- betretbar. Alle Teile sind Silhouetten im Gegenlicht des Monitors -
+-- deshalb nur wenig heller als die Matte.
+
+local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
+local WorldConfig = require(Shared.Config.WorldConfig)
+local Theme = require(Shared.Theme)
+
+local BackdropService = {}
+
+local function kulisse(name: string, size: Vector3, cframe: CFrame, farbe: Color3, parent: Instance): BasePart
+	local part = Instance.new("Part")
+	part.Name = name
+	part.Size = size
+	part.CFrame = cframe
+	part.Anchored = true
+	part.CanCollide = false
+	part.CanQuery = false
+	part.CastShadow = false
+	part.Material = Enum.Material.SmoothPlastic
+	part.Color = farbe
+	part.Parent = parent
+	return part
+end
+
+local function buildCup(parent: Instance): number
+	local config = WorldConfig.BACKDROP
+	local mitte = config.CUP_POSITION
+	local anzahl = 1
+
+	-- Der Becher. Part.Shape = Cylinder liegt auf der X-Achse, deshalb
+	-- die Drehung um Z: aus liegend wird stehend.
+	local body = kulisse("Tasse", Vector3.new(config.CUP_HEIGHT, config.CUP_RADIUS * 2, config.CUP_RADIUS * 2),
+		CFrame.new(mitte) * CFrame.Angles(0, 0, math.rad(90)), Theme.WORLD.CUP, parent)
+	body.Shape = Enum.PartType.Cylinder
+
+	-- Der dunkle Kreis oben: der Kaffee. Ein flacher Zylinder knapp unter
+	-- der Oberkante.
+	local coffee = kulisse("Kaffee", Vector3.new(4, config.CUP_RADIUS * 1.8, config.CUP_RADIUS * 1.8),
+		CFrame.new(mitte + Vector3.new(0, config.CUP_HEIGHT / 2 - 6, 0)) * CFrame.Angles(0, 0, math.rad(90)),
+		Theme.WORLD.CUP_COFFEE, parent)
+	coffee.Shape = Enum.PartType.Cylinder
+	anzahl += 1
+
+	-- Der Henkel als Kreisbogen aus wenigen Quadern.
+	for i = 1, config.CUP_HANDLE_PARTS do
+		local winkel = math.rad(-70 + (140 / (config.CUP_HANDLE_PARTS - 1)) * (i - 1))
+		local versatz = Vector3.new(
+			config.CUP_RADIUS + math.cos(winkel) * config.CUP_HANDLE_RADIUS,
+			math.sin(winkel) * config.CUP_HANDLE_RADIUS,
+			0
+		)
+		kulisse("Henkel" .. i, Vector3.new(26, 60, 26),
+			CFrame.new(mitte + versatz) * CFrame.Angles(0, 0, winkel), Theme.WORLD.CUP, parent)
+		anzahl += 1
+	end
+	return anzahl
+end
+
+local function buildCable(parent: Instance): number
+	local config = WorldConfig.BACKDROP
+	local von, bis = config.CABLE_START, config.CABLE_END
+	for i = 1, config.CABLE_SEGMENTS do
+		local anteil = (i - 0.5) / config.CABLE_SEGMENTS
+		-- Bogen: eine Parabel ueber die Strecke, in der Mitte am hoechsten.
+		local hoehe = math.sin(anteil * math.pi) * config.CABLE_ARC
+		local punkt = von:Lerp(bis, anteil) + Vector3.new(0, hoehe, 0)
+		local naechster = von:Lerp(bis, math.min(1, anteil + 1 / config.CABLE_SEGMENTS))
+			+ Vector3.new(0, math.sin(math.min(1, anteil + 1 / config.CABLE_SEGMENTS) * math.pi) * config.CABLE_ARC, 0)
+		local laenge = (naechster - punkt).Magnitude
+		local segment = kulisse("Kabel" .. i,
+			Vector3.new(laenge * 1.15, config.CABLE_THICKNESS, config.CABLE_THICKNESS),
+			CFrame.lookAt(punkt, naechster) * CFrame.Angles(0, math.rad(90), 0),
+			Theme.WORLD.CABLE, parent)
+		segment.Shape = Enum.PartType.Cylinder
+	end
+	return config.CABLE_SEGMENTS
+end
+
+local function buildMouse(parent: Instance): number
+	local config = WorldConfig.BACKDROP
+	kulisse("Maus", config.MOUSE_SIZE, CFrame.new(config.MOUSE_POSITION), Theme.WORLD.MOUSE, parent)
+
+	local wheel = kulisse("Scrollrad", config.MOUSE_WHEEL_SIZE,
+		CFrame.new(config.MOUSE_POSITION + Vector3.new(0, config.MOUSE_SIZE.Y / 2, -config.MOUSE_SIZE.Z / 4))
+			* CFrame.Angles(0, 0, math.rad(90)),
+		Theme.WORLD.SIGNAL_DIM, parent)
+	wheel.Shape = Enum.PartType.Cylinder
+	wheel.Material = Enum.Material.Neon
+	return 2
+end
+
+local function buildDust(parent: Instance): number
+	local config = WorldConfig.BACKDROP
+	local anker = kulisse("Staub", Vector3.new(1, 1, 1), CFrame.new(config.DUST_POSITION), Theme.WORLD.DUST, parent)
+	anker.Transparency = 1
+
+	-- Ohne Bewegung in der Luft wirkt jede Szene tot.
+	-- ungeprueft: ob ein ParticleEmitter OHNE Texture-Asset sichtbar ist.
+	-- Falls nicht, bleibt die Luft leer - es geht nichts kaputt, es fehlt
+	-- nur der Staub. Eine Asset-ID wird hier NICHT erfunden.
+	local emitter = Instance.new("ParticleEmitter")
+	emitter.Rate = config.DUST_RATE
+	emitter.Lifetime = NumberRange.new(config.DUST_LIFETIME * 0.7, config.DUST_LIFETIME)
+	emitter.Speed = NumberRange.new(0, config.DUST_SPEED)
+	emitter.Size = NumberSequence.new(config.DUST_SIZE)
+	emitter.Transparency = NumberSequence.new(0.6)
+	emitter.Color = ColorSequence.new(Theme.WORLD.DUST)
+	emitter.LightEmission = 0.6
+	emitter.Rotation = NumberRange.new(0, 360)
+	emitter.SpreadAngle = Vector2.new(180, 180)
+	emitter.Parent = anker
+	return 1
+end
+
+function BackdropService.start()
+	local alt = workspace:FindFirstChild("Backdrop")
+	if alt then
+		alt:Destroy()
+	end
+	local folder = Instance.new("Folder")
+	folder.Name = "Backdrop"
+
+	local anzahl = buildCup(folder) + buildCable(folder) + buildMouse(folder) + buildDust(folder)
+	folder.Parent = workspace
+
+	print(("[KEYCAP] BackdropService: %d Kulissenteile (Budget %d)"):format(anzahl, WorldConfig.BACKDROP_BUDGET))
+end
+
+return BackdropService
+</ProtectedString>
+</Properties>
+</Item>
+<Item class="ModuleScript" referent="KC145">
 <Properties>
 <string name="Name">CarryService</string>
 <ProtectedString name="Source">--!strict
@@ -2480,7 +2689,7 @@ return CarryService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="KC145">
+<Item class="ModuleScript" referent="KC146">
 <Properties>
 <string name="Name">CourseService</string>
 <ProtectedString name="Source">--!strict
@@ -2501,6 +2710,7 @@ local Theme = require(Shared.Theme)
 local WorldLayout = require(Shared.WorldLayout)
 local Remotes = require(Shared.Remotes)
 local DataService = require(script.Parent.DataService)
+local PlotService = require(script.Parent.PlotService)
 local ProductionService = require(script.Parent.ProductionService)
 local RunTimerService = require(script.Parent.RunTimerService)
 local TutorialService = require(script.Parent.TutorialService)
@@ -2589,6 +2799,7 @@ local function cashOut(player: Player, stageIndex: number, pad: BasePart)
 	end
 
 	DataService.syncLeaderstats(player)
+	PlotService.collapseBeacon(player.UserId)
 	RunTimerService.markCashOut(player, stageIndex)
 	TutorialService.report(player, "cashout")
 	notify(player, ("+%d Wins ausgezahlt (Stage %d)."):format(wins, stageIndex))
@@ -2793,7 +3004,7 @@ return CourseService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="KC146">
+<Item class="ModuleScript" referent="KC147">
 <Properties>
 <string name="Name">DataService</string>
 <ProtectedString name="Source">--!strict
@@ -3053,7 +3264,7 @@ return DataService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="KC147">
+<Item class="ModuleScript" referent="KC148">
 <Properties>
 <string name="Name">LightingService</string>
 <ProtectedString name="Source">--!strict
@@ -3180,7 +3391,7 @@ return LightingService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="KC148">
+<Item class="ModuleScript" referent="KC149">
 <Properties>
 <string name="Name">NpcPlotService</string>
 <ProtectedString name="Source">--!strict
@@ -3291,7 +3502,7 @@ return NpcPlotService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="KC149">
+<Item class="ModuleScript" referent="KC150">
 <Properties>
 <string name="Name">PlotService</string>
 <ProtectedString name="Source">--!strict
@@ -3303,6 +3514,7 @@ return NpcPlotService
 -- den ersten Blick erkennen, ob es sich "lohnt", sondern hinlaufen muessen.
 
 local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
 
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
 local EconomyConfig = require(Shared.Config.EconomyConfig)
@@ -3546,9 +3758,31 @@ end
 
 -- Baut die Tasten-Parts eines Plots neu. `keys` ist die Liste, die dieser
 -- Plot gerade haelt - beim Spieler das Profil, beim NPC die NPC-Liste.
-function PlotService.renderKeys(plot: Plot, keys: { { rarity: string, vorrat: number } }, slots: number?)
+function PlotService.renderKeys(plot: Plot, keys: { { rarity: string, vorrat: number } }, slots: number?, dropIndex: number?)
 	clearKeys(plot)
 	updateSlotMarkers(plot, #keys, slots or #keys)
+
+	-- Nur die wertvollsten Tasten bekommen ein Licht. Reihenfolge nach
+	-- Rang, bei Gleichstand nach Vorrat - das ist genau, was einen Dieb
+	-- interessiert.
+	local leuchtend: { [number]: boolean } = {}
+	do
+		local kandidaten = {}
+		for index, key in keys do
+			if (Theme.RARITY_LIGHT_RANGE[key.rarity] or 0) &gt; 0 then
+				table.insert(kandidaten, { index = index, rank = Theme.RARITY_RANK[key.rarity] or 1, vorrat = key.vorrat })
+			end
+		end
+		table.sort(kandidaten, function(a, b)
+			if a.rank ~= b.rank then
+				return a.rank &gt; b.rank
+			end
+			return a.vorrat &gt; b.vorrat
+		end)
+		for i = 1, math.min(#kandidaten, Theme.MAX_LIGHTS_PER_PLOT) do
+			leuchtend[kandidaten[i].index] = true
+		end
+	end
 
 	for index, key in keys do
 		-- Hoehe, Kantenlicht und Material haengen an der Seltenheit. Eine
@@ -3608,7 +3842,7 @@ function PlotService.renderKeys(plot: Plot, keys: { { rarity: string, vorrat: nu
 		-- die Tastaturplatte nur 2,89 bzw. 2,82:1 - ohne eigenes Licht
 		-- verschwinden sie auf dem dunklen Untergrund.
 		local reichweite = Theme.RARITY_LIGHT_RANGE[key.rarity] or 0
-		if reichweite &gt; 0 then
+		if reichweite &gt; 0 and leuchtend[index] then
 			local glow = Instance.new("PointLight")
 			glow.Color = Theme.RARITY_COLORS[key.rarity] or Theme.WORLD.SIGNAL
 			glow.Range = reichweite
@@ -3689,6 +3923,19 @@ function PlotService.renderKeys(plot: Plot, keys: { { rarity: string, vorrat: nu
 		prompt.Parent = part
 
 		part.Parent = plot.keyFolder
+
+		-- Gekaufte Taste faellt von oben in den Sockel. Nur die neue, nicht
+		-- alle - renderKeys baut bei jedem Kauf und jedem Klau komplett neu.
+		if dropIndex == index then
+			local ziel = { part.Position, top.Position, stem.Position }
+			local hub = Vector3.new(0, Theme.MOTION.DROP_HEIGHT, 0)
+			local info = TweenInfo.new(Theme.MOTION.DROP_SECONDS, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
+			for i, teil in { part, top, stem } do
+				teil.Position = ziel[i] + hub
+				TweenService:Create(teil, info, { Position = ziel[i] }):Play()
+			end
+		end
+
 		keyOwner[part] = {
 			kind = plot.ownerKind,
 			userId = plot.ownerUserId,
@@ -3699,7 +3946,7 @@ function PlotService.renderKeys(plot: Plot, keys: { { rarity: string, vorrat: nu
 end
 
 -- Bequemer Weg fuer den Spielerfall: Liste kommt aus dem Profil.
-function PlotService.rebuildKeys(userId: number)
+function PlotService.rebuildKeys(userId: number, dropIndex: number?)
 	local plot = plotByUser[userId]
 	if not plot then
 		return
@@ -3710,7 +3957,7 @@ function PlotService.rebuildKeys(userId: number)
 		clearKeys(plot)
 		return
 	end
-	PlotService.renderKeys(plot, profile.keys, profile.slots)
+	PlotService.renderKeys(plot, profile.keys, profile.slots, dropIndex)
 end
 
 -- Beschriftungen aktualisieren (eigener Takt, damit nicht jede Sekunde
@@ -3748,7 +3995,15 @@ function PlotService.setShielded(userId: number, aktiv: boolean)
 	if not plot then
 		return
 	end
-	plot.dome.Transparency = if aktiv then 0.82 else 1
+	local voll = WorldConfig.PLOT_SIZE.X * WorldConfig.SHIELD_DOME_SCALE
+	local info = TweenInfo.new(Theme.MOTION.DOME_SECONDS, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+	if aktiv then
+		plot.dome.Size = Vector3.new(voll * 0.2, voll * 0.2, voll * 0.2)
+		plot.dome.Transparency = 0.82
+		TweenService:Create(plot.dome, info, { Size = Vector3.new(voll, voll, voll) }):Play()
+	else
+		TweenService:Create(plot.dome, info, { Transparency = 1 }):Play()
+	end
 	local rim = plot.dome:FindFirstChildOfClass("SelectionBox")
 	if rim then
 		rim.Visible = aktiv
@@ -3767,12 +4022,50 @@ function PlotService.refreshLabels(plot: Plot, keys: { { rarity: string, vorrat:
 		local key = if ref then keys[ref.index] else nil
 		local billboard = part:FindFirstChild("Info")
 		local label = if billboard then billboard:FindFirstChild("Vorrat") else nil
-		if key and label and label:IsA("TextLabel") then
-			-- Nur noch die Zahl: die Seltenheit steht im eigenen Label
-			-- darueber und aendert sich nicht.
-			label.Text = tostring(math.floor(key.vorrat))
+		if not (key and label and label:IsA("TextLabel")) then
+			continue
+		end
+
+		-- Die Vorratszahl ist ein Zustand, kein Text. Wenig Vorrat: klein
+		-- und gedaempft. Beim Fuellen waechst sie mit und die Farbe wandert
+		-- zur Signalfarbe. Voll: sie pulsiert langsam - eine volle Taste
+		-- muss von weitem schreien "hol mich".
+		local anteil = math.clamp(key.vorrat / EconomyConfig.KEY_PULSE_VORRAT, 0, 1)
+		label.Text = tostring(math.floor(key.vorrat))
+		label.TextTransparency = 0.45 - 0.45 * anteil
+		label.TextColor3 = Theme.PANEL:Lerp(Theme.WORLD.SIGNAL, anteil)
+		label.TextSize = 0 -- TextScaled bestimmt die Groesse, die Skala macht die Box
+		billboard.Size = UDim2.new(0, 150 + 60 * anteil, 0, 54 + 24 * anteil)
+
+		local voll = key.vorrat &gt;= EconomyConfig.KEY_PULSE_VORRAT
+		local pulst = part:GetAttribute("Pulst") == true
+		if voll and not pulst then
+			part:SetAttribute("Pulst", true)
+			local info = TweenInfo.new(
+				Theme.MOTION.PULSE_SECONDS,
+				Enum.EasingStyle.Sine,
+				Enum.EasingDirection.InOut,
+				-1,
+				true
+			)
+			TweenService:Create(part, info, { Size = part.Size * Theme.MOTION.PULSE_SCALE }):Play()
 		end
 	end
+end
+
+-- Beim Auszahlen bricht die Lichtsaeule zusammen. Der Vorrat ist weg, das
+-- muss man von weitem sehen - auch als Dieb, der gerade unterwegs war.
+function PlotService.collapseBeacon(userId: number)
+	local plot = plotByUser[userId]
+	if not plot then
+		return
+	end
+	local info = TweenInfo.new(Theme.MOTION.COLLAPSE_SECONDS, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
+	TweenService:Create(plot.beacon, info, {
+		Size = Vector3.new(WorldConfig.BEACON_WIDTH, WorldConfig.BEACON_MIN_HEIGHT, WorldConfig.BEACON_WIDTH),
+		Position = plot.base.Position + Vector3.new(0, WorldConfig.BEACON_MIN_HEIGHT / 2, 0),
+		Transparency = 1,
+	}):Play()
 end
 
 function PlotService.refreshKeyLabels(userId: number)
@@ -3873,15 +4166,25 @@ function PlotService.spawnPositionFor(userId: number): Vector3?
 	return plot.base.Position + Vector3.new(0, 6, WorldConfig.PLOT_SIZE.Z / 2 - 4)
 end
 
--- Zaehlt alles, was der Server gebaut hat - fuer das Part-Budget.
-function PlotService.countParts(): number
-	local count = 0
+-- Zaehlt, was der Server gebaut hat. Parts allein sagen zu wenig: auf dem
+-- Handy ist die Zahl gleichzeitig aktiver ProximityPrompts und die Zahl
+-- der GUIs oft das engere Limit. Beide zaehlten bisher gar nicht mit.
+export type PartCount = { parts: number, prompts: number, guis: number, lights: number }
+
+function PlotService.countParts(): PartCount
+	local zaehler: PartCount = { parts = 0, prompts = 0, guis = 0, lights = 0 }
 	for _, descendant in workspace:GetDescendants() do
 		if descendant:IsA("BasePart") then
-			count += 1
+			zaehler.parts += 1
+		elseif descendant:IsA("ProximityPrompt") then
+			zaehler.prompts += 1
+		elseif descendant:IsA("LayerCollector") or descendant:IsA("BillboardGui") or descendant:IsA("SurfaceGui") then
+			zaehler.guis += 1
+		elseif descendant:IsA("Light") then
+			zaehler.lights += 1
 		end
 	end
-	return count
+	return zaehler
 end
 
 -- Plot zuweisen, sobald das Profil geladen ist, und den Spieler dorthin
@@ -3933,7 +4236,7 @@ return PlotService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="KC150">
+<Item class="ModuleScript" referent="KC151">
 <Properties>
 <string name="Name">ProductionService</string>
 <ProtectedString name="Source">--!strict
@@ -4007,7 +4310,7 @@ return ProductionService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="KC151">
+<Item class="ModuleScript" referent="KC152">
 <Properties>
 <string name="Name">RunTimerService</string>
 <ProtectedString name="Source">--!strict
@@ -4139,7 +4442,7 @@ return RunTimerService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="KC152">
+<Item class="ModuleScript" referent="KC153">
 <Properties>
 <string name="Name">ShopService</string>
 <ProtectedString name="Source">--!strict
@@ -4193,7 +4496,8 @@ local function onBuyKey(player: Player, rarityName: any)
 
 	profile.wins -= price
 	table.insert(profile.keys, { rarity = rarityName, vorrat = 0 })
-	PlotService.rebuildKeys(player.UserId)
+	-- Die neue Taste faellt sichtbar in ihren Sockel.
+	PlotService.rebuildKeys(player.UserId, #profile.keys)
 	DataService.syncLeaderstats(player)
 	TutorialService.report(player, "buy")
 	notify(player, ("%s gekauft (-%d Wins)."):format(rarityName, price))
@@ -4236,7 +4540,7 @@ return ShopService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="KC153">
+<Item class="ModuleScript" referent="KC154">
 <Properties>
 <string name="Name">SpeedService</string>
 <ProtectedString name="Source">--!strict
@@ -4309,7 +4613,7 @@ return SpeedService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="KC154">
+<Item class="ModuleScript" referent="KC155">
 <Properties>
 <string name="Name">StateService</string>
 <ProtectedString name="Source">--!strict
@@ -4379,7 +4683,7 @@ return StateService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="KC155">
+<Item class="ModuleScript" referent="KC156">
 <Properties>
 <string name="Name">StealService</string>
 <ProtectedString name="Source">--!strict
@@ -4661,7 +4965,7 @@ return StealService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="KC156">
+<Item class="ModuleScript" referent="KC157">
 <Properties>
 <string name="Name">TutorialService</string>
 <ProtectedString name="Source">--!strict
@@ -4755,21 +5059,21 @@ return TutorialService
 </Item>
 </Item>
 </Item>
-<Item class="Lighting" referent="KC168">
+<Item class="Lighting" referent="KC169">
 <Properties>
 <string name="Name">Lighting</string>
 <token name="Technology">4</token>
 </Properties>
 </Item>
-<Item class="StarterPlayer" referent="KC169">
+<Item class="StarterPlayer" referent="KC170">
 <Properties>
 <string name="Name">StarterPlayer</string>
 </Properties>
-<Item class="StarterPlayerScripts" referent="KC170">
+<Item class="StarterPlayerScripts" referent="KC171">
 <Properties>
 <string name="Name">StarterPlayerScripts</string>
 </Properties>
-<Item class="LocalScript" referent="KC163">
+<Item class="LocalScript" referent="KC164">
 <Properties>
 <string name="Name">KeycapRush</string>
 <ProtectedString name="Source">--!strict
@@ -4786,11 +5090,11 @@ ShopController.start()
 print("[KEYCAP] Client bereit.")
 </ProtectedString>
 </Properties>
-<Item class="Folder" referent="KC161">
+<Item class="Folder" referent="KC162">
 <Properties>
 <string name="Name">Controllers</string>
 </Properties>
-<Item class="ModuleScript" referent="KC159">
+<Item class="ModuleScript" referent="KC160">
 <Properties>
 <string name="Name">HudController</string>
 <ProtectedString name="Source">--!strict
@@ -5129,7 +5433,7 @@ return HudController
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="KC160">
+<Item class="ModuleScript" referent="KC161">
 <Properties>
 <string name="Name">ShopController</string>
 <ProtectedString name="Source">--!strict
@@ -5280,7 +5584,7 @@ return ShopController
 </Properties>
 </Item>
 </Item>
-<Item class="ModuleScript" referent="KC162">
+<Item class="ModuleScript" referent="KC163">
 <Properties>
 <string name="Name">UiKit</string>
 <ProtectedString name="Source">--!strict

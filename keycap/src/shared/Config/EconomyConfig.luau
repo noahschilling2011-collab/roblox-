@@ -103,6 +103,10 @@ local EconomyConfig = {
 	-- schliessen soll. Gespeichert werden Wins, Slots und Tasten.
 	PERSIST_VORRAT = false,
 
+	-- Ab diesem Vorrat gilt eine Taste als voll und faengt an zu pulsieren.
+	-- Eine volle Taste muss von weitem schreien "hol mich".
+	KEY_PULSE_VORRAT = 800,
+
 	-- ---------------------------------------------------------------
 	-- NPC-Plots [ENTSCHEIDUNG]
 	-- Absichtlich schwach: sie sollen den leeren Server ueberbruecken,
