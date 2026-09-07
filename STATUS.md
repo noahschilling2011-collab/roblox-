@@ -58,6 +58,32 @@ lassen (Scope offiziell erweitern) oder für den ersten Launch deaktivieren.
   Rundenspiel) mit eigener `Turmfall.rbxlx`. Es ist von PlanetForge unabhängig und wird
   von diesem Bauplan NICHT abgedeckt.
 
+## Konzept-Notizen (kein Code) 📝
+- `docs/KEYCAP_RUSH_BEWERTUNG.md` — kritische Bewertung des KEYCAP-RUSH-Konzepts
+  (eigenes Spielkonzept, liegt NICHT im Repo). Enthält am Ende einen Nachtrag mit den
+  Schwachstellen der Bewertung selbst. Kein Einfluss auf PlanetForge oder TURMFALL.
+- `keycap/` — KEYCAP RUSH, spielbarer Kern: Plots mit Tasten-Steckplätzen, Produktion
+  pro Taste, Speed-Tore, Cash-Out-Pads, Klau mit Paar-Cooldown und Schild, Laden,
+  DataService mit Session-Lock. 26 Luau-Dateien, eigenes `default.project.json`.
+  Dazu NPC-Plots als Klau-Ziele, sichtbares Tragen der Beute, Rundlaufzeit-Messung,
+  ein Part-Budget-Check beim Serverstart und ein vierstufiges Onboarding
+  (Fortschritt im Profil, Schema-Version 2).
+  Design-System: `Theme.luau` (Farben/Abstände/Schriftskala) + `UiKit.luau` (Panel,
+  Text, Knopf, UIScale), Tastenbuchstaben auf den Parts, `LightingService`.
+  Kontrast wird im Testlauf nach WCAG nachgerechnet — vier Lesbarkeitsfehler behoben,
+  darunter die Wins-Zahl mit 2,45:1.
+  `node keycap/tools/build-rbxlx.mjs` erzeugt `keycap/KeycapRush.rbxlx` (direkt in
+  Studio öffenbar, kein Rojo nötig) — inklusive gebackener Weltvorschau, damit beim
+  Öffnen nicht nur ein Spawn-Pad dasteht. `WorldLayout.luau` ist die gemeinsame Quelle
+  für Server und Build-Script.
+  `cd keycap/tests && npm install && npm test` → 91 Tests + Syntaxprüfung aller Dateien.
+  **Nie in Roblox gelaufen** — nur Syntax und reine Logik geprüft.
+  Nicht drin: Monetarisierung, Sounds/Effekte.
+  Offene Zahl: `STAGE_RUN_SECONDS` ist geschätzt — `RunTimerService` misst sie im Spiel
+  und gibt die fertige Config-Zeile ins Output-Fenster aus, sie muss nur übernommen werden.
+  Das Konzeptdokument fehlt weiterhin im Repo; Kartenaufbau, Datenschema und UI sind
+  daher Entscheidungen, keine Vorgaben (im Code markiert).
+
 ## Manuelle Schritte außerhalb des Codes (Noah) 🔑
 - Publishing + Creator Dashboard: Gamepässe/Produkte anlegen, echte IDs in
   `src/shared/Config/MonetizationConfig.luau` eintragen (statt der 0-Platzhalter).

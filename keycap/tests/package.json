@@ -1,0 +1,12 @@
+{
+  "name": "keycap-rush-tests",
+  "private": true,
+  "type": "module",
+  "description": "Oekonomie-Tests fuer KEYCAP RUSH in einer echten Luau-VM (WASM)",
+  "scripts": {
+    "test": "node testlauf.mjs"
+  },
+  "dependencies": {
+    "luau-web": "^1.4.0"
+  }
+}

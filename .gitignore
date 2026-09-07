@@ -3,8 +3,9 @@
 *.rbxlx
 *.rbxm
 *.rbxmx
-# Ausnahme: die fertige Spieldatei zum Direkt-Öffnen (aus src/ generiert)
+# Ausnahme: die fertigen Spieldateien zum Direkt-Öffnen (aus src/ generiert)
 !/PlanetForge.rbxlx
+!/keycap/KeycapRush.rbxlx
 *.rbxl.lock
 *.rbxlx.lock
 
