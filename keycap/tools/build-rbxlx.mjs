@@ -88,6 +88,7 @@ async function weltVorschau() {
 
   const prelude = `
 local Vector3 = { new = function(x, y, z) return { X = x or 0, Y = y or 0, Z = z or 0 } end }
+local Vector2 = { new = function(x, y) return { X = x or 0, Y = y or 0 } end }
 local Color3 = { fromRGB = function(r, g, b) return { r = r, g = g, b = b } end }
 local UDim = { new = function(s, o) return { Scale = s, Offset = o } end }
 local Enum = setmetatable({}, { __index = function(_, class)
@@ -163,10 +164,22 @@ for slot = 1, World.NPC_PLOT_COUNT do
 		local crown = Theme.KEY_CROWN[rarity] or 1
 		local extra = World.KEY_SIZE.Y * (crown - 1)
 		local basis = Layout.slotPosition(mitte, keyIndex)
+		local koerperHoehe = World.KEY_SIZE.Y * crown
+		local mitteY = basis.Y + extra / 2
 		part("Key" .. keyIndex,
-			Vector3.new(World.KEY_SIZE.X, World.KEY_SIZE.Y * crown, World.KEY_SIZE.Z),
-			Vector3.new(basis.X, basis.Y + extra / 2, basis.Z),
+			Vector3.new(World.KEY_SIZE.X, koerperHoehe, World.KEY_SIZE.Z),
+			Vector3.new(basis.X, mitteY, basis.Z),
+			Theme.RARITY_COLORS[rarity])
+		-- Deckplatte und Stem-Ring wie in PlotService.renderKeys, sonst
+		-- zeigt die Vorschau Wuerfel und das Spiel Tastenkappen.
+		part("KeyTop" .. keyIndex,
+			Vector3.new(World.KEY_SIZE.X * World.KEY_TOP_INSET, World.KEY_TOP_HEIGHT, World.KEY_SIZE.Z * World.KEY_TOP_INSET),
+			Vector3.new(basis.X, mitteY + koerperHoehe / 2 + World.KEY_TOP_HEIGHT / 2, basis.Z),
 			Theme.RARITY_COLORS[rarity], World.KEY_LEGENDS[keyIndex] or "?")
+		part("KeyStem" .. keyIndex,
+			Vector3.new(World.KEY_SIZE.X * World.KEY_STEM_INSET, World.KEY_STEM_HEIGHT, World.KEY_SIZE.Z * World.KEY_STEM_INSET),
+			Vector3.new(basis.X, mitteY - koerperHoehe / 2 + World.KEY_STEM_HEIGHT / 2, basis.Z),
+			Theme.RARITY_EDGE[rarity])
 	end
 end
 

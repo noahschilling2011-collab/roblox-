@@ -27,6 +27,7 @@ const modules = [
 // Stubs fuer die Roblox-Globals, die die Shared-Module anfassen.
 let body = `
 local Vector3 = { new = function(x, y, z) return { X = x or 0, Y = y or 0, Z = z or 0 } end }
+local Vector2 = { new = function(x, y) return { X = x or 0, Y = y or 0 } end }
 local Color3 = {
 	fromRGB = function(r, g, b) return { R = r / 255, G = g / 255, B = b / 255, kind = "Color3" } end,
 	new = function(r, g, b) return { R = r, G = g, B = b, kind = "Color3" } end,
@@ -357,8 +358,10 @@ test("Die Karte bleibt im Part-Budget - auch im schlimmsten Fall", function()
 	local parts = 0
 	parts += World.PLOT_COUNT * 3 -- Base + Deck + Sign je Plot
 	parts += World.PLOT_COUNT * Config.MAX_KEY_SLOTS -- Steckplatz-Mulden, immer gebaut
-	parts += spielerPlots * Config.MAX_KEY_SLOTS -- alle Steckplaetze voll
-	parts += World.NPC_PLOT_COUNT * Config.NPC_KEY_COUNT
+	-- Eine Kappe sind drei Parts: Koerper, Deckplatte, Stem-Ring.
+	local PARTS_PRO_TASTE = 3
+	parts += spielerPlots * Config.MAX_KEY_SLOTS * PARTS_PRO_TASTE
+	parts += World.NPC_PLOT_COUNT * Config.NPC_KEY_COUNT * PARTS_PRO_TASTE
 	parts += #World.STAGE_GATE_POSITIONS + #World.STAGE_PAD_POSITIONS * 2 -- Pad + Podest
 	parts += 2 -- Promenade und Weg
 	parts += World.PLOT_COUNT -- jeder Spieler traegt gleichzeitig Beute
@@ -859,6 +862,37 @@ test("Die Promenade schliesst an die Plots an", function()
 	local promenadeHinterkante = promenade.position.Z - promenade.size.Z / 2
 	expect(math.abs(plotVorderkante - promenadeHinterkante) < 0.001,
 		"Luecke zwischen Plot und Promenade: " .. (plotVorderkante - promenadeHinterkante))
+end)
+
+test("Die Kappe verjuengt sich nach oben", function()
+	-- Aus 30 m erkennt man eine Tastatur an der Silhouette, nicht an den
+	-- Buchstaben. Koerper breiter als Deckplatte, Stem am schmalsten.
+	expect(World.KEY_TOP_INSET < 1, "Deckplatte ist nicht schmaler als der Koerper")
+	expect(World.KEY_TOP_INSET > 0.6, "Deckplatte zu schmal, das liest sich als Pilz")
+	expect(World.KEY_STEM_INSET < World.KEY_TOP_INSET, "Stem-Ring ist nicht der schmalste Teil")
+	expect(World.KEY_STEM_INSET > 0.4, "Stem-Ring zu duenn zum Sehen")
+end)
+
+test("Deckplatte und Stem bleiben Absaetze, keine eigenen Stockwerke", function()
+	expect(World.KEY_TOP_HEIGHT < World.KEY_SIZE.Y / 2, "Deckplatte ist ein zweiter Klotz")
+	expect(World.KEY_STEM_HEIGHT < World.KEY_SIZE.Y / 2, "Stem-Ring ist ein zweiter Klotz")
+	expect(World.KEY_TOP_HEIGHT > 0, "keine Deckplatte")
+	expect(World.KEY_STEM_HEIGHT > 0, "kein Stem-Ring")
+end)
+
+test("Die Legende sitzt versetzt, aber bleibt auf der Kappe", function()
+	local versatz = World.KEY_LEGEND_OFFSET
+	expect(versatz.X ~= 0 or versatz.Y ~= 0, "Legende sitzt randlos mittig wie vorher")
+	expect(math.abs(versatz.X) < 0.25 and math.abs(versatz.Y) < 0.25,
+		"Legende rutscht von der Kappe: " .. versatz.X .. " / " .. versatz.Y)
+end)
+
+test("Der Stem sitzt im Sockel, nicht darunter in der Luft", function()
+	-- Der Ring haengt an der Unterkante des Koerpers und ragt nach unten.
+	-- Er darf nicht tiefer reichen als die Plotplatte dick ist, sonst
+	-- steckt er unten heraus.
+	expect(World.KEY_STEM_HEIGHT <= World.PLOT_SIZE.Y,
+		"Stem-Ring ragt unter der Plotplatte heraus")
 end)
 
 table.insert(results, "")

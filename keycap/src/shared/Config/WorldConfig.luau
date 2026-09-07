@@ -35,6 +35,24 @@ local WorldConfig = {
 	SLOT_SPACING = 9,
 	KEY_SIZE = Vector3.new(6, 3, 6),
 
+	-- Silhouette der Tastenkappe. Eine echte Keycap ist unten breiter als
+	-- oben und hat einen sichtbaren Absatz zum Sockel - aus 30 m erkennt
+	-- man eine Tastatur an der Silhouette, nicht an den Buchstaben.
+	--
+	-- Gebaut als zwei gestapelte Quader statt aus WedgeParts. Begruendung:
+	-- eine echte Schraege braeuchte vier Wedges pro Kappe, das waeren bei
+	-- 192 Tasten 768 Parts zusaetzlich - mehr als das gesamte restliche
+	-- Budget. Der zweistufige Absatz kostet einen Part und liest sich auf
+	-- Spielentfernung gleich.
+	KEY_TOP_INSET = 0.82, -- Deckplatte auf 82 % der Grundflaeche
+	KEY_TOP_HEIGHT = 0.45,
+	KEY_STEM_INSET = 0.68, -- Stem-Ring, schmaler als der Koerper
+	KEY_STEM_HEIGHT = 0.6,
+
+	-- Die Legende sitzt nicht mittig, sondern leicht nach oben-links -
+	-- so wie auf einer echten Tastatur. Zwei Zahlen, grosse Wirkung.
+	KEY_LEGEND_OFFSET = Vector2.new(-0.10, -0.12),
+
 	-- "Zuhause": Radius um die Plotmitte, in dem der Besitzer als anwesend
 	-- gilt (verdoppelt die Klau-Dauer).
 	PRESENCE_RADIUS = 34,

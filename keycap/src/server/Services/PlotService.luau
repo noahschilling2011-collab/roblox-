@@ -219,6 +219,54 @@ function PlotService.renderKeys(plot: Plot, keys: { { rarity: string, vorrat: nu
 		part.Material = Theme.RARITY_MATERIAL[key.rarity] or Enum.Material.SmoothPlastic
 		part.Color = Theme.RARITY_COLORS[key.rarity] or Theme.WORLD.PLATE
 
+		-- Deckplatte: schmaler als der Koerper, sitzt oben drauf. Der
+		-- Absatz dazwischen IST die Keycap-Silhouette.
+		local top = Instance.new("Part")
+		top.Name = "Top"
+		top.Size = Vector3.new(
+			WorldConfig.KEY_SIZE.X * WorldConfig.KEY_TOP_INSET,
+			WorldConfig.KEY_TOP_HEIGHT,
+			WorldConfig.KEY_SIZE.Z * WorldConfig.KEY_TOP_INSET
+		)
+		top.Position = part.Position
+			+ Vector3.new(0, part.Size.Y / 2 + WorldConfig.KEY_TOP_HEIGHT / 2, 0)
+		top.Anchored = true
+		top.CanCollide = false
+		top.TopSurface = Enum.SurfaceType.Smooth
+		top.Material = part.Material
+		top.Color = part.Color
+		top.Parent = plot.keyFolder
+
+		-- Stem-Ring: dunkel, schmaler, setzt die Kappe vom Sockel ab.
+		local stem = Instance.new("Part")
+		stem.Name = "Stem"
+		stem.Size = Vector3.new(
+			WorldConfig.KEY_SIZE.X * WorldConfig.KEY_STEM_INSET,
+			WorldConfig.KEY_STEM_HEIGHT,
+			WorldConfig.KEY_SIZE.Z * WorldConfig.KEY_STEM_INSET
+		)
+		stem.Position = part.Position
+			- Vector3.new(0, part.Size.Y / 2 - WorldConfig.KEY_STEM_HEIGHT / 2, 0)
+		stem.Anchored = true
+		stem.CanCollide = false
+		stem.TopSurface = Enum.SurfaceType.Smooth
+		stem.Material = Theme.WORLD.SOCKET_MATERIAL
+		stem.Color = Theme.RARITY_EDGE[key.rarity] or Theme.WORLD.SEAM
+		stem.Parent = plot.keyFolder
+
+		-- Licht ab Rare. Das ist keine Deko: Rare und Epic schaffen gegen
+		-- die Tastaturplatte nur 2,89 bzw. 2,82:1 - ohne eigenes Licht
+		-- verschwinden sie auf dem dunklen Untergrund.
+		local reichweite = Theme.RARITY_LIGHT_RANGE[key.rarity] or 0
+		if reichweite > 0 then
+			local glow = Instance.new("PointLight")
+			glow.Color = Theme.RARITY_COLORS[key.rarity] or Theme.WORLD.SIGNAL
+			glow.Range = reichweite
+			glow.Brightness = Theme.RARITY_LIGHT_BRIGHTNESS
+			glow.Shadows = false -- Schatten von 192 Lichtern waeren nicht bezahlbar
+			glow.Parent = top
+		end
+
 		-- Kantenlicht statt Schatten: Roblox-UI kann keinen Schatten, und
 		-- in der Welt zeichnet eine SelectionBox die Kanten sauber nach.
 		local rim = Instance.new("SelectionBox")
@@ -269,6 +317,9 @@ function PlotService.renderKeys(plot: Plot, keys: { { rarity: string, vorrat: nu
 		legend.PixelsPerStud = 50
 
 		local letter = Instance.new("TextLabel")
+		-- Nicht randlos mittig, sondern leicht nach oben-links - so sitzt
+		-- die Legende auf einer echten Tastatur.
+		letter.Position = UDim2.new(WorldConfig.KEY_LEGEND_OFFSET.X, 0, WorldConfig.KEY_LEGEND_OFFSET.Y, 0)
 		letter.Size = UDim2.new(1, 0, 1, 0)
 		letter.BackgroundTransparency = 1
 		letter.Font = Theme.FONT
@@ -276,7 +327,7 @@ function PlotService.renderKeys(plot: Plot, keys: { { rarity: string, vorrat: nu
 		letter.TextColor3 = Theme.RARITY_INK[key.rarity] or Theme.TEXT
 		letter.Text = WorldConfig.KEY_LEGENDS[index] or "?"
 		letter.Parent = legend
-		legend.Parent = part
+		legend.Parent = top
 
 		local prompt = Instance.new("ProximityPrompt")
 		prompt.Name = "Steal"
