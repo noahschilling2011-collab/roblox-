@@ -1,0 +1,1001 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#0a0a0c">
+<meta name="description" content="Lebenslinie – ein Leben, Jahr für Jahr. Eine eigenständige Lebenssimulation mit Hobbys, Karriere, Beziehungen und einer Creator-Laufbahn.">
+<title>Lebenslinie · Dein nächstes Kapitel</title>
+<style>
+:root{color-scheme:dark;--bg:#0a0a0c;--card:#121216;--modal:#1a1a20;--hover:#22222a;--text:#e8e8ec;--head:#f4f4f7;--muted:#8b8b95;--accent:#b8d7e4;--line:#29292f;--good:#8bc8a2;--bad:#e09a99;--wand-warm:#2a2a31;--wand-salbei:#2b3a33;--wand-sand:#3a332a;--wand-tief:#242c3d;--boden-holz:#5a4433;--boden-estrich:#3a3a40;--boden-teppich:#463a46;--space-1:4px;--space-2:8px;--space-3:12px;--space-4:16px;--space-5:20px;--space-6:24px;--space-8:32px;--space-10:40px;--step--1:clamp(.83rem,.80rem + .15vw,.94rem);--step-0:clamp(1rem,.95rem + .25vw,1.13rem);--step-1:clamp(1.2rem,1.11rem + .45vw,1.5rem);--step-2:clamp(1.44rem,1.29rem + .75vw,2rem);--step-3:clamp(1.73rem,1.49rem + 1.2vw,2.66rem)}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:16px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}button,input,select,textarea{font:inherit}button{cursor:pointer}button:disabled{cursor:not-allowed;opacity:.38}button,a,input,select,textarea{-webkit-tap-highlight-color:transparent}:focus-visible{outline:2px solid var(--accent);outline-offset:3px}button{color:inherit}h1,h2,h3,p{margin:0}h1,h2,h3{color:var(--head)}h2{font-size:var(--step-2);letter-spacing:-.04em;font-weight:550}h3{font-size:1rem;font-weight:550}svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}small,.small{font-size:.875rem}.muted{color:var(--muted)}.eyebrow{text-transform:uppercase;font-size:.75rem;letter-spacing:.15em;color:var(--muted);font-weight:600}.hidden{display:none!important}.row{display:flex;align-items:center;gap:12px}.between{justify-content:space-between}.stack{display:grid;gap:16px}.grow{flex:1;min-width:0}.accent{color:var(--accent)}.positive{color:var(--good)}.negative{color:var(--bad)}
+.shell{display:grid;grid-template-columns:232px minmax(0,1fr);min-height:100dvh}.sidebar{border-right:1px solid var(--line);padding:36px 20px 24px;display:flex;flex-direction:column;gap:40px;position:sticky;top:0;height:100dvh}.brand{font-size:1.2rem;letter-spacing:-.05em;font-weight:650;display:flex;align-items:center;gap:10px;padding-left:12px}.brand svg{width:28px;height:28px;color:var(--accent)}.brand .period{color:var(--accent)}.nav{display:grid;gap:6px}.nav button{border:0;background:none;display:flex;align-items:center;gap:12px;text-align:left;padding:13px 14px;border-radius:8px;color:var(--muted);font-size:.94rem;transition:background .15s ease-out,color .15s ease-out}.nav button:hover{background:var(--card);color:var(--text)}.nav button.active{background:#1d242a;color:var(--accent)}.nav .lock{font-size:.75rem;margin-left:auto}.nav-section{margin:20px 14px 8px}.side-bottom{margin-top:auto;display:grid;gap:6px}.side-bottom button{justify-content:flex-start}.side-foot{border-top:1px solid var(--line);padding:20px 12px 0;color:var(--muted);font-size:.75rem}.main{min-width:0;padding:0 44px 32px;max-width:1600px;width:100%;margin:auto}.topbar{height:92px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:12px}.breadcrumb{color:var(--muted);font-size:.875rem;display:flex;align-items:center;gap:14px}.breadcrumb span:last-child{color:var(--text)}.topbar-right{display:flex;align-items:center;gap:12px;font-size:.875rem}.pill{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:6px;padding:4px 8px;color:var(--muted);font-size:.75rem;white-space:nowrap}.pill svg{width:13px;height:13px}.icon-button{border:1px solid var(--line);background:none;border-radius:8px;width:36px;height:36px;display:grid;place-items:center}.mobile-brand{display:none}
+.identity{padding:36px 0 28px;display:flex;align-items:center;gap:20px}.monogram{width:60px;height:60px;display:grid;place-items:center;border:1px solid #44535c;border-radius:50%;color:var(--accent);font-size:1.35rem;background:#192027;flex-shrink:0}.identity h1{font-size:var(--step-3);font-weight:550;line-height:1.1;letter-spacing:-.055em;overflow-wrap:anywhere}.identity .subline{margin-top:8px;display:flex;align-items:center;flex-wrap:wrap;gap:12px;font-size:.875rem;color:var(--muted)}.age-block{margin-left:auto;text-align:right;white-space:nowrap}.age-number{font-size:3.2rem;letter-spacing:-.065em;line-height:1}.age-block small{display:block;color:var(--muted);margin-top:4px}.stat-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:20px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:20px 24px}.stat-label{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:.875rem}.stat-label svg{width:16px;height:16px}.stat-top{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:12px}.stat-top strong{font-size:.875rem;font-weight:500}.bar{height:4px;background:#2a2c31;border-radius:8px;overflow:hidden}.bar>span{display:block;width:100%;height:100%;background:var(--accent);transform-origin:left;transition:transform .45s cubic-bezier(.2,.8,.2,1)}.body-grid{display:grid;grid-template-columns:minmax(0,1fr) 272px;gap:32px;margin-top:36px}.section-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:24px}.section-head p{margin-top:6px;font-size:.875rem;color:var(--muted)}.text-btn{display:inline-flex;align-items:center;gap:8px;border:0;background:none;color:var(--muted);padding:6px 0;font-size:.875rem}.text-btn:hover{color:var(--accent)}.text-btn svg{width:15px;height:15px}.tabs{display:flex;gap:8px;margin:0 0 24px;flex-wrap:wrap}.tabs button{padding:7px 12px;background:none;border:1px solid transparent;color:var(--muted);border-radius:6px;font-size:.875rem}.tabs button.active{background:var(--card);border-color:var(--line);color:var(--text)}.timeline{height:min(48vh,570px);min-height:290px;overflow-y:auto;scrollbar-width:thin;scrollbar-color:#37373e transparent;overscroll-behavior:contain;padding-right:12px}.year-group{display:grid;grid-template-columns:52px minmax(0,1fr);position:relative}.year-age{color:var(--muted);font-size:.875rem;padding-top:4px;position:relative}.year-age:after{content:"";position:absolute;left:42px;top:26px;bottom:0;border-left:1px solid var(--line)}.year-events{padding:0 0 28px 18px;min-width:0}.year-marker{font-size:.75rem;color:var(--muted);margin-bottom:12px;display:flex;align-items:center;gap:8px}.year-marker:before{content:"";height:6px;width:6px;border:1px solid #566671;border-radius:50%;margin-left:-31px;margin-right:18px;background:var(--bg)}.log-entry{max-width:65ch;margin-bottom:12px;font-size:1rem;line-height:1.6;overflow-wrap:anywhere}.log-entry.gut{color:var(--good)}.log-entry.schlecht{color:var(--bad)}.log-entry.gross{color:var(--accent)}.log-entry.fresh{animation:arrive .3s cubic-bezier(.2,.8,.2,1) both;animation-delay:calc(var(--i)*50ms)}@keyframes arrive{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}.rail{display:grid;gap:16px;align-content:start}.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:22px}.card .eyebrow{margin-bottom:16px}.balance{font-size:1.9rem;letter-spacing:-.055em;line-height:1.2;overflow-wrap:anywhere}.mini-list{display:grid;gap:12px;margin-top:20px;padding-top:16px;border-top:1px solid var(--line);font-size:.875rem}.mini-list .row{align-items:flex-start;gap:8px}.mini-list .row span:last-child{text-align:right}.rail-note{font-size:.875rem;color:var(--muted);line-height:1.7;padding:4px 8px}.rail-note svg{width:16px;height:16px;vertical-align:middle;margin-right:6px}.year-footer{margin-top:24px;border-top:1px solid var(--line);padding-top:20px;display:flex;align-items:center;justify-content:space-between;gap:16px}.year-footer .hint{font-size:.875rem;color:var(--muted)}.btn{border:1px solid var(--line);background:var(--card);border-radius:8px;padding:11px 16px;min-height:46px;display:inline-flex;justify-content:center;align-items:center;gap:9px;font-size:.875rem;transition:background .15s ease-out,transform .15s ease-out}.btn:not(:disabled):hover{background:var(--hover)}.btn.primary{background:var(--accent);border-color:var(--accent);color:#141a1e;font-weight:600}.btn.primary:not(:disabled):hover{background:#cce4ed;transform:translateY(-1px)}.btn.full{width:100%}.btn svg{width:18px;height:18px}.action-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.action-card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:18px;text-align:left;min-width:0;transition:background .15s ease-out}.action-card:not(:disabled):hover{background:var(--hover)}.action-card .row{margin-bottom:10px}.action-card .row svg{color:var(--accent)}.action-card p{color:var(--muted);font-size:.875rem;line-height:1.55}.action-card .price{display:block;margin-top:14px;color:var(--accent);font-size:.875rem}.panel-list{display:grid;gap:12px}.list-item{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:18px}.list-item p{font-size:.875rem;color:var(--muted);margin:6px 0 12px}.list-item .bar{margin-top:14px}.metric-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:20px}.metric{border:1px solid var(--line);background:var(--card);border-radius:10px;padding:16px;min-width:0}.metric strong{display:block;font-size:1.6rem;font-weight:500;letter-spacing:-.04em;overflow-wrap:anywhere}.metric span{font-size:.75rem;color:var(--muted)}.empty{padding:32px 24px;border:1px dashed #35353d;border-radius:12px;text-align:center}.empty>svg{height:32px;width:32px;color:var(--accent);margin-bottom:12px}.empty h3{font-size:var(--step-1);margin-bottom:10px}.empty p{color:var(--muted);font-size:.94rem;max-width:42ch;margin:0 auto 20px}.notice{padding:12px 16px;border:1px solid #37464f;border-radius:8px;background:#151d22;color:var(--accent);font-size:.875rem;margin:16px 0}.notice p+p{margin-top:6px}
+dialog{background:var(--modal);color:var(--text);border:1px solid #383840;border-radius:16px;padding:0;width:min(560px,calc(100% - 32px));max-height:calc(100dvh - 40px);box-shadow:0 32px 120px #0009;overflow-y:auto}dialog[open]{animation:modal-in .32s cubic-bezier(.2,.8,.2,1)}dialog::backdrop{background:#070709c9;backdrop-filter:blur(8px)}@keyframes modal-in{from{transform:translateY(16px) scale(.98);opacity:0}to{transform:translateY(0) scale(1);opacity:1}}.dialog-head{padding:24px 24px 0;display:flex;align-items:center;justify-content:space-between;gap:16px}.dialog-head h2{font-size:1.4rem}.dialog-body{padding:20px 24px 24px}.dialog-body>p{color:var(--muted);margin-bottom:20px}.field{display:grid;gap:8px;margin-bottom:18px}.field>label,.field>legend{font-size:.875rem;color:var(--muted)}input,select,textarea{width:100%;min-width:0;border:1px solid #404048;background:#121216;border-radius:8px;padding:12px;color:var(--text)}textarea{min-height:160px;resize:vertical;font-size:.875rem}.field-pair{display:grid;grid-template-columns:1fr 1fr;gap:12px}.choice-list{display:grid;gap:10px}.choice-list .btn{justify-content:flex-start;text-align:left;display:block}.choice-list small{display:block;color:var(--muted);font-weight:400;margin-top:5px}.form-error{color:var(--bad);font-size:.875rem;margin:12px 0;min-height:0}.form-error:empty{display:none}.choice-price{display:flex;gap:8px;flex-wrap:wrap}.choice-price label{flex:1;min-width:74px;border:1px solid #41414a;border-radius:8px;padding:10px 6px;text-align:center;cursor:pointer;font-size:.875rem}.choice-price label:has(:checked){border-color:var(--accent);color:var(--accent);background:#253039}.choice-price label:has(:disabled){opacity:.4;cursor:not-allowed}.choice-price input{width:auto;margin:0 4px 0 0;accent-color:var(--accent)}.dialog-actions{display:flex;flex-wrap:wrap;gap:12px;justify-content:flex-end;margin-top:20px}.start-wrap{max-width:1080px;min-height:100dvh;margin:auto;padding:40px 32px;display:flex;flex-direction:column}.start-top{display:flex;justify-content:space-between;align-items:center;gap:12px}.start-top .brand{padding:0}.start-content{flex:1;display:grid;grid-template-columns:1fr 380px;align-items:center;gap:80px;padding:60px 0}.start-copy h1{font-size:clamp(3rem,5.7vw,5.5rem);font-weight:500;letter-spacing:-.075em;line-height:1.03;margin:20px 0 24px}.start-copy h1 span{color:var(--accent)}.start-copy>p{color:var(--muted);max-width:35ch;font-size:1.1rem;line-height:1.7}.life-ticks{display:flex;align-items:flex-end;gap:8px;margin-top:48px;height:52px;border-bottom:1px solid #353b41;padding-bottom:12px}.life-ticks span{width:1px;background:#48545c;height:16px}.life-ticks span:nth-child(5n + 1){height:30px;background:var(--accent)}.tick-labels{display:flex;justify-content:space-between;margin-top:10px;color:var(--muted);font-size:.75rem}.start-card{padding:28px;background:var(--card);border:1px solid var(--line);border-radius:14px}.start-card h2{font-size:1.5rem;margin-bottom:8px}.start-card>p{color:var(--muted);font-size:.875rem;margin-bottom:24px}.start-foot{border-top:1px solid var(--line);padding-top:20px;display:flex;justify-content:space-between;gap:16px;color:var(--muted);font-size:.75rem}.start-load{border:0;background:none;padding:0;color:var(--accent);font-size:.875rem}.summary-title{font-size:clamp(3rem,8vw,5rem);line-height:1;letter-spacing:-.07em;margin:24px 0}.summary .metric-row{grid-template-columns:1fr 1fr}.summary ul{padding-left:20px;color:var(--muted)}.summary li{margin-bottom:12px}.toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%);z-index:50;max-width:calc(100% - 32px);padding:12px 20px;background:#273139;border:1px solid #50626d;border-radius:9px;color:var(--accent);font-size:.875rem;box-shadow:0 10px 30px #0008;pointer-events:none}
+@media(min-width:1500px){.main{padding-left:60px;padding-right:60px}.body-grid{gap:48px;grid-template-columns:minmax(0,1fr) 300px}.timeline{height:52vh}}
+@media(max-width:1150px){.sidebar{padding:32px 12px;width:200px}.shell{grid-template-columns:200px minmax(0,1fr)}.main{padding:0 28px 28px}.body-grid{grid-template-columns:minmax(0,1fr);gap:24px}.rail{grid-template-columns:1fr 1fr}.rail-note{grid-column:1/-1}.stat-grid{gap:12px;padding:20px 16px}.timeline{height:44vh}.start-content{gap:40px}}
+@media(max-width:760px){.shell{display:block}.sidebar{position:static;width:auto;height:auto;padding:0;border-right:0;gap:0}.sidebar>.brand,.sidebar>.side-bottom,.side-foot,.nav-section{display:none}.nav{display:flex;overflow-x:auto;padding:8px 16px;border-bottom:1px solid var(--line);scrollbar-width:none;gap:4px}.nav button{white-space:nowrap;padding:10px 12px;font-size:.875rem}.nav .lock{display:none}.nav button svg{width:16px;height:16px}.sidebar{position:sticky;top:0;z-index:10;background:var(--bg)}.main{padding:0 20px 112px}.topbar{height:64px}.mobile-brand{display:flex;font-size:1rem}.breadcrumb{display:none}.topbar-right .pill{display:none}.identity{padding:28px 0 24px;gap:12px}.monogram{height:48px;width:48px;font-size:1.05rem}.identity h1{font-size:1.8rem}.identity .subline{gap:6px;font-size:.75rem}.age-number{font-size:2.7rem}.age-block small{font-size:.75rem}.stat-grid{grid-template-columns:1fr 1fr;gap:20px;padding:20px}.body-grid{margin-top:28px}.section-head{margin-bottom:20px}.timeline{height:45vh;min-height:300px}.year-footer{position:fixed;bottom:0;left:0;right:0;z-index:20;padding:14px 20px;background:rgba(16,16,20,.95);backdrop-filter:blur(20px);margin:0}.year-footer .btn{min-height:50px;padding-left:24px;padding-right:24px}.year-footer .hint{font-size:.75rem;max-width:125px}.rail{grid-template-columns:1fr 1fr;gap:12px}.card{padding:18px}.balance{font-size:1.5rem}.mini-list{font-size:.75rem}.start-wrap{padding:24px 20px}.start-content{grid-template-columns:1fr;gap:32px;padding:48px 0}.start-copy h1{font-size:3.7rem}.start-copy>p{font-size:1rem}.life-ticks,.tick-labels{display:none}.start-card{padding:24px}.start-foot{font-size:.75rem}.metric-row{gap:8px}.metric{padding:12px}.metric strong{font-size:1.3rem}.toast{bottom:94px}}
+@media(max-width:400px){.main{padding-left:16px;padding-right:16px}.identity h1{font-size:1.45rem}.identity .subline{font-size:.75rem}.monogram{height:40px;width:40px;font-size:.9rem}.stat-label{font-size:.8rem;gap:6px}.stat-grid{padding:16px;gap:16px}.action-grid{grid-template-columns:1fr}.rail{grid-template-columns:1fr}.field-pair{grid-template-columns:1fr}.start-copy h1{font-size:3.3rem}.dialog-body{padding:20px}.dialog-head{padding:20px 20px 0}.start-top .pill{display:none}}
+h1,h2,h3{overflow-wrap:anywhere}.section-head>div{min-width:0}.section-head>.btn{flex-shrink:0}.row>.small.accent{white-space:nowrap}.dialog-body legend{margin-bottom:8px}.start-card input{min-height:48px}
+@media(max-width:400px){.section-head{flex-wrap:wrap}.section-head>.btn{width:100%}.row>.small.accent{white-space:normal;text-align:right}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-delay:0ms!important;transition-duration:.01ms!important;scroll-behavior:auto!important}}
+</style>
+</head>
+<body>
+<div id="app"></div><dialog id="dialog" aria-labelledby="dialog-title"></dialog><div id="toast" class="toast hidden" role="status"></div>
+<script>
+"use strict";
+(()=>{
+const ICONS={line:'<path d="M3 17h4l3-11 4 15 3-10h4"/>',book:'<path d="M4 4h6l2 2 2-2h6v15h-6l-2 2-2-2H4zM12 6v15"/>',heart:'<path d="M20 5a5 5 0 0 0-8 1 5 5 0 0 0-8-1c-5 5 2 11 8 15 6-4 13-10 8-15z"/>',sun:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1 1m12 12 1 1M5 19l1-1M18 6l1-1"/>',brain:'<path d="M12 5C7 0 4 5 5 8 0 12 4 16 6 16c-1 5 5 6 6 3 1 3 7 2 6-3 5 0 6-6 1-8 1-4-3-7-7-3zM12 5v14M8 8l1 3-2 2m9-5-1 3 2 2"/>',spark:'<path d="m12 3 2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5z"/>',activity:'<path d="M3 12h4l3-7 4 14 3-7h4"/>',briefcase:'<rect x="3" y="7" width="18" height="14" rx="2"/><path d="M8 7V3h8v4M3 12c6 4 12 4 18 0M12 12v4"/>',users:'<circle cx="9" cy="8" r="3"/><path d="M3 21v-3a6 6 0 0 1 12 0v3M16 5a3 3 0 0 1 0 6m2 3a5 5 0 0 1 3 5v2"/>',video:'<rect x="3" y="5" width="14" height="14" rx="3"/><path d="m17 9 4-3v12l-4-3M8 9l4 3-4 3z"/>',lock:'<rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3m-4 5v2"/>',arrow:'<path d="M4 12h16m-6-6 6 6-6 6"/>',save:'<path d="M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5"/>',upload:'<path d="M12 16V3m-5 5 5-5 5 5M4 16v5h16v-5"/>',plus:'<path d="M12 4v16M4 12h16"/>',close:'<path d="m6 6 12 12M18 6 6 18"/>',check:'<path d="m5 12 4 4L19 6"/>',leaf:'<path d="M20 3C8 2 1 9 5 17c8 4 15-3 15-14zM4 21 16 9"/>',wallet:'<path d="M3 7V5a2 2 0 0 1 2-2h13v4M3 7h18v14H3zM16 12h5v5h-5z"/>',info:'<circle cx="12" cy="12" r="9"/><path d="M12 11v6m0-10v1"/>',chart:'<path d="M4 3v17h17M8 15l4-5 4 2 5-7"/>',music:'<path d="M9 17V5l11-2v12M9 9l11-2"/><ellipse cx="6" cy="18" rx="3" ry="2"/><ellipse cx="17" cy="16" rx="3" ry="2"/>',clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',shuffle:'<path d="m3 5 4 0 10 14h4m-4-4 4 4-4 3M3 19h4L17 5h4m-4-3 4 3-4 4"/>'};
+const icon=n=>`<svg viewBox="0 0 24 24" aria-hidden="true">${ICONS[n]||ICONS.spark}</svg>`;
+const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const clamp=(n,min=0,max=100)=>Math.max(min,Math.min(max,Number.isFinite(Number(n))?Number(n):min));
+const eur=n=>new Intl.NumberFormat('de-DE',{style:'currency',currency:'EUR',maximumFractionDigits:0}).format(n);
+const num=n=>new Intl.NumberFormat('de-DE',{notation:n>=100000?'compact':'standard',maximumFractionDigits:1}).format(n);
+const rnd=(a,b)=>Math.floor(Math.random()*(b-a+1))+a;
+const gauss=()=>{let u=0;while(u===0)u=Math.random();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*Math.random());};
+const pick=a=>a[rnd(0,a.length-1)];
+const FIRST=['Alex','Noah','Luca','Mila','Emilia','Leon','Jona','Leni','Sam','Nika','Ben','Mika'];
+const LAST=['Winter','Berg','Keller','Fischer','Weber','Sommer','König','Seidel'];
+const STATS={gesundheit:['Gesundheit','heart'],glueck:['Glück','sun'],intelligenz:['Intelligenz','brain'],aussehen:['Aussehen','spark']};
+const VIEWS={leben:['Dein Leben','book'],aktivitaeten:['Aktivitäten','activity'],hobbys:['Hobbys','leaf'],karriere:['Bildung & Beruf','briefcase'],besitz:['Geld & Besitz','wallet'],beziehungen:['Beziehungen','users'],creator:['Content Creator','video'],onlyfans:['OnlyFans','lock']};
+const GELD={grundsicherung:8400,zinsSatz:.035,zinsDeckel:2000,insolvenzGrenze:-15000,insolvenzJahre:3,dispo:-2000};
+const GEIST={teilerAktiv:105,teilerPassiv:64,schulbonus:1,rostAb:45,rost:1};
+const ZEIT={kind:1,schulkind:2,jugend:3,erwachsen:4,jobAbzug:1,ausbildungAbzug:2,min:1,hobby:2,bewerbung:2,upload:1};
+const SAETTIGUNG={reichweite:.8,viral:1.6};
+const WACHSTUM={viralSockel:9000,viralExponent:.72,viralFaktor:9,deckelAnteil:.6,deckelSockel:12000};
+const CREATOR={vertraeglich:2,burnout:8};
+const MARKT={mittel:.07,streuung:.18,crashVon:-.40,crashBis:-.25,crashAlleMin:8,crashAlleMax:12,tagesgeld:.02,bodenRendite:-.6};
+const ANLAGE=[500,2000,10000,50000];
+const AUTO={minAlter:18,zeitKauf:2,zeitVerkauf:1,verlustErstJahr:.15,verlustDanach:.10,verschleissMin:3,verschleissMax:8,schrottUnter:8,schrottErloes:.08,nutzenTeiler:400};
+const IMMO={minAlter:18,zeitKauf:2,zeitAktion:1,eigenkapital:.25,nebenkosten:.09,zins:.039,tilgung:.025,wertMittel:.012,wertStreuung:.045,marktKopplung:.40,zustandWirkung:.08,zustandNeutral:70,verfallMin:2,verfallMax:5,instandRate:.012,mietRendite:.042,auszugUnter:35,maxObjekte:3,renovierBasis:.06,handwerkRabatt:.004,eigenNutzenSparnis:3000};
+const EINRICHTUNG={zeit:1,anstrichPreis:600,lackPreis:900};
+const WAND=[
+{id:'warm',name:'Warmes Grau',farbe:'var(--wand-warm)'},
+{id:'salbei',name:'Salbei',farbe:'var(--wand-salbei)'},
+{id:'sand',name:'Sand',farbe:'var(--wand-sand)'},
+{id:'tief',name:'Tiefblau',farbe:'var(--wand-tief)'}
+];
+const BODEN=[
+{id:'holz',name:'Holzdielen',farbe:'var(--boden-holz)'},
+{id:'estrich',name:'Estrich',farbe:'var(--boden-estrich)'},
+{id:'teppich',name:'Teppichboden',farbe:'var(--boden-teppich)'}
+];
+const LACK=[
+{id:'nacht',name:'Nachtblau',farbe:'#3d5a80'},
+{id:'creme',name:'Creme',farbe:'#d8cfc0'},
+{id:'gruen',name:'Tannengrün',farbe:'#4a6b52'},
+{id:'rost',name:'Rostrot',farbe:'#9c5a43'},
+{id:'grau',name:'Anthrazit',farbe:'#4a4a52'}
+];
+const GRUNDRISSE={miete:{name:'Mietwohnung',spalten:2,etagen:1},zimmer:{name:'Einzimmerwohnung',spalten:1,etagen:1},wohnung:{name:'Dreizimmerwohnung',spalten:3,etagen:1},altbau:{name:'Altbau',spalten:2,etagen:2},reihenhaus:{name:'Reihenhaus',spalten:2,etagen:2},haus:{name:'Einfamilienhaus',spalten:3,etagen:2}};
+const MOEBEL=[
+{id:'sofa',name:'Sofa',preis:450,glueck:4,svg:(x,y)=>`<rect x="${x+2}" y="${y-20}" width="44" height="14" rx="4" fill="var(--accent)" opacity=".8"/><rect x="${x+2}" y="${y-28}" width="44" height="9" rx="4" fill="var(--accent)" opacity=".5"/><rect x="${x+4}" y="${y-6}" width="5" height="6" fill="var(--line)"/><rect x="${x+39}" y="${y-6}" width="5" height="6" fill="var(--line)"/>`},
+{id:'sessel',name:'Sessel',preis:220,glueck:2,svg:(x,y)=>`<rect x="${x+8}" y="${y-18}" width="24" height="13" rx="4" fill="var(--accent)" opacity=".65"/><rect x="${x+8}" y="${y-26}" width="24" height="9" rx="4" fill="var(--accent)" opacity=".45"/>`},
+{id:'bett',name:'Bett',preis:600,glueck:5,svg:(x,y)=>`<rect x="${x+2}" y="${y-14}" width="46" height="12" rx="3" fill="var(--accent)" opacity=".55"/><rect x="${x+2}" y="${y-24}" width="14" height="11" rx="3" fill="var(--accent)" opacity=".85"/>`},
+{id:'tisch',name:'Esstisch',preis:380,glueck:3,svg:(x,y)=>`<rect x="${x+4}" y="${y-20}" width="40" height="5" rx="2" fill="var(--boden-holz)"/><rect x="${x+8}" y="${y-15}" width="4" height="15" fill="var(--line)"/><rect x="${x+36}" y="${y-15}" width="4" height="15" fill="var(--line)"/>`},
+{id:'stuhl',name:'Zwei Stühle',preis:160,glueck:2,svg:(x,y)=>`<rect x="${x+6}" y="${y-13}" width="13" height="4" fill="var(--line)"/><rect x="${x+6}" y="${y-26}" width="4" height="14" fill="var(--line)"/><rect x="${x+28}" y="${y-13}" width="13" height="4" fill="var(--line)"/><rect x="${x+37}" y="${y-26}" width="4" height="14" fill="var(--line)"/>`},
+{id:'regal',name:'Bücherregal',preis:240,glueck:3,svg:(x,y)=>`<rect x="${x+8}" y="${y-46}" width="30" height="46" fill="var(--boden-holz)" opacity=".7"/><rect x="${x+10}" y="${y-42}" width="26" height="3" fill="var(--accent)" opacity=".7"/><rect x="${x+10}" y="${y-29}" width="26" height="3" fill="var(--good)" opacity=".6"/><rect x="${x+10}" y="${y-16}" width="26" height="3" fill="var(--accent)" opacity=".5"/>`},
+{id:'schrank',name:'Kleiderschrank',preis:420,glueck:2,svg:(x,y)=>`<rect x="${x+10}" y="${y-52}" width="28" height="52" rx="2" fill="var(--boden-holz)" opacity=".55"/><line x1="${x+24}" y1="${y-52}" x2="${x+24}" y2="${y}" stroke="var(--line)" stroke-width="1.5"/>`},
+{id:'lampe',name:'Stehlampe',preis:90,glueck:2,svg:(x,y)=>`<rect x="${x+21}" y="${y-40}" width="3" height="40" fill="var(--line)"/><path d="M${x+13} ${y-40} L${x+32} ${y-40} L${x+28} ${y-52} L${x+17} ${y-52} Z" fill="var(--wand-sand)" opacity=".9"/>`},
+{id:'teppich',name:'Teppich',preis:180,glueck:2,svg:(x,y)=>`<rect x="${x}" y="${y-4}" width="50" height="4" rx="2" fill="var(--good)" opacity=".45"/>`},
+{id:'pflanze',name:'Zimmerpflanze',preis:45,glueck:2,svg:(x,y)=>`<rect x="${x+18}" y="${y-10}" width="12" height="10" rx="2" fill="var(--bad)" opacity=".55"/><path d="M${x+24} ${y-10} C ${x+12} ${y-22} ${x+16} ${y-34} ${x+24} ${y-32} C ${x+32} ${y-34} ${x+36} ${y-22} ${x+24} ${y-10} Z" fill="var(--good)" opacity=".8"/>`},
+{id:'tv',name:'Fernseher',preis:700,glueck:4,svg:(x,y)=>`<rect x="${x+6}" y="${y-34}" width="38" height="23" rx="2" fill="var(--bg)" stroke="var(--line)"/><rect x="${x+22}" y="${y-11}" width="6" height="7" fill="var(--line)"/><rect x="${x+15}" y="${y-5}" width="20" height="3" rx="1" fill="var(--line)"/>`},
+{id:'schreibtisch',name:'Schreibtisch',preis:300,glueck:3,svg:(x,y)=>`<rect x="${x+4}" y="${y-24}" width="42" height="4" fill="var(--boden-holz)"/><rect x="${x+6}" y="${y-20}" width="12" height="20" fill="var(--line)" opacity=".7"/><rect x="${x+30}" y="${y-36}" width="14" height="11" rx="1" fill="var(--bg)" stroke="var(--line)"/>`},
+{id:'kueche',name:'Einbauküche',preis:3200,glueck:6,svg:(x,y)=>`<rect x="${x}" y="${y-24}" width="50" height="24" fill="var(--card)" stroke="var(--line)"/><rect x="${x}" y="${y-28}" width="50" height="5" fill="var(--line)"/><circle cx="${x+12}" cy="${y-13}" r="3" fill="var(--accent)" opacity=".7"/><circle cx="${x+30}" cy="${y-13}" r="3" fill="var(--accent)" opacity=".7"/><rect x="${x+38}" y="${y-20}" width="9" height="16" fill="var(--bg)"/>`},
+{id:'bild',name:'Bild an der Wand',preis:130,glueck:2,svg:(x,y)=>`<rect x="${x+12}" y="${y-58}" width="26" height="20" fill="var(--card)" stroke="var(--accent)" stroke-width="1.5"/><path d="M${x+15} ${y-42} L${x+22} ${y-51} L${x+28} ${y-45} L${x+35} ${y-41} Z" fill="var(--good)" opacity=".7"/>`},
+{id:'klavier',name:'Klavier',preis:2600,glueck:7,svg:(x,y)=>`<rect x="${x+2}" y="${y-30}" width="46" height="22" rx="2" fill="var(--bg)" stroke="var(--line)"/><rect x="${x+4}" y="${y-18}" width="42" height="5" fill="#e8e8ec"/><rect x="${x+8}" y="${y-18}" width="2" height="5" fill="#111"/><rect x="${x+16}" y="${y-18}" width="2" height="5" fill="#111"/><rect x="${x+28}" y="${y-18}" width="2" height="5" fill="#111"/><rect x="${x+36}" y="${y-18}" width="2" height="5" fill="#111"/><rect x="${x+6}" y="${y-8}" width="4" height="8" fill="var(--line)"/><rect x="${x+40}" y="${y-8}" width="4" height="8" fill="var(--line)"/>`},
+{id:'katzenbaum',name:'Katzenbaum',preis:120,glueck:3,svg:(x,y)=>`<rect x="${x+20}" y="${y-38}" width="6" height="38" fill="var(--boden-holz)" opacity=".7"/><rect x="${x+12}" y="${y-46}" width="22" height="8" rx="3" fill="var(--wand-sand)" opacity=".8"/><circle cx="${x+23}" cy="${y-50}" r="4" fill="var(--muted)"/>`},
+{id:'spiegel',name:'Großer Spiegel',preis:210,glueck:2,svg:(x,y)=>`<rect x="${x+16}" y="${y-54}" width="18" height="54" rx="9" fill="var(--hover)" stroke="var(--line)"/><path d="M${x+20} ${y-46} L${x+30} ${y-30}" stroke="var(--accent)" stroke-width="2" opacity=".5"/>`},
+{id:'kamin',name:'Kaminofen',preis:1900,glueck:5,svg:(x,y)=>`<rect x="${x+12}" y="${y-34}" width="26" height="34" rx="2" fill="var(--bg)" stroke="var(--line)"/><rect x="${x+16}" y="${y-24}" width="18" height="14" rx="2" fill="var(--bad)" opacity=".75"/><rect x="${x+22}" y="${y-52}" width="6" height="18" fill="var(--line)"/>`}
+];
+const PARTNER={minAlter:16,zeitSuche:1,zeitAktion:1,basis:8,gewichtAussehen:.34,gewichtGlueck:.22,gewichtKontakte:2.2,minChance:12,maxChance:88,jobChance:.72,ohneJob:'ohne Arbeit',bruchUnter:8,glueckTeiler:25,umzugKosten:3200,hochzeitKosten:9000,beratungKosten:1400,scheidungMin:6000,scheidungAnteil:.22,kostenAnteil:.5};
+const IMMOBILIEN=[
+{id:'zimmer',typ:'Einzimmerwohnung',preis:120000},
+{id:'wohnung',typ:'Dreizimmerwohnung',preis:250000},
+{id:'reihenhaus',typ:'Reihenhaus',preis:390000},
+{id:'altbau',typ:'Altbau mit zwei Parteien',preis:480000},
+{id:'haus',typ:'Einfamilienhaus',preis:560000}
+];
+const AUTOS=[
+{id:'kleinwagen',name:'Gebrauchter Kleinwagen',preis:4500,unterhalt:1400,wirkung:{glueck:4,aussehen:1}},
+{id:'motorrad',name:'Motorrad',preis:9000,unterhalt:1200,wirkung:{glueck:9,aussehen:5},risiko:.05},
+{id:'kombi',name:'Familienkombi',preis:14000,unterhalt:2100,wirkung:{glueck:6,aussehen:3}},
+{id:'oldtimer',name:'Oldtimer',preis:22000,unterhalt:2900,wirkung:{glueck:12,aussehen:8},wertverlust:0},
+{id:'elektro',name:'Elektroauto',preis:32000,unterhalt:1600,wirkung:{glueck:8,aussehen:6}},
+{id:'suv',name:'SUV',preis:38000,unterhalt:3600,wirkung:{glueck:8,aussehen:7}},
+{id:'sport',name:'Sportwagen',preis:72000,unterhalt:6200,wirkung:{glueck:14,aussehen:12},risiko:.03},
+{id:'luxus',name:'Luxuslimousine',preis:120000,unterhalt:9800,wirkung:{glueck:15,aussehen:15}}
+];
+const BILDUNG={keine:'Noch ganz am Anfang',schule:'Schule',mittlere_reife:'Mittlere Reife',oberstufe:'Oberstufe',abitur:'Abitur',ausbildung:'Ausbildung',berufsabschluss:'Berufsabschluss',studium:'Studium',abschluss:'Studienabschluss'};
+function fresh(name='Alex Winter',gender='d',city='Stuttgart'){return {version:1,jahr:2026,alter:0,lebendig:true,name,geschlecht:gender,stadt:city,stats:{gesundheit:rnd(75,95),glueck:rnd(65,90),intelligenz:rnd(35,80),aussehen:rnd(40,85)},geld:0,job:null,bildung:'keine',hobbys:[],kanal:null,onlyfans:null,beziehungen:[{id:'mutter',name:'Mama',typ:'Familie',verhaeltnis:85},{id:'vater',name:'Papa',typ:'Familie',verhaeltnis:80},{id:'geschwister',name:pick(FIRST),typ:'Geschwister',verhaeltnis:70}],log:[],zeit:{max:ZEIT.kind,genutzt:0},depot:{bar:0,aktien:0,einstand:0},auto:null,immobilien:[],einrichtung:{moebel:[],wand:'warm',boden:'holz'},markt:{rendite:0,crash:false,crashIn:rnd(MARKT.crashAlleMin,MARKT.crashAlleMax)},flags:{gesehen:[],folge:[],aktion:false,pend:[],endePruefen:false,rendered:0,insolvenzBis:0,insolvenzen:0,geistJahr:0,grundJahr:0},records:{job:'Noch kein Beruf',gehalt:0,kanal:0,hobby:'Noch kein Hobby',niveau:0,einnahmen:0},finanzen:{gehalt:0,creator:0,abo:0,kosten:0,hobby:0,grund:0,auto:0,miete:0,immo:0},ui:{view:'leben',filter:'alle',started:false,modal:null}};}
+let state=fresh();
+function addLog(text,art='info'){state.log.push({alter:state.alter,text,art});}
+function lernFaktor(quelle){const teiler=quelle==='ereignis'?GEIST.teilerPassiv:GEIST.teilerAktiv;return Math.max(0,1-state.stats.intelligenz/teiler);}
+function apply(w={},quelle='aktiv'){for(const k of Object.keys(STATS))if(w[k])state.stats[k]=clamp(state.stats[k]+(k==='intelligenz'&&w[k]>0?w[k]*lernFaktor(quelle):w[k]));if(w.geld)state.geld=clamp(state.geld+w.geld,-1e12,1e12);if(w.ruf&&state.kanal)state.kanal.ruf=clamp(state.kanal.ruf+w.ruf);if(w.beziehung)state.beziehungen.forEach(b=>b.verhaeltnis=clamp(b.verhaeltnis+w.beziehung));if(w.freund)addFriend();if(w.follower&&state.kanal){const p=Object.values(state.kanal.plattformen).find(p=>p.aktiv);if(p)p.follower+=w.follower;}if(w.flags)Object.assign(state.flags,w.flags);}
+function addFriend(){if(state.beziehungen.filter(b=>b.typ==='Freundschaft').length>=10)return;const name=pick(FIRST)+' '+pick(LAST);state.beziehungen.push({id:'kontakt_'+state.alter+'_'+rnd(1,1e8),name,typ:'Freundschaft',verhaeltnis:rnd(45,75)});addLog(`${name} wird Teil deines Lebens.`,'gut');}
+function available(){return state.lebendig&&!state.flags.pend.length;}
+function gesperrt(){return state.jahr<(state.flags.insolvenzBis||0);}
+function kaufbar(cost=0){return cost<=0||state.geld-cost>=(gesperrt()?0:GELD.dispo);}
+function zeitMax(s=state){const basis=s.alter<6?ZEIT.kind:s.alter<13?ZEIT.schulkind:s.alter<18?ZEIT.jugend:ZEIT.erwachsen;const abzug=(s.job?ZEIT.jobAbzug:0)+(['studium','ausbildung'].includes(s.bildung)?ZEIT.ausbildungAbzug:0);return Math.max(ZEIT.min,basis-abzug);}
+function zeitStand(){state.zeit.max=zeitMax();return state.zeit;}
+function zeitFrei(k=1){const z=zeitStand();return z.genutzt+k<=z.max;}
+function canAct(min=0,cost=0,zeit=1){return available()&&state.alter>=min&&kaufbar(cost)&&zeitFrei(zeit);}
+function consume(k=1){state.zeit.genutzt+=k;}
+function toast(message){const el=document.getElementById('toast');el.textContent=message;el.classList.remove('hidden');setTimeout(()=>el.classList.add('hidden'),3200);}
+const EREIGNISSE=[
+{id:'kind_erste_schritte',text:'Du gehst drei Schritte. Alle tun so, als hättest du einen Marathon gewonnen.',minAlter:1,maxAlter:2,gewicht:20,wirkung:{gesundheit:2,glueck:3},art:'gut'},
+{id:'kind_erstes_wort',text:'Dein erstes klares Wort ist „mehr“. Das wird noch öfter passen.',minAlter:1,maxAlter:3,gewicht:15,wirkung:{intelligenz:3},art:'gross'},
+{id:'kind_pfuetze',text:'Du entdeckst, dass eine Pfütze tiefer ist, als sie aussieht.',minAlter:2,maxAlter:6,gewicht:10,wirkung:{glueck:3},art:'info'},
+{id:'kind_buch',text:'Ein Bilderbuch wird so oft vorgelesen, dass du die nächste Seite auswendig kennst.',minAlter:2,maxAlter:6,gewicht:10,wirkung:{intelligenz:4},art:'gut'},
+{id:'kind_turnen',text:'Beim Kinderturnen landest du endlich auf den Füßen.',minAlter:3,maxAlter:8,gewicht:10,wirkung:{gesundheit:3},art:'gut'},
+{id:'kind_geburtstag',text:'Der Kuchen ist schief. Dein Geburtstag ist trotzdem ziemlich gut.',minAlter:3,maxAlter:12,gewicht:8,wirkung:{glueck:5,geld:40},art:'gut'},
+{id:'schule_rechnen',text:'Die Matheaufgabe ergibt plötzlich Sinn. Du kontrollierst trotzdem noch einmal.',minAlter:6,maxAlter:16,gewicht:9,wirkung:{intelligenz:4},art:'gut'},
+{id:'schule_streit',text:'In der Pause eskaliert ein Streit. Du hältst dich raus.',minAlter:7,maxAlter:16,gewicht:9,wirkung:{glueck:-3},art:'schlecht'},
+{id:'schule_ausflug',text:'Der Klassenausflug wird besser als der Wetterbericht.',minAlter:7,maxAlter:16,gewicht:9,wirkung:{glueck:4},art:'gut'},
+{id:'jugend_playlist',text:'Du findest einen Song, der sich genau nach diesem Jahr anhört.',minAlter:13,maxAlter:18,gewicht:10,wirkung:{glueck:4},art:'gut'},
+{id:'jugend_bus',text:'Du verpasst den Bus um zehn Sekunden. Du lernst neue Fluchwörter.',minAlter:13,maxAlter:18,gewicht:8,wirkung:{glueck:-2},art:'schlecht'},
+{id:'jung_anfang',text:'Zum ersten Mal fragt niemand nach, wann du nach Hause kommst.',minAlter:19,maxAlter:30,gewicht:10,wirkung:{glueck:5},art:'gross'},
+{id:'jung_rechnung',text:'Eine Rechnung hat sich in einem Stapel Papier versteckt. Sie ist nicht kleiner geworden.',minAlter:19,maxAlter:30,gewicht:9,wirkung:{geld:-120,glueck:-2},art:'schlecht'},
+{id:'mitte_ruhe',text:'Ein ganz normaler Sonntag. Du merkst, wie sehr dir das gefehlt hat.',minAlter:31,maxAlter:55,gewicht:10,wirkung:{glueck:5,gesundheit:2},art:'gut'},
+{id:'mitte_ergonomie',text:'Du stellst deinen Stuhl richtig ein. Dein Rücken nimmt die Entschuldigung an.',minAlter:31,maxAlter:55,gewicht:9,wirkung:{gesundheit:3},art:'gut'},
+{id:'alt_briefe',text:'Alte Briefe tauchen auf. Manche Sätze klingen heute ganz anders.',minAlter:56,maxAlter:110,gewicht:10,wirkung:{glueck:4},art:'info'},
+{id:'alt_spaziergang',text:'Du gehst eine längere Runde als geplant. Die Beine beschweren sich erst später.',minAlter:56,maxAlter:110,gewicht:10,wirkung:{gesundheit:3,glueck:3},art:'gut'},
+{id:'alltag_sonne',text:'Sonne auf dem Heimweg. Für einen Moment reicht das.',minAlter:0,maxAlter:120,gewicht:3,wiederholbar:true,wirkung:{glueck:2},art:'gut'},
+{id:'alltag_regen',text:'Es regnet ausgerechnet an dem Tag, für den du Pläne hattest.',minAlter:3,maxAlter:120,gewicht:3,wiederholbar:true,wirkung:{glueck:-2},art:'info'},
+{id:'alltag_ruhe',text:'Dieses Jahr lässt dir etwas Luft. Du kommst wieder bei dir an.',minAlter:0,maxAlter:120,gewicht:3,wiederholbar:true,wirkung:{gesundheit:1,glueck:2},art:'info'}
+];
+function eligible(e){return state.alter>=(e.minAlter??0)&&state.alter<=(e.maxAlter??120)&&(!e.bedingung||e.bedingung(state))&&(e.wiederholbar||!state.flags.gesehen.includes(e.id));}
+const eventWeight=e=>typeof e.gewicht==='function'?e.gewicht(state):e.gewicht;
+function drawEvents(){const used=new Set();for(let i=0,n=rnd(2,4);i<n;i++){const pool=EREIGNISSE.filter(e=>eligible(e)&&eventWeight(e)>0&&!used.has(e.id));if(!pool.length)break;let r=Math.random()*pool.reduce((t,e)=>t+eventWeight(e),0);const e=pool.find(e=>(r-=eventWeight(e))<=0)||pool[0];used.add(e.id);if(!state.flags.gesehen.includes(e.id))state.flags.gesehen.push(e.id);if(e.optionen)state.flags.pend.push(e.id);else{apply(e.wirkung,'ereignis');if(e.effekt)e.effekt(state);addLog(typeof e.text==='function'?e.text(state):e.text,e.art);}}}
+function resolveChoice(i){const id=state.flags.pend[0],e=EREIGNISSE.find(e=>e.id===id),o=e?.optionen[i];if(!o||o.bedingung&&!o.bedingung(state))return;if(o.kosten&&!kaufbar(o.kosten))return;addLog(typeof e.text==='function'?e.text(state):e.text,e.art||'gross');apply(o.wirkung,'ereignis');if(o.effekt)o.effekt(state);addLog(o.ergebnis||`Du entscheidest dich: ${o.text}`,'info');if(o.folge)state.flags.folge.push({jahr:state.jahr+1,...o.folge});state.flags.pend.shift();closeDialog(true);render();processPending();}
+function processPending(){if(state.flags.pend.length){const e=EREIGNISSE.find(e=>e.id===state.flags.pend[0]);if(!e){state.flags.pend.shift();return processPending();}openDialog('entscheidung',e);return;}if(state.flags.endePruefen){state.flags.endePruefen=false;deathCheck();render();}}
+function nextYear(){if(!state.ui.started||!state.lebendig||state.flags.pend.length)return;state.alter++;state.jahr++;state.flags.aktion=false;state.zeit={max:zeitMax(),genutzt:0};state.flags.folge=state.flags.folge.filter(f=>{if(f.jahr>state.jahr)return true;apply(f.wirkung,'ereignis');addLog(f.text,f.art||'info');return false;});if(state.alter>=45)apply({gesundheit:-rnd(0,state.alter>70?4:2)});if(state.alter>=35)apply({aussehen:-rnd(0,2)});if(state.alter>80&&Math.random()<.25)apply({intelligenz:-1});annualLife();annualCreator();drawEvents();state.flags.endePruefen=true;render();processPending();}
+function deathCheck(){if(state.stats.gesundheit<=0||state.alter>=110||(state.alter>=70&&Math.random()<(state.alter-69)*.0025)){state.lebendig=false;addLog(`Mit ${state.alter} Jahren endet dein Leben. Was bleibt, sind die Geschichten.`,'gross');state.ui.view='leben';}}
+const HOBBYS=[
+{id:'bike',name:'Mountainbiken',icon:'activity',wirkung:{gesundheit:4,glueck:2},risiko:.1,preis:700,ertrag:'bei einem Rennen'},
+{id:'gitarre',name:'Gitarre',icon:'music',wirkung:{glueck:4,intelligenz:1},preis:900,ertrag:'durch einen Auftritt'},
+{id:'kochen',name:'Kochen',icon:'heart',wirkung:{gesundheit:2,glueck:2},preis:250,ertrag:'mit einem Catering am Wochenende',notiz:'Spart Lebenshaltungskosten'},
+{id:'code',name:'Programmieren',icon:'brain',wirkung:{intelligenz:4},preis:2500,ertrag:'mit einem kleinen Auftrag',notiz:'Öffnet IT-Berufe'},
+{id:'foto',name:'Fotografie',icon:'video',wirkung:{glueck:3},preis:1100,ertrag:'mit einem Shooting',notiz:'Öffnet den Beruf Fotograf'},
+{id:'fussball',name:'Fußball',icon:'activity',wirkung:{gesundheit:4,glueck:2},risiko:.08,preis:600,ertrag:'durch die Kreisliga-Prämie'},
+{id:'schach',name:'Schach',icon:'brain',wirkung:{intelligenz:4},preis:800,ertrag:'bei einem Turnier'},
+{id:'zeichnen',name:'Zeichnen',icon:'spark',wirkung:{glueck:3,intelligenz:2},preis:1200,ertrag:'mit Auftragsillustrationen',notiz:'Öffnet den Beruf Grafikdesigner'},
+{id:'klettern',name:'Klettern',icon:'activity',wirkung:{gesundheit:5,glueck:2},risiko:.14,preis:800,ertrag:'als Kursleiter in der Halle',notiz:'Öffnet den Beruf Bergführer'},
+{id:'schreiben',name:'Schreiben',icon:'book',wirkung:{intelligenz:4,glueck:1},preis:600,ertrag:'mit einem veröffentlichten Text',notiz:'Öffnet den Beruf Journalist'},
+{id:'schnitt',name:'Video-Editing',icon:'video',wirkung:{intelligenz:3,glueck:1},preis:1400,ertrag:'mit Auftragsschnitten',notiz:'Verbessert jeden Upload deines Kanals'},
+{id:'handwerk',name:'Handwerk',icon:'briefcase',wirkung:{intelligenz:2,glueck:2},risiko:.06,preis:1000,ertrag:'mit Reparaturen für die Nachbarschaft',notiz:'Öffnet technische Berufe'},
+{id:'sprachen',name:'Sprachen lernen',icon:'users',wirkung:{intelligenz:4},preis:700,ertrag:'mit Nachhilfe und Dolmetschen',notiz:'Öffnet Berufe mit Auslandsbezug'},
+{id:'dj',name:'Musikproduktion',icon:'music',wirkung:{glueck:4},preis:1600,ertrag:'mit Gigs am Wochenende'},
+{id:'angeln',name:'Angeln',icon:'leaf',wirkung:{glueck:4,gesundheit:1},preis:300,ertrag:'mit dem Verkauf deines Fangs'},
+{id:'laufen',name:'Laufen',icon:'activity',wirkung:{gesundheit:5,glueck:1},risiko:.04,preis:200,ertrag:'als Preisgeld bei einem Volkslauf'},
+{id:'naehen',name:'Nähen',icon:'spark',wirkung:{aussehen:3,glueck:2},preis:400,ertrag:'mit Änderungen und Einzelstücken'},
+{id:'astronomie',name:'Astronomie',icon:'sun',wirkung:{intelligenz:4,glueck:1},preis:900,ertrag:'mit Vorträgen in der Sternwarte'}
+];
+const ACTIVITIES=[
+{id:'park',name:'Draußen bewegen',icon:'leaf',min:3,kosten:0,wirkung:{gesundheit:4,glueck:3},text:'Du gehst raus, ohne etwas erledigen zu müssen. Das tut gut.'},
+{id:'fitness',name:'Fitnessstudio',icon:'activity',min:16,kosten:360,wirkung:{gesundheit:9,aussehen:5},text:'Du ziehst dein Training durch. Langsam wird aus Überwindung eine Gewohnheit.'},
+{id:'arzt',name:'Vorsorge',icon:'heart',min:18,kosten:120,wirkung:{gesundheit:13},text:'Du kümmerst dich um deine Gesundheit. Ein guter Termin ohne große Geschichte.'},
+{id:'lesen',name:'Bibliothek',icon:'book',min:6,kosten:0,wirkung:{intelligenz:7,glueck:2},text:'Ein Buch bringt dich auf Gedanken, die vorher nicht da waren.'},
+{id:'kurs',name:'Weiterbildung',icon:'brain',min:16,kosten:400,zeit:2,wirkung:{intelligenz:11},text:'Du machst einen Kurs. Zum ersten Mal seit einer Weile lernst du wieder richtig gern.'},
+{id:'friseur',name:'Neuer Haarschnitt',icon:'spark',min:12,kosten:45,wirkung:{aussehen:6,glueck:3},text:'Der Haarschnitt sitzt. Du schaust ein zweites Mal in den Spiegel.'},
+{id:'kleidung',name:'Neue Kleidung',icon:'spark',min:13,kosten:180,wirkung:{aussehen:7,glueck:3},text:'Du findest Kleidung, in der du dich nach dir selbst fühlst.'},
+{id:'zahnarzt',name:'Zahnpflege',icon:'heart',min:18,kosten:150,wirkung:{gesundheit:4,aussehen:4},text:'Du nimmst dir Zeit für deine Zahnpflege und die nächste Kontrolle.'},
+{id:'urlaub',name:'Urlaub nehmen',icon:'sun',min:18,kosten:1400,zeit:2,wirkung:{glueck:19,gesundheit:5},text:'Eine Woche ohne Pflichten. Du hast vergessen, wie sich das anfühlt.'},
+{id:'meditation',name:'Meditation',icon:'leaf',min:8,kosten:0,wirkung:{glueck:7,gesundheit:4},text:'Zehn Minuten still sitzen sind erstaunlich anstrengend. Es wird leichter.'},
+{id:'party',name:'Auf eine Party gehen',icon:'users',min:18,kosten:65,wirkung:{glueck:12,gesundheit:-3},text:'Die Musik ist zu laut. Das Gespräch in der Küche ist genau richtig.'},
+{id:'eingriff',name:'Kosmetischer Eingriff',icon:'spark',min:18,kosten:4500,zeit:2,wirkung:{aussehen:16},text:'Das Ergebnis des kosmetischen Eingriffs entspricht deinen Erwartungen.',risiko:.15}
+];
+const JOBS=[
+{id:'regal',titel:'Regalbetreuer',branche:'Handel',gehalt:22000,int:0,edu:0},
+{id:'service',titel:'Servicekraft',branche:'Gastronomie',gehalt:24000,int:10,edu:0},
+{id:'lager',titel:'Lagerfachkraft',branche:'Logistik',gehalt:28000,int:20,edu:0},
+{id:'empfang',titel:'Empfangskraft',branche:'Service',gehalt:28000,int:30,look:40,edu:1},
+{id:'verkauf',titel:'Verkäufer',branche:'Handel',gehalt:31000,int:30,edu:1},
+{id:'kundenservice',titel:'Kundenberater',branche:'Service',gehalt:33000,int:40,edu:1},
+{id:'mecha',titel:'Mechatroniker',branche:'Technik',gehalt:38000,int:45,edu:2,alternative:['handwerk',65]},
+{id:'bergfuehrer',titel:'Bergführer',branche:'Sport',gehalt:37000,int:35,edu:1,hobby:['klettern',60]},
+{id:'uebersetzer',titel:'Übersetzer',branche:'Sprache',gehalt:46000,int:60,edu:2,alternative:['sprachen',70]},
+{id:'journalist',titel:'Journalist',branche:'Medien',gehalt:44000,int:60,edu:3,alternative:['schreiben',70]},
+{id:'export',titel:'Export-Manager',branche:'Handel',gehalt:54000,int:55,edu:3,hobby:['sprachen',50]},
+{id:'elektro',titel:'Elektroniker',branche:'Technik',gehalt:41000,int:50,edu:2},
+{id:'pflege',titel:'Pflegefachkraft',branche:'Gesundheit',gehalt:39000,int:40,edu:2},
+{id:'bank',titel:'Bankkaufmann',branche:'Finanzen',gehalt:43000,int:55,edu:2},
+{id:'digital',titel:'Kaufmann für Digitalisierungsmanagement',branche:'IT',gehalt:44000,int:50,edu:2},
+{id:'koch',titel:'Koch',branche:'Gastronomie',gehalt:35000,int:25,edu:2,alternative:['kochen',65]},
+{id:'design',titel:'Grafikdesigner',branche:'Kreativ',gehalt:42000,int:40,edu:3,hobby:['zeichnen',40]},
+{id:'foto',titel:'Fotograf',branche:'Kreativ',gehalt:38000,int:30,edu:1,hobby:['foto',50]},
+{id:'trainer',titel:'Fitnesstrainer',branche:'Sport',gehalt:36000,int:30,look:55,edu:1},
+{id:'social',titel:'Social-Media-Manager',branche:'Medien',gehalt:45000,int:55,edu:3},
+{id:'software',titel:'Softwareentwickler',branche:'IT',gehalt:58000,int:55,edu:4,alternative:['code',70]},
+{id:'data',titel:'Data Analyst',branche:'IT',gehalt:60000,int:70,edu:4},
+{id:'ingenieur',titel:'Ingenieur',branche:'Technik',gehalt:65000,int:65,edu:4},
+{id:'lehrer',titel:'Lehrer',branche:'Bildung',gehalt:55000,int:65,edu:4},
+{id:'arzt',titel:'Arzt',branche:'Gesundheit',gehalt:85000,int:80,edu:4},
+{id:'forschung',titel:'Wissenschaftler',branche:'Forschung',gehalt:64000,int:85,edu:4},
+{id:'produkt',titel:'Produktmanager',branche:'Wirtschaft',gehalt:69000,int:70,edu:4},
+{id:'ki',titel:'KI-Entwickler',branche:'IT',gehalt:82000,int:85,edu:4,hobby:['code',60]}
+];
+const hobbyLevel=id=>state.hobbys.find(h=>h.id===id)?.niveau||0;
+function eduLevel(){return {keine:0,schule:0,mittlere_reife:1,ausbildung:1,oberstufe:1,berufsabschluss:2,abitur:3,studium:3,abschluss:4}[state.bildung]||0;}
+function jobEligible(j){return state.alter>=18&&!['studium','ausbildung','oberstufe'].includes(state.bildung)&&state.stats.intelligenz>=j.int&&state.stats.aussehen>=(j.look||0)&&(eduLevel()>=j.edu||j.alternative&&hobbyLevel(j.alternative[0])>=j.alternative[1])&&(!j.hobby||hobbyLevel(j.hobby[0])>=j.hobby[1]);}
+function jobRequirement(j){return [j.edu===4?'Studienabschluss':j.edu===3?'Abitur':j.edu===2?'Ausbildung':j.edu===1?'Mittlere Reife':'Kein Abschluss nötig',j.int?'Intelligenz '+j.int+'+':'',j.look?'Aussehen '+j.look+'+':'',j.hobby?HOBBYS.find(h=>h.id===j.hobby[0]).name+' '+j.hobby[1]+'+':'',j.alternative?'alternativ: '+HOBBYS.find(h=>h.id===j.alternative[0]).name+' '+j.alternative[1]+'+':''].filter(Boolean).join(' · ');}
+EREIGNISSE.push(
+{id:'bildung_16',text:'Die Schule ist geschafft. Wie geht es für dich weiter?',minAlter:16,maxAlter:16,gewicht:0,optionen:[{text:'Eine Ausbildung beginnen',wirkung:{intelligenz:3},effekt:s=>{s.bildung='ausbildung';s.flags.abschlussJahr=s.jahr+3},ergebnis:'Du beginnst eine dreijährige Ausbildung. Dein Ausbildungsgehalt: 12.000 € pro Jahr.'},{text:'Weiter zur Oberstufe',wirkung:{intelligenz:5},effekt:s=>s.bildung='oberstufe',ergebnis:'Du machst weiter bis zum Abitur.'},{text:'Mit der mittleren Reife abschließen',effekt:s=>s.bildung='mittlere_reife',ergebnis:'Du verlässt die Schule mit der mittleren Reife. Ab 18 steht dir der Arbeitsmarkt offen.'}]},
+{id:'bildung_18',text:'Du hast dein Abitur. Studium oder direkt ins Berufsleben?',minAlter:18,maxAlter:18,gewicht:0,optionen:[{text:'Studium beginnen · 3.000 € / Jahr',wirkung:{intelligenz:5},effekt:s=>{s.bildung='studium';s.flags.abschlussJahr=s.jahr+4;},ergebnis:'Du schreibst dich für ein vierjähriges Studium ein.'},{text:'Direkt arbeiten',effekt:s=>s.bildung='abitur',ergebnis:'Du hast genug vom Stundenplan. Zeit für den Arbeitsmarkt.'}]}
+);
+function queueSpecial(id){if(!state.flags.gesehen.includes(id)){state.flags.gesehen.push(id);state.flags.pend.push(id);}}
+function depotWert(){return Math.round((state.depot.bar||0)+(state.depot.aktien||0));}
+function marktJahr(){
+const m=state.markt,d=state.depot;
+m.crashIn--;
+if(m.crashIn<=0){m.rendite=MARKT.crashVon+Math.random()*(MARKT.crashBis-MARKT.crashVon);m.crash=true;m.crashIn=rnd(MARKT.crashAlleMin,MARKT.crashAlleMax);}
+else{m.crash=false;m.rendite=Math.max(MARKT.bodenRendite,MARKT.mittel+gauss()*MARKT.streuung);}
+if(d.aktien>0){const vorher=d.aktien;d.aktien=Math.max(0,Math.round(d.aktien*(1+m.rendite)));const diff=d.aktien-vorher;
+if(Math.abs(diff)>=50)addLog(`Die Börse macht ${(m.rendite*100).toFixed(1).replace('.',',')} %. Dein Depot ${diff>0?'gewinnt':'verliert'} ${eur(Math.abs(diff))}.`,m.crash?'schlecht':diff>0?'gut':'info');}
+if(d.bar>0)d.bar=Math.round(d.bar*(1+MARKT.tagesgeld));
+}
+function zwangsverkauf(){let w=depotWert();state.depot={bar:0,aktien:0,einstand:0};
+if(state.auto){const d=autoDef();w+=Math.round(state.auto.wert*.5);state.auto=null;if(d)addLog(`Auch ${d.name} musst du abgeben.`,'schlecht');}
+if(state.immobilien.length){for(const im of state.immobilien)w+=Math.round(im.wert*.85)-im.hypothek;state.immobilien=[];addLog('Deine Immobilien werden zwangsversteigert.','schlecht');}
+if(w<=0)return;state.geld+=w;apply({glueck:-8});addLog(`Um die Schulden zu decken, löst du auf, was du besitzt: ${eur(w)}.`,'schlecht');}
+function anlegen(betrag,ziel){
+if(!canAct(16,0,1)||gesperrt()||!['bar','aktien'].includes(ziel))return false;
+const max=Math.max(0,Math.floor(state.geld));
+const b=betrag==='alles'?max:Math.min(Math.floor(Number(betrag)||0),max);
+if(b<=0)return false;
+consume(1);state.geld-=b;state.depot[ziel]+=b;if(ziel==='aktien')state.depot.einstand+=b;
+addLog(`Du legst ${eur(b)} ${ziel==='aktien'?'in Aktien':'aufs Tagesgeld'} an.`,'info');return true;
+}
+function entnehmen(betrag,quelle){
+if(!canAct(16,0,1)||!['bar','aktien'].includes(quelle))return false;
+const max=Math.max(0,Math.floor(state.depot[quelle]));
+const b=betrag==='alles'?max:Math.min(Math.floor(Number(betrag)||0),max);
+if(b<=0)return false;
+consume(1);
+if(quelle==='aktien'){const anteil=b/state.depot.aktien;state.depot.einstand=Math.max(0,Math.round(state.depot.einstand*(1-anteil)));}
+state.depot[quelle]-=b;state.geld+=b;
+addLog(`Du holst ${eur(b)} ${quelle==='aktien'?'aus deinem Aktiendepot':'vom Tagesgeld'} zurück.`,'info');return true;
+}
+function autoDef(){return state.auto?AUTOS.find(a=>a.id===state.auto.modell):null;}
+function autoJahr(){
+const a=state.auto,def=autoDef();
+if(!a)return;
+if(!def){state.auto=null;return;}
+a.alter++;
+const verlust=def.wertverlust!==undefined?def.wertverlust:(a.alter<=1?AUTO.verlustErstJahr:AUTO.verlustDanach);
+a.wert=Math.max(0,Math.round(a.wert*(1-verlust)));
+a.zustand=clamp(a.zustand-rnd(AUTO.verschleissMin,AUTO.verschleissMax));
+let kosten=def.unterhalt;
+const reparaturChance=Math.min(.55,.04+a.alter*.025+(100-a.zustand)*.004);
+if(Math.random()<reparaturChance){
+const r=Math.round(def.unterhalt*(.5+Math.random()*1.5));
+kosten+=r;a.zustand=clamp(a.zustand+rnd(5,15));
+addLog(`Dein ${def.name} muss in die Werkstatt. Die Rechnung: ${eur(r)}.`,'schlecht');
+}
+state.geld-=kosten;state.finanzen.auto=kosten;
+apply({glueck:Math.round(def.wirkung.glueck*a.zustand/AUTO.nutzenTeiler),aussehen:Math.round((def.wirkung.aussehen||0)*a.zustand/AUTO.nutzenTeiler)});
+if(def.risiko&&Math.random()<def.risiko){apply({gesundheit:-rnd(8,20),glueck:-7});addLog(`Ein Unfall mit dem ${def.name}. Es hätte schlimmer ausgehen können.`,'schlecht');}
+if(a.zustand<=AUTO.schrottUnter){const erloes=Math.round(a.wert*AUTO.schrottErloes);state.geld+=erloes;addLog(`Dein ${def.name} ist nicht mehr zu retten. Der Schrottplatz zahlt ${eur(erloes)}.`,'schlecht');state.auto=null;apply({glueck:-6});}
+}
+function autoKaufen(id){
+const def=AUTOS.find(a=>a.id===id);
+if(!def||state.auto||!canAct(AUTO.minAlter,def.preis,AUTO.zeitKauf)||gesperrt())return false;
+consume(AUTO.zeitKauf);
+state.geld-=def.preis;
+state.auto={modell:def.id,wert:def.preis,alter:0,zustand:100,farbe:pick(LACK).id};
+apply(def.wirkung);
+addLog(`Du kaufst dir ${def.name} für ${eur(def.preis)}. Der erste Kilometer fühlt sich anders an als alle danach.`,'gross');
+return true;
+}
+function autoVerkaufen(){
+const a=state.auto,def=autoDef();
+if(!a||!def||!canAct(0,0,AUTO.zeitVerkauf))return false;
+consume(AUTO.zeitVerkauf);
+const erloes=Math.round(a.wert*(.6+a.zustand/250));
+state.geld+=erloes;state.auto=null;apply({glueck:-4});
+addLog(`Du verkaufst ${def.name} für ${eur(erloes)}. Gekauft hattest du ihn für mehr.`,'info');
+return true;
+}
+function immoEigenkapital(){return state.immobilien.reduce((n,im)=>n+Math.max(0,im.wert-im.hypothek),0);}
+function immoDef(im){return IMMOBILIEN.find(d=>d.id===im.typ);}
+function neueMiete(im){return Math.round(im.wert*IMMO.mietRendite*(.7+im.zustand/300));}
+function renovierKosten(im){return Math.max(0,Math.round(im.wert*IMMO.renovierBasis*(100-im.zustand)/100*(1-Math.min(.4,hobbyLevel('handwerk')*IMMO.handwerkRabatt))));}
+function immoJahr(){
+if(!state.immobilien.length){state.finanzen.miete=0;state.finanzen.immo=0;return;}
+let einnahmen=0,kosten=0;
+for(const im of state.immobilien){
+const eigen=IMMO.wertMittel+gauss()*IMMO.wertStreuung;
+const r=eigen*(1-IMMO.marktKopplung)+state.markt.rendite*IMMO.marktKopplung+(im.zustand-IMMO.zustandNeutral)*IMMO.zustandWirkung/100;
+im.wert=Math.max(0,Math.round(im.wert*(1+r)));
+im.zustand=clamp(im.zustand-rnd(IMMO.verfallMin,IMMO.verfallMax));
+if(im.hypothek>0){
+const zins=Math.round(im.hypothek*IMMO.zins);
+const tilgung=Math.min(im.hypothek,Math.round(im.kaufpreis*(1-IMMO.eigenkapital)*IMMO.tilgung));
+kosten+=zins+tilgung;im.hypothek-=tilgung;
+if(im.hypothek<=0){im.hypothek=0;addLog(`Die Hypothek auf ${immoDef(im)?immoDef(im).typ:'deine Immobilie'} ist abbezahlt.`,'gross');apply({glueck:9});}
+}
+kosten+=Math.round(im.wert*IMMO.instandRate*(1+(100-im.zustand)/100));
+if(im.bewohnt==='vermietet'){
+im.mieterZufriedenheit=clamp(im.mieterZufriedenheit+(im.zustand>=70?3:im.zustand>=45?-3:-10));
+einnahmen+=im.mieteinnahme;
+if(im.mieterZufriedenheit<IMMO.auszugUnter){im.bewohnt='leer';im.mieteinnahme=0;addLog(`Dein Mieter zieht aus ${immoDef(im)?immoDef(im).typ:'der Wohnung'} aus. Die Hypothek läuft weiter, die Miete nicht.`,'schlecht');apply({glueck:-6});}
+}else if(im.bewohnt==='leer'){
+if(Math.random()<Math.max(.08,im.zustand/140)){im.bewohnt='vermietet';im.mieterZufriedenheit=rnd(55,80);im.mieteinnahme=neueMiete(im);addLog(`Neuer Mieter für ${immoDef(im)?immoDef(im).typ:'deine Wohnung'}: ${eur(im.mieteinnahme)} im Jahr.`,'gut');}
+}
+}
+state.geld+=einnahmen-kosten;
+state.finanzen.miete=einnahmen;state.finanzen.immo=kosten;
+}
+function immoKaufen(id){
+const def=IMMOBILIEN.find(d=>d.id===id);
+if(!def||state.immobilien.length>=IMMO.maxObjekte||gesperrt())return false;
+const ek=Math.round(def.preis*IMMO.eigenkapital);const neben=Math.round(def.preis*IMMO.nebenkosten);
+if(!canAct(IMMO.minAlter,ek+neben,IMMO.zeitKauf))return false;
+consume(IMMO.zeitKauf);
+state.geld-=ek+neben;
+const eigenes=!state.immobilien.some(x=>x.bewohnt==='selbst');
+const im={id:'immo_'+state.jahr+'_'+rnd(1,1e8),typ:def.id,kaufpreis:def.preis,wert:def.preis,hypothek:def.preis-ek,zustand:rnd(72,92),bewohnt:eigenes?'selbst':'leer',mieteinnahme:0,mieterZufriedenheit:0};
+state.immobilien.push(im);
+apply({glueck:12});
+addLog(`Du kaufst ${def.typ} für ${eur(def.preis)}. ${eur(ek)} Eigenkapital, ${eur(neben)} Nebenkosten, ${eur(im.hypothek)} Hypothek. Der Schlüssel fühlt sich schwerer an als erwartet.`,'gross');
+return true;
+}
+function immoVerkaufen(id){
+const i=state.immobilien.findIndex(x=>x.id===id);
+if(i<0||!canAct(0,0,IMMO.zeitAktion))return false;
+const im=state.immobilien[i];
+consume(IMMO.zeitAktion);
+const erloes=Math.round(im.wert*(.94+im.zustand/1000))-im.hypothek;
+state.geld+=erloes;
+state.immobilien.splice(i,1);
+addLog(`Du verkaufst ${immoDef(im)?immoDef(im).typ:'die Immobilie'}. Nach Abzug der Hypothek bleiben ${eur(erloes)}.`,erloes>0?'gut':'schlecht');
+return true;
+}
+function immoRenovieren(id){
+const im=state.immobilien.find(x=>x.id===id);
+if(!im)return false;
+const k=renovierKosten(im);
+if(k<=0||!canAct(0,k,IMMO.zeitAktion)||gesperrt())return false;
+consume(IMMO.zeitAktion);
+state.geld-=k;
+im.zustand=100;
+if(im.bewohnt==='vermietet')im.mieterZufriedenheit=clamp(im.mieterZufriedenheit+25);
+addLog(`Du bringst ${immoDef(im)?immoDef(im).typ:'die Immobilie'} für ${eur(k)} wieder in Schuss.${hobbyLevel('handwerk')>=30?' Vieles machst du selbst.':''}`,'gut');
+return true;
+}
+function immoNutzung(id){
+const im=state.immobilien.find(x=>x.id===id);
+if(!im||!canAct(0,0,IMMO.zeitAktion))return false;
+consume(IMMO.zeitAktion);
+if(im.bewohnt==='selbst'){im.bewohnt='leer';im.mieteinnahme=0;addLog(`Du ziehst aus ${immoDef(im)?immoDef(im).typ:'der Wohnung'} aus und suchst Mieter.`,'info');}
+else if(im.bewohnt==='vermietet'){im.bewohnt='selbst';im.mieteinnahme=0;im.mieterZufriedenheit=0;addLog('Du kündigst dem Mieter und ziehst selbst ein.','info');apply({glueck:-4});}
+else{if(state.immobilien.some(x=>x.bewohnt==='selbst')){im.bewohnt='vermietet';im.mieterZufriedenheit=rnd(55,80);im.mieteinnahme=neueMiete(im);addLog(`Du vermietest für ${eur(im.mieteinnahme)} im Jahr.`,'gut');}
+else{im.bewohnt='selbst';addLog('Du ziehst selbst ein.','gut');apply({glueck:8});}}
+return true;
+}
+function wohnort(){const eigen=state.immobilien.find(im=>im.bewohnt==='selbst');return eigen?GRUNDRISSE[eigen.typ]||GRUNDRISSE.miete:GRUNDRISSE.miete;}
+function wandFarbe(){return (WAND.find(w=>w.id===state.einrichtung.wand)||WAND[0]).farbe;}
+function bodenFarbe(){return (BODEN.find(b=>b.id===state.einrichtung.boden)||BODEN[0]).farbe;}
+function lackFarbe(){return (LACK.find(l=>l.id===(state.auto&&state.auto.farbe))||LACK[0]).farbe;}
+function moebelBesitz(){return state.einrichtung.moebel.map(id=>MOEBEL.find(m=>m.id===id)).filter(Boolean);}
+function moebelPlaetze(){const g=wohnort();return g.spalten*g.etagen*3;}
+function wohnungSzene(){
+const g=wohnort(),RW=120,RH=62,rand=8,dach=22,SLOTS=3,BODEN_H=6;
+const breite=g.spalten*RW+rand*2,hoehe=g.etagen*RH+rand*2+dach;
+const stuecke=moebelBesitz();
+const slotBreite=(RW-6)/SLOTS,skala=slotBreite/50;
+let clips='',raeume='',moebel='';
+let slot=0;
+for(let e=0;e<g.etagen;e++)for(let c=0;c<g.spalten;c++){
+const x=rand+c*RW,y=rand+dach+e*RH,rid='r'+e+'_'+c;
+clips+=`<clipPath id="${rid}"><rect x="${x+1}" y="${y+1}" width="${RW-2}" height="${RH-2}"/></clipPath>`;
+raeume+=`<rect x="${x}" y="${y}" width="${RW}" height="${RH}" fill="${wandFarbe()}" stroke="var(--line)" stroke-width="1.5"/>`;
+raeume+=`<rect x="${x}" y="${y+RH-BODEN_H}" width="${RW}" height="${BODEN_H}" fill="${bodenFarbe()}"/>`;
+let inhalt='';
+for(let p=0;p<SLOTS;p++){
+const m=stuecke[slot++];
+if(!m)continue;
+const sx=x+3+p*slotBreite,sy=y+RH-BODEN_H;
+inhalt+=`<g transform="translate(${sx} ${sy}) scale(${skala.toFixed(3)})">${m.svg(0,0)}</g>`;
+}
+if(inhalt)moebel+=`<g clip-path="url(#${rid})">${inhalt}</g>`;
+}
+const dachPfad=`M${rand-4} ${rand+dach} L${breite/2} ${rand} L${breite-rand+4} ${rand+dach} Z`;
+return `<svg viewBox="0 0 ${breite} ${hoehe}" style="width:100%;max-width:${breite*3}px;height:auto;display:block;margin:0 auto;border-radius:10px;background:var(--card)" role="img" aria-label="Grundriss deiner Wohnung mit ${stuecke.length} Möbelstücken">
+<defs>${clips}</defs>
+<path d="${dachPfad}" fill="var(--line)"/>
+${raeume}${moebel}
+</svg>`;
+}
+function autoSzene(){
+const a=state.auto,def=autoDef();
+if(!a||!def)return `<svg viewBox="0 0 240 70" style="width:100%;max-width:560px;height:auto;display:block;margin:0 auto;border-radius:10px;background:var(--card)" role="img" aria-label="Kein Fahrzeug"><text x="120" y="40" text-anchor="middle" fill="var(--muted)" font-size="13" font-family="sans-serif">Noch kein Fahrzeug</text></svg>`;
+const f=lackFarbe(),z=a.zustand;
+const matt=z<50?.72:1;
+const form={
+kleinwagen:'M28 62 L34 42 L96 40 L112 62 Z',
+motorrad:'M52 62 L64 46 L94 46 L104 62 Z',
+kombi:'M24 62 L32 38 L118 38 L132 62 Z',
+oldtimer:'M26 62 L36 42 L70 36 L106 42 L124 62 Z',
+elektro:'M24 62 L40 36 L112 36 L134 62 Z',
+suv:'M22 62 L32 32 L120 32 L138 62 Z',
+sport:'M18 62 L44 44 L106 42 L142 62 Z',
+luxus:'M18 62 L34 36 L128 36 L150 62 Z'
+}[def.id]||'M24 62 L34 40 L112 40 L128 62 Z';
+const raeder=def.id==='motorrad'?[[62,68],[100,68]]:[[46,68],[118,68]];
+const kratzer=z<60?`<path d="M60 52 L84 56" stroke="var(--bg)" stroke-width="2" opacity=".5"/>`:'';
+const rost=z<35?`<circle cx="96" cy="58" r="6" fill="var(--bad)" opacity=".45"/><circle cx="42" cy="57" r="4" fill="var(--bad)" opacity=".35"/>`:'';
+return `<svg viewBox="10 26 156 58" style="width:100%;max-width:560px;height:auto;display:block;margin:0 auto;border-radius:10px;background:var(--card)" role="img" aria-label="${esc(def.name)}, Zustand ${z} Prozent">
+<line x1="8" y1="74" x2="168" y2="74" stroke="var(--line)" stroke-width="2"/>
+<path d="${form}" fill="${f}" opacity="${matt}" stroke="var(--line)" stroke-width="1.5"/>
+<path d="${form}" fill="none" stroke="var(--line)" stroke-width="1"/>
+<rect x="46" y="44" width="26" height="12" rx="2" fill="var(--bg)" opacity=".55"/>
+<rect x="78" y="44" width="24" height="12" rx="2" fill="var(--bg)" opacity=".55"/>
+${kratzer}${rost}
+${raeder.map(([cx,cy])=>`<circle cx="${cx}" cy="${cy}" r="10" fill="var(--bg)" stroke="var(--line)" stroke-width="2"/><circle cx="${cx}" cy="${cy}" r="3.5" fill="var(--line)"/>`).join('')}
+</svg>`;
+}
+function szeneHTML(typ){return typ==='wohnung'?wohnungSzene():typ==='auto'?autoSzene():'';}
+function moebelKaufen(id){
+const m=MOEBEL.find(x=>x.id===id);
+if(!m||state.einrichtung.moebel.includes(id))return false;
+if(state.einrichtung.moebel.length>=moebelPlaetze())return false;
+if(!canAct(0,m.preis,EINRICHTUNG.zeit)||gesperrt())return false;
+consume(EINRICHTUNG.zeit);
+state.geld-=m.preis;
+state.einrichtung.moebel.push(id);
+apply({glueck:m.glueck});
+addLog(`${m.name} für ${eur(m.preis)}. Der Raum sieht danach anders aus.`,'gut');
+return true;
+}
+function oberflaecheAendern(art,id){
+const liste=art==='wand'?WAND:art==='boden'?BODEN:LACK;
+if(!liste.some(x=>x.id===id))return false;
+if(art==='lack'&&!state.auto)return false;
+const preis=art==='lack'?EINRICHTUNG.lackPreis:EINRICHTUNG.anstrichPreis;
+if(!canAct(0,preis,EINRICHTUNG.zeit)||gesperrt())return false;
+consume(EINRICHTUNG.zeit);
+state.geld-=preis;
+if(art==='lack')state.auto.farbe=id;else state.einrichtung[art]=id;
+apply({glueck:2});
+addLog(art==='lack'?`Dein Auto bekommt eine neue Lackierung: ${liste.find(x=>x.id===id).name}.`:`${art==='wand'?'Neue Wandfarbe':'Neuer Boden'}: ${liste.find(x=>x.id===id).name}.`,'gut');
+return true;
+}
+function partner(){return state.beziehungen.find(b=>b.typ==='Partner')||null;}
+function partnerArbeitet(){const p=partner();return !!p&&p.beruf!==PARTNER.ohneJob;}
+function partnerTeiltKosten(){const p=partner();return !!p&&p.zusammen&&p.beruf!==PARTNER.ohneJob;}
+function partnerSuchen(){
+if(!canAct(PARTNER.minAlter,0,PARTNER.zeitSuche)||partner())return false;
+consume(PARTNER.zeitSuche);
+const kontakte=state.beziehungen.filter(b=>b.typ==='Freundschaft').length;
+const chance=clamp(PARTNER.basis+state.stats.aussehen*PARTNER.gewichtAussehen+state.stats.glueck*PARTNER.gewichtGlueck+kontakte*PARTNER.gewichtKontakte,PARTNER.minChance,PARTNER.maxChance)/100;
+if(Math.random()>=chance){apply({glueck:-2});addLog('Du lernst jemanden kennen. Es passt nicht. Das ist auch eine Antwort.','info');return true;}
+const arbeitet=Math.random()<PARTNER.jobChance;
+const beruf=arbeitet?pick(JOBS).titel:PARTNER.ohneJob;
+const name=pick(FIRST)+' '+pick(LAST);
+state.beziehungen.unshift({id:'partner_'+state.jahr+'_'+rnd(1,1e8),name,typ:'Partner',verhaeltnis:rnd(58,78),alter:clamp(state.alter+rnd(-4,4),16,110),beruf,seit:state.jahr,zusammen:false,verheiratet:false});
+apply({glueck:14});
+addLog(`Du lernst ${name} kennen. ${beruf===PARTNER.ohneJob?'Gerade ohne Arbeit':'Arbeitet als '+beruf}. Es fühlt sich nach etwas an.`,'gross');
+return true;
+}
+function trennung(grund){
+const p=partner();
+if(!p)return false;
+const i=state.beziehungen.indexOf(p);
+let kosten=0;
+if(p.verheiratet)kosten=Math.max(PARTNER.scheidungMin,Math.round(Math.max(0,state.geld)*PARTNER.scheidungAnteil));
+else if(p.zusammen)kosten=PARTNER.umzugKosten;
+state.geld-=kosten;
+state.beziehungen.splice(i,1);
+apply({glueck:p.verheiratet?-26:p.zusammen?-18:-10,gesundheit:-3});
+addLog(`${grund==='eigen'?'Du beendest die Beziehung mit':'Es ist vorbei mit'} ${p.name}.${kosten?' Das kostet dich '+eur(kosten)+'.':''} ${p.verheiratet?'Eine Scheidung teilt mehr als nur Möbel.':p.zusammen?'Zwei Wohnungen, wo eine war.':'Ihr wart nie zusammengezogen. Das macht es etwas leichter.'}`,'gross');
+return true;
+}
+function partnerTrennen(){
+if(!partner()||!canAct(0,0,PARTNER.zeitAktion))return false;
+consume(PARTNER.zeitAktion);
+return trennung('eigen');
+}
+function partnerJahr(){
+const p=partner();
+if(!p)return;
+if(p.verhaeltnis<=PARTNER.bruchUnter){trennung('drift');return;}
+apply({glueck:Math.round(p.verhaeltnis/PARTNER.glueckTeiler)});
+}
+function gefordert(){return state.flags.geistJahr===state.jahr-1||state.hobbys.some(h=>h.trainYear===state.jahr-1)||['oberstufe','studium','ausbildung'].includes(state.bildung);}
+function insolvenz(){state.geld=0;state.flags.insolvenzBis=state.jahr+GELD.insolvenzJahre;state.flags.insolvenzen=(state.flags.insolvenzen||0)+1;apply({glueck:-18,gesundheit:-4,beziehung:-8});addLog(`Es geht rechnerisch nicht mehr auf. Du meldest Privatinsolvenz an: die Schulden sind weg, aber bis ${state.flags.insolvenzBis} ist alles, was Geld kostet, für dich gesperrt.`,'schlecht');}
+function annualLife(){
+state.finanzen={gehalt:0,creator:0,abo:0,kosten:0,hobby:0};
+if(state.alter===6){state.bildung='schule';addLog('Der erste Schultag. Dein Rucksack ist fast so groß wie du.','gross');}
+if(state.alter===16){state.bildung='mittlere_reife';queueSpecial('bildung_16');}
+if(state.alter===18&&state.bildung==='oberstufe'){state.bildung='abitur';addLog('Du hast dein Abitur in der Tasche.','gross');queueSpecial('bildung_18');}
+if(state.flags.abschlussJahr===state.jahr){if(state.bildung==='ausbildung'){state.bildung='berufsabschluss';addLog('Ausbildung abgeschlossen. Zum ersten Mal steht „Fachkraft“ auf deinem Zeugnis.','gross');}else if(state.bildung==='studium'){state.bildung='abschluss';apply({intelligenz:8});addLog('Dein Studium ist abgeschlossen. Auf einmal hast du einen Titel, aber keinen Stundenplan.','gross');}}
+if(['schule','oberstufe','studium','ausbildung'].includes(state.bildung))apply({intelligenz:rnd(0,GEIST.schulbonus)},'ereignis');
+if(state.alter>=6&&state.alter<18){const tasche=state.alter*40;state.geld+=tasche;state.finanzen.gehalt+=tasche;}
+if(state.bildung==='ausbildung'){state.geld+=12000;state.finanzen.gehalt+=12000;}
+if(state.job){state.job.jahreImJob++;let salary=state.job.gehalt;if(state.alter>=67)salary=Math.round(salary*.5);state.geld+=salary;state.finanzen.gehalt+=salary;if(state.alter<67){if(Math.random()<Math.min(.45,.06+state.job.jahreImJob*.024+state.stats.intelligenz*.0012)){state.job.stufe++;state.job.gehalt=Math.round(state.job.gehalt*1.14);apply({glueck:7});addLog(`Du wirst befördert. ${state.job.titel}, Stufe ${state.job.stufe}: ${eur(state.job.gehalt)} Jahresgehalt.`,'gross');}else if(Math.random()<.22){state.job.gehalt=Math.round(state.job.gehalt*1.04);addLog(`Eine Gehaltserhöhung. Du verdienst jetzt ${eur(state.job.gehalt)} im Jahr.`,'gut');}if(Math.random()<.014){addLog('Deine Stelle wird gestrichen. Du musst dich neu bewerben.','schlecht');state.job=null;apply({glueck:-10});}}if(state.job&&state.job.gehalt>state.records.gehalt){state.records.gehalt=state.job.gehalt;state.records.job=state.job.titel+' · Stufe '+state.job.stufe;}}
+if(state.alter===67&&state.job)addLog('Du trittst kürzer. Statt Gehalt bekommst du im Spiel jetzt die halbe Summe als Rente.','gross');
+marktJahr();autoJahr();immoJahr();partnerJahr();
+if(state.alter>=18){const eigen=state.finanzen.gehalt+(state.finanzen.miete||0)+(state.kanal?.letzteEinnahmen||0)+(state.onlyfans?.letzteEinnahmen||0);if(eigen<GELD.grundsicherung){const hilfe=GELD.grundsicherung-eigen;state.geld+=hilfe;state.finanzen.grund=hilfe;if(state.flags.grundJahr!==state.jahr-1)addLog(`Ohne eigenes Einkommen bekommst du Grundsicherung: ${eur(hilfe)} im Jahr. Es hält dich über Wasser, mehr nicht.`,'info');state.flags.grundJahr=state.jahr;}}
+if(state.alter>=18){let cost=['studium','ausbildung'].includes(state.bildung)?6200:9600;if(state.bildung==='studium')cost+=3000;if(hobbyLevel('kochen')>=30)cost=Math.round(cost*(1-hobbyLevel('kochen')*.0015));if(state.immobilien.some(im=>im.bewohnt==='selbst'))cost=Math.max(0,cost-IMMO.eigenNutzenSparnis);if(partnerTeiltKosten())cost=Math.round(cost*(1-PARTNER.kostenAnteil));state.geld-=cost;state.finanzen.kosten=cost;}
+if(state.geld<0){const interest=Math.min(GELD.zinsDeckel,Math.round(Math.abs(state.geld)*GELD.zinsSatz));state.geld-=interest;state.finanzen.kosten+=interest;apply({glueck:-4});if(state.geld<=GELD.insolvenzGrenze)zwangsverkauf();if(state.geld<=GELD.insolvenzGrenze)insolvenz();else if(state.geld<GELD.insolvenzGrenze/2)apply({gesundheit:-2});}
+for(const h of state.hobbys){const def=HOBBYS.find(d=>d.id===h.id);if(h.trainYear===state.jahr-1){h.jahre++;h.niveau=clamp(h.niveau+Math.max(4,Math.round(12-h.niveau*.08)));apply(def.wirkung);for(const threshold of [30,60,90])if(h.niveau>=threshold&&!h.meilensteine.includes(threshold)){h.meilensteine.push(threshold);addLog(`${h.name}: Niveau ${threshold}. ${threshold===30?'Aus Probieren wird Können.':threshold===60?'Dein Können wird auch anderen klar.':'Du gehörst zu den richtig Guten.'}`,'gross');apply({glueck:6,follower:state.kanal?threshold*20:0});if(threshold===30&&Math.random()<.5)addFriend();}if(h.niveau>=60&&state.alter>=16){let bonus=Math.round(def.preis*h.niveau/60);if(h.id==='gitarre'&&h.niveau>=90)bonus+=8000;state.geld+=bonus;state.finanzen.hobby+=bonus;addLog(`${h.name} bringt dir ${eur(bonus)} ${def.ertrag||'durch dein Können'} ein.`,'gut');}if(def.risiko&&Math.random()<def.risiko){apply({gesundheit:-8,glueck:-3});addLog(`Beim ${h.name} geht etwas schief. Du brauchst eine Pause.`,'schlecht');}}else h.niveau=clamp(h.niveau-3);if(h.niveau>state.records.niveau){state.records.niveau=h.niveau;state.records.hobby=h.name;}}
+if(state.alter>=GEIST.rostAb&&!gefordert())apply({intelligenz:-rnd(0,GEIST.rost)});
+state.beziehungen.forEach(b=>b.verhaeltnis=clamp(b.verhaeltnis-rnd(1,3)));if((state.bildung==='schule'||state.job)&&Math.random()<.1)addFriend();
+}
+const PLATFORMS={tiktok:{name:'TikTok',growth:1.65,viral:1.2,rate:.035,churn:[.04,.08],paidChurn:[.21,.25],adCost:3400},instagram:{name:'Instagram',growth:1,viral:1,rate:.1,churn:[.02,.06],paidChurn:[.18,.23],adCost:4400},youtube:{name:'YouTube',growth:.7,viral:.82,rate:.22,churn:[0,.035],paidChurn:[.15,.2],adCost:6400}};
+const NICHES={gaming:['Gaming',['code','schnitt']],sport:['Sport',['bike','klettern','laufen']],musik:['Musik',['gitarre','dj']],comedy:['Comedy',['zeichnen','schreiben']],wissen:['Wissen',['schach','astronomie','schreiben']],reisen:['Reisen',['foto','angeln']],fitness:['Fitness',['fussball','laufen']]};
+const nischenSkill=()=>state.kanal?Math.max(0,...NICHES[state.kanal.nische][1].map(hobbyLevel)):0;
+const RESULTS={flop:['Flop',.9],solide:['Solide',.65],stark:['Stark',.4],viral:['Viral',.15]};
+const BUDGETS=[0,100,500,2000,10000];
+function newChannel(name,niche,platform){return{name,nische:niche,plattformen:Object.fromEntries(Object.keys(PLATFORMS).map(k=>[k,{follower:0,gekauft:0,aktiv:k===platform,lastPost:-100}])),ruf:50,verifiziert:false,postsDiesesJahr:0,postsGesamt:0,einnahmenGesamt:0,letzteEinnahmen:0,werbungGesamt:0,belastung:0,letztesPostJahr:-100,pauseBis:0,history:[]};}
+function adShare(){const count=totalFollowers();return count?Object.values(state.kanal.plattformen).reduce((n,p)=>n+(p.aktiv?p.gekauft:0),0)/count:0;}
+function postingAllowed(){return canAct(13)&&state.kanal&&state.jahr>=state.kanal.pauseBis;}
+function annualCreator(){
+const c=state.kanal;
+if(c){let income=0;for(const [key,p]of Object.entries(c.plattformen)){if(!p.aktiv)continue;const def=PLATFORMS[key],posted=p.lastPost===state.jahr-1;let org=p.follower-p.gekauft;const od=def.churn[0]+Math.random()*(def.churn[1]-def.churn[0]);const pd=def.paidChurn[0]+Math.random()*(def.paidChurn[1]-def.paidChurn[0]);org=Math.round(org*(1-od));p.gekauft=Math.round(p.gekauft*(1-pd));if(posted)org+=Math.round(org*(key==='tiktok'?.04:.025));p.follower=Math.max(0,org+p.gekauft);if(state.alter>=18)income+=(org+p.gekauft*.25)*def.rate*(.5+c.ruf/100);}
+c.letzteEinnahmen=Math.round(income);c.einnahmenGesamt+=c.letzteEinnahmen;state.finanzen.creator=c.letzteEinnahmen;state.geld+=c.letzteEinnahmen;if(c.letzteEinnahmen>0)addLog(`Deine Kanäle bringen dieses Jahr ${eur(c.letzteEinnahmen)} ein.`,'gut');
+c.belastung=Math.max(0,(c.belastung||0)+c.postsDiesesJahr-CREATOR.vertraeglich);c.postsDiesesJahr=0;
+const organic=Object.values(c.plattformen).reduce((n,p)=>n+p.follower-p.gekauft,0);if(organic>=100000&&!c.verifiziert){c.verifiziert=true;addLog('100.000 echte Follower. Dein Kanal wird verifiziert.','gross');apply({glueck:10,ruf:8});}
+state.records.kanal=Math.max(state.records.kanal,totalFollowers());state.records.einnahmen=Math.max(state.records.einnahmen,c.letzteEinnahmen);
+if(c.belastung>=CREATOR.burnout){apply({gesundheit:-16,glueck:-19});c.pauseBis=state.jahr+1;c.belastung=0;addLog('Jahr für Jahr zu viele Uploads. Du bist ausgebrannt und pausierst dieses Jahr mit allen Uploads.','schlecht');}
+if(state.flags.entschuldigung){apply({ruf:6});state.flags.entschuldigung--;}
+if(state.flags.vollzeit&&c.letzteEinnahmen<state.finanzen.kosten)addLog('Dein Kanal deckt die Lebenshaltungskosten dieses Jahr nicht.','schlecht');
+}
+if(state.onlyfans&&state.alter>=18){const f=state.onlyfans;const active=f.lastPost===state.jahr-1;const churn=active?.07+.04*Math.random():.22+.08*Math.random();f.abos=Math.max(0,Math.round(f.abos*(1-churn)));if(!active)f.zufriedenheit=clamp(f.zufriedenheit-10);f.letzteEinnahmen=Math.round(f.abos*f.preis*12*.8*(.5+f.zufriedenheit/200));f.einnahmenGesamt+=f.letzteEinnahmen;state.geld+=f.letzteEinnahmen;state.finanzen.abo=f.letzteEinnahmen;f.belastung=Math.max(0,(f.belastung||0)+f.postsDiesesJahr-CREATOR.vertraeglich);f.postsDiesesJahr=0;if(f.letzteEinnahmen>0)addLog(`Dein nicht-erotisches OnlyFans-Abo bringt ${eur(f.letzteEinnahmen)} ein. ${num(f.abos)} Menschen bleiben dabei.`,'gut');}
+}
+function calculatePost(platform,kind,budget){const c=state.kanal,p=c.plattformen[platform],d=PLATFORMS[platform],skill=nischenSkill();const quality=.3+skill/180+hobbyLevel('schnitt')/400+state.stats.intelligenz/300+state.stats.aussehen/(platform==='instagram'?170:500)+c.ruf/200;let viralChance=(kind==='sicher'?0:kind==='trend'?.09:.16)+skill/900+c.ruf/1700+Math.min(.035,c.postsGesamt*.002);if(kind==='sicher')viralChance=0;viralChance*=d.viral/(1+c.postsDiesesJahr*SAETTIGUNG.viral);if(adShare()>.4)viralChance*=.35;const roll=Math.random();let result=kind==='sicher'?'solide':roll<viralChance?'viral':roll<(kind==='experiment'?.46:.25)?'flop':roll>.75?'stark':'solide';const base=(220+(p.follower-p.gekauft)*.06)*quality*d.growth;let organic=result==='flop'?Math.max(4,Math.round(base*.025)):result==='viral'?Math.round((WACHSTUM.viralSockel+Math.sqrt(p.follower)*150+Math.pow(p.follower,WACHSTUM.viralExponent)*WACHSTUM.viralFaktor)*quality*d.growth):result==='stark'?Math.round(base*5):Math.round(base);organic=Math.round(organic/(1+c.postsDiesesJahr*SAETTIGUNG.reichweite));organic=Math.min(organic,Math.max(WACHSTUM.deckelSockel,Math.round(p.follower*WACHSTUM.deckelAnteil)));if(state.flags.drosselBis>=state.jahr)organic=Math.round(organic*.5);const multiplier=1+Math.min(1.5,Math.sqrt(budget/d.adCost));const gain=Math.round(organic*multiplier);const bought=budget>0?Math.round(gain*RESULTS[result][1]):0;return{result,organic,gain,bought,multiplier,views:Math.round(organic*(result==='viral'?35:18)),quality};}
+function uploadVideo(platform,kind,budget){if(budget>0&&gesperrt())return false;if(!postingAllowed()||!PLATFORMS[platform]||!state.kanal.plattformen[platform].aktiv||!['sicher','trend','experiment'].includes(kind)||!BUDGETS.includes(budget)||budget>0&&state.geld<budget)return false;const c=state.kanal,p=c.plattformen[platform],r=calculatePost(platform,kind,budget);consume(ZEIT.upload);state.geld-=budget;c.werbungGesamt+=budget;p.follower+=r.gain;p.gekauft+=r.bought;p.lastPost=state.jahr;c.postsDiesesJahr++;c.postsGesamt++;c.letztesPostJahr=state.jahr;apply({ruf:r.result==='flop'?-4:r.result==='viral'?7:3,glueck:r.result==='flop'?-5:r.result==='viral'?12:4});addLog(`${PLATFORMS[platform].name} · ${RESULTS[r.result][0]}: ${num(r.views)} organische Aufrufe, +${num(r.gain)} Follower.${budget?' '+eur(budget)+' Werbung verstärkt um ×'+r.multiplier.toFixed(2).replace('.',',')+'.':''}`,r.result==='flop'?'schlecht':r.result==='viral'?'gross':'gut');if(r.result==='viral'){for(const [key,other]of Object.entries(c.plattformen))if(key!==platform&&other.aktiv){const cross=Math.round(r.organic*.1);other.follower+=cross;addLog(`Der Treffer bringt auch ${PLATFORMS[key].name} ${num(cross)} echte Follower.`,'gut');}state.flags.folge.push({jahr:state.jahr+1,text:'Dein virales Video taucht noch einmal auf. Eine neue Gruppe findet deinen Kanal.',wirkung:{follower:Math.round(r.organic*.07),glueck:3},art:'gut'});}c.history.unshift({jahr:state.jahr,platform,kind,result:r.result,gain:r.gain,views:r.views,budget});c.history=c.history.slice(0,12);state.records.kanal=Math.max(state.records.kanal,totalFollowers());return r;}
+function loseFollowers(fraction){if(!state.kanal)return;for(const p of Object.values(state.kanal.plattformen)){p.follower=Math.round(p.follower*(1-fraction));p.gekauft=Math.min(p.follower,Math.round(p.gekauft*(1-fraction)));}}
+function sponsorAmount(){if(!state.kanal)return 0;const ig=state.kanal.plattformen.instagram;const effective=Object.values(state.kanal.plattformen).reduce((n,p)=>n+(p.aktiv?p.follower-p.gekauft+p.gekauft*.25:0),0);return Math.round(1000+(effective+(ig.aktiv?ig.follower-ig.gekauft+ig.gekauft*.5:0))*.025);}
+EREIGNISSE.push(
+{id:'creator_sponsor',text:'Eine Marke möchte mit deinem Kanal arbeiten. Du kannst den Deal passend verhandeln – oder mehr für ein fremdes Thema nehmen.',minAlter:18,maxAlter:110,gewicht:7,bedingung:s=>!!s.kanal&&totalFollowers()>=10000,optionen:[{text:'Passenden Deal annehmen',wirkung:{ruf:3},effekt:s=>{const cash=sponsorAmount();s.geld+=cash;addLog(`Der passende Deal bringt ${eur(cash)}.`,'gut')}},{text:'Höher bezahltes, unpassendes Produkt bewerben',wirkung:{ruf:-13,glueck:2},effekt:s=>{const cash=sponsorAmount()*2;s.geld+=cash;addLog(`${eur(cash)} für ein Produkt, das nicht zu deinem Kanal passt.`,'schlecht')}},{text:'Keine Werbung diesmal',wirkung:{ruf:3,glueck:2}}]},
+{id:'creator_shitstorm',text:'Ein Clip wird aus dem Zusammenhang gerissen. Die Kommentare kippen.',minAlter:13,maxAlter:110,gewicht:()=>Math.min(20,4+Math.log10(1+totalFollowers()/5000)*4),bedingung:s=>!!s.kanal&&totalFollowers()>5000,optionen:[{text:'Verantwortung übernehmen und erklären',wirkung:{ruf:-18,glueck:-10,flags:{entschuldigung:3}},effekt:()=>loseFollowers(.12),ergebnis:'Du verlierst Follower und Ruf. Deine Erklärung wird sich in den nächsten Jahren auswirken.'},{text:'Aussitzen',wirkung:{glueck:-15},effekt:()=>{if(Math.random()<.35){apply({ruf:-5});addLog('Die Aufregung zieht vorbei. Dieses Mal.');}else{apply({ruf:-32});loseFollowers(.3);addLog('Dein Schweigen macht es schlimmer. Ein Drittel deiner Follower geht.','schlecht');}}}]},
+{id:'creator_kollab',text:'Ein anderer Kanal schlägt ein gemeinsames Video vor. Euer Humor passt erstaunlich gut.',minAlter:13,maxAlter:110,gewicht:7,bedingung:s=>!!s.kanal&&totalFollowers()>1000,optionen:[{text:'Zusammenarbeiten',wirkung:{follower:3500,ruf:5,glueck:4,freund:true}},{text:'Bei der eigenen Serie bleiben',wirkung:{ruf:2,intelligenz:2}}]},
+{id:'werbung_leere_kommentare',text:'Viele Aufrufe, kaum Kommentare. Jemand fragt öffentlich nach.',minAlter:13,maxAlter:110,gewicht:16,wiederholbar:true,bedingung:s=>!!s.kanal&&adShare()>.5,wirkung:{ruf:-8,glueck:-4},art:'schlecht'},
+{id:'werbung_bot_angebot',text:'Eine Agentur bietet dir 20.000 Follower für 800 €. Echte Aufmerksamkeit steht nicht im Angebot.',minAlter:13,maxAlter:110,gewicht:9,bedingung:s=>!!s.kanal&&totalFollowers()>=5000,optionen:[{text:'Annehmen · 800 €',kosten:800,wirkung:{geld:-800,ruf:-5},effekt:s=>{const p=Object.values(s.kanal.plattformen).find(p=>p.aktiv);p.follower+=20000;p.gekauft+=20000;}},{text:'Ablehnen',wirkung:{flags:{botsAbgelehnt:true}},ergebnis:'Du lehnst ab. Lieber eine kleinere echte Community.'}]},
+{id:'werbung_drosselung',text:'Die Plattform drosselt deine Reichweite. Im nächsten Jahr erreicht neuer Content nur halb so viele Menschen.',minAlter:13,maxAlter:110,gewicht:24,wiederholbar:true,bedingung:s=>!!s.kanal&&adShare()>.7&&!(s.flags.drosselBis>=s.jahr),wirkung:{glueck:-6},effekt:s=>s.flags.drosselBis=s.jahr+1,art:'schlecht'},
+{id:'werbung_treffer',text:'Deine Kampagne landet in genau der richtigen Zielgruppe. Diese Leute bleiben freiwillig.',minAlter:13,maxAlter:110,gewicht:12,bedingung:s=>!!s.kanal&&adShare()<.25&&s.kanal.ruf>60&&s.kanal.werbungGesamt>500,wirkung:{follower:6000,glueck:6},art:'gut'},
+{id:'creator_echte_fans',text:'Jemand hat bemerkt, dass du das Bot-Angebot abgelehnt hast. Ein größerer Kanal empfiehlt dich.',minAlter:13,maxAlter:110,gewicht:12,bedingung:s=>!!s.kanal&&s.flags.botsAbgelehnt,wirkung:{follower:4000,ruf:8},art:'gut'}
+);
+function startLife(){const name=document.getElementById('new-name').value.trim();if(!name){document.getElementById('start-error').textContent='Gib deinem Charakter einen Namen.';return;}state=fresh(name.slice(0,48),document.getElementById('new-gender').value,document.getElementById('new-city').value);state.ui.started=true;addLog(`Du wirst 2026 in ${state.stadt} geboren. Willkommen auf der Welt, ${state.name.split(' ')[0]}.`,'gross');addLog('Deine Familie hat noch keine Ahnung, was aus dir wird. Du auch nicht.');render();}
+function btn(text,act,ico='arrow',disabled=false,extra='',primary=false){return `<button class="btn${primary?' primary':''}" data-action="${act}" ${extra} ${disabled?'disabled':''}>${ico?icon(ico):''}${text}</button>`;}
+function renderStart(){document.getElementById('app').innerHTML=`<main class="start-wrap"><header class="start-top"><div class="brand">${icon('line')}Lebenslinie<span class="period">.</span></div><span class="pill">Eine Lebenssimulation</span></header><div class="start-content"><section class="start-copy"><span class="eyebrow">2026 · Kapitel null</span><h1>Ein Leben.<br><span>Deine<br>Entscheidungen.</span></h1><p>Werde jemand. Verlier dich. Fang neu an. Ein Jahr, eine Entscheidung – und alles, was dazwischen passiert.</p><div class="life-ticks" aria-hidden="true">${'<span></span>'.repeat(40)}</div><div class="tick-labels"><span>DER ANFANG</span><span>ALLES DAZWISCHEN</span><span>DEINE GESCHICHTE</span></div></section><section class="start-card"><h2>Wer wirst du?</h2><p>Dein Leben beginnt mit 0 Jahren.</p><form id="create-form"><div class="field"><label for="new-name">Dein Name</label><div class="row"><input id="new-name" name="name" maxlength="48" value="${esc(pick(FIRST)+' '+pick(LAST))}" autocomplete="off" required><button class="icon-button" type="button" data-action="random-name" aria-label="Zufälliger Name">${icon('shuffle')}</button></div></div><div class="field-pair"><div class="field"><label for="new-gender">Geschlecht</label><select id="new-gender"><option value="m">Männlich</option><option value="w">Weiblich</option><option value="d" selected>Divers</option></select></div><div class="field"><label for="new-city">Geburtsort</label><select id="new-city">${['Stuttgart','Schwäbisch Gmünd','Berlin','Hamburg','München','Köln','Leipzig','Freiburg'].map(c=>`<option>${c}</option>`).join('')}</select></div></div><p id="start-error" class="form-error" role="alert"></p><button class="btn primary full" type="submit">Mein Leben beginnen ${icon('arrow')}</button></form><div style="text-align:center;margin-top:20px"><button class="start-load" data-action="load">Speicherstand laden</button></div></section></div><footer class="start-foot"><span>Keine Anmeldung. Dein Leben bleibt bei dir.</span><span>Ein Jahr nach dem anderen.</span></footer></main>`;}
+function statsHTML(){return `<div class="stat-grid">${Object.entries(STATS).map(([k,[label,ico]])=>`<div><div class="stat-top"><span class="stat-label">${icon(ico)}${label}</span><strong>${Math.round(state.stats[k])}%</strong></div><div class="bar" role="progressbar" aria-label="${label}" aria-valuenow="${Math.round(state.stats[k])}" aria-valuemin="0" aria-valuemax="100"><span style="transform:scaleX(${state.stats[k]/100})"></span></div></div>`).join('')}</div>`;}
+function lifeStage(){return state.alter<6?'Kindheit':state.alter<13?'Schulzeit':state.alter<19?'Jugend':state.alter<31?'Aufbruch':state.alter<56?'Mitten im Leben':'Neue Perspektiven';}
+function logHTML(){const logs=state.log.map((l,i)=>({...l,i})).filter(l=>state.ui.filter==='alle'||l.art==='gross');const groups=new Map();for(const l of logs){if(!groups.has(l.alter))groups.set(l.alter,[]);groups.get(l.alter).push(l);}return `<div class="section-head"><div><h2>Deine Geschichte</h2><p>Nicht alles liegt in deiner Hand. Aber einiges.</p></div><span class="pill">${lifeStage()}</span></div><div class="tabs" aria-label="Geschichte filtern"><button data-action="filter" data-id="alle" class="${state.ui.filter==='alle'?'active':''}">Alle Ereignisse</button><button data-action="filter" data-id="wichtig" class="${state.ui.filter==='wichtig'?'active':''}">Meilensteine</button></div><div class="timeline" id="timeline" tabindex="0" aria-label="Lebensereignisse">${[...groups].map(([age,ls])=>`<section class="year-group"><div class="year-age">${age}<span class="hidden"> Jahre</span></div><div class="year-events"><div class="year-marker">${2026+age} · ${age===0?'Ein neues Leben':age+' Jahre'}</div>${ls.map((l,i)=>`<p class="log-entry ${l.art} ${l.i>=state.flags.rendered?'fresh':''}" style="--i:${i}">${esc(l.text)}</p>`).join('')}</div></section>`).join('')}</div>`;}
+function railHTML(){return `<aside class="rail"><section class="card"><div class="eyebrow">Dein Kontostand</div><div class="balance ${state.geld<0?'negative':''}">${eur(state.geld)}</div><div class="mini-list"><div class="row between"><span class="muted">Einnahmen / Jahr</span><span>${eur(state.finanzen.gehalt+state.finanzen.creator+state.finanzen.abo+state.finanzen.hobby+state.finanzen.grund+(state.finanzen.miete||0))}</span></div><div class="row between"><span class="muted">Lebenshaltung</span><span>${eur(state.finanzen.kosten+(state.finanzen.auto||0)+(state.finanzen.immo||0))}</span></div></div></section><section class="card"><div class="eyebrow">Dein Weg</div><div class="row">${icon('briefcase')}<h3>${esc(state.job?.titel||BILDUNG[state.bildung])}</h3></div><div class="mini-list"><div class="row between"><span class="muted">Hobbys</span><span>${state.hobbys.length||'Noch keine'}</span></div><div class="row between"><span class="muted">Kontakte</span><span>${state.beziehungen.length}</span></div>${depotWert()>0?`<div class="row between"><span class="muted">Depot</span><span>${eur(depotWert())}</span></div>`:''}
+${state.kanal?`<div class="row between"><span class="muted">Follower</span><span>${num(totalFollowers())}</span></div>`:''}</div></section>${gesperrt()?`<section class="card"><div class="eyebrow">Privatinsolvenz</div><h3>Gesperrt bis ${state.flags.insolvenzBis}</h3><p class="muted">Alles, was Geld kostet, ist bis dahin nicht möglich. Kostenlose Aktivitäten gehen weiter.</p></section>`:''}<p class="rail-note">${icon('info')}${zeitStand().max} Zeiteinheiten pro Jahr${state.job?' (ein Job kostet dich eine davon)':['studium','ausbildung'].includes(state.bildung)?' (Ausbildung und Studium kosten zwei davon)':''}. Wer nicht arbeitet, hat mehr Zeit und weniger Geld.</p></aside>`;}
+function summaryHTML(){return `<section class="summary"><span class="eyebrow">2026 — ${state.jahr}</span><h2 class="summary-title">${state.alter} Jahre.<br>Ein ganzes Leben.</h2><p class="muted">${esc(state.name)} · ${esc(state.stadt)}</p><div class="metric-row" style="margin-top:28px"><div class="metric"><strong>${eur(state.geld)}</strong><span>Endvermögen</span></div><div class="metric"><strong>${num(state.records.kanal)}</strong><span>Größte Community</span></div></div><div class="list-item"><h3>${esc(state.records.job)}</h3><p>Dein höchster Beruf</p><h3>${esc(state.records.hobby)}</h3><p>Dein bestes Hobby · Niveau ${state.records.niveau}</p></div><h3 style="margin-top:24px">Was in Erinnerung bleibt</h3><ul>${state.log.filter(l=>l.art==='gross').slice(-3).map(l=>`<li>${esc(l.text)}</li>`).join('')}</ul>${btn('Ein neues Leben','new','plus',false,'',true)}</section>`;}
+function renderPanel(){if(!state.lebendig)return summaryHTML();if(state.ui.view==='leben')return logHTML();return extraPanel(state.ui.view);}
+function extraPanel(view){
+if(view==='aktivitaeten')return `<div class="section-head"><div><h2>Zeit für dich</h2><p>${gesperrt()?'Privatinsolvenz bis '+state.flags.insolvenzBis+': nur kostenlose Aktivitäten.':zeitStand().genutzt+' von '+zeitStand().max+' Zeiteinheiten genutzt.'}</p></div><span class="pill">${icon('clock')}${zeitStand().genutzt} / ${zeitStand().max}</span></div><div class="action-grid">${ACTIVITIES.map(a=>`<button class="action-card" data-action="activity" data-id="${a.id}" ${!canAct(a.min,a.kosten,a.zeit||1)?'disabled':''}><div class="row">${icon(a.icon)}<h3>${a.name}</h3></div><p>${Object.entries(a.wirkung).map(([k,v])=>`${STATS[k][0]} ${v>0?'+':''}${v}`).join(' · ')}${a.risiko?' · Risiko':''}</p><span class="price">${a.kosten?eur(a.kosten):'Kostenlos'} · ${a.zeit||1} Zeit${state.alter<a.min?' · ab '+a.min+' Jahren':''}</span></button>`).join('')}</div>`;
+if(view==='hobbys')return `<div class="section-head"><div><h2>Was dich antreibt</h2><p>Üben kostet ${ZEIT.hobby} Zeiteinheiten. Ohne Übung: −3 Niveau.</p></div></div><div class="panel-list">${HOBBYS.map(h=>{const own=state.hobbys.find(x=>x.id===h.id);return `<section class="list-item"><div class="row between"><div class="row grow">${icon(h.icon)}<h3>${h.name}</h3></div><span class="pill">${own?'Niveau '+own.niveau:'Neu'}</span></div><p>${Object.entries(h.wirkung).map(([k,v])=>`${STATS[k][0]} +${v}`).join(' · ')}${h.notiz?' · '+h.notiz:''}${h.risiko?' · Verletzungsrisiko':''}</p>${own?`<div class="bar" aria-label="Niveau ${own.niveau}"><span style="transform:scaleX(${own.niveau/100})"></span></div><p style="margin-top:10px">${own.jahre} aktive Jahre · Meilensteine bei 30 / 60 / 90</p>`:''}${btn(own?.trainYear===state.jahr?'Dieses Jahr aktiv':own?`Dieses Jahr üben · ${ZEIT.hobby} Zeit`:`Hobby anfangen · ${ZEIT.hobby} Zeit`,'hobby','plus',!canAct(6,0,ZEIT.hobby),`data-id="${h.id}"`)}</section>`;}).join('')}</div>`;
+if(view==='karriere')return `<div class="section-head"><div><h2>Dein nächster Schritt</h2><p>${esc(BILDUNG[state.bildung])} · ${state.alter<18?'Bewerbungen ab 18 Jahren':'Ein Gehalt ist nicht alles. Aber es hilft.'}</p></div></div>${state.job?`<section class="card" style="margin-bottom:24px"><div class="eyebrow">Aktueller Beruf</div><h2>${esc(state.job.titel)}</h2><p class="muted">${eur(state.job.gehalt)} / Jahr · Stufe ${state.job.stufe} · ${state.job.jahreImJob} Jahre dabei</p><div style="margin-top:16px">${btn('Job kündigen','quit','',!canAct(0,0,1))}</div></section>`:''}${state.kanal&&state.kanal.letzteEinnahmen>=18000&&!state.flags.vollzeit?`<div class="notice"><p>Dein Kanal kann dich tragen – solange die Einnahmen halten.</p>${btn('Hauptberuf Creator','fulltime','video',!canAct(0,0,1))}</div>`:''}<div class="panel-list">${JOBS.map(j=>`<section class="list-item"><div class="row between"><h3 class="grow">${j.titel}</h3><span class="small accent">${eur(j.gehalt)}</span></div><p>${j.branche} · ${jobRequirement(j)}</p>${btn(`Bewerben · ${ZEIT.bewerbung} Zeit`,'job','arrow',!canAct(18,0,ZEIT.bewerbung)||!jobEligible(j)||state.job?.id===j.id,`data-id="${j.id}"`)}</section>`).join('')}</div>`;
+if(view==='beziehungen')return `<div class="section-head"><div><h2>Deine Menschen</h2><p>Nähe entsteht durch Zeit. Und braucht sie auch.</p></div></div>${partnerHTML()}<div class="panel-list">${state.beziehungen.length?state.beziehungen.map(b=>`<section class="list-item"><div class="row between"><div class="row grow"><div class="monogram" style="width:40px;height:40px;font-size:.9rem">${esc(b.name[0])}</div><div><h3>${esc(b.name)}</h3><span class="small muted">${esc(b.typ)}</span></div></div><span class="small">${b.verhaeltnis}%</span></div><div class="bar"><span style="transform:scaleX(${b.verhaeltnis/100})"></span></div><div style="margin-top:16px">${btn('Zeit verbringen','relationship','users',!canAct(3,0,1),`data-id="${esc(b.id)}"`)}</div></section>`).join(''):'<div class="empty"><p>Über Hobbys, Schule, Arbeit oder eine Party lernst du neue Menschen kennen.</p></div>'}</div>`;
+if(view==='besitz')return besitzPanel();
+return creatorPanel(view);
+}
+function immoHTML(){
+const list=state.immobilien;
+let out=`<h3 style="margin:28px 0 16px">Deine Immobilien</h3>`;
+if(!list.length)return out+`<div class="empty">${icon('briefcase')}<h3>Noch keine Immobilie.</h3><p>Mit ${(IMMO.eigenkapital*100).toFixed(0)} Prozent Eigenkapital und einer Hypothek für den Rest. Vermieten bringt Geld, aber nur solange jemand drin wohnt.</p>${btn('Immobilie kaufen','immo-kaufen','plus',state.alter<IMMO.minAlter||gesperrt()||!canAct(IMMO.minAlter,0,IMMO.zeitKauf),'',true)}</div>`;
+out+=`<div class="panel-list">`+list.map(im=>{
+const d=immoDef(im),k=renovierKosten(im);
+const status=im.bewohnt==='selbst'?'Du wohnst selbst darin':im.bewohnt==='vermietet'?`Vermietet · ${eur(im.mieteinnahme)} / Jahr`:'Leer · keine Einnahmen';
+return `<section class="list-item"><div class="row between"><h3 class="grow">${esc(d?d.typ:'Immobilie')}</h3><span class="small accent">${eur(im.wert)}</span></div>
+<p>${status}${im.hypothek>0?` · Hypothek ${eur(im.hypothek)}`:' · schuldenfrei'}</p>
+<div class="bar" role="progressbar" aria-label="Zustand" aria-valuenow="${im.zustand}" aria-valuemin="0" aria-valuemax="100"><span style="transform:scaleX(${im.zustand/100})"></span></div>
+<p class="small muted" style="margin-top:10px">Zustand ${im.zustand} %${im.bewohnt==='vermietet'?` · Mieter zufrieden zu ${im.mieterZufriedenheit} %`:''}</p>
+<div class="dialog-actions" style="margin-top:14px">${btn(k>0?`Renovieren · ${eur(k)}`:'In Schuss','immo-renovieren','plus',k<=0||!canAct(0,k,IMMO.zeitAktion)||gesperrt(),`data-id="${im.id}"`)}${btn(im.bewohnt==='vermietet'?'Selbst einziehen':im.bewohnt==='selbst'?'Ausziehen':'Vermieten','immo-nutzung','users',!canAct(0,0,IMMO.zeitAktion),`data-id="${im.id}"`)}${btn('Verkaufen','immo-verkaufen','wallet',!canAct(0,0,IMMO.zeitAktion),`data-id="${im.id}"`)}</div></section>`;}).join('')+`</div>`;
+if(list.length<IMMO.maxObjekte)out+=`<div style="margin-top:16px">${btn('Weitere Immobilie kaufen','immo-kaufen','plus',state.alter<IMMO.minAlter||gesperrt()||!canAct(IMMO.minAlter,0,IMMO.zeitKauf))}</div>`;
+return out;
+}
+function autoHTML(){
+const a=state.auto,def=autoDef();
+if(a&&def)return `<h3 style="margin:28px 0 16px">Dein Fahrzeug</h3><section class="card"><div class="row between"><div><div class="eyebrow">${esc(def.name)}</div><h2>${eur(a.wert)}</h2><p class="muted">${a.alter} ${a.alter===1?'Jahr':'Jahre'} alt · Unterhalt ${eur(def.unterhalt)} pro Jahr</p></div></div>
+<div style="margin-top:14px">${szeneHTML('auto')}</div>
+<div class="bar" role="progressbar" aria-label="Zustand" aria-valuenow="${a.zustand}" aria-valuemin="0" aria-valuemax="100" style="margin-top:16px"><span style="transform:scaleX(${a.zustand/100})"></span></div>
+<p class="small muted" style="margin-top:10px">Zustand ${a.zustand} %${a.zustand<35?' · Es wird Zeit für eine Entscheidung.':''}</p>
+<div class="dialog-actions" style="margin-top:16px">${btn('Lackieren','lack-aendern','spark',gesperrt()||!canAct(0,EINRICHTUNG.lackPreis,EINRICHTUNG.zeit))}${btn(`Verkaufen · ${AUTO.zeitVerkauf} Zeit`,'auto-verkaufen','wallet',!canAct(0,0,AUTO.zeitVerkauf))}</div></section>`;
+return `<h3 style="margin:28px 0 16px">Dein Fahrzeug</h3><div class="empty">${icon('activity')}<h3>Noch kein Auto.</h3><p>Ein Auto ist keine Geldanlage. Es kostet jedes Jahr und gibt dir dafür Glück und ein besseres Auftreten.</p>${btn('Fahrzeug kaufen','auto-kaufen','plus',state.alter<AUTO.minAlter||gesperrt()||!canAct(AUTO.minAlter,0,AUTO.zeitKauf),'',true)}</div>`;
+}
+function partnerHTML(){
+const p=partner();
+if(!p)return `<section class="card" style="margin-bottom:24px"><div class="eyebrow">Partnerschaft</div><h3 style="margin-bottom:8px">${state.alter<PARTNER.minAlter?`Ab ${PARTNER.minAlter} Jahren`:'Noch niemand an deiner Seite'}</h3><p class="muted">Ein Partner mit Job teilt sich die Lebenshaltung mit dir. Wie gut es läuft, hängt von Aussehen, Zufriedenheit und davon ab, wie viele Menschen du kennst.</p><div style="margin-top:16px">${btn(`Jemanden kennenlernen · ${PARTNER.zeitSuche} Zeit`,'partner-suchen','users',!canAct(PARTNER.minAlter,0,PARTNER.zeitSuche))}</div></section>`;
+const status=p.verheiratet?'Verheiratet':p.zusammen?'Zusammen wohnend':'Zusammen';
+return `<section class="card" style="margin-bottom:24px"><div class="row between"><div class="row grow"><div class="monogram" style="width:44px;height:44px;font-size:1rem">${esc(p.name[0])}</div><div><h3>${esc(p.name)}</h3><span class="small muted">${status} · ${p.alter} Jahre · ${esc(p.beruf)}</span></div></div><span class="small">${p.verhaeltnis} %</span></div>
+<div class="bar" style="margin-top:14px" role="progressbar" aria-label="Beziehung" aria-valuenow="${p.verhaeltnis}" aria-valuemin="0" aria-valuemax="100"><span style="transform:scaleX(${p.verhaeltnis/100})"></span></div>
+<p class="small muted" style="margin-top:10px">Seit ${p.seit}${partnerTeiltKosten()?` · teilt sich die Lebenshaltung mit dir`:p.zusammen?' · ohne eigenes Einkommen':''}</p>
+<div class="dialog-actions" style="margin-top:16px">${btn('Zeit miteinander verbringen','relationship','users',!canAct(3,0,1),`data-id="${esc(p.id)}"`)}${btn('Trennen','partner-trennen','close',!canAct(0,0,PARTNER.zeitAktion))}</div></section>`;
+}
+function zuhauseHTML(){
+const g=wohnort(),stuecke=moebelBesitz(),plaetze=moebelPlaetze();
+const offen=MOEBEL.filter(m=>!state.einrichtung.moebel.includes(m.id));
+return `<h3 style="margin:28px 0 16px">Dein Zuhause</h3>
+<section class="card">
+<div class="row between" style="margin-bottom:14px"><div><div class="eyebrow">${esc(g.name)}</div><h3>${stuecke.length} von ${plaetze} Plätzen eingerichtet</h3></div></div>
+${szeneHTML('wohnung')}
+<div class="mini-list" style="margin-top:16px">
+<div class="row between"><span class="muted">Wandfarbe</span><span>${esc((WAND.find(w=>w.id===state.einrichtung.wand)||WAND[0]).name)}</span></div>
+<div class="row between"><span class="muted">Boden</span><span>${esc((BODEN.find(b=>b.id===state.einrichtung.boden)||BODEN[0]).name)}</span></div>
+</div>
+<div class="dialog-actions" style="margin-top:16px">
+${btn(`Möbel kaufen · ${EINRICHTUNG.zeit} Zeit`,'moebel-kaufen','plus',!offen.length||stuecke.length>=plaetze||gesperrt()||!canAct(0,0,EINRICHTUNG.zeit),'',true)}
+${btn('Streichen','wand-aendern','spark',gesperrt()||!canAct(0,EINRICHTUNG.anstrichPreis,EINRICHTUNG.zeit))}
+${btn('Boden erneuern','boden-aendern','leaf',gesperrt()||!canAct(0,EINRICHTUNG.anstrichPreis,EINRICHTUNG.zeit))}
+</div>
+${stuecke.length>=plaetze?'<p class="small muted" style="margin-top:12px">Alle Plätze belegt. Eine größere Wohnung schafft mehr Raum.</p>':''}
+</section>`;
+}
+function besitzPanel(){
+const d=state.depot,gewinn=Math.round(d.aktien-d.einstand),m=state.markt;
+return `<div class="section-head"><div><h2>Geld &amp; Besitz</h2><p>Tagesgeld ist langweilig und sicher. Aktien sind das Gegenteil.</p></div><span class="pill">${icon('wallet')}${eur(depotWert()+immoEigenkapital()+(state.auto?state.auto.wert:0))}</span></div>
+<div class="metric-row"><div class="metric"><strong>${eur(d.bar)}</strong><span>Tagesgeld</span></div><div class="metric"><strong>${eur(d.aktien)}</strong><span>Aktien</span></div><div class="metric"><strong>${gewinn>=0?'+':'−'}${eur(Math.abs(gewinn))}</strong><span>Kursgewinn</span></div></div>
+<section class="card"><div class="eyebrow">Das Börsenjahr ${state.jahr}</div><h2>${(m.rendite*100).toFixed(1).replace('.',',')} %</h2><p class="muted">${m.rendite<=-.2?'Ein Absturz. Wer jetzt verkauft, macht den Verlust echt.':m.rendite<0?'Ein schwaches Jahr. Das gehört dazu.':'Über lange Zeit bleiben im Schnitt ein paar Prozent übrig — einzelne Jahre sehen ganz anders aus.'}</p>
+<div class="dialog-actions" style="margin-top:20px">${btn('Geld anlegen','depot-ein','plus',!canAct(16,0,1)||gesperrt()||state.geld<=0,'',true)}${btn('Geld entnehmen','depot-aus','upload',!canAct(16,0,1)||depotWert()<=0)}</div></section>
+${zuhauseHTML()}
+${autoHTML()}
+${immoHTML()}
+${state.alter<16?'<div class="notice">Anlegen kannst du ab 16 Jahren.</div>':''}
+${gesperrt()?'<div class="notice">Während der Privatinsolvenz kannst du nichts anlegen.</div>':''}
+<div class="notice">Tagesgeld bringt ${(MARKT.tagesgeld*100).toFixed(0)} % im Jahr und schwankt nie. Aktien bringen im Schnitt mehr, verlieren aber in schlechten Jahren deutlich. Alle acht bis zwölf Jahre kommt ein Crash.</div>`;
+}
+function creatorPanel(view){
+if(view==='onlyfans')return onlyfansPanel();
+const c=state.kanal;if(!c)return `<div class="section-head"><h2>Deine Stimme. Deine Community.</h2></div><div class="empty">${icon('video')}<h3>Jeder Kanal fängt bei null an.</h3><p>Gaming, Musik oder dein ganz eigenes Ding. TikTok, Instagram und YouTube spielen nach unterschiedlichen Regeln.</p>${btn(state.alter<13?'Verfügbar ab 13 Jahren':'Kanal starten','channel-new','plus',state.alter<13||!state.lebendig,'',true)}</div><div class="notice">Direkte Einnahmen und Sponsoring gibt es im Spiel ab 18. Follower sind noch kein Einkommen.</div>`;
+return `<div class="section-head"><div><h2>${esc(c.name)} ${c.verifiziert?icon('check'):''}</h2><p>${NICHES[c.nische][0]} · ${c.postsGesamt} Videos · ${c.verifiziert?'Verifiziert':'Dein Kanal'}</p></div>${btn('Video posten','post','plus',!postingAllowed(),' ',true)}</div><div class="metric-row"><div class="metric"><strong>${num(totalFollowers())}</strong><span>Follower gesamt</span></div><div class="metric"><strong>${c.ruf}%</strong><span>Ruf</span></div><div class="metric"><strong>${eur(c.letzteEinnahmen)}</strong><span>Einnahmen / Jahr</span></div></div>${adShare()>.1?`<div class="notice">Ad-Anteil: ${Math.round(adShare()*100)} %. Gekaufte Reichweite zählt nur zu 25 % für direkte Einnahmen; ab 40 % sinkt die Viral-Chance.</div>`:''}${state.jahr<c.pauseBis?'<div class="notice">Burnout-Pause: In diesem Jahr sind keine Uploads möglich. Nimm dir Zeit für etwas anderes.</div>':''}<div class="panel-list">${Object.entries(PLATFORMS).map(([key,d])=>{const p=c.plattformen[key];return `<section class="list-item"><div class="row between"><div class="row">${icon('video')}<h3>${d.name}</h3></div><span class="pill">${p.aktiv?'Aktiv':'Nicht aktiv'}</span></div><p>${key==='tiktok'?'Schnelle Reichweite. Flüchtige Aufmerksamkeit.':key==='instagram'?'Dein Auftritt zählt. Gute Chancen auf Sponsoring.':'Langsamer Start. Treue Fans und höhere Einnahmen.'}</p>${p.aktiv?`<div class="row between"><strong style="font-size:1.5rem;font-weight:500">${num(p.follower)}</strong><span class="small muted">${num(p.follower-p.gekauft)} organisch</span></div>`:btn('Plattform aktivieren','platform','plus',false,`data-id="${key}"`)}</section>`;}).join('')}</div><div class="section-head" style="margin-top:28px"><h3>Letzte Videos</h3><span class="small muted">${eur(c.werbungGesamt)} Werbung gesamt</span></div><div class="panel-list">${c.history.length?c.history.map(p=>`<div class="list-item"><div class="row between"><span>${PLATFORMS[p.platform].name} · ${p.jahr}</span><span class="pill">${RESULTS[p.result][0]}</span></div><p style="margin-bottom:0">+${num(p.gain)} Follower · ${num(p.views)} organische Aufrufe · ${eur(p.budget)} Werbung</p></div>`).join(''):'<p class="muted">Noch kein Video. Dein erster Post wartet.</p>'}</div>`;
+}
+function onlyfansPanel(){const f=state.onlyfans;if(state.alter<18)return `<div class="section-head"><div><h2>OnlyFans</h2><p>Creator-Abos · ab 18 Jahren im Spiel</p></div><span class="pill">18+</span></div><div class="empty">${icon('lock')}<h3>Ein späteres Kapitel.</h3><p>Ab 18 kann deine Spielfigur nicht-erotische Musik-, Fitness-, Kreativ- oder Behind-the-Scenes-Videos als Abo anbieten.</p><span class="pill">Noch ${18-state.alter} Spieljahre</span></div><p class="rail-note" style="margin-top:16px">Keine echten Accounts, Uploads oder Zahlungen. Alle Plattformen sind ausschließlich simuliert.</p>`;
+if(!f)return `<div class="section-head"><div><h2>OnlyFans</h2><p>Nicht-erotische Creator-Abos</p></div><span class="pill">18+</span></div><div class="empty">${icon('lock')}<h3>Deine Inhalte. Für deine Fans.</h3><p>Poste exklusive Tutorials, Musik oder Einblicke hinter die Kulissen. Mit Vorschauclips auf TikTok und Instagram gewinnst du im Spiel neue Abos.</p>${btn('Creator-Abo starten','of-new','plus',!state.lebendig,'',true)}</div><div class="notice">Reine Spielsimulation: keine Erotik, keine echten Uploads, keine Verbindung zu den Plattformen. Preise und Einnahmen sind erfundene Spielwerte.</div>`;
+return `<div class="section-head"><div><h2>OnlyFans</h2><p>${esc(f.name)} · ${esc(f.thema)}</p></div><span class="pill">Creator-Abo · 18+</span></div><div class="metric-row"><div class="metric"><strong>${num(f.abos)}</strong><span>Aktive Abos</span></div><div class="metric"><strong>${f.zufriedenheit}%</strong><span>Zufriedenheit</span></div><div class="metric"><strong>${eur(f.letzteEinnahmen)}</strong><span>Einnahmen / Jahr</span></div></div><section class="card"><div class="row between"><div><div class="eyebrow">Dein Abo</div><h2>${eur(f.preis)} <span class="small muted">/ Monat</span></h2></div>${btn('Preis ändern','of-price','',f.preisJahr===state.jahr)}</div><p class="small muted" style="margin:16px 0">${f.postsGesamt} exklusive Videos · ${eur(f.einnahmenGesamt)} bisher verdient</p>${btn('Exklusives Video posten','of-post','video',!ofPostingAllowed(),'',true)}</section>${state.jahr<f.pauseBis?'<div class="notice">Dieses Jahr ist eine Upload-Pause nötig. Du kannst wieder posten, sobald das nächste Jahr beginnt.</div>':''}<section class="list-item" style="margin-top:16px"><div class="row">${icon('chart')}<h3>Neue Fans erreichen</h3></div><p>Du kannst jeden exklusiven Upload mit einem nicht-erotischen Vorschauclip auf TikTok, Instagram oder beiden Kanälen bewerben. Das kostet keine zusätzliche Zeit.</p>${!state.kanal?btn('Öffentlichen Kanal starten','channel-new','plus'):''}<p style="margin-bottom:0">Ohne neue Inhalte kündigen mehr Abonnenten. Höhere Preise erschweren den Einstieg.</p></section><div class="notice">Nur Musik, Fitness, Tutorials und Behind-the-Scenes. Keine realen Posts oder Zahlungen; alle Werte sind Spielannahmen.</div><h3 style="margin:24px 0 16px">Deine exklusiven Videos</h3><div class="panel-list">${f.history.length?f.history.map(v=>`<div class="list-item"><div class="row between"><h3>${esc(v.title)}</h3><span class="small muted">${v.jahr}</span></div><p>${esc(v.promo)} · +${num(v.abos)} Abos · ${eur(v.budget)} Werbung</p></div>`).join(''):'<p class="muted">Noch kein Video veröffentlicht.</p>'}</div>`;
+}
+function render(){if(!state.ui.started)return renderStart();const prev=Object.fromEntries([...document.querySelectorAll('.stat-grid .bar>span')].map((e,i)=>[i,e.style.transform]));const focused=document.activeElement?.dataset?.action;document.getElementById('app').innerHTML=`<div class="shell"><aside class="sidebar"><div class="brand">${icon('line')}Lebenslinie<span class="period">.</span></div><nav class="nav" aria-label="Spielbereiche">${Object.entries(VIEWS).map(([k,[t,i]])=>`<button class="${state.ui.view===k?'active':''}" data-action="view" data-id="${k}" ${state.ui.view===k?'aria-current="page"':''}>${icon(i)}${t}${(k==='creator'&&state.alter<13)||(k==='onlyfans'&&state.alter<18)?`<span class="lock">${k==='creator'?'13+':'18+'}</span>`:''}</button>`).join('')}</nav><div class="side-bottom">${btn('Speichern & laden','save','save')}${btn('Neues Leben','new','plus')}<div class="side-foot">Dein Spielstand bleibt in dieser Sitzung.<br>Vor dem Schließen speichern.</div></div></aside><main class="main"><header class="topbar"><div class="breadcrumb">Lebenslinie <span>/</span><span>${VIEWS[state.ui.view][0]}</span></div><div class="brand mobile-brand">${icon('line')}Lebenslinie.</div><div class="topbar-right"><span class="pill">${icon('clock')}Jahr ${state.jahr}</span><button class="icon-button" data-action="save" aria-label="Speichern und laden">${icon('save')}</button><button class="icon-button" data-action="new" aria-label="Neues Leben">${icon('plus')}</button></div></header><section class="identity"><div class="monogram" aria-hidden="true">${esc(state.name.split(' ').filter(Boolean).slice(0,2).map(n=>n[0]).join(''))}</div><div class="grow"><h1>${esc(state.name)}</h1><div class="subline"><span>${esc(state.stadt)}</span><span>·</span><span>${esc(state.job?.titel||BILDUNG[state.bildung])}</span></div></div><div class="age-block"><div class="age-number">${state.alter.toString().padStart(2,'0')}</div><small>Jahre alt</small></div></section>${statsHTML()}<div class="body-grid"><section class="grow" id="panel">${renderPanel()}</section>${railHTML()}</div><footer class="year-footer"><span class="hint">${state.lebendig?(zeitFrei(1)?(zeitStand().max-zeitStand().genutzt)+' von '+zeitStand().max+' Zeiteinheiten übrig.':'Deine Zeit für dieses Jahr ist verplant.'):'Jedes Ende ist auch ein Anfang.'}</span>${state.lebendig?btn('Jahr weiter','year','plus',!!state.flags.pend.length,'',true):btn('Neues Leben','new','plus',false,'',true)}</footer></main></div>`;const bars=[...document.querySelectorAll('.stat-grid .bar>span')];for(let i=0;i<bars.length;i++){const to=bars[i].style.transform;if(prev[i]){bars[i].style.transform=prev[i];requestAnimationFrame(()=>{bars[i].style.transform=to;});}}const tl=document.getElementById('timeline');if(tl)tl.scrollTop=tl.scrollHeight;state.flags.rendered=state.log.length;if(focused==='year')document.querySelector('[data-action="year"]')?.focus({preventScroll:true});}
+function openDialog(type,data){const d=document.getElementById('dialog');state.ui.modal=type;let title='',body='';if(type==='entscheidung'){title='Eine Entscheidung';body=`<p>${esc(typeof data.text==='function'?data.text(state):data.text)}</p><div class="choice-list">${data.optionen.map((o,i)=>btn(esc(o.text),'choice','',o.bedingung&&!o.bedingung(state)||o.kosten>0&&!kaufbar(o.kosten),`data-id="${i}"`)).join('')}</div>`;}else if(type==='new'){title='Ein neues Leben beginnen?';body=`<p>Dein aktuelles Leben wird ersetzt. Kopiere vorher deinen Spielstand, wenn du es behalten möchtest.</p><div class="dialog-actions">${btn('Abbrechen','close','')}${btn('Neu beginnen','reset','plus',false,'',true)}</div>`;}else if(type==='save'||type==='load'){title=type==='save'?'Dein Leben aufbewahren':'Speicherstand laden';body=`<p>Kopiere deinen Spielstand als Text. Zum Fortsetzen fügst du ihn hier wieder ein. Es wird nichts automatisch gespeichert.</p>${type==='save'?btn('Speicherstand kopieren','copy','save') :''}<div class="field" style="margin-top:20px"><label for="save-data">Spielstand als JSON</label><textarea id="save-data" spellcheck="false" placeholder="Spielstand hier einfügen …">${type==='save'?esc(JSON.stringify(state)):''}</textarea></div><p class="form-error" id="load-error" role="alert"></p>${btn('Diesen Spielstand laden','import','upload',false,'',true)}`;}else{const out=extraDialog(type,data);if(!out)return;title=out.title;body=out.body;}d.innerHTML=`<div class="dialog-head"><h2 id="dialog-title">${title}</h2>${type==='entscheidung'?'':`<button class="icon-button" data-action="close" aria-label="Schließen">${icon('close')}</button>`}</div><div class="dialog-body">${body}</div>`;if(!d.open)d.showModal();}
+function extraDialog(type){if(type==='procedure')return{title:'Ein Eingriff ist eine Entscheidung',body:`<p>4.500 € für meist +16 Aussehen. Im Spiel besteht ein Risiko von 15 % für −12 Aussehen und −10 Glück.</p><div class="dialog-actions">${btn('Abbrechen','close','')}${btn('Eingriff durchführen','procedure-confirm','',!canAct(18,4500,ACTIVITIES.find(a=>a.id==='eingriff').zeit||1))}</div>`};if(type==='quit')return{title:'Deinen Job kündigen?',body:`<p>Du gibst dein regelmäßiges Einkommen auf. Die Kündigung kostet eine Zeiteinheit — ab dem nächsten Jahr hast du dafür eine mehr.</p>${btn('Kündigung bestätigen','quit-confirm','')}`};if(type==='fulltime')return{title:'Alles auf deinen Kanal setzen?',body:`<p>Du kündigst deinen Job. Deine Creator-Einnahmen schwanken, die Lebenshaltungskosten bleiben.</p>${btn('Hauptberuf Creator werden','fulltime-confirm','video')}`};return creatorDialog(type);}
+function budgetHTML(prefix='budget'){return `<fieldset class="field" style="border:0;padding:0"><legend>Werbebudget</legend><div class="choice-price">${BUDGETS.map((b,i)=>`<label><input type="radio" name="${prefix}" value="${b}" ${i===0?'checked':''} ${b>0&&state.geld<b?'disabled':''}>${eur(b)}</label>`).join('')}</div></fieldset><p class="small muted" style="margin-bottom:20px">Werbung verstärkt nur, was ohnehin funktioniert.</p>`;}
+function creatorDialog(type){const c=state.kanal,f=state.onlyfans;
+if(type==='channel-new')return{title:'Dein Kanal beginnt hier',body:`<form id="channel-form"><div class="field"><label for="channel-name">Kanalname</label><input id="channel-name" value="${esc(state.name.split(' ')[0])}s Kanal" maxlength="40" required></div><div class="field-pair"><div class="field"><label for="channel-niche">Deine Nische</label><select id="channel-niche">${Object.entries(NICHES).map(([k,[label]])=>`<option value="${k}">${label}</option>`).join('')}</select></div><div class="field"><label for="channel-platform">Erste Plattform</label><select id="channel-platform">${Object.entries(PLATFORMS).map(([k,d])=>`<option value="${k}">${d.name}</option>`).join('')}</select></div></div><p class="small muted" style="margin-bottom:20px">Einrichten kostet keine Zeit. Jeder Upload kostet ${ZEIT.upload} Zeiteinheit.</p><button class="btn primary full" type="submit">Kanal starten ${icon('arrow')}</button></form>`};
+if(type==='post'&&c)return{title:'Ein neues Video',body:`<form id="post-form"><div class="field"><label for="post-platform">Plattform</label><select id="post-platform">${Object.entries(PLATFORMS).filter(([k])=>c.plattformen[k].aktiv).map(([k,d])=>`<option value="${k}">${d.name}</option>`).join('')}</select></div><div class="field"><label for="post-kind">Art des Videos</label><select id="post-kind"><option value="sicher">Sicher · verlässliches, kleines Wachstum</option><option value="trend">Trend · Chance auf einen Ausreißer</option><option value="experiment">Experiment · mehr Risiko, mehr Potenzial</option></select></div>${budgetHTML()}<button class="btn primary full" type="submit">Video veröffentlichen ${icon('arrow')}</button><p class="small muted" style="margin-top:12px">Kostet ${ZEIT.upload} von ${zeitStand().max-zeitStand().genutzt} übrigen Zeiteinheiten in ${state.jahr}.</p></form>`};
+if(type==='of-new')return{title:'Dein nicht-erotisches Creator-Abo',body:`<form id="of-new-form"><div class="field"><label for="of-name">Name des Abo-Kanals</label><input id="of-name" value="${esc(state.name.split(' ')[0])} – exklusiv" maxlength="40" required></div><div class="field"><label for="of-theme">Deine Inhalte</label><select id="of-theme"><option>Behind-the-Scenes</option><option>Musik & Sessions</option><option>Fitness & Training</option><option>Kunst & Tutorials</option><option>Kochen & Rezepte</option></select></div><div class="field"><label for="of-price">Monatspreis · Spielwert</label><select id="of-price">${[5,9,15,25].map(n=>`<option value="${n}" ${n===9?'selected':''}>${eur(n)} / Monat</option>`).join('')}</select></div><p class="small muted" style="margin-bottom:20px">Nur für erwachsene Spielfiguren. Kein Content für Erwachsene und keine echten Accounts.</p><button class="btn primary full" type="submit">Abo-Kanal starten ${icon('arrow')}</button></form>`};
+if(type==='of-post'&&f)return{title:'Exklusives Video veröffentlichen',body:`<form id="of-post-form"><div class="field"><label for="of-video">Inhalt des Videos</label><select id="of-video"><option>Ein Blick hinter die Kulissen</option><option>Mein ausführliches Tutorial</option><option>Eine exklusive Musik-Session</option><option>Meine Trainingsroutine</option><option>Mein Kreativ-Workshop</option><option>Mein neues Rezept</option></select></div><div class="field"><label for="of-promo">Vorschauclip zur Werbung</label><select id="of-promo"><option value="none">Keine Cross-Promo</option><option value="tiktok" ${!c?.plattformen.tiktok.aktiv?'disabled':''}>Auf TikTok werben</option><option value="instagram" ${!c?.plattformen.instagram.aktiv?'disabled':''}>Auf Instagram werben</option><option value="both" ${!(c?.plattformen.tiktok.aktiv&&c?.plattformen.instagram.aktiv)?'disabled':''}>Auf TikTok und Instagram werben</option></select></div>${budgetHTML('of-budget')}<p class="small muted" style="margin-bottom:20px">Bezahlte Werbung ist nur mit einem aktiven Vorschaukanal möglich. Upload und Vorschauclip kosten zusammen ${ZEIT.upload} Zeiteinheit.</p><p id="of-error" class="form-error" role="alert"></p><button class="btn primary full" type="submit">Video posten ${icon('arrow')}</button></form>`};
+if(type==='depot-ein')return{title:'Geld anlegen',body:`<form id="depot-ein-form"><div class="field"><label for="dep-ein-betrag">Betrag</label><select id="dep-ein-betrag">${ANLAGE.filter(b=>b<=state.geld).map(b=>`<option value="${b}">${eur(b)}</option>`).join('')}<option value="alles">Alles · ${eur(Math.max(0,Math.floor(state.geld)))}</option></select></div><div class="field"><label for="dep-ein-ziel">Wohin</label><select id="dep-ein-ziel"><option value="aktien">Aktien · im Schnitt mehr, dafür schwankt es</option><option value="bar">Tagesgeld · sicher, kaum Zinsen</option></select></div><p class="small muted" style="margin-bottom:20px">Kostet eine Zeiteinheit. Angelegtes Geld steht dir im selben Jahr nicht mehr zur Verfügung.</p><button class="btn primary full" type="submit">Anlegen ${icon('arrow')}</button></form>`};
+if(type==='depot-aus')return{title:'Geld entnehmen',body:`<form id="depot-aus-form"><div class="field"><label for="dep-aus-betrag">Betrag</label><select id="dep-aus-betrag">${ANLAGE.filter(b=>b<=depotWert()).map(b=>`<option value="${b}">${eur(b)}</option>`).join('')}<option value="alles">Alles</option></select></div><div class="field"><label for="dep-aus-quelle">Woher</label><select id="dep-aus-quelle"><option value="aktien" ${state.depot.aktien<=0?'disabled':''}>Aktien · ${eur(state.depot.aktien)}</option><option value="bar" ${state.depot.bar<=0?'disabled':''}>Tagesgeld · ${eur(state.depot.bar)}</option></select></div><p class="small muted" style="margin-bottom:20px">Kostet eine Zeiteinheit.</p><button class="btn primary full" type="submit">Entnehmen ${icon('arrow')}</button></form>`};
+if(type==='moebel-kaufen'){const offen=MOEBEL.filter(m=>!state.einrichtung.moebel.includes(m.id));
+return{title:'Möbel kaufen',body:`<div class="panel-list">${offen.map(m=>`<section class="list-item"><div class="row between"><h3 class="grow">${esc(m.name)}</h3><span class="small accent">${eur(m.preis)}</span></div><p>Glück +${m.glueck}</p>${btn('Kaufen','moebel-kauf-id','arrow',!canAct(0,m.preis,EINRICHTUNG.zeit)||gesperrt()||state.einrichtung.moebel.length>=moebelPlaetze(),`data-id="${m.id}"`)}</section>`).join('')||'<p class="muted">Du hast schon alles.</p>'}</div><p class="small muted" style="margin-top:16px">Jedes Stück kostet ${EINRICHTUNG.zeit} Zeiteinheit und taucht sofort in der Zeichnung auf.</p>`};}
+if(type==='wand-aendern'||type==='boden-aendern'){const art=type==='wand-aendern'?'wand':'boden';const liste=art==='wand'?WAND:BODEN;
+return{title:art==='wand'?'Wände streichen':'Boden erneuern',body:`<div class="panel-list">${liste.map(o=>`<section class="list-item"><div class="row between"><h3 class="grow">${esc(o.name)}</h3><span class="small accent">${eur(EINRICHTUNG.anstrichPreis)}</span></div><div style="height:26px;border-radius:6px;background:${o.farbe};border:1px solid var(--line);margin:10px 0"></div>${btn(state.einrichtung[art]===o.id?'Aktuell':'Auswählen','flaeche-'+art,'arrow',state.einrichtung[art]===o.id||!canAct(0,EINRICHTUNG.anstrichPreis,EINRICHTUNG.zeit)||gesperrt(),`data-id="${o.id}"`)}</section>`).join('')}</div>`};}
+if(type==='lack-aendern'&&state.auto){
+return{title:'Auto lackieren',body:`<div class="panel-list">${LACK.map(o=>`<section class="list-item"><div class="row between"><h3 class="grow">${esc(o.name)}</h3><span class="small accent">${eur(EINRICHTUNG.lackPreis)}</span></div><div style="height:26px;border-radius:6px;background:${o.farbe};border:1px solid var(--line);margin:10px 0"></div>${btn(state.auto.farbe===o.id?'Aktuell':'Auswählen','flaeche-lack','arrow',state.auto.farbe===o.id||!canAct(0,EINRICHTUNG.lackPreis,EINRICHTUNG.zeit)||gesperrt(),`data-id="${o.id}"`)}</section>`).join('')}</div>`};}
+if(type==='partner-trennen'){const p=partner();return p?{title:'Die Beziehung beenden?',body:`<p>${p.verheiratet?`Eine Scheidung kostet dich mindestens ${eur(PARTNER.scheidungMin)} und einen Teil deines Vermögens.`:p.zusammen?`Ihr wohnt zusammen. Der Auszug kostet ${eur(PARTNER.umzugKosten)}.`:'Ihr wohnt nicht zusammen. Das macht es etwas leichter.'} Glück und Gesundheit leiden in jedem Fall.</p><div class="dialog-actions">${btn('Abbrechen','close','')}${btn('Beziehung beenden','partner-trennen-ok','close',false,'',true)}</div>`}:null;}
+if(type==='immo-kaufen')return{title:'Eine Immobilie kaufen',body:`<div class="panel-list">${IMMOBILIEN.map(d=>{const ek=Math.round(d.preis*IMMO.eigenkapital);return `<section class="list-item"><div class="row between"><h3 class="grow">${esc(d.typ)}</h3><span class="small accent">${eur(d.preis)}</span></div><p>Eigenkapital ${eur(ek)} + ${eur(Math.round(d.preis*IMMO.nebenkosten))} Nebenkosten · Hypothek ${eur(d.preis-ek)} · Miete grob ${eur(Math.round(d.preis*IMMO.mietRendite))} / Jahr</p>${btn('Kaufen','immo-kauf-id','arrow',!canAct(IMMO.minAlter,ek+Math.round(d.preis*IMMO.nebenkosten),IMMO.zeitKauf)||gesperrt()||state.immobilien.length>=IMMO.maxObjekte,`data-id="${d.id}"`)}</section>`;}).join('')}</div><p class="small muted" style="margin-top:16px">Zins ${(IMMO.zins*100).toFixed(1).replace('.',',')} Prozent, Tilgung ${(IMMO.tilgung*100).toFixed(1).replace('.',',')} Prozent vom Darlehen pro Jahr. Instandhaltung faellt immer an, auch wenn niemand drin wohnt.</p>`};
+if(type==='auto-kaufen')return{title:'Ein Fahrzeug kaufen',body:`<div class="panel-list">${AUTOS.map(d=>`<section class="list-item"><div class="row between"><h3 class="grow">${esc(d.name)}</h3><span class="small accent">${eur(d.preis)}</span></div><p>Glück +${d.wirkung.glueck}${d.wirkung.aussehen?' · Aussehen +'+d.wirkung.aussehen:''} · Unterhalt ${eur(d.unterhalt)} / Jahr${d.wertverlust===0?' · hält seinen Wert':''}${d.risiko?' · Unfallrisiko':''}</p>${btn('Kaufen','auto-kauf-id','arrow',!canAct(AUTO.minAlter,d.preis,AUTO.zeitKauf)||gesperrt(),`data-id="${d.id}"`)}</section>`).join('')}</div><p class="small muted" style="margin-top:16px">Ein Auto verliert im ersten Jahr rund 15 Prozent an Wert, danach etwa 10 Prozent pro Jahr. Reparaturen werden mit dem Alter wahrscheinlicher.</p>`};
+if(type==='of-price'&&f)return{title:'Deinen Abo-Preis ändern',body:`<form id="of-price-form"><div class="field"><label for="of-price-change">Neuer Monatspreis</label><select id="of-price-change">${[5,9,15,25].map(n=>`<option value="${n}" ${n===f.preis?'selected':''}>${eur(n)}</option>`).join('')}</select></div><p class="small muted" style="margin-bottom:20px">Bei einer Erhöhung kündigen 15 % deiner Abonnenten sofort. Einmal pro Spieljahr möglich.</p><button class="btn primary" type="submit">Preis speichern</button></form>`};
+return null;
+}
+function closeDialog(force=false){if(state.ui.modal==='entscheidung'&&!force)return;document.getElementById('dialog').close();state.ui.modal=null;}
+function totalFollowers(){return state.kanal?Object.values(state.kanal.plattformen).reduce((n,p)=>n+(p.aktiv?p.follower:0),0):0;}
+function extraAction(a,id){
+if(a==='activity'){const d=ACTIVITIES.find(x=>x.id===id);if(!d||!canAct(d.min,d.kosten,d.zeit||1))return;if(d.risiko){openDialog('procedure');return;}consume(d.zeit||1);if(id==='lesen'||id==='kurs')state.flags.geistJahr=state.jahr;apply({geld:-d.kosten,...d.wirkung});addLog(d.text,'gut');if(id==='party'&&Math.random()<.4)addFriend();state.ui.view='leben';render();}
+else if(a==='procedure-confirm'){const d=ACTIVITIES.find(x=>x.id==='eingriff');if(!canAct(18,d.kosten,d.zeit||1))return;consume(d.zeit||1);apply({geld:-d.kosten});if(Math.random()<d.risiko){apply({aussehen:-12,glueck:-10});addLog('Der kosmetische Eingriff geht nicht wie erhofft aus. Du bereust die Entscheidung.','schlecht');}else{apply(d.wirkung);addLog(d.text,'gut');}closeDialog();render();}
+else if(a==='hobby'){const h=HOBBYS.find(x=>x.id===id);if(!h||!canAct(6,0,ZEIT.hobby))return;consume(ZEIT.hobby);let own=state.hobbys.find(x=>x.id===id);if(!own){own={id,name:h.name,jahre:0,niveau:0,meilensteine:[],trainYear:state.jahr};state.hobbys.push(own);addLog(`Du fängst mit ${h.name} an. Aller Anfang ist ziemlich wacklig.`,'gross');}else{own.trainYear=state.jahr;addLog(`Du nimmst dir dieses Jahr bewusst Zeit für ${h.name}.`);}render();}
+else if(a==='relationship'){const b=state.beziehungen.find(x=>x.id===id);if(!b||!canAct(3,0,1))return;consume(1);b.verhaeltnis=clamp(b.verhaeltnis+23);apply({glueck:7});addLog(`Du verbringst Zeit mit ${b.name}. Das Gespräch geht länger als geplant.`,'gut');render();}
+else if(a==='job'){const j=JOBS.find(x=>x.id===id);if(!j||!canAct(18,0,ZEIT.bewerbung)||!jobEligible(j))return;consume(ZEIT.bewerbung);const chance=clamp(45+state.stats.intelligenz*.35+state.stats.aussehen*.07+eduLevel()*3,30,94)/100;if(Math.random()<chance){const low=Math.random()<.2;state.job={...j,gehalt:Math.round(j.gehalt*(low?.86:1)),stufe:1,jahreImJob:0};state.flags.vollzeit=false;addLog(`${low?'Zusage, aber mit einem niedrigeren Einstiegsgehalt':'Zusage'}: ${j.titel}, ${eur(state.job.gehalt)} pro Jahr.`,'gross');apply({glueck:8});if(state.job.gehalt>state.records.gehalt){state.records.gehalt=state.job.gehalt;state.records.job=j.titel;}}else{addLog(`Deine Bewerbung als ${j.titel} wird abgelehnt. Keine richtige Begründung.`,'schlecht');apply({glueck:-3});}render();}
+else if(a==='depot-ein'||a==='depot-aus'){if(canAct(16,0,1))openDialog(a);}
+else if(a==='auto-kaufen'){if(canAct(AUTO.minAlter,0,AUTO.zeitKauf)&&!state.auto&&!gesperrt())openDialog(a);}
+else if(a==='auto-kauf-id'){if(autoKaufen(id)){closeDialog();state.ui.view='besitz';render();}}
+else if(a==='auto-verkaufen'){if(autoVerkaufen())render();}
+else if(a==='immo-kaufen'){if(canAct(IMMO.minAlter,0,IMMO.zeitKauf)&&state.immobilien.length<IMMO.maxObjekte&&!gesperrt())openDialog(a);}
+else if(a==='immo-kauf-id'){if(immoKaufen(id)){closeDialog();state.ui.view='besitz';render();}}
+else if(a==='immo-verkaufen'){if(immoVerkaufen(id))render();}
+else if(a==='immo-renovieren'){if(immoRenovieren(id))render();}
+else if(a==='immo-nutzung'){if(immoNutzung(id))render();}
+else if(a==='moebel-kaufen'||a==='wand-aendern'||a==='boden-aendern'||a==='lack-aendern'){if(canAct(0,0,EINRICHTUNG.zeit)&&!gesperrt())openDialog(a);}
+else if(a==='moebel-kauf-id'){if(moebelKaufen(id)){closeDialog();render();}}
+else if(a==='flaeche-wand'||a==='flaeche-boden'||a==='flaeche-lack'){if(oberflaecheAendern(a.slice(8),id)){closeDialog();render();}}
+else if(a==='partner-suchen'){if(partnerSuchen())render();}
+else if(a==='partner-trennen'){if(partner()&&canAct(0,0,PARTNER.zeitAktion))openDialog('partner-trennen');}
+else if(a==='partner-trennen-ok'){if(partnerTrennen()){closeDialog();render();}}
+else if(a==='quit'||a==='fulltime'){if(!canAct(0,0,1))return;openDialog(a);}
+else if(a==='quit-confirm'){if(!canAct(0,0,1)||!state.job)return;consume(1);addLog(`Du kündigst deinen Job als ${state.job.titel}. Ab nächstem Jahr kommt kein Gehalt mehr.`, 'gross');state.job=null;closeDialog();render();}
+else if(a==='fulltime-confirm'){if(!canAct(0,0,1)||!state.kanal||state.kanal.letzteEinnahmen<18000)return;consume(1);state.job=null;state.flags.vollzeit=true;addLog('Du machst Content Creation zu deinem Hauptberuf. Deine Rechnungen kennen keinen Algorithmus.','gross');closeDialog();render();}
+else creatorAction(a,id);
+}
+function creatorAction(a,id){if(a==='channel-new'){if(state.alter>=13&&!state.kanal&&state.lebendig)openDialog(a);}else if(a==='platform'){if(state.kanal&&PLATFORMS[id]&&state.lebendig){state.kanal.plattformen[id].aktiv=true;addLog(`Dein Kanal ist jetzt auch auf ${PLATFORMS[id].name}.`,'gross');render();}}else if(a==='post'){if(postingAllowed())openDialog(a);}else if(a==='of-new'){if(state.alter>=18&&!state.onlyfans&&state.lebendig)openDialog(a);}else if(a==='of-post'){if(ofPostingAllowed())openDialog(a);}else if(a==='of-price'){if(state.alter>=18&&state.onlyfans&&state.lebendig&&state.onlyfans.preisJahr!==state.jahr)openDialog(a);}}
+function ofPostingAllowed(){return canAct(18)&&state.onlyfans&&state.jahr>=state.onlyfans.pauseBis&&(!state.kanal||state.jahr>=state.kanal.pauseBis);}
+function postExclusive(title,promo,budget){if(!ofPostingAllowed()||!['none','tiktok','instagram','both'].includes(promo)||!BUDGETS.includes(budget)||budget>0&&(state.geld<budget||gesperrt()))return false;const channels=promo==='none'?[]:promo==='both'?['tiktok','instagram']:[promo];if(channels.some(k=>!state.kanal?.plattformen[k]?.aktiv)||!channels.length&&budget>0)return false;const f=state.onlyfans;let audience=0;for(const k of channels){const p=state.kanal.plattformen[k];audience+=(p.follower-p.gekauft+p.gekauft*.25)*(k==='instagram'?1.2:1);p.lastPost=state.jahr;}
+const outcome=Math.random(),quality=.5+f.zufriedenheit/200+state.stats.intelligenz/300+Math.max(...state.hobbys.map(h=>h.niveau),0)/250;const organic=Math.max(1,Math.round((6+audience*.003)*quality*(9/f.preis)*(outcome<.12?.2:outcome>.85?2.1:1)));const multi=1+Math.min(1.5,Math.sqrt(budget/4400));const abos=Math.round(organic*multi);consume(ZEIT.upload);state.geld-=budget;f.werbungGesamt+=budget;f.abos+=abos;f.zufriedenheit=clamp(f.zufriedenheit+(outcome<.12?-5:9));f.postsGesamt++;f.postsDiesesJahr++;f.lastPost=state.jahr;const promoName=promo==='none'?'Ohne Werbung':promo==='both'?'TikTok & Instagram':PLATFORMS[promo].name;f.history.unshift({title,jahr:state.jahr,promo:promoName,abos,budget});f.history=f.history.slice(0,12);apply({glueck:outcome<.12?-2:5});addLog(`OnlyFans · „${title}“: +${num(abos)} Abos.${channels.length?' Dein Vorschauclip auf '+promoName+' macht auf das Video aufmerksam.':''}${budget?' Werbebudget: '+eur(budget)+'.':''}`,'gut');if(f.belastung+f.postsDiesesJahr>=CREATOR.burnout){f.pauseBis=state.jahr+2;f.belastung=0;apply({gesundheit:-14,glueck:-14});addLog('Nur noch exklusive Inhalte im Kopf. Du brauchst im nächsten Jahr eine Upload-Pause.','schlecht');}return{abos,organic};}
+function handleAction(el){const a=el.dataset.action,id=el.dataset.id;if(a==='choice')return resolveChoice(Number(id));if(state.flags.pend.length)return;if(a==='view'){state.ui.view=id;render();}else if(a==='filter'){state.ui.filter=id;render();}else if(a==='year')nextYear();else if(a==='random-name')document.getElementById('new-name').value=pick(FIRST)+' '+pick(LAST);else if(a==='save'||a==='load')openDialog(a);else if(a==='new')openDialog('new');else if(a==='reset'){closeDialog(true);state=fresh();render();}else if(a==='close')closeDialog();else if(a==='copy')copySave();else if(a==='import')importSave();else extraAction(a,id,el);}
+async function copySave(){const txt=JSON.stringify(state);try{await navigator.clipboard.writeText(txt);toast('Dein Spielstand wurde kopiert.');}catch{const field=document.getElementById('save-data');field.value=txt;field.focus();field.select();toast('Kopieren gesperrt: Mit Strg/Cmd + C selbst kopieren.');}}
+function normalizeSave(raw){
+if(!raw||typeof raw!=='object'||Array.isArray(raw)||typeof raw.name!=='string'||!raw.name.trim()||!Number.isInteger(raw.alter)||raw.alter<0||raw.alter>110)throw Error('Das ist kein gültiger Lebenslinie-Spielstand. Name und Alter fehlen oder sind ungültig.');
+if(raw.version!==undefined&&raw.version!==1)throw Error('Diese Spielstand-Version wird nicht unterstützt.');
+const str=(v,d='',max=80)=>typeof v==='string'?v.slice(0,max):d;
+const n=(v,d=0,min=0,max=1e12)=>clamp(typeof v==='number'&&Number.isFinite(v)?v:d,min,max);
+const obj=v=>v&&typeof v==='object'&&!Array.isArray(v)?v:{};
+const arr=v=>Array.isArray(v)?v:[];
+const own=(o,k)=>Object.prototype.hasOwnProperty.call(o,k);
+const s=fresh(raw.name.trim().slice(0,48),['m','w','d'].includes(raw.geschlecht)?raw.geschlecht:'d',str(raw.stadt,'Stuttgart',48));s.alter=raw.alter;s.jahr=2026+s.alter;s.geld=n(raw.geld,0,-1e12);s.lebendig=raw.lebendig!==false&&s.alter<110;
+for(const k of Object.keys(STATS))s.stats[k]=n(obj(raw.stats)[k],s.stats[k],0,100);
+if(s.stats.gesundheit===0)s.lebendig=false;
+s.bildung=own(BILDUNG,raw.bildung)?raw.bildung:s.alter>=18?'mittlere_reife':s.alter>=6?'schule':'keine';
+const rf=obj(raw.flags);const flagKeys=['aktion','botsAbgelehnt','vollzeit','entschuldigung','drosselBis','abschlussJahr','insolvenzBis','insolvenzen','geistJahr','grundJahr'];for(const k of flagKeys)if(typeof rf[k]==='boolean'||typeof rf[k]==='number'&&Number.isFinite(rf[k]))s.flags[k]=rf[k];
+s.flags.aktion=rf.aktion===true;
+const jahrFlags={drosselBis:s.jahr+1,abschlussJahr:s.jahr+4,insolvenzBis:s.jahr+GELD.insolvenzJahre,geistJahr:s.jahr,grundJahr:s.jahr};for(const k of Object.keys(jahrFlags))s.flags[k]=typeof s.flags[k]==='number'?n(s.flags[k],0,0,jahrFlags[k]):0;
+s.flags.insolvenzen=Math.round(n(rf.insolvenzen,0,0,200));
+const safeEffect=value=>{const w={};for(const k of [...Object.keys(STATS),'geld','ruf','beziehung','follower'])if(typeof obj(value)[k]==='number')w[k]=n(value[k],0,-1e9,1e9);if(obj(value).freund===true)w.freund=true;const ff=obj(obj(value).flags);w.flags={};for(const k of flagKeys)if(typeof ff[k]==='boolean'||typeof ff[k]==='number'&&Number.isFinite(ff[k]))w.flags[k]=ff[k];return w;};
+s.flags.gesehen=[...new Set(arr(rf.gesehen).filter(id=>EREIGNISSE.some(e=>e.id===id)))];
+s.flags.pend=[...new Set(arr(rf.pend).filter(id=>EREIGNISSE.some(e=>e.id===id&&e.optionen)))].slice(0,20);
+s.flags.endePruefen=rf.endePruefen===true;
+s.flags.folge=arr(rf.folge).slice(0,50).filter(f=>obj(f).jahr>s.jahr&&obj(f).jahr<=s.jahr+10).map(f=>({jahr:n(f.jahr,s.jahr+1),text:str(f.text,'Eine Entscheidung wirkt nach.',600),art:['gut','schlecht','gross'].includes(f.art)?f.art:'info',wirkung:safeEffect(f.wirkung)}));
+s.hobbys=[];for(const h of arr(raw.hobbys).slice(0,40)){const d=HOBBYS.find(d=>d.id===obj(h).id);if(!d||s.hobbys.some(x=>x.id===d.id))continue;s.hobbys.push({id:d.id,name:d.name,jahre:Math.round(n(h.jahre,0,0,110)),niveau:Math.round(n(h.niveau,0,0,100)),meilensteine:[...new Set(arr(h.meilensteine).filter(t=>[30,60,90].includes(t)))],trainYear:n(h.trainYear,-100,-100,s.jahr)});}
+if(s.alter>=18&&raw.job){const j=JOBS.find(j=>j.id===obj(raw.job).id||j.titel===obj(raw.job).titel);if(j)s.job={...j,gehalt:n(raw.job.gehalt,j.gehalt,0,1e9),stufe:Math.round(n(raw.job.stufe,1,1,100)),jahreImJob:Math.round(n(raw.job.jahreImJob,0,0,110))};}
+const rd=obj(raw.depot);s.depot={bar:Math.round(n(rd.bar,0,0,1e11)),aktien:Math.round(n(rd.aktien,0,0,1e11)),einstand:Math.round(n(rd.einstand,0,0,1e11))};
+const rm=obj(raw.markt);s.markt={rendite:clamp(typeof rm.rendite==='number'&&Number.isFinite(rm.rendite)?rm.rendite:0,-1,3),crash:rm.crash===true,crashIn:Math.round(n(rm.crashIn,rnd(MARKT.crashAlleMin,MARKT.crashAlleMax),1,MARKT.crashAlleMax))};
+const ra=obj(raw.auto);const ad=AUTOS.find(x=>x.id===ra.modell);
+s.auto=ad&&s.alter>=AUTO.minAlter?{modell:ad.id,wert:Math.round(n(ra.wert,ad.preis,0,ad.preis*2)),alter:Math.round(n(ra.alter,0,0,90)),zustand:Math.round(n(ra.zustand,100,0,100))}:null;
+s.immobilien=[];
+for(const ri of arr(raw.immobilien).slice(0,IMMO.maxObjekte)){
+const ro=obj(ri),d=IMMOBILIEN.find(x=>x.id===ro.typ);
+if(!d||s.alter<IMMO.minAlter)continue;
+const wert=Math.round(n(ro.wert,d.preis,0,d.preis*20));
+const bewohnt=['selbst','vermietet','leer'].includes(ro.bewohnt)?ro.bewohnt:'leer';
+s.immobilien.push({id:'immo_geladen_'+s.immobilien.length,typ:d.id,kaufpreis:Math.round(n(ro.kaufpreis,d.preis,1,d.preis*20)),wert,
+hypothek:Math.round(n(ro.hypothek,0,0,wert*3)),zustand:Math.round(n(ro.zustand,80,0,100)),bewohnt,
+mieteinnahme:bewohnt==='vermietet'?Math.round(n(ro.mieteinnahme,0,0,wert)):0,
+mieterZufriedenheit:bewohnt==='vermietet'?Math.round(n(ro.mieterZufriedenheit,60,0,100)):0});
+}
+if(s.immobilien.filter(im=>im.bewohnt==='selbst').length>1){let erste=true;for(const im of s.immobilien){if(im.bewohnt!=='selbst')continue;if(erste){erste=false;continue;}im.bewohnt='leer';}}
+const re=obj(raw.einrichtung);
+s.einrichtung={moebel:[...new Set(arr(re.moebel).filter(id=>MOEBEL.some(m=>m.id===id)))].slice(0,MOEBEL.length),
+wand:WAND.some(w=>w.id===re.wand)?re.wand:WAND[0].id,boden:BODEN.some(b=>b.id===re.boden)?re.boden:BODEN[0].id};
+if(s.auto)s.auto.farbe=LACK.some(l=>l.id===obj(raw.auto).farbe)?obj(raw.auto).farbe:LACK[0].id;
+s.zeit={max:zeitMax(s),genutzt:0};s.zeit.genutzt=Math.round(n(obj(raw.zeit).genutzt,0,0,s.zeit.max));
+let partnerGesehen=false;
+s.beziehungen=arr(raw.beziehungen).slice(0,20).filter(b=>typeof obj(b).name==='string').map((b,i)=>{
+const typRoh=['Familie','Geschwister','Freundschaft','Partner'].includes(b.typ)?b.typ:'Freundschaft';
+const istPartner=typRoh==='Partner'&&!partnerGesehen&&s.alter>=PARTNER.minAlter;
+if(istPartner)partnerGesehen=true;
+const e={id:(istPartner?'partner_geladen_':'geladen_')+i,name:str(b.name,'Kontakt',60),typ:istPartner?'Partner':typRoh==='Partner'?'Freundschaft':typRoh,verhaeltnis:Math.round(n(b.verhaeltnis,50,0,100))};
+if(istPartner){e.alter=Math.round(n(b.alter,s.alter,16,110));e.beruf=JOBS.some(j=>j.titel===b.beruf)?b.beruf:PARTNER.ohneJob;e.seit=Math.round(n(b.seit,s.jahr,2026,s.jahr));e.verheiratet=b.verheiratet===true;e.zusammen=b.zusammen===true||e.verheiratet;}
+return e;});if(!Array.isArray(raw.beziehungen))s.beziehungen=fresh().beziehungen;
+if(s.alter>=13&&raw.kanal){const c=obj(raw.kanal);s.kanal=newChannel(str(c.name,'Mein Kanal',40),own(NICHES,c.nische)?c.nische:'gaming','tiktok');const target=s.kanal;for(const k of Object.keys(PLATFORMS)){const p=obj(obj(c.plattformen)[k]);const followers=Math.round(n(p.follower,0,0,1e10));target.plattformen[k]={follower:followers,gekauft:Math.round(n(p.gekauft,0,0,followers)),aktiv:p.aktiv===true,lastPost:n(p.lastPost,-100,-100,s.jahr)};}if(!Object.values(target.plattformen).some(p=>p.aktiv))target.plattformen.tiktok.aktiv=true;for(const k of ['postsDiesesJahr','postsGesamt','einnahmenGesamt','letzteEinnahmen','werbungGesamt','belastung','pauseBis'])target[k]=n(c[k],0,0,k==='pauseBis'?s.jahr+2:1e12);target.postsDiesesJahr=Math.min(ZEIT.erwachsen,target.postsDiesesJahr);target.belastung=Math.min(CREATOR.burnout,target.belastung);target.letztesPostJahr=n(c.letztesPostJahr,-100,-100,s.jahr);target.ruf=Math.round(n(c.ruf,50,0,100));target.verifiziert=c.verifiziert===true&&Object.values(target.plattformen).reduce((n,p)=>n+p.follower-p.gekauft,0)>=100000;target.history=arr(c.history).slice(0,12).filter(p=>own(PLATFORMS,obj(p).platform)&&own(RESULTS,obj(p).result)).map(p=>({jahr:n(p.jahr,s.jahr,2026,s.jahr),platform:p.platform,kind:['sicher','trend','experiment'].includes(p.kind)?p.kind:'sicher',result:p.result,gain:n(p.gain),views:n(p.views),budget:n(p.budget)}));}
+if(s.alter>=18&&raw.onlyfans){const f=obj(raw.onlyfans);s.onlyfans={name:str(f.name,'Mein Creator-Abo',40),thema:['Behind-the-Scenes','Musik & Sessions','Fitness & Training','Kunst & Tutorials','Kochen & Rezepte'].includes(f.thema)?f.thema:'Behind-the-Scenes',preis:[5,9,15,25].includes(f.preis)?f.preis:9,preisJahr:n(f.preisJahr),abos:Math.round(n(f.abos,0,0,1e8)),zufriedenheit:Math.round(n(f.zufriedenheit,60,0,100)),postsGesamt:n(f.postsGesamt),postsDiesesJahr:n(f.postsDiesesJahr,0,0,ZEIT.erwachsen),belastung:n(f.belastung,0,0,CREATOR.burnout),letzteEinnahmen:n(f.letzteEinnahmen),einnahmenGesamt:n(f.einnahmenGesamt),werbungGesamt:n(f.werbungGesamt),lastPost:n(f.lastPost,-100,-100,s.jahr),pauseBis:n(f.pauseBis,0,0,s.jahr+2),history:arr(f.history).slice(0,12).filter(v=>typeof obj(v).title==='string').map(v=>({title:str(v.title,'Exklusives Video',80),jahr:n(v.jahr,s.jahr,2026,s.jahr),promo:str(v.promo,'Ohne Werbung',40),abos:n(v.abos),budget:n(v.budget)}))};}
+s.log=arr(raw.log).slice(-2000).filter(l=>typeof obj(l).text==='string').map(l=>({alter:Math.round(n(l.alter,s.alter,0,s.alter)),text:str(l.text,'',600),art:['gut','schlecht','gross'].includes(l.art)?l.art:'info'})).sort((a,b)=>a.alter-b.alter);
+if(!s.log.length)s.log.push({alter:s.alter,text:'Dein gespeichertes Leben geht weiter.',art:'gross'});
+for(const k of Object.keys(s.records))s.records[k]=typeof s.records[k]==='string'?str(obj(raw.records)[k],s.records[k],80):n(obj(raw.records)[k]);
+for(const k of Object.keys(s.finanzen))s.finanzen[k]=n(obj(raw.finanzen)[k]);
+s.ui={started:true,view:own(VIEWS,obj(raw.ui).view)?raw.ui.view:'leben',filter:obj(raw.ui).filter==='wichtig'?'wichtig':'alle',modal:null};s.flags.rendered=0;
+s.flags.pend=s.flags.pend.filter(id=>{const e=EREIGNISSE.find(e=>e.id===id);return e&&s.alter>=(e.minAlter??0)&&s.alter<=(e.maxAlter??110)&&(!id.startsWith('of_')||!!s.onlyfans)&&(!(id.startsWith('creator_')||id.startsWith('werbung_'))||!!s.kanal);});
+if(!s.lebendig){s.flags.pend=[];s.flags.endePruefen=false;s.ui.view='leben';}
+return s;
+}
+function importSave(){try{const text=document.getElementById('save-data').value;if(text.length>1500000)throw Error('Dieser Spielstand ist zu groß. Maximal 1,5 MB Text.');const next=normalizeSave(JSON.parse(text));closeDialog(true);state=next;render();processPending();toast('Dein Leben geht weiter.');}catch(e){document.getElementById('load-error').textContent=e instanceof SyntaxError?'Der Text ist kein gültiges JSON. Kopiere den vollständigen Spielstand.':e.message;}}
+document.addEventListener('click',e=>{const el=e.target.closest('[data-action]');if(el&&!el.disabled)handleAction(el);});
+document.addEventListener('submit',e=>{e.preventDefault();if(e.target.id==='create-form')startLife();else extraSubmit(e.target.id);});
+function extraSubmit(id){
+if(id==='channel-form'){if(state.alter<13||state.kanal||!state.lebendig)return;const name=document.getElementById('channel-name').value.trim().slice(0,40),niche=document.getElementById('channel-niche').value,platform=document.getElementById('channel-platform').value;if(!name||!NICHES[niche]||!PLATFORMS[platform])return;state.kanal=newChannel(name,niche,platform);addLog(`Du startest „${name}“ auf ${PLATFORMS[platform].name}. Null Follower. Alle Möglichkeiten.`,'gross');state.ui.view='creator';}
+else if(id==='post-form'){const p=document.getElementById('post-platform').value,k=document.getElementById('post-kind').value,b=Number(document.querySelector('input[name="budget"]:checked')?.value||0);if(!uploadVideo(p,k,b))return;}
+else if(id==='of-new-form'){if(state.alter<18||state.onlyfans||!state.lebendig)return;const name=document.getElementById('of-name').value.trim().slice(0,40),preis=Number(document.getElementById('of-price').value);if(!name||![5,9,15,25].includes(preis))return;state.onlyfans={name,thema:document.getElementById('of-theme').value,preis,preisJahr:0,abos:0,zufriedenheit:60,postsGesamt:0,postsDiesesJahr:0,letzteEinnahmen:0,einnahmenGesamt:0,werbungGesamt:0,lastPost:-100,belastung:0,pauseBis:0,history:[]};state.ui.view='onlyfans';addLog(`Du startest dein nicht-erotisches Creator-Abo „${name}“ auf OnlyFans für ${eur(preis)} im Monat.`,'gross');}
+else if(id==='of-post-form'){const title=document.getElementById('of-video').value,promo=document.getElementById('of-promo').value,b=Number(document.querySelector('input[name="of-budget"]:checked')?.value||0);if(!postExclusive(title,promo,b)){document.getElementById('of-error').textContent='Wähle für bezahlte Werbung TikTok oder Instagram. Du brauchst einen aktiven Kanal und genug Geld.';return;}}
+else if(id==='depot-ein-form'){if(!anlegen(document.getElementById('dep-ein-betrag').value,document.getElementById('dep-ein-ziel').value))return;}
+else if(id==='depot-aus-form'){if(!entnehmen(document.getElementById('dep-aus-betrag').value,document.getElementById('dep-aus-quelle').value))return;}
+else if(id==='of-price-form'){const f=state.onlyfans,p=Number(document.getElementById('of-price-change').value);if(!f||state.alter<18||!state.lebendig||f.preisJahr===state.jahr||![5,9,15,25].includes(p))return;if(p>f.preis)f.abos=Math.round(f.abos*.85);f.preis=p;f.preisJahr=state.jahr;addLog(`Dein Abo kostet jetzt ${eur(p)} im Monat.`, 'info');}
+else return;
+closeDialog();render();
+}
+document.getElementById('dialog').addEventListener('cancel',e=>{if(state.ui.modal==='entscheidung')e.preventDefault();else state.ui.modal=null;});
+// Ein Katalog, ein Schema. Die kompakten Datensätze werden zu vollständigen Ereignissen.
+[
+['kind',0,12,[
+['Du lachst zum ersten Mal über dein eigenes Spiegelbild.',{glueck:4},0,2],
+['Ein Bauklotzturm hält länger als erwartet. Dann nicht mehr.',{intelligenz:3},1,4],
+['Du findest ein Versteck, das außer dir wirklich jeder kennt.',{glueck:3},2,5],
+['Die Eingewöhnung in der Kita dauert länger als gedacht. Dann kennst du plötzlich alle.',{glueck:4,beziehung:2},3,5],
+['Du bestehst darauf, dich selbst anzuziehen. Die Farben sind mutig.',{aussehen:1,intelligenz:2},2,5],
+['Deine Familie macht ein Picknick. Du interessierst dich hauptsächlich für die Ameisen.',{glueck:5},1,6],
+['Du lernst, eine Schleife zu binden. Das ist komplizierter als es aussieht.',{intelligenz:4},4,7],
+['Du probierst ein neues Gemüse. Die Verhandlung dauert länger als das Essen.',{gesundheit:2},2,6],
+['Jemand teilt in der Schule seine Stifte mit dir. Ihr redet danach jeden Tag.',{glueck:4,freund:true},6,10],
+['Dein Bild hängt im Schulflur. Du gehst ziemlich oft daran vorbei.',{glueck:6},6,12],
+['Du verlierst deinen Turnbeutel. Die Suche beschäftigt die ganze Familie.',{glueck:-3,geld:-20},6,12],
+['Beim Vorlesen kommst du ohne Stocken durch die ganze Seite.',{intelligenz:4,glueck:2},6,9],
+['Dein Pausenbrot landet auf der falschen Seite. Natürlich.',{glueck:-2},6,12],
+['Im Schwimmunterricht klappt endlich eine ganze Bahn.',{gesundheit:4,glueck:3},7,12],
+['Du verstehst einen Witz, den die Erwachsenen lieber nicht erklärt hätten.',{intelligenz:2},8,12],
+['Ein Test ist schlechter als erwartet. Die Welt geht trotzdem weiter.',{glueck:-4},7,12],
+['Du hilfst einem jüngeren Kind bei den Hausaufgaben. Dabei verstehst du den Stoff selbst besser.',{intelligenz:4,glueck:3},9,12],
+['Du bekommst ein kleines Geldgeschenk. Zum ersten Mal hast du einen Sparplan: alles behalten.',{geld:100,glueck:3},6,12],
+['Bei einem Schulfest wirst du auf die Bühne gebeten. Deine Knie bekommen es vor dir mit.',{glueck:3,aussehen:1},7,12],
+['Du lernst, allein einen einfachen Weg durch die Stadt zu finden.',{intelligenz:3,glueck:4},10,12]
+]],
+['jugend',13,18,[
+['Du schreibst einen Text, den du niemandem zeigen willst. Noch nicht.',{intelligenz:3,glueck:2}],
+['Ein Gruppenchat wird laut. Du schaltest ihn stumm und verpasst nichts Wichtiges.',{glueck:4}],
+['Du bekommst ein Kompliment für deinen Stil. Es bleibt länger hängen als gedacht.',{aussehen:3,glueck:5}],
+['Du schläfst vor einer wichtigen Schulwoche viel zu wenig.',{gesundheit:-4,glueck:-3}],
+['Eine Lehrkraft traut dir mehr zu, als du dir selbst.',{intelligenz:5,glueck:4}],
+['Du entdeckst einen ruhigen Ort, an dem dich niemand stört.',{glueck:5}],
+['Die Präsentation ist besser als die Probe davor. Zum Glück sieht niemand die Probe.',{intelligenz:4,glueck:3}],
+['Ein Freund meldet sich plötzlich seltener. Du fragst dich, ob du etwas falsch gemacht hast.',{glueck:-4,beziehung:-2}],
+['Du hilfst bei einer Schulveranstaltung und bekommst ein kleines Dankeschön.',{geld:60,glueck:3}],
+['Ein Nachmittag ohne Bildschirm wird überraschend gut.',{gesundheit:3,glueck:4}],
+['Du kaufst etwas, das im Laden deutlich cooler aussah.',{geld:-45,glueck:-3}],
+['Bei einem Projekt seid ihr ein gutes Team. Du lernst jemanden neu kennen.',{freund:true,glueck:3}],
+['Du vergleichst dich mit Leuten im Netz. Der Vergleich hat keine fairen Regeln.',{glueck:-6}],
+['Ein alter Familienwitz ist auf einmal wirklich lustig.',{beziehung:4,glueck:3}],
+['Du verstehst zum ersten Mal, was du später auf keinen Fall machen möchtest.',{intelligenz:3}],
+['Jemand leiht dir ein Buch, das du an einem Wochenende durchliest.',{intelligenz:6}],
+['Eine Sportstunde läuft richtig gut. Du bist selbst etwas überrascht.',{gesundheit:4,glueck:3}],
+['Du flickst etwas selbst, statt es wegzuwerfen. Es hält tatsächlich.',{intelligenz:3,geld:25}],
+['Ein Geburtstag wird klein gefeiert. Genau die richtigen Leute sind da.',{glueck:6,beziehung:2}],
+['Du stehst vor einer neuen Tür. Diesmal gehst du von allein hindurch.',{glueck:4,intelligenz:2}]
+]],
+['jung',19,30,[
+['Du kochst ein Essen ohne Rezept. Nur ein Topf nimmt es dir übel.',{gesundheit:3,intelligenz:2}],
+['Eine Nachzahlung kommt genau dann, wenn du sie nicht brauchen kannst.',{geld:-240,glueck:-3}],
+['Du sagst einen Termin ab, weil du Ruhe brauchst. Niemand ist beleidigt.',{gesundheit:3,glueck:4}],
+['Ein Gespräch endet mit einer guten Idee und einer neuen Nummer im Handy.',{freund:true,glueck:3}],
+['Dein erster wirklich freier Nachmittag seit Wochen. Du verschwendest ihn hervorragend.',{glueck:6}],
+['Du entdeckst einen Fehler in einer Rechnung. Diesmal bekommst du Geld zurück.',{geld:170,intelligenz:2}],
+['Der Laptop macht ein Geräusch, das kein Laptop machen sollte.',{geld:-380,glueck:-4}],
+['Du triffst jemanden aus der Schulzeit. Ihr seid beide anders geworden.',{glueck:3,beziehung:2}],
+['Du gehst eine Woche früher schlafen. Dein Kopf bemerkt den Unterschied.',{gesundheit:5,intelligenz:2}],
+['Ein spontaner Ausflug kostet weniger als gedacht und bleibt länger in Erinnerung.',{geld:-65,glueck:7}],
+['Du vergisst einen Geburtstag und merkst es einen Tag zu spät.',{beziehung:-6,glueck:-3}],
+['Du bekommst eine kleine Rückzahlung. Selten war ein Brief so erfreulich.',{geld:310,glueck:3}],
+['Eine neue Routine macht deine Wochen leichter.',{gesundheit:4,glueck:3}],
+['Du merkst, dass du nicht jede Einladung annehmen musst.',{glueck:4}],
+['Bei einem Workshop kommst du mit einem völlig neuen Thema in Kontakt.',{intelligenz:5}],
+['Ein altes Missverständnis klärt sich in zwei Sätzen.',{beziehung:7,glueck:5}],
+['Du kaufst gute Schuhe. Deine Füße halten das für eine überfällige Entscheidung.',{geld:-100,gesundheit:3,aussehen:2}],
+['Der Tag ist voll, obwohl du kaum etwas geschafft hast. Das ärgert dich mehr als es sollte.',{glueck:-4}],
+['Jemand bedankt sich für eine Hilfe, die du längst vergessen hattest.',{glueck:6}],
+['Du erkennst, dass der Plan von früher nicht mehr deiner ist. Das ist auch eine Antwort.',{intelligenz:3,glueck:3}]
+]],
+['mitte',31,55,[
+['Du räumst einen Schrank auf und findest eine Version von dir, die du fast vergessen hattest.',{glueck:3}],
+['Die Woche besteht fast nur aus Terminen. Du machst keine besonders gute Figur dabei.',{glueck:-5,gesundheit:-2}],
+['Du hältst eine neue Gewohnheit länger als drei Wochen durch. Das war bisher die schwierige Stelle.',{gesundheit:4,glueck:4}],
+['Eine alte Freundschaft hält auch eine längere Funkstille aus.',{beziehung:5,glueck:5}],
+['Du reparierst etwas mit einer Anleitung und etwas Geduld.',{intelligenz:3,geld:90}],
+['Ein teures Gerät geht kurz nach Ablauf der Garantie kaputt.',{geld:-420,glueck:-3}],
+['Jemand bittet dich um Rat. Du merkst, wie viel du inzwischen weißt.',{intelligenz:3,glueck:5}],
+['Du stellst fest, dass du deinen Alltag lieber magst als früher.',{glueck:7}],
+['Du sitzt zu lange und bewegst dich zu wenig. Dein Körper meldet sich.',{gesundheit:-5}],
+['Ein Familientreffen bleibt angenehm unspektakulär.',{beziehung:5,glueck:3}],
+['Du lernst, ein unangenehmes Gespräch nicht mehr wochenlang aufzuschieben.',{glueck:4,intelligenz:2}],
+['Ein vertrauter Ort schließt. Dir fehlt mehr daran als nur der Kaffee.',{glueck:-4}],
+['Du entdeckst einen neuen Weg für deinen Abendspaziergang.',{gesundheit:4,glueck:3}],
+['Eine Einladung flattert herein. Du freust dich, dass jemand an dich denkt.',{glueck:5}],
+['Du findest Geld in einer Jacke. Dein früheres Ich war großzügig.',{geld:50,glueck:3}],
+['Du merkst, dass du seit Monaten keine richtige Pause gemacht hast.',{gesundheit:-4,glueck:-4}],
+['Du lernst etwas von jemandem, der deutlich jünger ist als du.',{intelligenz:5}],
+['Du entschuldigst dich, ohne dich gleichzeitig zu rechtfertigen. Es kommt an.',{beziehung:7,glueck:3}],
+['Ein ungeplanter freier Tag wird der beste der Woche.',{glueck:6,gesundheit:2}],
+['Du siehst auf die letzten Jahre zurück. Nicht alles war geplant. Vieles war trotzdem gut.',{glueck:5}]
+]],
+['alt',56,110,[
+['Du erkennst einen alten Bekannten erst an seiner Stimme.',{glueck:4}],
+['Ein neuer Kurs zeigt dir, dass Anfänger sein keine Altersgrenze hat.',{intelligenz:5,glueck:4}],
+['Du brauchst länger, um dich von einer anstrengenden Woche zu erholen.',{gesundheit:-4}],
+['Jemand fragt nach einer Geschichte, die du lange nicht erzählt hast.',{glueck:6,beziehung:2}],
+['Du gehst regelmäßig eine kleine Runde. Sie wird allmählich größer.',{gesundheit:5}],
+['Du findest ein altes Foto. Die Frisur war wirklich eine Entscheidung.',{glueck:4}],
+['Du gibst einen guten Rat und lässt danach die andere Person selbst entscheiden.',{beziehung:5,glueck:3}],
+['Ein Termin wird abgesagt. Du empfindest das als kleines Geschenk.',{glueck:4}],
+['Du nimmst ein altes Interesse wieder ernst. Es ist noch da.',{glueck:5,intelligenz:2}],
+['Treppen sind nicht mehr bloß Architektur. Du teilst deine Kräfte ein.',{gesundheit:-3}],
+['Du bekommst Besuch von jemandem, der lange weg war.',{glueck:7,beziehung:3}],
+['Ein technisches Gerät will nicht mit dir reden. Am Ende findest du die richtige Einstellung.',{intelligenz:3}],
+['Du schläfst eine ganze Woche gut. Das ist keine Kleinigkeit.',{gesundheit:4,glueck:3}],
+['Du liest einen alten Lieblingsroman noch einmal. Diesmal verstehst du andere Figuren.',{intelligenz:4}],
+['Ein Gespräch mit einem Nachbarn entwickelt sich zur festen Gewohnheit.',{freund:true,glueck:4}],
+['Du überschätzt dich beim Tragen. Dein Rücken führt das Gespräch weiter.',{gesundheit:-6}],
+['Du sortierst Unterlagen und findest noch ein vergessenes Guthaben.',{geld:280,glueck:3}],
+['Du bringst jemandem einen Handgriff bei, den du seit Jahrzehnten kannst.',{glueck:5,beziehung:2}],
+['Du lässt dir Zeit beim Frühstück. Es gibt keinen Preis für Geschwindigkeit.',{glueck:4,gesundheit:2}],
+['Du hörst ein Lied von früher. Der Text ist sofort wieder da.',{glueck:6}]
+]]
+].forEach(([phase,min,max,rows])=>rows.forEach(([text,wirkung,lo,hi],i)=>EREIGNISSE.push({id:`leben_${phase}_${i+1}`,text,minAlter:lo??min,maxAlter:hi??max,gewicht:7,wirkung,art:Object.values(wirkung).some(v=>typeof v==='number'&&v<0)?'schlecht':'gut'})));
+[
+['kind',6,12,[
+['In der Schule kannst du bei einem Projekt die Leitung übernehmen.','Es versuchen',{intelligenz:5,glueck:-1},'Lieber das Plakat gestalten',{glueck:4,aussehen:1}],
+['Ein neues Kind sitzt allein in der Pause.','Dazusetzen',{freund:true,glueck:4},'Bei der vertrauten Gruppe bleiben',{glueck:2}],
+['Für dein Taschengeld gibt es ein Spiel oder ein neues Buch.','Das Geld behalten',{geld:30},'Das Buch wählen',{intelligenz:5,glueck:2}],
+['Du hast bei einem Wettbewerb nicht gewonnen. Jemand fragt, ob du nächstes Jahr wiederkommst.','Noch einmal versuchen',{intelligenz:4,glueck:3},'Etwas anderes ausprobieren',{glueck:5}],
+['Du hast eine schlechte Note. Zu Hause hat noch niemand danach gefragt.','Offen davon erzählen',{beziehung:6,glueck:-2},'Erst einen Plan zum Lernen machen',{intelligenz:6}]
+]],
+['jugend',13,18,[
+['Deine Freunde wollen raus. Morgen musst du etwas abgeben.','Erst die Aufgabe fertig machen',{intelligenz:6,glueck:-2},'Mit den Freunden gehen',{glueck:7,beziehung:3}],
+['Du bekommst Kritik an etwas, auf das du stolz bist.','Nach konkreten Tipps fragen',{intelligenz:5,glueck:1},'Das Thema erst einmal ruhen lassen',{gesundheit:2,glueck:3}],
+['Eine Schulgruppe sucht jemanden für ein neues Projekt.','Mitmachen',{freund:true,intelligenz:3},'Eigene freie Zeit schützen',{glueck:5,gesundheit:2}],
+['Dein Bildschirmzeit-Bericht ist ehrlicher als dir lieb ist.','Abends das Handy weglegen',{gesundheit:5,glueck:4},'Gezielter interessante Inhalte suchen',{intelligenz:4}],
+['Ein Familienausflug fällt auf denselben Tag wie ein Treffen mit Freunden.','Mit der Familie fahren',{beziehung:8,glueck:2},'Beim Treffen bleiben',{glueck:6,beziehung:-2}]
+]],
+['jung',19,30,[
+['Ein Bekannter bittet dich um einen großen Gefallen am Wochenende.','Einen halben Tag helfen',{beziehung:7,gesundheit:-2},'Freundlich absagen',{glueck:4}],
+['Ein kostenloser Vortrag kollidiert mit einem freien Abend.','Zum Vortrag gehen',{intelligenz:7},'Den Abend frei halten',{glueck:6,gesundheit:2}],
+['Du merkst, dass du bei einer Diskussion falsch liegst.','Den Irrtum zugeben',{beziehung:5,intelligenz:3},'Erst in Ruhe nachlesen',{intelligenz:6,glueck:-1}],
+['Du möchtest etwas ganz Neues lernen, aber die Woche ist schon voll.','Klein anfangen',{intelligenz:5,glueck:3},'Erst Platz im Kalender schaffen',{gesundheit:4,glueck:4}],
+['Ein Freund schlägt einen gemeinsamen Kurztrip vor.','Einen günstigen Tagesausflug vorschlagen',{glueck:7,beziehung:4},'Zu Hause bleiben und auftanken',{gesundheit:6}]
+]],
+['mitte',31,55,[
+['Eine Person bittet dich, sie bei einem Neuanfang zu begleiten.','Zeit investieren',{beziehung:8,glueck:3},'Kontakte vermitteln',{intelligenz:3,beziehung:4}],
+['Dein Alltag funktioniert, aber begeistert dich nicht.','Eine alte Routine verändern',{glueck:7,intelligenz:2},'Bewusst das Gute darin suchen',{glueck:5,gesundheit:3}],
+['Bei einem Treffen fällt eine Bemerkung, die dich trifft.','Ruhig ansprechen',{beziehung:6,glueck:2},'Abstand nehmen',{glueck:3,beziehung:-3}],
+['Du kannst einen freien Tag für Erledigungen oder für dich nutzen.','Alles Wichtige erledigen',{intelligenz:3,geld:70},'Den Tag wirklich frei nehmen',{glueck:8,gesundheit:3}],
+['Ein alter Freund schlägt ein Wiedersehen vor. Du bist eigentlich müde.','Trotzdem treffen',{glueck:7,beziehung:6,gesundheit:-2},'Einen ruhigeren Termin vorschlagen',{gesundheit:5,beziehung:2}]
+]],
+['alt',56,110,[
+['Du könntest deine Erfahrungen in einem Verein weitergeben.','Einsteigen',{freund:true,glueck:6},'Lieber einzelne Menschen unterstützen',{beziehung:5,glueck:4}],
+['Du hast eine lange Geschichte zu erzählen. Jemand hat Zeit.','Die ehrliche Version erzählen',{beziehung:7,glueck:4},'Die lustige Version erzählen',{glueck:8}],
+['Eine neue Herausforderung wirkt auf den ersten Blick anstrengend.','Langsam herantasten',{intelligenz:5,gesundheit:2},'Bei etwas Vertrautem bleiben',{glueck:5}],
+['Ein freier Nachmittag und überraschend gutes Wetter.','Eine längere Runde gehen',{gesundheit:6,glueck:3},'Jemanden zum Kaffee einladen',{beziehung:6,glueck:5}],
+['Du möchtest etwas von deinem Leben festhalten.','Erinnerungen aufschreiben',{intelligenz:4,glueck:6},'Fotos mit der Familie durchsehen',{beziehung:8,glueck:5}]
+]]
+].forEach(([phase,min,max,rows])=>rows.forEach(([text,a,wa,b,wb],i)=>EREIGNISSE.push({id:`wahl_${phase}_${i+1}`,text,minAlter:min,maxAlter:max,gewicht:4,art:'gross',optionen:[{text:a,wirkung:wa,...(i===0?{folge:{text:'Die Entscheidung aus dem letzten Jahr hat etwas angestoßen. Du fühlst dich sicherer auf deinem Weg.',wirkung:{glueck:3,intelligenz:2},art:'gut'}}:{})},{text:b,wirkung:wb}]})));
+EREIGNISSE.push(
+{id:'beziehung_hilfe',text:'Jemand aus deinem engen Kreis hilft dir aus, ohne eine große Sache daraus zu machen.',minAlter:18,maxAlter:110,gewicht:6,bedingung:s=>s.beziehungen.some(b=>b.verhaeltnis>=80),wirkung:{geld:450,glueck:5},art:'gut'},
+{id:'beziehung_jobkontakt',text:'Ein guter Kontakt gibt dir einen Tipp für den Beruf. Das Gespräch ist mehr wert als eine Suche im Netz.',minAlter:18,maxAlter:66,gewicht:7,bedingung:s=>s.beziehungen.some(b=>b.verhaeltnis>=75),wirkung:{intelligenz:6,glueck:4},art:'gut'},
+{id:'beziehung_abbruch',text:'Ein Kontakt ist über Jahre leiser geworden. Jetzt bricht er ganz ab.',minAlter:18,maxAlter:110,gewicht:9,wiederholbar:true,bedingung:s=>s.beziehungen.some(b=>b.typ==='Freundschaft'&&b.verhaeltnis<12),wirkung:{glueck:-7},effekt:s=>{const i=s.beziehungen.findIndex(b=>b.typ==='Freundschaft'&&b.verhaeltnis<12);if(i>=0)s.beziehungen.splice(i,1);},art:'schlecht'},
+{id:'hobby_neue_gruppe',text:'Über dein Hobby lernst du Menschen kennen, die auf die gleichen kleinen Dinge achten wie du.',minAlter:8,maxAlter:110,gewicht:7,bedingung:s=>s.hobbys.some(h=>h.niveau>=30),wirkung:{freund:true,glueck:5},art:'gut'},
+{id:'hobby_plattenvertrag',text:'Ein kleines Label hat deine Musik gehört. Kein Ruhm über Nacht, aber ein echter Vertrag.',minAlter:18,maxAlter:110,gewicht:14,bedingung:s=>hobbyLevel('gitarre')>=90,wirkung:{geld:18000,glueck:12,follower:6000},art:'gross'},
+{id:'hobby_rennen',text:'Du kommst beim Mountainbike-Rennen aufs Podium. Die Beine merken sich den Tag länger.',minAlter:16,maxAlter:75,gewicht:12,bedingung:s=>hobbyLevel('bike')>=60,wirkung:{geld:1200,glueck:9,gesundheit:-2},art:'gross'},
+{id:'partner_zusammenziehen',text:'Zwei Mieten, zwei Küchen, und ihr seid ohnehin immer bei einem von beiden. Ihr redet über eine gemeinsame Wohnung.',minAlter:18,maxAlter:110,gewicht:20,wiederholbar:true,bedingung:s=>{const p=s.beziehungen.find(b=>b.typ==='Partner');return !!p&&!p.zusammen&&p.verhaeltnis>=62;},art:'gross',optionen:[
+{text:'Zusammenziehen',wirkung:{glueck:11},ergebnis:'Ihr zieht zusammen. Weniger Platz für dich allein, dafür teilt ihr euch alles andere.',effekt:s=>{const p=s.beziehungen.find(b=>b.typ==='Partner');if(!p)return;p.zusammen=true;p.verhaeltnis=clamp(p.verhaeltnis+8);s.geld-=PARTNER.umzugKosten;}},
+{text:'Noch nicht',wirkung:{glueck:-2},ergebnis:'Du bremst. Das bleibt eine Weile zwischen euch stehen.',effekt:s=>{const p=s.beziehungen.find(b=>b.typ==='Partner');if(p)p.verhaeltnis=clamp(p.verhaeltnis-9);}}]},
+{id:'partner_heiraten',text:'Die Frage steht im Raum. Einer von euch muss sie stellen.',minAlter:18,maxAlter:110,gewicht:17,wiederholbar:true,bedingung:s=>{const p=s.beziehungen.find(b=>b.typ==='Partner');return !!p&&p.zusammen&&!p.verheiratet&&p.verhaeltnis>=72;},art:'gross',optionen:[
+{text:'Heiraten',bedingung:s=>s.geld>=PARTNER.hochzeitKosten,wirkung:{glueck:22},ergebnis:'Ihr heiratet. Ein teurer Tag und ein Satz, den ihr beide meint.',effekt:s=>{const p=s.beziehungen.find(b=>b.typ==='Partner');if(!p)return;p.verheiratet=true;p.verhaeltnis=clamp(p.verhaeltnis+12);s.geld-=PARTNER.hochzeitKosten;}},
+{text:'So lassen, wie es ist',wirkung:{glueck:2},ergebnis:'Ihr lasst es. Es ändert weniger, als alle behaupten.',effekt:s=>{const p=s.beziehungen.find(b=>b.typ==='Partner');if(p)p.verhaeltnis=clamp(p.verhaeltnis-4);}}]},
+{id:'partner_krise',text:'Es ist seit Monaten anstrengend. Die gleichen Sätze, die gleiche Stille danach.',minAlter:16,maxAlter:110,gewicht:18,wiederholbar:true,bedingung:s=>{const p=s.beziehungen.find(b=>b.typ==='Partner');return !!p&&p.verhaeltnis<=42;},art:'gross',optionen:[
+{text:'Zusammen daran arbeiten',wirkung:{glueck:-4},ergebnis:'Ihr redet, ihr streitet, ihr redet wieder. Es wird besser.',effekt:s=>{const p=s.beziehungen.find(b=>b.typ==='Partner');if(!p)return;p.verhaeltnis=clamp(p.verhaeltnis+24);s.geld-=PARTNER.beratungKosten;}},
+{text:'Es beenden',wirkung:{},ergebnis:'Ihr hört auf, es zu versuchen.',effekt:s=>{trennung('drift');}}]},
+{id:'partner_gute_zeit',text:'Ein Wochenende ohne Plan. Es ist genau richtig so.',minAlter:16,maxAlter:110,gewicht:11,wiederholbar:true,bedingung:s=>{const p=s.beziehungen.find(b=>b.typ==='Partner');return !!p&&p.verhaeltnis>=60;},wirkung:{glueck:8,gesundheit:2},art:'gut',effekt:s=>{const p=s.beziehungen.find(b=>b.typ==='Partner');if(p)p.verhaeltnis=clamp(p.verhaeltnis+6);}},
+{id:'immo_wasserschaden',text:'Ein Rohr in der Wand ist undicht. Das merkt man erst, wenn der Putz nachgibt.',minAlter:18,maxAlter:110,gewicht:15,wiederholbar:true,bedingung:s=>s.immobilien.length>0,art:'gross',optionen:[
+{text:'Sofort und richtig sanieren',bedingung:s=>s.geld>=3000,wirkung:{glueck:-3},ergebnis:'Teuer, aber danach ist Ruhe.',effekt:s=>{const im=s.immobilien[0];const k=Math.min(25000,Math.max(3000,Math.round(im.wert*.04)));s.geld-=k;im.zustand=clamp(im.zustand+20);addLog(`Die Sanierung kostet ${eur(k)}.`,'schlecht');}},
+{text:'Nur das Nötigste flicken',wirkung:{glueck:-5},ergebnis:'Es hält. Vorerst.',effekt:s=>{const im=s.immobilien[0];const k=Math.round(im.wert*.008);s.geld-=k;im.zustand=clamp(im.zustand-14);if(im.bewohnt==='vermietet')im.mieterZufriedenheit=clamp(im.mieterZufriedenheit-15);}}]},
+{id:'immo_mieter_zahlt_nicht',text:'Seit vier Monaten kommt keine Miete. Anrufe gehen ins Leere.',minAlter:18,maxAlter:110,gewicht:13,wiederholbar:true,bedingung:s=>s.immobilien.some(im=>im.bewohnt==='vermietet'),art:'gross',optionen:[
+{text:'Räumungsklage einreichen',bedingung:s=>s.geld>=1200,wirkung:{glueck:-8},ergebnis:'Das dauert Monate und kostet Nerven und Anwaltsgeld.',effekt:s=>{const im=s.immobilien.find(x=>x.bewohnt==='vermietet');s.geld-=1800;if(im){im.bewohnt='leer';im.mieteinnahme=0;}}},
+{text:'Eine Ratenzahlung vereinbaren',wirkung:{glueck:-2},ergebnis:'Ihr einigt euch. Ein Teil des Geldes ist trotzdem weg.',effekt:s=>{const im=s.immobilien.find(x=>x.bewohnt==='vermietet');if(im){s.geld-=Math.round(im.mieteinnahme*.5);im.mieterZufriedenheit=clamp(im.mieterZufriedenheit+12);}}}]},
+{id:'immo_nachbarschaft',text:'In der Straße machen zwei Cafés auf, die Haltestelle wird neu gebaut. Plötzlich wollen alle hierher.',minAlter:18,maxAlter:110,gewicht:10,wiederholbar:true,bedingung:s=>s.immobilien.length>0,wirkung:{glueck:7},art:'gut',effekt:s=>{for(const im of s.immobilien)im.wert=Math.round(im.wert*1.09);addLog('Deine Immobilien gewinnen spürbar an Wert.','gut');}},
+{id:'immo_mietanpassung',text:'Die Vergleichsmieten im Viertel sind gestiegen. Du könntest nachziehen.',minAlter:18,maxAlter:110,gewicht:12,wiederholbar:true,bedingung:s=>s.immobilien.some(im=>im.bewohnt==='vermietet'),art:'gross',optionen:[
+{text:'Miete erhöhen',wirkung:{},ergebnis:'Mehr Geld pro Jahr. Ob dein Mieter bleibt, ist eine andere Frage.',effekt:s=>{const im=s.immobilien.find(x=>x.bewohnt==='vermietet');if(!im)return;im.mieteinnahme=Math.round(im.mieteinnahme*1.16);im.mieterZufriedenheit=clamp(im.mieterZufriedenheit-22);addLog(`Die Miete steigt auf ${eur(im.mieteinnahme)} im Jahr.`,'gut');}},
+{text:'Alles so lassen',wirkung:{glueck:3},ergebnis:'Dein Mieter bedankt sich. Solche Mieter ziehen nicht so schnell aus.',effekt:s=>{const im=s.immobilien.find(x=>x.bewohnt==='vermietet');if(im)im.mieterZufriedenheit=clamp(im.mieterZufriedenheit+18);}}]},
+{id:'auto_grossschaden',
+text:'Die Werkstatt ruft an. Der Schaden ist teurer als das, was das Auto noch wert ist.',minAlter:18,maxAlter:110,gewicht:14,wiederholbar:true,bedingung:s=>!!s.auto&&s.auto.zustand<=45&&s.auto.alter>=3,art:'gross',optionen:[
+{text:'Reparieren lassen',bedingung:s=>s.geld>=1500,wirkung:{glueck:-3},ergebnis:'Du lässt reparieren. Das Auto fährt wieder, dein Konto merkt es.',effekt:s=>{const k=Math.min(6000,Math.max(1500,Math.round(s.auto.wert*.6)));s.geld-=k;s.auto.zustand=clamp(s.auto.zustand+35);addLog(`Die Reparatur kostet ${eur(k)}.`,'schlecht');}},
+{text:'Verkaufen, wie es ist',wirkung:{glueck:-6},ergebnis:'Du trennst dich davon. Für den Zustand bekommst du wenig.',effekt:s=>{const e=Math.round(s.auto.wert*.35);s.geld+=e;s.auto=null;addLog(`Du bekommst noch ${eur(e)}.`,'info');}}]},
+{id:'markt_crash_panik',
+text:'Die Kurse fallen seit Wochen. Jeder zweite Beitrag im Netz sagt, es gehe noch tiefer.',minAlter:16,maxAlter:110,gewicht:22,wiederholbar:true,bedingung:s=>s.markt.crash&&s.depot.aktien>=2000,art:'gross',optionen:[
+{text:'Alles verkaufen, bevor mehr weg ist',wirkung:{glueck:-7},ergebnis:'Du verkaufst. Der Verlust ist jetzt echt statt nur auf dem Papier.',effekt:s=>{s.geld+=s.depot.aktien;s.depot.aktien=0;s.depot.einstand=0;}},
+{text:'Halten und nicht hinschauen',wirkung:{glueck:-3},ergebnis:'Du machst gar nichts. Das ist schwerer, als es klingt.'},
+{text:'Nachkaufen, solange es billig ist',bedingung:s=>s.geld>=1000,wirkung:{glueck:2},ergebnis:'Du kaufst nach. Ob das klug war, weiß man erst in ein paar Jahren.',effekt:s=>{const b=Math.min(Math.floor(s.geld*.5),20000);s.geld-=b;s.depot.aktien+=b;s.depot.einstand+=b;}}]},
+{id:'markt_tipp',text:'Ein Bekannter hat einen sicheren Tipp. Eine Aktie, die angeblich in einem Jahr das Doppelte wert ist.',minAlter:18,maxAlter:110,gewicht:11,wiederholbar:true,bedingung:s=>s.geld>=4000,art:'gross',optionen:[
+{text:'Alles rein, was gerade da ist',wirkung:{},ergebnis:'Du setzt auf den Tipp. Sichere Tipps sind selten sicher.',effekt:s=>{const b=Math.min(Math.floor(s.geld*.6),15000);s.geld-=b;const gut=Math.random()<.25;const zurueck=Math.round(b*(gut?2:.3));s.geld+=zurueck;addLog(gut?`Der Tipp geht auf: aus ${eur(b)} werden ${eur(zurueck)}.`:`Der Tipp war nichts. Von ${eur(b)} bleiben ${eur(zurueck)}.`,gut?'gut':'schlecht');}},
+{text:'Höflich ablehnen',wirkung:{glueck:1,intelligenz:1},ergebnis:'Du lässt es. Dein Bekannter erzählt dir ein Jahr später nicht, wie es ausgegangen ist.'}]},
+{id:'hobby_klettern_erstbegehung',text:'Eine Route, die du seit zwei Jahren anschaust, geht plötzlich auf. Oben ist es sehr still.',minAlter:14,maxAlter:80,gewicht:12,bedingung:s=>hobbyLevel('klettern')>=65,wirkung:{glueck:14,gesundheit:3},art:'gross'},
+{id:'hobby_klettern_sturz',text:'Ein Griff bricht. Das Seil hält, dein Knöchel nicht ganz.',minAlter:14,maxAlter:85,gewicht:9,wiederholbar:true,bedingung:s=>hobbyLevel('klettern')>=30,wirkung:{gesundheit:-11,glueck:-4},art:'schlecht'},
+{id:'hobby_schreiben_verlag',text:'Ein kleiner Verlag hat deinen Text gelesen und möchte ihn drucken. Der Vertrag liegt auf dem Tisch.',minAlter:18,maxAlter:110,gewicht:13,bedingung:s=>hobbyLevel('schreiben')>=70,art:'gross',optionen:[
+{text:'Den Vertrag unterschreiben',wirkung:{geld:9000,glueck:11,follower:3000},ergebnis:'Dein Name steht auf einem Buchrücken. Das Honorar ist kleiner als der Moment.'},
+{text:'Selbst veröffentlichen',wirkung:{geld:2200,glueck:6,intelligenz:3},ergebnis:'Du machst alles selbst. Weniger Geld, aber jede Entscheidung gehört dir.'}]},
+{id:'hobby_schnitt_auftrag',text:'Jemand sieht deine Schnitte und fragt, ob du seinen Kanal übernimmst. Bezahlt.',minAlter:15,maxAlter:110,gewicht:11,bedingung:s=>hobbyLevel('schnitt')>=60,wirkung:{geld:3400,intelligenz:3,freund:true},art:'gut'},
+{id:'hobby_handwerk_umbau',text:'Du reißt eine Wand raus, die dir seit Jahren nicht gefällt. Danach sieht der Raum aus wie gedacht.',minAlter:16,maxAlter:110,gewicht:10,bedingung:s=>hobbyLevel('handwerk')>=55,wirkung:{glueck:10,geld:-400,intelligenz:2},art:'gut'},
+{id:'hobby_sprachen_ausland',text:'Ein halbes Jahr im Ausland. Du verstehst am Ende nicht nur die Sprache.',minAlter:17,maxAlter:70,gewicht:12,bedingung:s=>hobbyLevel('sprachen')>=60,wirkung:{intelligenz:6,glueck:12,geld:-2600,freund:true},art:'gross'},
+{id:'hobby_dj_festival',text:'Du bekommst einen Slot auf einem kleinen Festival. Es regnet, und es ist trotzdem der beste Abend des Jahres.',minAlter:17,maxAlter:75,gewicht:12,bedingung:s=>hobbyLevel('dj')>=75,wirkung:{geld:5200,glueck:15,follower:4000},art:'gross'},
+{id:'hobby_angeln_see',text:'Vier Stunden am See, kein einziger Fisch. Du gehst trotzdem ruhiger nach Hause, als du gekommen bist.',minAlter:8,maxAlter:110,gewicht:9,wiederholbar:true,bedingung:s=>hobbyLevel('angeln')>=50,wirkung:{glueck:8,gesundheit:2},art:'gut'},
+{id:'hobby_laufen_marathon',text:'Kilometer 32 ist genau so schlimm, wie alle sagen. Kilometer 42 auch — nur anders.',minAlter:16,maxAlter:80,gewicht:12,bedingung:s=>hobbyLevel('laufen')>=70,wirkung:{glueck:16,gesundheit:5,geld:-120},art:'gross'},
+{id:'hobby_naehen_kollektion',text:'Auf einem Markt verkaufst du zum ersten Mal etwas, das es vorher nirgends gab.',minAlter:14,maxAlter:110,gewicht:11,bedingung:s=>hobbyLevel('naehen')>=60,wirkung:{geld:1900,glueck:10,aussehen:3},art:'gut'},
+{id:'hobby_astro_komet',text:'Um vier Uhr morgens findest du ihn: ein Lichtpunkt, der gestern noch nicht da war.',minAlter:10,maxAlter:110,gewicht:11,bedingung:s=>hobbyLevel('astronomie')>=70,wirkung:{glueck:13,intelligenz:5},art:'gross'},
+{id:'hobby_code_empfehlung',text:'Dein kleines Programm löst ein echtes Problem. Jemand empfiehlt dich weiter.',minAlter:16,maxAlter:110,gewicht:10,bedingung:s=>hobbyLevel('code')>=60,wirkung:{geld:2400,intelligenz:4,freund:true},art:'gut'},
+{id:'of_treue',text:'Deine Abo-Community bleibt wegen deiner Tutorials. Eine lange Nachricht erinnert dich daran.',minAlter:18,maxAlter:110,gewicht:8,bedingung:s=>!!s.onlyfans&&s.onlyfans.abos>=20,wirkung:{glueck:7},effekt:s=>s.onlyfans.zufriedenheit=clamp(s.onlyfans.zufriedenheit+8),art:'gut'},
+{id:'of_wunsch',text:'Deine Abonnenten wünschen sich eine längere Tutorial-Reihe. Du hattest eigentlich andere Pläne.',minAlter:18,maxAlter:110,gewicht:7,bedingung:s=>!!s.onlyfans&&s.onlyfans.abos>=50,optionen:[{text:'Den Wunsch aufnehmen',wirkung:{glueck:3,intelligenz:2},effekt:s=>s.onlyfans.zufriedenheit=clamp(s.onlyfans.zufriedenheit+12)},{text:'Die eigene Richtung beibehalten',wirkung:{glueck:5},effekt:s=>s.onlyfans.zufriedenheit=clamp(s.onlyfans.zufriedenheit-4)}]},
+{id:'of_promo',text:'Ein nicht-erotischer Vorschauclip wird geteilt. Neue Leute entdecken deinen Abo-Kanal.',minAlter:18,maxAlter:110,gewicht:8,bedingung:s=>!!s.onlyfans&&s.onlyfans.history.some(h=>h.promo!=='Ohne Werbung'),wirkung:{glueck:5},effekt:s=>s.onlyfans.abos+=Math.max(10,Math.round(s.onlyfans.abos*.12)),art:'gut'}
+);
+window.Lebenslinie={getState:()=>JSON.parse(JSON.stringify(state)),nextYear,choose:resolveChoice,eventCount:()=>EREIGNISSE.length};
+render();
+})();
+</script>
+</body>
+</html>
