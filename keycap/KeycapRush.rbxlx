@@ -1,9 +1,9 @@
 <roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4">
-<Item class="Workspace" referent="KC31">
+<Item class="Workspace" referent="KC89">
 <Properties>
 <string name="Name">Workspace</string>
 </Properties>
-<Item class="SpawnLocation" referent="KC30">
+<Item class="SpawnLocation" referent="KC88">
 <Properties>
 <string name="Name">Start</string>
 <bool name="Anchored">true</bool>
@@ -13,20 +13,481 @@
 <token name="Material">1312</token>
 </Properties>
 </Item>
+<Item class="Folder" referent="KC57">
+<Properties>
+<string name="Name">WeltVorschau</string>
+</Properties>
+<Item class="Part" referent="KC1">
+<Properties>
+<string name="Name">Promenade</string>
+<bool name="Anchored">true</bool>
+<Vector3 name="size"><X>768</X><Y>2</Y><Z>24</Z></Vector3>
+<CoordinateFrame name="CFrame"><X>0</X><Y>8</Y><Z>36</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
+<Color3uint8 name="Color3uint8">4292267708</Color3uint8>
+</Properties>
 </Item>
-<Item class="ReplicatedStorage" referent="KC32">
+<Item class="Part" referent="KC2">
+<Properties>
+<string name="Name">Path</string>
+<bool name="Anchored">true</bool>
+<Vector3 name="size"><X>40</X><Y>2</Y><Z>592</Z></Vector3>
+<CoordinateFrame name="CFrame"><X>0</X><Y>8</Y><Z>-248</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
+<Color3uint8 name="Color3uint8">4292267708</Color3uint8>
+</Properties>
+</Item>
+<Item class="Part" referent="KC3">
+<Properties>
+<string name="Name">Plot1</string>
+<bool name="Anchored">true</bool>
+<Vector3 name="size"><X>48</X><Y>2</Y><Z>48</Z></Vector3>
+<CoordinateFrame name="CFrame"><X>-352</X><Y>8</Y><Z>0</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
+<Color3uint8 name="Color3uint8">4294769136</Color3uint8>
+</Properties>
+</Item>
+<Item class="Part" referent="KC4">
+<Properties>
+<string name="Name">Plot2</string>
+<bool name="Anchored">true</bool>
+<Vector3 name="size"><X>48</X><Y>2</Y><Z>48</Z></Vector3>
+<CoordinateFrame name="CFrame"><X>-288</X><Y>8</Y><Z>0</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
+<Color3uint8 name="Color3uint8">4294769136</Color3uint8>
+</Properties>
+</Item>
+<Item class="Part" referent="KC5">
+<Properties>
+<string name="Name">Plot3</string>
+<bool name="Anchored">true</bool>
+<Vector3 name="size"><X>48</X><Y>2</Y><Z>48</Z></Vector3>
+<CoordinateFrame name="CFrame"><X>-224</X><Y>8</Y><Z>0</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
+<Color3uint8 name="Color3uint8">4294769136</Color3uint8>
+</Properties>
+</Item>
+<Item class="Part" referent="KC6">
+<Properties>
+<string name="Name">Plot4</string>
+<bool name="Anchored">true</bool>
+<Vector3 name="size"><X>48</X><Y>2</Y><Z>48</Z></Vector3>
+<CoordinateFrame name="CFrame"><X>-160</X><Y>8</Y><Z>0</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
+<Color3uint8 name="Color3uint8">4294769136</Color3uint8>
+</Properties>
+</Item>
+<Item class="Part" referent="KC7">
+<Properties>
+<string name="Name">Plot5</string>
+<bool name="Anchored">true</bool>
+<Vector3 name="size"><X>48</X><Y>2</Y><Z>48</Z></Vector3>
+<CoordinateFrame name="CFrame"><X>-96</X><Y>8</Y><Z>0</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
+<Color3uint8 name="Color3uint8">4294769136</Color3uint8>
+</Properties>
+</Item>
+<Item class="Part" referent="KC8">
+<Properties>
+<string name="Name">Plot6</string>
+<bool name="Anchored">true</bool>
+<Vector3 name="size"><X>48</X><Y>2</Y><Z>48</Z></Vector3>
+<CoordinateFrame name="CFrame"><X>-32</X><Y>8</Y><Z>0</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
+<Color3uint8 name="Color3uint8">4294769136</Color3uint8>
+</Properties>
+</Item>
+<Item class="Part" referent="KC9">
+<Properties>
+<string name="Name">Plot7</string>
+<bool name="Anchored">true</bool>
+<Vector3 name="size"><X>48</X><Y>2</Y><Z>48</Z></Vector3>
+<CoordinateFrame name="CFrame"><X>32</X><Y>8</Y><Z>0</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
+<Color3uint8 name="Color3uint8">4294769136</Color3uint8>
+</Properties>
+</Item>
+<Item class="Part" referent="KC10">
+<Properties>
+<string name="Name">Plot8</string>
+<bool name="Anchored">true</bool>
+<Vector3 name="size"><X>48</X><Y>2</Y><Z>48</Z></Vector3>
+<CoordinateFrame name="CFrame"><X>96</X><Y>8</Y><Z>0</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
+<Color3uint8 name="Color3uint8">4294769136</Color3uint8>
+</Properties>
+</Item>
+<Item class="Part" referent="KC11">
+<Properties>
+<string name="Name">Plot9</string>
+<bool name="Anchored">true</bool>
+<Vector3 name="size"><X>48</X><Y>2</Y><Z>48</Z></Vector3>
+<CoordinateFrame name="CFrame"><X>160</X><Y>8</Y><Z>0</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
+<Color3uint8 name="Color3uint8">4294769136</Color3uint8>
+</Properties>
+</Item>
+<Item class="Part" referent="KC12">
+<Properties>
+<string name="Name">Plot10</string>
+<bool name="Anchored">true</bool>
+<Vector3 name="size"><X>48</X><Y>2</Y><Z>48</Z></Vector3>
+<CoordinateFrame name="CFrame"><X>224</X><Y>8</Y><Z>0</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
+<Color3uint8 name="Color3uint8">4294769136</Color3uint8>
+</Properties>
+</Item>
+<Item class="Part" referent="KC13">
+<Properties>
+<string name="Name">Plot11</string>
+<bool name="Anchored">true</bool>
+<Vector3 name="size"><X>48</X><Y>2</Y><Z>48</Z></Vector3>
+<CoordinateFrame name="CFrame"><X>288</X><Y>8</Y><Z>0</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
+<Color3uint8 name="Color3uint8">4294769136</Color3uint8>
+</Properties>
+</Item>
+<Item class="Part" referent="KC14">
+<Properties>
+<string name="Name">Plot12</string>
+<bool name="Anchored">true</bool>
+<Vector3 name="size"><X>48</X><Y>2</Y><Z>48</Z></Vector3>
+<CoordinateFrame name="CFrame"><X>352</X><Y>8</Y><Z>0</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
+<Color3uint8 name="Color3uint8">4294769136</Color3uint8>
+</Properties>
+</Item>
+<Item class="Part" referent="KC17">
+<Properties>
+<string name="Name">Key1</string>
+<bool name="Anchored">true</bool>
+<Vector3 name="size"><X>6</X><Y>3</Y><Z>6</Z></Vector3>
+<CoordinateFrame name="CFrame"><X>334</X><Y>10.5</Y><Z>-9</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
+<Color3uint8 name="Color3uint8">4291743438</Color3uint8>
+</Properties>
+<Item class="SurfaceGui" referent="KC15">
+<Properties>
+<string name="Name">Legend</string>
+<token name="Face">1</token>
+</Properties>
+<Item class="TextLabel" referent="KC16">
+<Properties>
+<string name="Name">Letter</string>
+<string name="Text">A</string>
+<bool name="TextScaled">true</bool>
+<float name="BackgroundTransparency">1</float>
+</Properties>
+</Item>
+</Item>
+</Item>
+<Item class="Part" referent="KC20">
+<Properties>
+<string name="Name">Key2</string>
+<bool name="Anchored">true</bool>
+<Vector3 name="size"><X>6</X><Y>3</Y><Z>6</Z></Vector3>
+<CoordinateFrame name="CFrame"><X>343</X><Y>10.5</Y><Z>-9</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
+<Color3uint8 name="Color3uint8">4291743438</Color3uint8>
+</Properties>
+<Item class="SurfaceGui" referent="KC18">
+<Properties>
+<string name="Name">Legend</string>
+<token name="Face">1</token>
+</Properties>
+<Item class="TextLabel" referent="KC19">
+<Properties>
+<string name="Name">Letter</string>
+<string name="Text">S</string>
+<bool name="TextScaled">true</bool>
+<float name="BackgroundTransparency">1</float>
+</Properties>
+</Item>
+</Item>
+</Item>
+<Item class="Part" referent="KC23">
+<Properties>
+<string name="Name">Key3</string>
+<bool name="Anchored">true</bool>
+<Vector3 name="size"><X>6</X><Y>3</Y><Z>6</Z></Vector3>
+<CoordinateFrame name="CFrame"><X>352</X><Y>10.5</Y><Z>-9</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
+<Color3uint8 name="Color3uint8">4286107256</Color3uint8>
+</Properties>
+<Item class="SurfaceGui" referent="KC21">
+<Properties>
+<string name="Name">Legend</string>
+<token name="Face">1</token>
+</Properties>
+<Item class="TextLabel" referent="KC22">
+<Properties>
+<string name="Name">Letter</string>
+<string name="Text">D</string>
+<bool name="TextScaled">true</bool>
+<float name="BackgroundTransparency">1</float>
+</Properties>
+</Item>
+</Item>
+</Item>
+<Item class="Part" referent="KC26">
+<Properties>
+<string name="Name">Key4</string>
+<bool name="Anchored">true</bool>
+<Vector3 name="size"><X>6</X><Y>3</Y><Z>6</Z></Vector3>
+<CoordinateFrame name="CFrame"><X>361</X><Y>10.5</Y><Z>-9</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
+<Color3uint8 name="Color3uint8">4291743438</Color3uint8>
+</Properties>
+<Item class="SurfaceGui" referent="KC24">
+<Properties>
+<string name="Name">Legend</string>
+<token name="Face">1</token>
+</Properties>
+<Item class="TextLabel" referent="KC25">
+<Properties>
+<string name="Name">Letter</string>
+<string name="Text">F</string>
+<bool name="TextScaled">true</bool>
+<float name="BackgroundTransparency">1</float>
+</Properties>
+</Item>
+</Item>
+</Item>
+<Item class="Part" referent="KC29">
+<Properties>
+<string name="Name">Key1</string>
+<bool name="Anchored">true</bool>
+<Vector3 name="size"><X>6</X><Y>3</Y><Z>6</Z></Vector3>
+<CoordinateFrame name="CFrame"><X>270</X><Y>10.5</Y><Z>-9</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
+<Color3uint8 name="Color3uint8">4291743438</Color3uint8>
+</Properties>
+<Item class="SurfaceGui" referent="KC27">
+<Properties>
+<string name="Name">Legend</string>
+<token name="Face">1</token>
+</Properties>
+<Item class="TextLabel" referent="KC28">
+<Properties>
+<string name="Name">Letter</string>
+<string name="Text">A</string>
+<bool name="TextScaled">true</bool>
+<float name="BackgroundTransparency">1</float>
+</Properties>
+</Item>
+</Item>
+</Item>
+<Item class="Part" referent="KC32">
+<Properties>
+<string name="Name">Key2</string>
+<bool name="Anchored">true</bool>
+<Vector3 name="size"><X>6</X><Y>3</Y><Z>6</Z></Vector3>
+<CoordinateFrame name="CFrame"><X>279</X><Y>10.5</Y><Z>-9</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
+<Color3uint8 name="Color3uint8">4291743438</Color3uint8>
+</Properties>
+<Item class="SurfaceGui" referent="KC30">
+<Properties>
+<string name="Name">Legend</string>
+<token name="Face">1</token>
+</Properties>
+<Item class="TextLabel" referent="KC31">
+<Properties>
+<string name="Name">Letter</string>
+<string name="Text">S</string>
+<bool name="TextScaled">true</bool>
+<float name="BackgroundTransparency">1</float>
+</Properties>
+</Item>
+</Item>
+</Item>
+<Item class="Part" referent="KC35">
+<Properties>
+<string name="Name">Key3</string>
+<bool name="Anchored">true</bool>
+<Vector3 name="size"><X>6</X><Y>3</Y><Z>6</Z></Vector3>
+<CoordinateFrame name="CFrame"><X>288</X><Y>10.5</Y><Z>-9</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
+<Color3uint8 name="Color3uint8">4286107256</Color3uint8>
+</Properties>
+<Item class="SurfaceGui" referent="KC33">
+<Properties>
+<string name="Name">Legend</string>
+<token name="Face">1</token>
+</Properties>
+<Item class="TextLabel" referent="KC34">
+<Properties>
+<string name="Name">Letter</string>
+<string name="Text">D</string>
+<bool name="TextScaled">true</bool>
+<float name="BackgroundTransparency">1</float>
+</Properties>
+</Item>
+</Item>
+</Item>
+<Item class="Part" referent="KC38">
+<Properties>
+<string name="Name">Key4</string>
+<bool name="Anchored">true</bool>
+<Vector3 name="size"><X>6</X><Y>3</Y><Z>6</Z></Vector3>
+<CoordinateFrame name="CFrame"><X>297</X><Y>10.5</Y><Z>-9</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
+<Color3uint8 name="Color3uint8">4291743438</Color3uint8>
+</Properties>
+<Item class="SurfaceGui" referent="KC36">
+<Properties>
+<string name="Name">Legend</string>
+<token name="Face">1</token>
+</Properties>
+<Item class="TextLabel" referent="KC37">
+<Properties>
+<string name="Name">Letter</string>
+<string name="Text">F</string>
+<bool name="TextScaled">true</bool>
+<float name="BackgroundTransparency">1</float>
+</Properties>
+</Item>
+</Item>
+</Item>
+<Item class="Part" referent="KC41">
+<Properties>
+<string name="Name">Key1</string>
+<bool name="Anchored">true</bool>
+<Vector3 name="size"><X>6</X><Y>3</Y><Z>6</Z></Vector3>
+<CoordinateFrame name="CFrame"><X>206</X><Y>10.5</Y><Z>-9</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
+<Color3uint8 name="Color3uint8">4291743438</Color3uint8>
+</Properties>
+<Item class="SurfaceGui" referent="KC39">
+<Properties>
+<string name="Name">Legend</string>
+<token name="Face">1</token>
+</Properties>
+<Item class="TextLabel" referent="KC40">
+<Properties>
+<string name="Name">Letter</string>
+<string name="Text">A</string>
+<bool name="TextScaled">true</bool>
+<float name="BackgroundTransparency">1</float>
+</Properties>
+</Item>
+</Item>
+</Item>
+<Item class="Part" referent="KC44">
+<Properties>
+<string name="Name">Key2</string>
+<bool name="Anchored">true</bool>
+<Vector3 name="size"><X>6</X><Y>3</Y><Z>6</Z></Vector3>
+<CoordinateFrame name="CFrame"><X>215</X><Y>10.5</Y><Z>-9</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
+<Color3uint8 name="Color3uint8">4291743438</Color3uint8>
+</Properties>
+<Item class="SurfaceGui" referent="KC42">
+<Properties>
+<string name="Name">Legend</string>
+<token name="Face">1</token>
+</Properties>
+<Item class="TextLabel" referent="KC43">
+<Properties>
+<string name="Name">Letter</string>
+<string name="Text">S</string>
+<bool name="TextScaled">true</bool>
+<float name="BackgroundTransparency">1</float>
+</Properties>
+</Item>
+</Item>
+</Item>
+<Item class="Part" referent="KC47">
+<Properties>
+<string name="Name">Key3</string>
+<bool name="Anchored">true</bool>
+<Vector3 name="size"><X>6</X><Y>3</Y><Z>6</Z></Vector3>
+<CoordinateFrame name="CFrame"><X>224</X><Y>10.5</Y><Z>-9</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
+<Color3uint8 name="Color3uint8">4286107256</Color3uint8>
+</Properties>
+<Item class="SurfaceGui" referent="KC45">
+<Properties>
+<string name="Name">Legend</string>
+<token name="Face">1</token>
+</Properties>
+<Item class="TextLabel" referent="KC46">
+<Properties>
+<string name="Name">Letter</string>
+<string name="Text">D</string>
+<bool name="TextScaled">true</bool>
+<float name="BackgroundTransparency">1</float>
+</Properties>
+</Item>
+</Item>
+</Item>
+<Item class="Part" referent="KC50">
+<Properties>
+<string name="Name">Key4</string>
+<bool name="Anchored">true</bool>
+<Vector3 name="size"><X>6</X><Y>3</Y><Z>6</Z></Vector3>
+<CoordinateFrame name="CFrame"><X>233</X><Y>10.5</Y><Z>-9</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
+<Color3uint8 name="Color3uint8">4291743438</Color3uint8>
+</Properties>
+<Item class="SurfaceGui" referent="KC48">
+<Properties>
+<string name="Name">Legend</string>
+<token name="Face">1</token>
+</Properties>
+<Item class="TextLabel" referent="KC49">
+<Properties>
+<string name="Name">Letter</string>
+<string name="Text">F</string>
+<bool name="TextScaled">true</bool>
+<float name="BackgroundTransparency">1</float>
+</Properties>
+</Item>
+</Item>
+</Item>
+<Item class="Part" referent="KC51">
+<Properties>
+<string name="Name">CashOut1</string>
+<bool name="Anchored">true</bool>
+<Vector3 name="size"><X>24</X><Y>2</Y><Z>24</Z></Vector3>
+<CoordinateFrame name="CFrame"><X>0</X><Y>8</Y><Z>-140</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
+<Color3uint8 name="Color3uint8">4294493246</Color3uint8>
+</Properties>
+</Item>
+<Item class="Part" referent="KC52">
+<Properties>
+<string name="Name">CashOut2</string>
+<bool name="Anchored">true</bool>
+<Vector3 name="size"><X>24</X><Y>2</Y><Z>24</Z></Vector3>
+<CoordinateFrame name="CFrame"><X>0</X><Y>8</Y><Z>-300</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
+<Color3uint8 name="Color3uint8">4294493246</Color3uint8>
+</Properties>
+</Item>
+<Item class="Part" referent="KC53">
+<Properties>
+<string name="Name">CashOut3</string>
+<bool name="Anchored">true</bool>
+<Vector3 name="size"><X>24</X><Y>2</Y><Z>24</Z></Vector3>
+<CoordinateFrame name="CFrame"><X>0</X><Y>8</Y><Z>-520</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
+<Color3uint8 name="Color3uint8">4294493246</Color3uint8>
+</Properties>
+</Item>
+<Item class="Part" referent="KC54">
+<Properties>
+<string name="Name">Gate1</string>
+<bool name="Anchored">true</bool>
+<Vector3 name="size"><X>40</X><Y>12</Y><Z>2</Z></Vector3>
+<CoordinateFrame name="CFrame"><X>0</X><Y>12</Y><Z>-60</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
+<Color3uint8 name="Color3uint8">4285315824</Color3uint8>
+</Properties>
+</Item>
+<Item class="Part" referent="KC55">
+<Properties>
+<string name="Name">Gate2</string>
+<bool name="Anchored">true</bool>
+<Vector3 name="size"><X>40</X><Y>12</Y><Z>2</Z></Vector3>
+<CoordinateFrame name="CFrame"><X>0</X><Y>12</Y><Z>-210</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
+<Color3uint8 name="Color3uint8">4285315824</Color3uint8>
+</Properties>
+</Item>
+<Item class="Part" referent="KC56">
+<Properties>
+<string name="Name">Gate3</string>
+<bool name="Anchored">true</bool>
+<Vector3 name="size"><X>40</X><Y>12</Y><Z>2</Z></Vector3>
+<CoordinateFrame name="CFrame"><X>0</X><Y>12</Y><Z>-400</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
+<Color3uint8 name="Color3uint8">4285315824</Color3uint8>
+</Properties>
+</Item>
+</Item>
+</Item>
+<Item class="ReplicatedStorage" referent="KC90">
 <Properties>
 <string name="Name">ReplicatedStorage</string>
 </Properties>
-<Item class="Folder" referent="KC9">
+<Item class="Folder" referent="KC67">
 <Properties>
 <string name="Name">Shared</string>
 </Properties>
-<Item class="Folder" referent="KC4">
+<Item class="Folder" referent="KC61">
 <Properties>
 <string name="Name">Config</string>
 </Properties>
-<Item class="ModuleScript" referent="KC1">
+<Item class="ModuleScript" referent="KC58">
 <Properties>
 <string name="Name">EconomyConfig</string>
 <ProtectedString name="Source">--!strict
@@ -143,7 +604,7 @@ return EconomyConfig
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="KC2">
+<Item class="ModuleScript" referent="KC59">
 <Properties>
 <string name="Name">TutorialConfig</string>
 <ProtectedString name="Source">--!strict
@@ -191,7 +652,7 @@ return TutorialConfig
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="KC3">
+<Item class="ModuleScript" referent="KC60">
 <Properties>
 <string name="Name">WorldConfig</string>
 <ProtectedString name="Source">--!strict
@@ -289,7 +750,7 @@ return WorldConfig
 </Properties>
 </Item>
 </Item>
-<Item class="ModuleScript" referent="KC5">
+<Item class="ModuleScript" referent="KC62">
 <Properties>
 <string name="Name">EconomyLogic</string>
 <ProtectedString name="Source">--!strict
@@ -465,7 +926,7 @@ return EconomyLogic
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="KC6">
+<Item class="ModuleScript" referent="KC63">
 <Properties>
 <string name="Name">RateLimit</string>
 <ProtectedString name="Source">--!strict
@@ -507,7 +968,7 @@ return RateLimit
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="KC7">
+<Item class="ModuleScript" referent="KC64">
 <Properties>
 <string name="Name">Remotes</string>
 <ProtectedString name="Source">--!strict
@@ -567,7 +1028,7 @@ return Remotes
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="KC8">
+<Item class="ModuleScript" referent="KC65">
 <Properties>
 <string name="Name">Theme</string>
 <ProtectedString name="Source">--!strict
@@ -659,13 +1120,87 @@ return Theme
 </ProtectedString>
 </Properties>
 </Item>
+<Item class="ModuleScript" referent="KC66">
+<Properties>
+<string name="Name">WorldLayout</string>
+<ProtectedString name="Source">--!strict
+-- Wo was in der Welt steht. Reine Rechnung, kein Roblox-API - damit der
+-- Server und das Build-Script (tools/build-rbxlx.mjs) dieselben Positionen
+-- benutzen und die Vorschau in der Studio-Datei exakt dem entspricht, was
+-- beim Druecken von Play entsteht.
+
+local WorldConfig = require(script.Parent.Config.WorldConfig)
+
+local WorldLayout = {}
+
+export type Box = { size: Vector3, position: Vector3 }
+
+function WorldLayout.plotPosition(index: number): Vector3
+	local origin = WorldConfig.PLOT_ORIGIN
+	local offset = (index - 1) * WorldConfig.PLOT_SPACING
+	local centering = (WorldConfig.PLOT_COUNT - 1) * WorldConfig.PLOT_SPACING / 2
+	return Vector3.new(origin.X + offset - centering, origin.Y, origin.Z)
+end
+
+function WorldLayout.signPosition(plotCenter: Vector3): Vector3
+	return Vector3.new(plotCenter.X, plotCenter.Y + 8, plotCenter.Z + WorldConfig.PLOT_SIZE.Z / 2)
+end
+
+function WorldLayout.slotPosition(plotCenter: Vector3, slotIndex: number): Vector3
+	local columns = WorldConfig.SLOT_COLUMNS
+	local col = (slotIndex - 1) % columns
+	local row = math.floor((slotIndex - 1) / columns)
+	local spacing = WorldConfig.SLOT_SPACING
+	local xOffset = (col - (columns - 1) / 2) * spacing
+	local zOffset = (row - 1) * spacing
+	local top = plotCenter.Y + WorldConfig.PLOT_SIZE.Y / 2 + WorldConfig.KEY_SIZE.Y / 2
+	return Vector3.new(plotCenter.X + xOffset, top, plotCenter.Z + zOffset)
+end
+
+-- Streifen vor der Plotreihe. Verbindet alle Plots - zwischen zweien liegen
+-- sonst PLOT_SPACING - PLOT_SIZE.X Studs Luecke.
+function WorldLayout.promenade(): Box
+	local origin = WorldConfig.PLOT_ORIGIN
+	local z = origin.Z + WorldConfig.PLOT_SIZE.Z / 2 + WorldConfig.PROMENADE_DEPTH / 2
+	return {
+		size = Vector3.new(
+			WorldConfig.PLOT_COUNT * WorldConfig.PLOT_SPACING,
+			WorldConfig.PLOT_SIZE.Y,
+			WorldConfig.PROMENADE_DEPTH
+		),
+		position = Vector3.new(origin.X, origin.Y, z),
+	}
+end
+
+-- Weg von der Promenade bis hinter das letzte Pad.
+function WorldLayout.path(): Box
+	local origin = WorldConfig.PLOT_ORIGIN
+	local promenade = WorldLayout.promenade()
+	local startZ = promenade.position.Z + WorldConfig.PROMENADE_DEPTH / 2
+
+	local farthestZ = 0
+	for _, position in WorldConfig.STAGE_PAD_POSITIONS do
+		farthestZ = math.min(farthestZ, position.Z)
+	end
+	local endZ = farthestZ - WorldConfig.STAGE_PAD_SIZE.Z / 2 - WorldConfig.PATH_MARGIN
+
+	return {
+		size = Vector3.new(WorldConfig.PATH_WIDTH, WorldConfig.PLOT_SIZE.Y, startZ - endZ),
+		position = Vector3.new(origin.X, origin.Y, (startZ + endZ) / 2),
+	}
+end
+
+return WorldLayout
+</ProtectedString>
+</Properties>
 </Item>
 </Item>
-<Item class="ServerScriptService" referent="KC33">
+</Item>
+<Item class="ServerScriptService" referent="KC91">
 <Properties>
 <string name="Name">ServerScriptService</string>
 </Properties>
-<Item class="Script" referent="KC24">
+<Item class="Script" referent="KC82">
 <Properties>
 <string name="Name">KeycapRush</string>
 <ProtectedString name="Source">--!strict
@@ -700,6 +1235,15 @@ local StateService = require(Services.StateService)
 
 print("[KEYCAP] Server startet ...")
 
+-- Die Studio-Datei enthaelt eine gebackene Vorschau der Welt, damit beim
+-- Oeffnen nicht nur ein leerer Boden dasteht. Der Server baut dieselbe Welt
+-- gleich selbst - die Vorschau muss also weg, sonst haengt alles doppelt drin.
+local vorschau = workspace:FindFirstChild("WeltVorschau")
+if vorschau then
+	vorschau:Destroy()
+	print("[KEYCAP] Gebackene Vorschau entfernt, Server baut die Welt neu")
+end
+
 DataService.start()
 LightingService.start()
 PlotService.buildWorld()
@@ -728,11 +1272,11 @@ end
 print("[KEYCAP] Server bereit.")
 </ProtectedString>
 </Properties>
-<Item class="Folder" referent="KC23">
+<Item class="Folder" referent="KC81">
 <Properties>
 <string name="Name">Services</string>
 </Properties>
-<Item class="ModuleScript" referent="KC10">
+<Item class="ModuleScript" referent="KC68">
 <Properties>
 <string name="Name">CarryService</string>
 <ProtectedString name="Source">--!strict
@@ -847,7 +1391,7 @@ return CarryService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="KC11">
+<Item class="ModuleScript" referent="KC69">
 <Properties>
 <string name="Name">CourseService</string>
 <ProtectedString name="Source">--!strict
@@ -863,6 +1407,7 @@ local EconomyConfig = require(Shared.Config.EconomyConfig)
 local EconomyLogic = require(Shared.EconomyLogic)
 local WorldConfig = require(Shared.Config.WorldConfig)
 local Theme = require(Shared.Theme)
+local WorldLayout = require(Shared.WorldLayout)
 local Remotes = require(Shared.Remotes)
 local DataService = require(script.Parent.DataService)
 local ProductionService = require(script.Parent.ProductionService)
@@ -1024,43 +1569,26 @@ end
 -- Boden. Die Plots stehen mit Luecke nebeneinander und der Parcours haengt
 -- in der Luft - ohne diese beiden Flaechen faellt jeder Spieler beim ersten
 -- Schritt vom Plot herunter.
+-- Boden. Die Plots stehen mit Luecke nebeneinander und der Parcours haengt
+-- in der Luft - ohne diese beiden Flaechen faellt jeder Spieler beim ersten
+-- Schritt vom Plot herunter. Die Masse kommen aus WorldLayout, damit die
+-- Vorschau in der Studio-Datei exakt dasselbe zeigt.
 local function buildGround()
-	local origin = WorldConfig.PLOT_ORIGIN
-	local promenadeZ = origin.Z + WorldConfig.PLOT_SIZE.Z / 2 + WorldConfig.PROMENADE_DEPTH / 2
-
-	local promenade = Instance.new("Part")
-	promenade.Name = "Promenade"
-	promenade.Size = Vector3.new(
-		WorldConfig.PLOT_COUNT * WorldConfig.PLOT_SPACING,
-		WorldConfig.PLOT_SIZE.Y,
-		WorldConfig.PROMENADE_DEPTH
-	)
-	promenade.Position = Vector3.new(origin.X, origin.Y, promenadeZ)
-	promenade.Anchored = true
-	promenade.TopSurface = Enum.SurfaceType.Smooth
-	promenade.BottomSurface = Enum.SurfaceType.Smooth
-	promenade.Material = Enum.Material.SmoothPlastic
-	promenade.Color = Theme.PANEL_EDGE
-	promenade.Parent = workspace
-
-	-- Weg von der Promenade bis hinter das letzte Pad.
-	local farthestZ = 0
-	for _, position in WorldConfig.STAGE_PAD_POSITIONS do
-		farthestZ = math.min(farthestZ, position.Z)
+	local function slab(name: string, box)
+		local part = Instance.new("Part")
+		part.Name = name
+		part.Size = box.size
+		part.Position = box.position
+		part.Anchored = true
+		part.TopSurface = Enum.SurfaceType.Smooth
+		part.BottomSurface = Enum.SurfaceType.Smooth
+		part.Material = Enum.Material.SmoothPlastic
+		part.Color = Theme.PANEL_EDGE
+		part.Parent = workspace
 	end
-	local startZ = promenadeZ + WorldConfig.PROMENADE_DEPTH / 2
-	local endZ = farthestZ - WorldConfig.STAGE_PAD_SIZE.Z / 2 - WorldConfig.PATH_MARGIN
 
-	local path = Instance.new("Part")
-	path.Name = "Path"
-	path.Size = Vector3.new(WorldConfig.PATH_WIDTH, WorldConfig.PLOT_SIZE.Y, startZ - endZ)
-	path.Position = Vector3.new(origin.X, origin.Y, (startZ + endZ) / 2)
-	path.Anchored = true
-	path.TopSurface = Enum.SurfaceType.Smooth
-	path.BottomSurface = Enum.SurfaceType.Smooth
-	path.Material = Enum.Material.SmoothPlastic
-	path.Color = Theme.PANEL_EDGE
-	path.Parent = workspace
+	slab("Promenade", WorldLayout.promenade())
+	slab("Path", WorldLayout.path())
 end
 
 function CourseService.start()
@@ -1077,7 +1605,7 @@ return CourseService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="KC12">
+<Item class="ModuleScript" referent="KC70">
 <Properties>
 <string name="Name">DataService</string>
 <ProtectedString name="Source">--!strict
@@ -1337,7 +1865,7 @@ return DataService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="KC13">
+<Item class="ModuleScript" referent="KC71">
 <Properties>
 <string name="Name">LightingService</string>
 <ProtectedString name="Source">--!strict
@@ -1398,7 +1926,7 @@ return LightingService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="KC14">
+<Item class="ModuleScript" referent="KC72">
 <Properties>
 <string name="Name">NpcPlotService</string>
 <ProtectedString name="Source">--!strict
@@ -1509,7 +2037,7 @@ return NpcPlotService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="KC15">
+<Item class="ModuleScript" referent="KC73">
 <Properties>
 <string name="Name">PlotService</string>
 <ProtectedString name="Source">--!strict
@@ -1526,6 +2054,7 @@ local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
 local EconomyConfig = require(Shared.Config.EconomyConfig)
 local WorldConfig = require(Shared.Config.WorldConfig)
 local Theme = require(Shared.Theme)
+local WorldLayout = require(Shared.WorldLayout)
 local DataService = require(script.Parent.DataService)
 
 local PlotService = {}
@@ -1547,29 +2076,6 @@ local plotByUser: { [number]: Plot } = {}
 -- Rueckweg vom Part zum Eintrag, damit StealService nichts raten muss.
 local keyOwner: { [BasePart]: KeyRef } = {}
 
-local function plotPosition(index: number): Vector3
-	local origin = WorldConfig.PLOT_ORIGIN
-	local offset = (index - 1) * WorldConfig.PLOT_SPACING
-	local centering = (WorldConfig.PLOT_COUNT - 1) * WorldConfig.PLOT_SPACING / 2
-	return Vector3.new(origin.X + offset - centering, origin.Y, origin.Z)
-end
-
-local function slotPosition(plot: Plot, slotIndex: number): Vector3
-	local columns = WorldConfig.SLOT_COLUMNS
-	local col = (slotIndex - 1) % columns
-	local row = math.floor((slotIndex - 1) / columns)
-	local spacing = WorldConfig.SLOT_SPACING
-	local center = plot.base.Position
-	local xOffset = (col - (columns - 1) / 2) * spacing
-	local zOffset = (row - 1) * spacing
-	local top = center.Y + WorldConfig.PLOT_SIZE.Y / 2 + WorldConfig.KEY_SIZE.Y / 2
-	return Vector3.new(center.X + xOffset, top, center.Z + zOffset)
-end
-
-local built = false
-
--- Idempotent: init darf buildWorld vor NpcPlotService rufen, PlotService.start
--- ruft es danach nochmal. Zweimal bauen wuerde doppelte Plots erzeugen.
 function PlotService.buildWorld()
 	if built then
 		return
@@ -1586,7 +2092,7 @@ function PlotService.buildWorld()
 		local base = Instance.new("Part")
 		base.Name = "Base"
 		base.Size = WorldConfig.PLOT_SIZE
-		base.Position = plotPosition(index)
+		base.Position = WorldLayout.plotPosition(index)
 		base.Anchored = true
 		base.TopSurface = Enum.SurfaceType.Smooth
 		base.BottomSurface = Enum.SurfaceType.Smooth
@@ -1597,7 +2103,7 @@ function PlotService.buildWorld()
 		local sign = Instance.new("Part")
 		sign.Name = "Sign"
 		sign.Size = Vector3.new(10, 1, 1)
-		sign.Position = base.Position + Vector3.new(0, 8, WorldConfig.PLOT_SIZE.Z / 2)
+		sign.Position = WorldLayout.signPosition(base.Position)
 		sign.Anchored = true
 		sign.CanCollide = false
 		sign.Transparency = 1
@@ -1659,7 +2165,7 @@ function PlotService.renderKeys(plot: Plot, keys: { { rarity: string, vorrat: nu
 		local part = Instance.new("Part")
 		part.Name = "Key" .. index
 		part.Size = WorldConfig.KEY_SIZE
-		part.Position = slotPosition(plot, index)
+		part.Position = WorldLayout.slotPosition(plot.base.Position, index)
 		part.Anchored = true
 		part.TopSurface = Enum.SurfaceType.Smooth
 		part.Material = Enum.Material.SmoothPlastic
@@ -1901,7 +2407,7 @@ return PlotService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="KC16">
+<Item class="ModuleScript" referent="KC74">
 <Properties>
 <string name="Name">ProductionService</string>
 <ProtectedString name="Source">--!strict
@@ -1975,7 +2481,7 @@ return ProductionService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="KC17">
+<Item class="ModuleScript" referent="KC75">
 <Properties>
 <string name="Name">RunTimerService</string>
 <ProtectedString name="Source">--!strict
@@ -2107,7 +2613,7 @@ return RunTimerService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="KC18">
+<Item class="ModuleScript" referent="KC76">
 <Properties>
 <string name="Name">ShopService</string>
 <ProtectedString name="Source">--!strict
@@ -2204,7 +2710,7 @@ return ShopService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="KC19">
+<Item class="ModuleScript" referent="KC77">
 <Properties>
 <string name="Name">SpeedService</string>
 <ProtectedString name="Source">--!strict
@@ -2277,7 +2783,7 @@ return SpeedService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="KC20">
+<Item class="ModuleScript" referent="KC78">
 <Properties>
 <string name="Name">StateService</string>
 <ProtectedString name="Source">--!strict
@@ -2347,7 +2853,7 @@ return StateService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="KC21">
+<Item class="ModuleScript" referent="KC79">
 <Properties>
 <string name="Name">StealService</string>
 <ProtectedString name="Source">--!strict
@@ -2600,7 +3106,7 @@ return StealService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="KC22">
+<Item class="ModuleScript" referent="KC80">
 <Properties>
 <string name="Name">TutorialService</string>
 <ProtectedString name="Source">--!strict
@@ -2694,21 +3200,21 @@ return TutorialService
 </Item>
 </Item>
 </Item>
-<Item class="Lighting" referent="KC34">
+<Item class="Lighting" referent="KC92">
 <Properties>
 <string name="Name">Lighting</string>
 <token name="Technology">4</token>
 </Properties>
 </Item>
-<Item class="StarterPlayer" referent="KC35">
+<Item class="StarterPlayer" referent="KC93">
 <Properties>
 <string name="Name">StarterPlayer</string>
 </Properties>
-<Item class="StarterPlayerScripts" referent="KC36">
+<Item class="StarterPlayerScripts" referent="KC94">
 <Properties>
 <string name="Name">StarterPlayerScripts</string>
 </Properties>
-<Item class="LocalScript" referent="KC29">
+<Item class="LocalScript" referent="KC87">
 <Properties>
 <string name="Name">KeycapRush</string>
 <ProtectedString name="Source">--!strict
@@ -2725,11 +3231,11 @@ ShopController.start()
 print("[KEYCAP] Client bereit.")
 </ProtectedString>
 </Properties>
-<Item class="Folder" referent="KC27">
+<Item class="Folder" referent="KC85">
 <Properties>
 <string name="Name">Controllers</string>
 </Properties>
-<Item class="ModuleScript" referent="KC25">
+<Item class="ModuleScript" referent="KC83">
 <Properties>
 <string name="Name">HudController</string>
 <ProtectedString name="Source">--!strict
@@ -2877,7 +3383,7 @@ return HudController
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="KC26">
+<Item class="ModuleScript" referent="KC84">
 <Properties>
 <string name="Name">ShopController</string>
 <ProtectedString name="Source">--!strict
@@ -2986,7 +3492,7 @@ return ShopController
 </Properties>
 </Item>
 </Item>
-<Item class="ModuleScript" referent="KC28">
+<Item class="ModuleScript" referent="KC86">
 <Properties>
 <string name="Name">UiKit</string>
 <ProtectedString name="Source">--!strict

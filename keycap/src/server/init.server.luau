@@ -30,6 +30,15 @@ local StateService = require(Services.StateService)
 
 print("[KEYCAP] Server startet ...")
 
+-- Die Studio-Datei enthaelt eine gebackene Vorschau der Welt, damit beim
+-- Oeffnen nicht nur ein leerer Boden dasteht. Der Server baut dieselbe Welt
+-- gleich selbst - die Vorschau muss also weg, sonst haengt alles doppelt drin.
+local vorschau = workspace:FindFirstChild("WeltVorschau")
+if vorschau then
+	vorschau:Destroy()
+	print("[KEYCAP] Gebackene Vorschau entfernt, Server baut die Welt neu")
+end
+
 DataService.start()
 LightingService.start()
 PlotService.buildWorld()

@@ -11,7 +11,7 @@ Im Code steht an jedem Wert, woher er kommt: `[KONZEPT]`, `[GEMESSEN]`, `[ABGELE
 `[ENTSCHEIDUNG]`.
 
 **Nichts davon lief je in Roblox.** Geprüft sind: Syntax aller 25 Dateien im echten
-Luau-Compiler, und 59 Logik-/Balancing-/Design-Tests in einer echten Luau-VM. Nicht geprüft ist
+Luau-Compiler, und 63 Logik-/Balancing-/Design-Tests in einer echten Luau-VM. Nicht geprüft ist
 jeder Roblox-API-Aufruf zur Laufzeit — Instanzen, Prompts, Welds, DataStore, Replikation.
 Der erste Studio-Start wird Fehler zeigen.
 
@@ -22,6 +22,7 @@ Der erste Studio-Start wird Fehler zeigen.
 | `shared/Config/EconomyConfig` | alle Balancing-Werte, mit Herkunftsmarkierung |
 | `shared/Config/WorldConfig` | Plot-Raster, Torpositionen, Padpositionen |
 | `shared/EconomyLogic` | reine Rechenlogik, läuft in Server und Test identisch |
+| `shared/WorldLayout` | wo was steht — von Server *und* Build-Script benutzt |
 | `shared/Remotes` | einziger Ort, an dem RemoteEvents entstehen |
 | `shared/RateLimit` | Token-Eimer pro Spieler und Kanal |
 | `shared/Theme` | Design-System: Farben, Schrift, Abstände, Größen |
@@ -142,7 +143,7 @@ npm install
 npm test
 ```
 
-59 Tests in einer echten Luau-VM (WASM) plus Syntaxprüfung aller `src/`-Dateien im
+63 Tests in einer echten Luau-VM (WASM) plus Syntaxprüfung aller `src/`-Dateien im
 echten Luau-Compiler. Exit-Code 0 = alles grün. Geprüft werden unter anderem die Zahlen
 aus der Bewertung: Gates bei 700 / 1.700 / 2.950 Vorrat, Deckel bei 4.200, Stützwerte
 90R / 150R / 174R — und dass jedes Tor vor seinem Pad steht und alle Steckplätze auf
@@ -151,8 +152,14 @@ den Plot passen.
 ## In Studio starten
 
 **Der schnelle Weg:** `keycap/KeycapRush.rbxlx` doppelklicken. Die Datei enthält alle
-25 Scripts an der richtigen Stelle — kein Rojo, kein Setup. Neu bauen nach Codeänderungen
+26 Scripts an der richtigen Stelle — kein Rojo, kein Setup. Neu bauen nach Codeänderungen
 mit `node keycap/tools/build-rbxlx.mjs`.
+
+Beim Öffnen siehst du die Welt sofort: Plotreihe, Promenade, Weg, drei Tore, drei
+Auszahlungs-Pads und die Tasten auf den NPC-Plots. Das ist eine **gebackene Vorschau**
+im Ordner `WeltVorschau` — der Server löscht sie beim Start und baut dieselbe Welt aus
+`WorldLayout.luau` neu, damit Vorschau und Spiel nicht auseinanderlaufen können.
+Spielerplots sind in der Vorschau leer, weil ohne Spieler auch keine Tasten existieren.
 
 **Der Arbeitsweg (wenn du weiterentwickelst):** Rojo-Extension in VS Code auf
 `keycap/default.project.json` zeigen lassen (**nicht** auf die PlanetForge-Datei im
@@ -163,6 +170,7 @@ In beiden Fällen: Play drücken, im Output müssen diese Zeilen stehen:
 
 ```
 [KEYCAP] Server startet ...
+[KEYCAP] Gebackene Vorschau entfernt, Server baut die Welt neu
 [KEYCAP] DataService bereit (Schema 2)
 [KEYCAP] LightingService: Helligkeit 2.4, Uhrzeit 14
 [KEYCAP] NpcPlotService: 3 NPC-Plots, Vorrat gedeckelt bei 1200

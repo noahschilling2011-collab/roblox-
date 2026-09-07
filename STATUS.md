@@ -64,7 +64,7 @@ lassen (Scope offiziell erweitern) oder für den ersten Launch deaktivieren.
   Schwachstellen der Bewertung selbst. Kein Einfluss auf PlanetForge oder TURMFALL.
 - `keycap/` — KEYCAP RUSH, spielbarer Kern: Plots mit Tasten-Steckplätzen, Produktion
   pro Taste, Speed-Tore, Cash-Out-Pads, Klau mit Paar-Cooldown und Schild, Laden,
-  DataService mit Session-Lock. 25 Luau-Dateien, eigenes `default.project.json`.
+  DataService mit Session-Lock. 26 Luau-Dateien, eigenes `default.project.json`.
   Dazu NPC-Plots als Klau-Ziele, sichtbares Tragen der Beute, Rundlaufzeit-Messung,
   ein Part-Budget-Check beim Serverstart und ein vierstufiges Onboarding
   (Fortschritt im Profil, Schema-Version 2).
@@ -73,8 +73,10 @@ lassen (Scope offiziell erweitern) oder für den ersten Launch deaktivieren.
   Kontrast wird im Testlauf nach WCAG nachgerechnet — vier Lesbarkeitsfehler behoben,
   darunter die Wins-Zahl mit 2,45:1.
   `node keycap/tools/build-rbxlx.mjs` erzeugt `keycap/KeycapRush.rbxlx` (direkt in
-  Studio öffenbar, kein Rojo nötig).
-  `cd keycap/tests && npm install && npm test` → 59 Tests + Syntaxprüfung aller Dateien.
+  Studio öffenbar, kein Rojo nötig) — inklusive gebackener Weltvorschau, damit beim
+  Öffnen nicht nur ein Spawn-Pad dasteht. `WorldLayout.luau` ist die gemeinsame Quelle
+  für Server und Build-Script.
+  `cd keycap/tests && npm install && npm test` → 63 Tests + Syntaxprüfung aller Dateien.
   **Nie in Roblox gelaufen** — nur Syntax und reine Logik geprüft.
   Nicht drin: Monetarisierung, Sounds/Effekte.
   Offene Zahl: `STAGE_RUN_SECONDS` ist geschätzt — `RunTimerService` misst sie im Spiel

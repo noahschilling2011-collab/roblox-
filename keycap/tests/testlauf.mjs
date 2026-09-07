@@ -21,6 +21,7 @@ const modules = [
   ["RateLimit", "src/shared/RateLimit.luau"],
   ["TutorialConfig", "src/shared/Config/TutorialConfig.luau"],
   ["Theme", "src/shared/Theme.luau"],
+  ["WorldLayout", "src/shared/WorldLayout.luau"],
 ];
 
 // Stubs fuer die Roblox-Globals, die die Shared-Module anfassen.
@@ -47,6 +48,7 @@ local World = __deps["WorldConfig"]
 local RateLimit = __deps["RateLimit"]
 local Tutorial = __deps["TutorialConfig"]
 local Theme = __deps["Theme"]
+local Layout = __deps["WorldLayout"]
 
 local results = {}
 local passed, failed = 0, 0
@@ -590,6 +592,50 @@ test("Alles steht auf derselben Hoehe - keine Stufen im Parcours", function()
 	for index, pad in World.STAGE_PAD_POSITIONS do
 		expect(pad.Y == hoehe, "Pad " .. index .. " liegt auf anderer Hoehe: " .. pad.Y)
 	end
+end)
+
+-- 16) WorldLayout ist die gemeinsame Quelle fuer Server UND Build-Script.
+-- Laufen die auseinander, zeigt die Studio-Datei etwas anderes als das Spiel.
+test("Die Plotreihe ist mittig und gleichmaessig", function()
+	local erste = Layout.plotPosition(1)
+	local letzte = Layout.plotPosition(World.PLOT_COUNT)
+	expect(math.abs(erste.X + letzte.X) < 0.001, "Reihe nicht mittig: " .. erste.X .. " / " .. letzte.X)
+	local abstand = Layout.plotPosition(2).X - erste.X
+	expect(math.abs(abstand - World.PLOT_SPACING) < 0.001, "Abstand stimmt nicht: " .. abstand)
+	expect(erste.Y == World.PLOT_ORIGIN.Y, "Plot haengt auf falscher Hoehe")
+end)
+
+test("Tasten stehen auf dem Plot, nicht daneben oder darin", function()
+	local mitte = Layout.plotPosition(1)
+	local halbeBreite = World.PLOT_SIZE.X / 2
+	local halbeTiefe = World.PLOT_SIZE.Z / 2
+	for slot = 1, Config.MAX_KEY_SLOTS do
+		local position = Layout.slotPosition(mitte, slot)
+		local dx = math.abs(position.X - mitte.X) + World.KEY_SIZE.X / 2
+		local dz = math.abs(position.Z - mitte.Z) + World.KEY_SIZE.Z / 2
+		expect(dx <= halbeBreite, "Steckplatz " .. slot .. " steht seitlich ueber")
+		expect(dz <= halbeTiefe, "Steckplatz " .. slot .. " steht hinten ueber")
+		local erwarteteHoehe = mitte.Y + World.PLOT_SIZE.Y / 2 + World.KEY_SIZE.Y / 2
+		expect(math.abs(position.Y - erwarteteHoehe) < 0.001, "Taste schwebt oder steckt im Plot")
+	end
+end)
+
+test("Promenade und Weg beruehren sich luechenlos", function()
+	local promenade = Layout.promenade()
+	local weg = Layout.path()
+	local promenadeVorderkante = promenade.position.Z + promenade.size.Z / 2
+	local wegHinterkante = weg.position.Z + weg.size.Z / 2
+	expect(math.abs(promenadeVorderkante - wegHinterkante) < 0.001,
+		"Luecke zwischen Promenade und Weg: " .. (promenadeVorderkante - wegHinterkante))
+	expect(promenade.position.Y == weg.position.Y, "Promenade und Weg auf verschiedenen Hoehen")
+end)
+
+test("Die Promenade schliesst an die Plots an", function()
+	local promenade = Layout.promenade()
+	local plotVorderkante = World.PLOT_ORIGIN.Z + World.PLOT_SIZE.Z / 2
+	local promenadeHinterkante = promenade.position.Z - promenade.size.Z / 2
+	expect(math.abs(plotVorderkante - promenadeHinterkante) < 0.001,
+		"Luecke zwischen Plot und Promenade: " .. (plotVorderkante - promenadeHinterkante))
 end)
 
 table.insert(results, "")

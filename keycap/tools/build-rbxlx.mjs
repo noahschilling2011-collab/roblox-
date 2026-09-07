@@ -4,8 +4,9 @@
 //   src/server  -> ServerScriptService.KeycapRush (Script mit Ordner "Services")
 //   src/client  -> StarterPlayer.StarterPlayerScripts.KeycapRush (LocalScript)
 // Ausfuehren:  node tools/build-rbxlx.mjs
-import { readFileSync, readdirSync, statSync, writeFileSync } from "fs";
+import { readFileSync, readdirSync, statSync, writeFileSync, existsSync } from "fs";
 import { join } from "path";
+import { pathToFileURL } from "url";
 
 const ROOT = new URL("..", import.meta.url).pathname.replace(/\/$/, "");
 const OUT = join(ROOT, "KeycapRush.rbxlx");
@@ -19,6 +20,9 @@ function nextReferent() {
 function escapeXml(text) {
   return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
+
+// Keine Drehung - alles in dieser Welt steht achsenparallel.
+const IDENTITY_ROT = `<R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>`;
 
 function scriptItem(className, name, sourcePath, children = "") {
   const source = readFileSync(sourcePath, "utf8");
@@ -55,6 +59,155 @@ function directoryChildren(dirPath) {
   return xml;
 }
 
+// ---------------------------------------------------------------------
+// Vorschau der Welt.
+//
+// Der Server baut Plots, Wege, Tore und Pads erst beim Start. Wer die Datei
+// nur oeffnet, sah deshalb einen leeren Boden mit einem Spawn-Pad - das
+// sieht aus, als waere nichts drin. Diese Vorschau backt dieselbe Geometrie
+// fest in die Datei; init.server.luau loescht sie beim Start wieder, bevor
+// der Server seine eigene baut.
+//
+// Die Positionen kommen aus src/shared/WorldLayout.luau, ausgefuehrt in
+// einer echten Luau-VM. Nichts wird hier nachgerechnet - sonst laufen
+// Vorschau und Spielwelt auseinander.
+async function weltVorschau() {
+  const luauPath = join(ROOT, "tests/node_modules/luau-web/src/index.js");
+  if (!existsSync(luauPath)) {
+    console.warn("! luau-web fehlt (cd tests && npm install) - Datei wird OHNE Weltvorschau gebaut.");
+    return "";
+  }
+  const { LuauState } = await import(pathToFileURL(luauPath).href);
+
+  function modul(relPath) {
+    return readFileSync(join(ROOT, relPath), "utf8")
+      .replace(/^--!strict\s*$/m, "")
+      .replace(/^local (\w+) = require\(.+\)$/gm, 'local $1 = __deps["$1"]')
+      .replace(/^export type/gm, "type");
+  }
+
+  const prelude = `
+local Vector3 = { new = function(x, y, z) return { X = x or 0, Y = y or 0, Z = z or 0 } end }
+local Color3 = { fromRGB = function(r, g, b) return { r = r, g = g, b = b } end }
+local UDim = { new = function(s, o) return { Scale = s, Offset = o } end }
+local Enum = setmetatable({}, { __index = function(_, class)
+	return setmetatable({}, { __index = function(_, item) return class .. "." .. item end })
+end })
+local __deps = {}
+`;
+
+  const module_list = [
+    ["WorldConfig", "src/shared/Config/WorldConfig.luau"],
+    ["EconomyConfig", "src/shared/Config/EconomyConfig.luau"],
+    ["Theme", "src/shared/Theme.luau"],
+    ["WorldLayout", "src/shared/WorldLayout.luau"],
+  ];
+  let body = prelude;
+  for (const [name, relPath] of module_list) {
+    body += `\n__deps["${name}"] = (function()\n${modul(relPath)}\nend)()\n`;
+  }
+
+  // Sammelt alle Parts als flache Liste "name|sx,sy,sz|px,py,pz|r,g,b|legende".
+  const collect = `
+local World = __deps["WorldConfig"]
+local Economy = __deps["EconomyConfig"]
+local Theme = __deps["Theme"]
+local Layout = __deps["WorldLayout"]
+
+local zeilen = {}
+local function part(name, size, position, color, legende)
+	table.insert(zeilen, ("%s|%g,%g,%g|%g,%g,%g|%d,%d,%d|%s"):format(
+		name, size.X, size.Y, size.Z, position.X, position.Y, position.Z,
+		color.r, color.g, color.b, legende or ""))
+end
+
+local promenade = Layout.promenade()
+part("Promenade", promenade.size, promenade.position, Theme.PANEL_EDGE)
+local weg = Layout.path()
+part("Path", weg.size, weg.position, Theme.PANEL_EDGE)
+
+for index = 1, World.PLOT_COUNT do
+	local mitte = Layout.plotPosition(index)
+	part("Plot" .. index, World.PLOT_SIZE, mitte, Theme.PANEL)
+end
+
+-- Auf den NPC-Plots stehen von Anfang an Tasten. Sie zeigen in der Vorschau,
+-- wie ein besetzter Plot aussieht; Spielerplots sind beim Oeffnen leer, weil
+-- ohne Spieler auch keine Tasten existieren.
+for slot = 1, World.NPC_PLOT_COUNT do
+	local plotIndex = World.PLOT_COUNT - slot + 1
+	local mitte = Layout.plotPosition(plotIndex)
+	for keyIndex = 1, Economy.NPC_KEY_COUNT do
+		local rarity = Economy.NPC_RARITIES[keyIndex] or "Common"
+		part("Key" .. keyIndex, World.KEY_SIZE, Layout.slotPosition(mitte, keyIndex),
+			Theme.RARITY_COLORS[rarity], World.KEY_LEGENDS[keyIndex] or "?")
+	end
+end
+
+for index, position in World.STAGE_PAD_POSITIONS do
+	part("CashOut" .. index, World.STAGE_PAD_SIZE, position, Theme.GOLD)
+end
+for index, position in World.STAGE_GATE_POSITIONS do
+	part("Gate" .. index, World.STAGE_GATE_SIZE, position, Theme.BLUE)
+end
+
+return table.concat(zeilen, "\\n")
+`;
+
+  const state = await LuauState.createAsync();
+  let rohdaten;
+  try {
+    rohdaten = await state.loadstring(body + collect, "weltvorschau", true)();
+  } finally {
+    state.destroy();
+  }
+
+  let xml = "";
+  let anzahl = 0;
+  for (const zeile of String(rohdaten).split("\n").filter(Boolean)) {
+    const [name, size, position, color, legende] = zeile.split("|");
+    const [sx, sy, sz] = size.split(",");
+    const [px, py, pz] = position.split(",");
+    const [r, g, b] = color.split(",").map(Number);
+    // Color3uint8 ist alpha<<24 | r<<16 | g<<8 | b als vorzeichenlose Zahl.
+    const packed = ((255 << 24) >>> 0) + (r << 16) + (g << 8) + b;
+    // Material wird bewusst NICHT gesetzt: die Enum-Tokens sind hier nicht
+    // nachschlagbar und ein falscher Wert koennte die Datei unbrauchbar
+    // machen. Der Server setzt das Material beim Start ohnehin richtig.
+    const kinder = legende
+      ? `<Item class="SurfaceGui" referent="${nextReferent()}">
+<Properties>
+<string name="Name">Legend</string>
+<token name="Face">1</token>
+</Properties>
+<Item class="TextLabel" referent="${nextReferent()}">
+<Properties>
+<string name="Name">Letter</string>
+<string name="Text">${escapeXml(legende)}</string>
+<bool name="TextScaled">true</bool>
+<float name="BackgroundTransparency">1</float>
+</Properties>
+</Item>
+</Item>
+`
+      : "";
+    xml += `<Item class="Part" referent="${nextReferent()}">
+<Properties>
+<string name="Name">${escapeXml(name)}</string>
+<bool name="Anchored">true</bool>
+<Vector3 name="size"><X>${sx}</X><Y>${sy}</Y><Z>${sz}</Z></Vector3>
+<CoordinateFrame name="CFrame"><X>${px}</X><Y>${py}</Y><Z>${pz}</Z>${IDENTITY_ROT}</CoordinateFrame>
+<Color3uint8 name="Color3uint8">${packed}</Color3uint8>
+</Properties>
+${kinder}</Item>
+`;
+    anzahl += 1;
+  }
+  console.log(`Weltvorschau: ${anzahl} Parts gebacken`);
+  return folderItem("WeltVorschau", xml);
+}
+
+const vorschauXml = await weltVorschau();
 const sharedXml = folderItem("Shared", directoryChildren(join(ROOT, "src/shared")));
 const serverXml = scriptItem("Script", "KeycapRush", join(ROOT, "src/server/init.server.luau"), directoryChildren(join(ROOT, "src/server")));
 const clientXml = scriptItem("LocalScript", "KeycapRush", join(ROOT, "src/client/init.client.luau"), directoryChildren(join(ROOT, "src/client")));
@@ -62,7 +215,6 @@ const clientXml = scriptItem("LocalScript", "KeycapRush", join(ROOT, "src/client
 // Spawn vor der Plotreihe, auf Hoehe der Promenade. Sobald ein Profil
 // geladen ist, setzt PlotService den Spieler auf seinen eigenen Plot -
 // dieser Punkt ist nur die Sekunde davor.
-const IDENTITY_ROT = `<R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22>`;
 const spawnXml = `<Item class="SpawnLocation" referent="${nextReferent()}">
 <Properties>
 <string name="Name">Start</string>
@@ -80,7 +232,7 @@ const place = `<roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi
 <Properties>
 <string name="Name">Workspace</string>
 </Properties>
-${spawnXml}</Item>
+${spawnXml}${vorschauXml}</Item>
 <Item class="ReplicatedStorage" referent="${nextReferent()}">
 <Properties>
 <string name="Name">ReplicatedStorage</string>

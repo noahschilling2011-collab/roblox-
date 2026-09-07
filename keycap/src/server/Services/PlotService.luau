@@ -12,6 +12,7 @@ local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
 local EconomyConfig = require(Shared.Config.EconomyConfig)
 local WorldConfig = require(Shared.Config.WorldConfig)
 local Theme = require(Shared.Theme)
+local WorldLayout = require(Shared.WorldLayout)
 local DataService = require(script.Parent.DataService)
 
 local PlotService = {}
@@ -33,29 +34,6 @@ local plotByUser: { [number]: Plot } = {}
 -- Rueckweg vom Part zum Eintrag, damit StealService nichts raten muss.
 local keyOwner: { [BasePart]: KeyRef } = {}
 
-local function plotPosition(index: number): Vector3
-	local origin = WorldConfig.PLOT_ORIGIN
-	local offset = (index - 1) * WorldConfig.PLOT_SPACING
-	local centering = (WorldConfig.PLOT_COUNT - 1) * WorldConfig.PLOT_SPACING / 2
-	return Vector3.new(origin.X + offset - centering, origin.Y, origin.Z)
-end
-
-local function slotPosition(plot: Plot, slotIndex: number): Vector3
-	local columns = WorldConfig.SLOT_COLUMNS
-	local col = (slotIndex - 1) % columns
-	local row = math.floor((slotIndex - 1) / columns)
-	local spacing = WorldConfig.SLOT_SPACING
-	local center = plot.base.Position
-	local xOffset = (col - (columns - 1) / 2) * spacing
-	local zOffset = (row - 1) * spacing
-	local top = center.Y + WorldConfig.PLOT_SIZE.Y / 2 + WorldConfig.KEY_SIZE.Y / 2
-	return Vector3.new(center.X + xOffset, top, center.Z + zOffset)
-end
-
-local built = false
-
--- Idempotent: init darf buildWorld vor NpcPlotService rufen, PlotService.start
--- ruft es danach nochmal. Zweimal bauen wuerde doppelte Plots erzeugen.
 function PlotService.buildWorld()
 	if built then
 		return
@@ -72,7 +50,7 @@ function PlotService.buildWorld()
 		local base = Instance.new("Part")
 		base.Name = "Base"
 		base.Size = WorldConfig.PLOT_SIZE
-		base.Position = plotPosition(index)
+		base.Position = WorldLayout.plotPosition(index)
 		base.Anchored = true
 		base.TopSurface = Enum.SurfaceType.Smooth
 		base.BottomSurface = Enum.SurfaceType.Smooth
@@ -83,7 +61,7 @@ function PlotService.buildWorld()
 		local sign = Instance.new("Part")
 		sign.Name = "Sign"
 		sign.Size = Vector3.new(10, 1, 1)
-		sign.Position = base.Position + Vector3.new(0, 8, WorldConfig.PLOT_SIZE.Z / 2)
+		sign.Position = WorldLayout.signPosition(base.Position)
 		sign.Anchored = true
 		sign.CanCollide = false
 		sign.Transparency = 1
@@ -145,7 +123,7 @@ function PlotService.renderKeys(plot: Plot, keys: { { rarity: string, vorrat: nu
 		local part = Instance.new("Part")
 		part.Name = "Key" .. index
 		part.Size = WorldConfig.KEY_SIZE
-		part.Position = slotPosition(plot, index)
+		part.Position = WorldLayout.slotPosition(plot.base.Position, index)
 		part.Anchored = true
 		part.TopSurface = Enum.SurfaceType.Smooth
 		part.Material = Enum.Material.SmoothPlastic
