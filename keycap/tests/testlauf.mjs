@@ -497,12 +497,40 @@ test("Es gibt fuer jeden Steckplatz einen Tastenbuchstaben", function()
 	end
 end)
 
-test("Beleuchtung ist hell und tagsueber", function()
+test("Beleuchtung ist Nacht, nicht Tag", function()
 	local licht = World.LIGHTING
-	expect(licht.BRIGHTNESS >= 2, "zu dunkel: " .. licht.BRIGHTNESS)
-	expect(licht.CLOCK_TIME >= 8 and licht.CLOCK_TIME <= 17, "keine Tageszeit: " .. licht.CLOCK_TIME)
-	expect(licht.BLOOM_INTENSITY <= 0.6, "Bloom blendet: " .. licht.BLOOM_INTENSITY)
-	expect(licht.ATMOSPHERE_DENSITY < 0.5, "Dunst zu dicht: " .. licht.ATMOSPHERE_DENSITY)
+	-- Der ganze Entwurf haengt daran: die Szene wird vom Monitor und von
+	-- den Tasten beleuchtet, nicht von der Sonne.
+	expect(licht.BRIGHTNESS <= 1, "Sonne zu hell fuer eine Nachtszene: " .. licht.BRIGHTNESS)
+	expect(licht.CLOCK_TIME < 6 or licht.CLOCK_TIME > 20, "keine Nachtzeit: " .. licht.CLOCK_TIME)
+end)
+
+test("Bloom greift wirklich", function()
+	local licht = World.LIGHTING
+	-- Vorher stand die Schwelle bei 1.4 - oberhalb dessen, was eine normale
+	-- Flaeche erreicht. Deshalb sah man den Bloom nie, obwohl er an war.
+	expect(licht.BLOOM_THRESHOLD < 1, "Bloom-Schwelle zu hoch, er greift nie: " .. licht.BLOOM_THRESHOLD)
+	expect(licht.BLOOM_INTENSITY > 0.5, "Bloom zu schwach: " .. licht.BLOOM_INTENSITY)
+end)
+
+test("Der Dunst frisst den Kontrast nicht", function()
+	local licht = World.LIGHTING
+	-- In einer dunklen Szene ist dichter Dunst toedlich: er hebt die
+	-- Schwarzwerte an und alles wird grau.
+	expect(licht.ATMOSPHERE_DENSITY <= 0.2, "Dunst zu dicht fuer eine Nachtszene: " .. licht.ATMOSPHERE_DENSITY)
+	expect(licht.DOF_FAR_INTENSITY <= 0.4, "Tiefenunschaerfe zu stark fuers Handy")
+end)
+
+test("Der Monitor steht ausserhalb der Spielflaeche und zeigt darauf", function()
+	local licht = World.LIGHTING
+	local halbeReihe = World.PLOT_COUNT * World.PLOT_SPACING / 2
+	expect(math.abs(licht.MONITOR_POSITION.X) > halbeReihe,
+		"Monitor steht in der Plotreihe: X=" .. licht.MONITOR_POSITION.X)
+	-- Er muss die ganze Flaeche erreichen, sonst leuchtet nur eine Ecke.
+	expect(licht.MONITOR_LIGHT_RANGE >= halbeReihe, "Monitorlicht reicht nicht ueber die Karte")
+	expect(licht.MONITOR_LIGHT_BRIGHTNESS > 0, "Monitor leuchtet nicht")
+	-- Er steht links, sein Licht muss also nach rechts fallen.
+	expect(licht.MONITOR_POSITION.X < 0, "Monitor steht rechts, das Licht ist auf Face Right gesetzt")
 end)
 
 -- 14) Kontrast. Nachgerechnet statt geschaetzt: relative Leuchtdichte nach

@@ -84,23 +84,57 @@ local WorldConfig = {
 		"U", "I", "O", "P", "Z",
 	},
 
-	-- Beleuchtung: hell und freundlich, kein Daemmerlicht. [ENTSCHEIDUNG]
+	-- Beleuchtung: Schreibtisch bei Nacht. Die Szene wird vom Monitor am
+	-- Rand und von den Tasten beleuchtet, nicht von der Sonne. [ENTSCHEIDUNG]
 	LIGHTING = {
-		AMBIENT = Color3.fromRGB(118, 116, 112),
-		OUTDOOR_AMBIENT = Color3.fromRGB(162, 160, 152),
-		BRIGHTNESS = 2.4,
-		CLOCK_TIME = 14, -- fruehe Nachmittagssonne, kurze Schatten
-		GEOGRAPHIC_LATITUDE = 20,
-		ENVIRONMENT_DIFFUSE = 0.55,
-		ENVIRONMENT_SPECULAR = 0.35,
-		ATMOSPHERE_DENSITY = 0.26,
-		ATMOSPHERE_HAZE = 1.1,
-		ATMOSPHERE_GLARE = 0.1,
-		ATMOSPHERE_COLOR = Color3.fromRGB(238, 236, 228),
-		ATMOSPHERE_DECAY = Color3.fromRGB(190, 200, 214),
-		BLOOM_INTENSITY = 0.35, -- dezent: Gold und Neon sollen leuchten, nicht blenden
-		BLOOM_SIZE = 20,
-		BLOOM_THRESHOLD = 1.4,
+		AMBIENT = Color3.fromRGB(14, 15, 22), -- fast schwarz, leicht blaeulich
+		OUTDOOR_AMBIENT = Color3.fromRGB(20, 24, 36),
+		BRIGHTNESS = 0.6, -- Sonne fast aus
+		CLOCK_TIME = 0.5, -- kurz nach Mitternacht
+		GEOGRAPHIC_LATITUDE = 0,
+		ENVIRONMENT_DIFFUSE = 0.15,
+		ENVIRONMENT_SPECULAR = 0.9, -- Metall soll das Monitorlicht spiegeln
+		EXPOSURE_COMPENSATION = 0.35, -- hebt die dunklen Toene wieder an
+
+		-- Dunst duenn: dichter Dunst frisst in einer Nachtszene den Kontrast.
+		ATMOSPHERE_DENSITY = 0.12,
+		ATMOSPHERE_HAZE = 0.4,
+		ATMOSPHERE_GLARE = 0,
+		ATMOSPHERE_COLOR = Color3.fromRGB(28, 32, 46),
+		ATMOSPHERE_DECAY = Color3.fromRGB(12, 14, 24),
+
+		-- Bloom scharf. Vorher stand die Schwelle bei 1.4 und es gab zwei
+		-- Neon-Parts - deshalb sah man ihn nie. Unter 1 greift er auch bei
+		-- normal hellen Flaechen, die leuchtenden Tasten bekommen einen Hof.
+		BLOOM_INTENSITY = 1.1,
+		BLOOM_SIZE = 32,
+		BLOOM_THRESHOLD = 0.85,
+
+		-- Zwei Zahlen, grosse Wirkung: Saettigung hoch, Kontrast leicht hoch,
+		-- Farbstich ins Kuehle.
+		CC_BRIGHTNESS = 0,
+		CC_CONTRAST = 0.12,
+		CC_SATURATION = 0.22,
+		CC_TINT = Color3.fromRGB(226, 234, 255),
+
+		SUNRAYS_INTENSITY = 0.04, -- dezent, es ist Nacht
+		SUNRAYS_SPREAD = 0.6,
+
+		-- Tiefenunschaerfe sehr schwach. Zu viel kostet auf dem Handy.
+		DOF_FAR_INTENSITY = 0.28,
+		DOF_FOCUS_DISTANCE = 60,
+		DOF_IN_FOCUS_RADIUS = 140,
+		DOF_NEAR_INTENSITY = 0,
+
+		-- Der Monitor. Kein Objekt, sondern eine Lichtquelle: eine grosse,
+		-- schwach leuchtende Flaeche, die die Szene von einer Seite kalt
+		-- anleuchtet. Das ist der Trick, der die Nacht-Stimmung macht.
+		MONITOR_SIZE = Vector3.new(2, 320, 560),
+		MONITOR_POSITION = Vector3.new(-720, 170, -180),
+		MONITOR_COLOR = Color3.fromRGB(150, 180, 255),
+		MONITOR_LIGHT_BRIGHTNESS = 2.2,
+		MONITOR_LIGHT_RANGE = 900,
+		MONITOR_TRANSPARENCY = 0.15,
 	},
 
 	-- Part-Budget: obere Schranke fuer alles, was der Server baut.
