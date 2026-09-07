@@ -20,11 +20,20 @@ const modules = [
   ["WorldConfig", "src/shared/Config/WorldConfig.luau"],
   ["RateLimit", "src/shared/RateLimit.luau"],
   ["TutorialConfig", "src/shared/Config/TutorialConfig.luau"],
+  ["Theme", "src/shared/Theme.luau"],
 ];
 
 // Stubs fuer die Roblox-Globals, die die Shared-Module anfassen.
 let body = `
 local Vector3 = { new = function(x, y, z) return { X = x or 0, Y = y or 0, Z = z or 0 } end }
+local Color3 = {
+	fromRGB = function(r, g, b) return { R = r / 255, G = g / 255, B = b / 255, kind = "Color3" } end,
+	new = function(r, g, b) return { R = r, G = g, B = b, kind = "Color3" } end,
+}
+local UDim = { new = function(scale, offset) return { Scale = scale, Offset = offset } end }
+local Enum = setmetatable({}, { __index = function(_, class)
+	return setmetatable({}, { __index = function(_, item) return class .. "." .. item end })
+end })
 local __deps = {}
 `;
 for (const [name, path] of modules) {
@@ -37,6 +46,7 @@ local Logic = __deps["EconomyLogic"]
 local World = __deps["WorldConfig"]
 local RateLimit = __deps["RateLimit"]
 local Tutorial = __deps["TutorialConfig"]
+local Theme = __deps["Theme"]
 
 local results = {}
 local passed, failed = 0, 0
@@ -416,6 +426,139 @@ end)
 
 test("Der Abschlusstext existiert", function()
 	expect(type(Tutorial.DONE_TEXT) == "string" and #Tutorial.DONE_TEXT > 20, "kein Abschlusstext")
+end)
+
+-- 13) Design-System: das Theme muss vollstaendig sein, sonst faellt ein
+-- Controller im Spiel auf nil zurueck statt auf eine Farbe.
+test("Jede Seltenheit hat eine Farbe im Theme", function()
+	for _, name in Config.RARITY_ORDER do
+		expect(Theme.RARITY_COLORS[name] ~= nil, "keine Farbe fuer " .. name)
+	end
+end)
+
+test("Jeder Akzent hat eine dunklere Kante fuer den 3D-Knopf", function()
+	for _, name in { "GREEN", "BLUE", "GOLD", "RED" } do
+		expect(Theme[name] ~= nil, "Farbe fehlt: " .. name)
+		expect(Theme[name .. "_DARK"] ~= nil, "Kantenfarbe fehlt: " .. name .. "_DARK")
+	end
+	-- Textfarben sind eigene Rollen, nicht dieselben Werte wie die Kanten.
+	for _, name in { "GOLD", "GREEN", "RED" } do
+		expect(Theme[name .. "_TEXT"] ~= nil, "Textfarbe fehlt: " .. name .. "_TEXT")
+	end
+end)
+
+test("Abstands-Skala steigt und faengt klein an", function()
+	local reihe = { Theme.SPACE.XS, Theme.SPACE.S, Theme.SPACE.M, Theme.SPACE.L, Theme.SPACE.XL, Theme.SPACE.XXL }
+	local vorher = 0
+	for index, wert in reihe do
+		expect(type(wert) == "number", "Abstand " .. index .. " ist keine Zahl")
+		expect(wert > vorher, "Abstands-Skala steigt nicht bei " .. index)
+		vorher = wert
+	end
+	expect(Theme.SPACE.XS <= 4, "kleinster Abstand zu gross")
+end)
+
+test("Schriftgroessen steigen und bleiben lesbar", function()
+	local reihe = { Theme.TEXT_SIZE.SMALL, Theme.TEXT_SIZE.BODY, Theme.TEXT_SIZE.LEAD, Theme.TEXT_SIZE.TITLE, Theme.TEXT_SIZE.HERO }
+	local vorher = 0
+	for index, wert in reihe do
+		expect(wert > vorher, "Schriftskala steigt nicht bei " .. index)
+		vorher = wert
+	end
+	-- Unter 14 Pixeln liest ein Kind auf dem Handy nichts mehr, und die
+	-- kleinste Groesse wird zusaetzlich von SCALE_MIN heruntergerechnet.
+	expect(Theme.TEXT_SIZE.SMALL * Theme.SCALE_MIN >= 11, "kleinste Schrift wird unlesbar")
+end)
+
+test("Touch-Ziele sind gross genug, auch heruntergerechnet", function()
+	expect(Theme.TOUCH_MIN >= 44, "Touch-Ziel unter 44 Pixeln: " .. Theme.TOUCH_MIN)
+	expect(Theme.TOUCH_MIN * Theme.SCALE_MIN >= 38, "auf dem Handy zu klein")
+end)
+
+test("UIScale verkleinert nur, es vergroessert nicht", function()
+	expect(Theme.SCALE_MAX == 1, "HUD wird auf grossen Bildschirmen aufgeblasen")
+	expect(Theme.SCALE_MIN < Theme.SCALE_MAX, "Skala hat keinen Spielraum")
+	expect(Theme.SCALE_MIN > 0.5, "HUD wird auf dem Handy unlesbar klein")
+	expect(Theme.SCALE_REFERENCE_WIDTH > 0, "keine Referenzbreite")
+end)
+
+test("Es gibt fuer jeden Steckplatz einen Tastenbuchstaben", function()
+	expect(#World.KEY_LEGENDS >= Config.MAX_KEY_SLOTS,
+		#World.KEY_LEGENDS .. " Buchstaben fuer " .. Config.MAX_KEY_SLOTS .. " Steckplaetze")
+	local gesehen = {}
+	for _, letter in World.KEY_LEGENDS do
+		expect(#letter >= 1 and #letter <= 2, "Beschriftung passt nicht auf eine Taste: " .. letter)
+		expect(gesehen[letter] == nil, "doppelter Buchstabe: " .. letter)
+		gesehen[letter] = true
+	end
+end)
+
+test("Beleuchtung ist hell und tagsueber", function()
+	local licht = World.LIGHTING
+	expect(licht.BRIGHTNESS >= 2, "zu dunkel: " .. licht.BRIGHTNESS)
+	expect(licht.CLOCK_TIME >= 8 and licht.CLOCK_TIME <= 17, "keine Tageszeit: " .. licht.CLOCK_TIME)
+	expect(licht.BLOOM_INTENSITY <= 0.6, "Bloom blendet: " .. licht.BLOOM_INTENSITY)
+	expect(licht.ATMOSPHERE_DENSITY < 0.5, "Dunst zu dicht: " .. licht.ATMOSPHERE_DENSITY)
+end)
+
+-- 14) Kontrast. Nachgerechnet statt geschaetzt: relative Leuchtdichte nach
+-- WCAG, jede Text-auf-Flaeche-Kombination muss 4,5:1 schaffen. Zielgruppe
+-- sind Kinder auf Handys, oft draussen im Hellen.
+test("Jede Schrift-auf-Flaeche-Kombination schafft 4,5:1", function()
+	local function channel(value)
+		if value <= 0.03928 then
+			return value / 12.92
+		end
+		return ((value + 0.055) / 1.055) ^ 2.4
+	end
+	local function luminance(color)
+		return 0.2126 * channel(color.R) + 0.7152 * channel(color.G) + 0.0722 * channel(color.B)
+	end
+	local function contrast(front, back)
+		local a, b = luminance(front), luminance(back)
+		if a < b then
+			a, b = b, a
+		end
+		return (a + 0.05) / (b + 0.05)
+	end
+
+	local kombinationen = {
+		{ "Text auf Panel", Theme.TEXT, Theme.PANEL },
+		{ "Nebentext auf Panel", Theme.TEXT_MUTED, Theme.PANEL },
+		{ "Warnung auf Panel", Theme.RED_TEXT, Theme.PANEL },
+		{ "Wins auf Panel", Theme.GOLD_TEXT, Theme.PANEL },
+		{ "Erfolg auf Panel", Theme.GREEN_TEXT, Theme.PANEL },
+		{ "Knopfschrift auf Gruen", Theme.TEXT, Theme.GREEN },
+		{ "Knopfschrift auf Blau", Theme.TEXT, Theme.BLUE },
+		{ "Knopfschrift auf Gold", Theme.TEXT, Theme.GOLD },
+		{ "Knopfschrift auf Panel", Theme.TEXT, Theme.PANEL },
+	}
+	for _, name in Config.RARITY_ORDER do
+		table.insert(kombinationen, { "Knopfschrift auf " .. name, Theme.TEXT, Theme.RARITY_COLORS[name] })
+	end
+
+	for _, eintrag in kombinationen do
+		local wert = contrast(eintrag[2], eintrag[3])
+		expect(wert >= 4.5, ("%s nur %.2f:1"):format(eintrag[1], wert))
+	end
+end)
+
+test("Jede Knopfkante ist dunkler als ihre Flaeche", function()
+	local function channel(value)
+		if value <= 0.03928 then
+			return value / 12.92
+		end
+		return ((value + 0.055) / 1.055) ^ 2.4
+	end
+	local function luminance(color)
+		return 0.2126 * channel(color.R) + 0.7152 * channel(color.G) + 0.0722 * channel(color.B)
+	end
+	for _, name in { "GREEN", "BLUE", "GOLD", "RED" } do
+		local hell = luminance(Theme[name])
+		local dunkel = luminance(Theme[name .. "_DARK"])
+		expect(dunkel < hell, name .. "_DARK ist nicht dunkler - der 3D-Effekt kippt")
+	end
+	expect(luminance(Theme.PANEL_EDGE) < luminance(Theme.PANEL), "PANEL_EDGE ist nicht dunkler")
 end)
 
 table.insert(results, "")

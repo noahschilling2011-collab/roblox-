@@ -170,6 +170,23 @@ function PlotService.renderKeys(plot: Plot, keys: { { rarity: string, vorrat: nu
 		label.Parent = billboard
 		billboard.Parent = part
 
+		-- Buchstabe auf der Oberseite: macht aus dem Wuerfel eine Taste.
+		local legend = Instance.new("SurfaceGui")
+		legend.Name = "Legend"
+		legend.Face = Enum.NormalId.Top
+		legend.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+		legend.PixelsPerStud = 50
+
+		local letter = Instance.new("TextLabel")
+		letter.Size = UDim2.new(1, 0, 1, 0)
+		letter.BackgroundTransparency = 1
+		letter.Font = Theme.FONT
+		letter.TextScaled = true
+		letter.TextColor3 = Theme.TEXT
+		letter.Text = WorldConfig.KEY_LEGENDS[index] or "?"
+		letter.Parent = legend
+		legend.Parent = part
+
 		local prompt = Instance.new("ProximityPrompt")
 		prompt.Name = "Steal"
 		prompt.ActionText = "Klauen"

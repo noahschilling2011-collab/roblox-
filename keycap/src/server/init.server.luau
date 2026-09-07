@@ -15,6 +15,7 @@ local WorldConfig = require(Shared:WaitForChild("Config"):WaitForChild("WorldCon
 local Services = script:WaitForChild("Services")
 
 local DataService = require(Services.DataService)
+local LightingService = require(Services.LightingService)
 local PlotService = require(Services.PlotService)
 local NpcPlotService = require(Services.NpcPlotService)
 local ProductionService = require(Services.ProductionService)
@@ -30,6 +31,7 @@ local StateService = require(Services.StateService)
 print("[KEYCAP] Server startet ...")
 
 DataService.start()
+LightingService.start()
 PlotService.buildWorld()
 NpcPlotService.start()
 PlotService.start()

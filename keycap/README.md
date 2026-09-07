@@ -10,8 +10,8 @@ Klau-Ablauf, Datenschema, UI — ist **von mir entschieden**, nicht aus deinem K
 Im Code steht an jedem Wert, woher er kommt: `[KONZEPT]`, `[GEMESSEN]`, `[ABGELEITET]`,
 `[ENTSCHEIDUNG]`.
 
-**Nichts davon lief je in Roblox.** Geprüft sind: Syntax aller 23 Dateien im echten
-Luau-Compiler, und 45 Logik-/Balancing-Tests in einer echten Luau-VM. Nicht geprüft ist
+**Nichts davon lief je in Roblox.** Geprüft sind: Syntax aller 25 Dateien im echten
+Luau-Compiler, und 55 Logik-/Balancing-/Design-Tests in einer echten Luau-VM. Nicht geprüft ist
 jeder Roblox-API-Aufruf zur Laufzeit — Instanzen, Prompts, Welds, DataStore, Replikation.
 Der erste Studio-Start wird Fehler zeigen.
 
@@ -24,7 +24,8 @@ Der erste Studio-Start wird Fehler zeigen.
 | `shared/EconomyLogic` | reine Rechenlogik, läuft in Server und Test identisch |
 | `shared/Remotes` | einziger Ort, an dem RemoteEvents entstehen |
 | `shared/RateLimit` | Token-Eimer pro Spieler und Kanal |
-| `shared/Theme` | Farben und Font, nichts wird in Controllern hardcodiert |
+| `shared/Theme` | Design-System: Farben, Schrift, Abstände, Größen |
+| `client/UiKit` | Panel, Text, Knopf, Stack, UIScale — alle Controller bauen damit |
 | `server/DataService` | Profil, **Session-Lock**, Autosave 45 s, `BindToClose` |
 | `server/PlotService` | baut Plots, vergibt sie, hält Tasten-Parts synchron |
 | `server/ProductionService` | jede Taste produziert ihren eigenen Vorrat |
@@ -35,6 +36,7 @@ Der erste Studio-Start wird Fehler zeigen.
 | `server/NpcPlotService` | NPC-Plots als Klau-Ziele auf leeren Servern |
 | `server/RunTimerService` | misst Rundlaufzeiten und gibt die Config-Zeile aus |
 | `server/TutorialService` | vier Onboarding-Schritte, Fortschritt im Profil |
+| `server/LightingService` | helles, freundliches Licht statt Studio-Standard |
 | `server/ShopService` | Tasten und Steckplätze kaufen |
 | `server/StateService` | schickt den Zustand an die Clients |
 | `client/HudController` | Vorrat, Rate, Wins, Schild-Knopf |
@@ -140,7 +142,7 @@ npm install
 npm test
 ```
 
-45 Tests in einer echten Luau-VM (WASM) plus Syntaxprüfung aller `src/`-Dateien im
+55 Tests in einer echten Luau-VM (WASM) plus Syntaxprüfung aller `src/`-Dateien im
 echten Luau-Compiler. Exit-Code 0 = alles grün. Geprüft werden unter anderem die Zahlen
 aus der Bewertung: Gates bei 700 / 1.700 / 2.950 Vorrat, Deckel bei 4.200, Stützwerte
 90R / 150R / 174R — und dass jedes Tor vor seinem Pad steht und alle Steckplätze auf
@@ -156,6 +158,7 @@ den Plot passen.
 ```
 [KEYCAP] Server startet ...
 [KEYCAP] DataService bereit (Schema 2)
+[KEYCAP] LightingService: Helligkeit 2.4, Uhrzeit 14
 [KEYCAP] NpcPlotService: 3 NPC-Plots, Vorrat gedeckelt bei 1200
 [KEYCAP] PlotService: 12 Plots gebaut
 [KEYCAP] TutorialService: 4 Schritte, 50 Wins Belohnung
@@ -173,8 +176,9 @@ den Plot passen.
 ```
 
 4. Erster Sichtcheck: du stehst auf einem creme-weißen Plot, zwei graue Tasten stehen
-   drauf, links oben zählt „Vorrat" hoch, unten steht die Tutorial-Karte mit
-   „Schritt 1: Deine Tasten sammeln von selbst …". Nach etwa 6 Minuten öffnet sich Stage 1.
+   drauf — **mit A und S auf der Oberseite** —, links oben zählt „Vorrat" hoch, unten
+   steht die Tutorial-Karte mit „Schritt 1: Deine Tasten sammeln von selbst …".
+   Drück den Laden-Knopf: er muss sichtbar auf seine Unterkante federn. Nach etwa 6 Minuten öffnet sich Stage 1.
    Zum Testen `START_KEY_SLOTS`-Tasten vorab geben oder `Common.vorratPerSecond`
    kurzzeitig hochsetzen — sonst dauert der erste Durchlauf zu lang zum Debuggen.
 5. Klauen testen: du brauchst dafür **keinen** zweiten Spieler mehr — lauf ans Ende

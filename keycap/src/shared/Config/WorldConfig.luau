@@ -49,6 +49,35 @@ local WorldConfig = {
 	NPC_PLOT_COUNT = 3, -- belegen die letzten Plots der Reihe
 	NPC_NAMES = { "Alte Tastatur", "Fundbuero", "Schrottplatz" },
 
+	-- Tastenbeschriftung. Eine Taste ohne Buchstabe ist ein Wuerfel - der
+	-- Buchstabe ist die ganze optische Identitaet des Spiels. Reihenfolge
+	-- wie auf einer Tastatur, damit ein voller Plot lesbar wirkt.
+	KEY_LEGENDS = {
+		"A", "S", "D", "F", "G",
+		"H", "J", "K", "L", "Q",
+		"W", "E", "R", "T", "Y",
+		"U", "I", "O", "P", "Z",
+	},
+
+	-- Beleuchtung: hell und freundlich, kein Daemmerlicht. [ENTSCHEIDUNG]
+	LIGHTING = {
+		AMBIENT = Color3.fromRGB(118, 116, 112),
+		OUTDOOR_AMBIENT = Color3.fromRGB(162, 160, 152),
+		BRIGHTNESS = 2.4,
+		CLOCK_TIME = 14, -- fruehe Nachmittagssonne, kurze Schatten
+		GEOGRAPHIC_LATITUDE = 20,
+		ENVIRONMENT_DIFFUSE = 0.55,
+		ENVIRONMENT_SPECULAR = 0.35,
+		ATMOSPHERE_DENSITY = 0.26,
+		ATMOSPHERE_HAZE = 1.1,
+		ATMOSPHERE_GLARE = 0.1,
+		ATMOSPHERE_COLOR = Color3.fromRGB(238, 236, 228),
+		ATMOSPHERE_DECAY = Color3.fromRGB(190, 200, 214),
+		BLOOM_INTENSITY = 0.35, -- dezent: Gold und Neon sollen leuchten, nicht blenden
+		BLOOM_SIZE = 20,
+		BLOOM_THRESHOLD = 1.4,
+	},
+
 	-- Part-Budget: obere Schranke fuer alles, was der Server baut.
 	-- Auf dem Handy ist die Zahl gleichzeitig sichtbarer ProximityPrompts
 	-- oft das engere Limit als die reine Part-Zahl. UNGEPRUEFT - nicht gemessen.
