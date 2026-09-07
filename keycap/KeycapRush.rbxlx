@@ -1,0 +1,3151 @@
+<roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4">
+<Item class="Workspace" referent="KC31">
+<Properties>
+<string name="Name">Workspace</string>
+</Properties>
+<Item class="SpawnLocation" referent="KC30">
+<Properties>
+<string name="Name">Start</string>
+<bool name="Anchored">true</bool>
+<Vector3 name="size"><X>16</X><Y>1</Y><Z>16</Z></Vector3>
+<CoordinateFrame name="CFrame"><X>0</X><Y>9.5</Y><Z>36</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
+<Color3uint8 name="Color3uint8">4294962611</Color3uint8>
+<token name="Material">1312</token>
+</Properties>
+</Item>
+</Item>
+<Item class="ReplicatedStorage" referent="KC32">
+<Properties>
+<string name="Name">ReplicatedStorage</string>
+</Properties>
+<Item class="Folder" referent="KC9">
+<Properties>
+<string name="Name">Shared</string>
+</Properties>
+<Item class="Folder" referent="KC4">
+<Properties>
+<string name="Name">Config</string>
+</Properties>
+<Item class="ModuleScript" referent="KC1">
+<Properties>
+<string name="Name">EconomyConfig</string>
+<ProtectedString name="Source">--!strict
+-- Balancing-Canon fuer KEYCAP RUSH. Werte NUR hier aendern, nie in Services.
+--
+-- Herkunft der Werte:
+--   [KONZEPT]  = steht so im KEYCAP-RUSH-Konzeptdokument (ueber die Bewertung zitiert)
+--   [GEMESSEN] = muss in Studio gemessen werden, Platzhalter bis dahin
+--   [ABGELEITET] = wird in EconomyLogic aus den obigen berechnet, nicht geraten
+--
+-- Die Bewertung (docs/KEYCAP_RUSH_BEWERTUNG.md) hat zwei Luecken benannt:
+-- Tastenpreis und Produktionsrate pro Seltenheit. Beide stehen hier.
+
+local EconomyConfig = {
+	-- ---------------------------------------------------------------
+	-- Speed [KONZEPT]
+	-- WalkSpeed = BASE + min(vorrat * SPEED_PER_VORRAT, MAX_SPEED_BONUS)
+	-- ---------------------------------------------------------------
+	BASE_WALK_SPEED = 16,
+	SPEED_PER_VORRAT = 0.02,
+	MAX_SPEED_BONUS = 84, -- Deckel bei WalkSpeed 100 (Vorrat 4200)
+	CARRY_SPEED_FACTOR = 0.6, -- geklaute Taste tragen: 40% langsamer [KONZEPT]
+
+	-- ---------------------------------------------------------------
+	-- Stages [KONZEPT]
+	-- ---------------------------------------------------------------
+	STAGE_GATES = { 30, 50, 75 }, -- Mindest-WalkSpeed pro Stage
+
+	-- Rundlaufzeit Plot -&gt; Cash-Out-Pad -&gt; Plot, in Sekunden. [GEMESSEN]
+	-- ACHTUNG: Das sind Schaetzwerte. Sobald der Parcours in Studio steht,
+	-- einmal mit Stoppuhr messen und hier eintragen - ALLE Auszahlungs-
+	-- faktoren und die Schilddauer haengen daran und rechnen sich neu.
+	STAGE_RUN_SECONDS = { 40, 80, 140 },
+
+	-- ---------------------------------------------------------------
+	-- Auszahlung [ABGELEITET aus STAGE_RUN_SECONDS]
+	-- Wins = floor(vorrat * faktor). Die Faktoren stehen NICHT hier als
+	-- feste Zahlen, weil sie sonst nicht zu den Laufzeiten passen.
+	-- Siehe EconomyLogic.payoutFactors().
+	-- ---------------------------------------------------------------
+	BASE_PAYOUT_FACTOR = 0.02, -- Faktor von Stage 1, Anker der Ableitung
+	REFERENCE_HOLD_SECONDS = 300, -- typische Sammeldauer zwischen zwei Auszahlungen
+	DISTANCE_PREMIUM = 1.12, -- +12% Bonus pro Stage, damit der Umweg etwas bringt
+
+	-- ---------------------------------------------------------------
+	-- Tasten: Produktion und Preis [KONZEPT-LUECKE, hier geschlossen]
+	-- vorratPerSecond = Produktion. price = Kaufpreis in Wins.
+	-- Preis pro Produktionseinheit steigt mit der Seltenheit - dadurch ist
+	-- nicht der Preis der Engpass, sondern die Zahl der Steckplaetze.
+	-- ---------------------------------------------------------------
+	RARITY_ORDER = { "Common", "Uncommon", "Rare", "Epic", "Legendary" },
+	RARITIES = {
+		Common = { vorratPerSecond = 1, price = 10 },
+		Uncommon = { vorratPerSecond = 3, price = 40 },
+		Rare = { vorratPerSecond = 9, price = 150 },
+		Epic = { vorratPerSecond = 30, price = 600 },
+		Legendary = { vorratPerSecond = 100, price = 2500 },
+	},
+
+	START_KEY_SLOTS = 10, -- Steckplaetze auf dem Plot beim Start
+	MAX_KEY_SLOTS = 20,
+	SLOT_PRICE_BASE = 500, -- Preis fuer den 11. Slot
+	SLOT_PRICE_GROWTH = 1.6, -- jeder weitere Slot kostet 1.6x
+
+	-- ---------------------------------------------------------------
+	-- Diebstahl
+	-- Aenderung aus Abschnitt 6 der Bewertung: jede Taste haelt ihren
+	-- EIGENEN Vorrat, der Plot-Vorrat ist die Summe. Wer eine Taste klaut,
+	-- klaut ihren Vorrat mit. Damit ist Horten nicht mehr gratis.
+	-- ---------------------------------------------------------------
+	STEAL_VORRAT_SHARE = 0.5, -- Anteil des Tastenvorrats, den der Dieb bekommt
+	STEAL_VORRAT_CAP = 5000, -- Rest verfaellt - deckelt den Gluecksgriff
+	STEAL_PAIR_COOLDOWN_SECONDS = 90, -- pro Dieb-Opfer-Paar [KONZEPT]
+	PRESENCE_HOLD_FACTOR = 2, -- Besitzer zuhause: Klau-Dauer verdoppelt [KONZEPT]
+
+	-- ---------------------------------------------------------------
+	-- Schild [ABGELEITET aus STAGE_RUN_SECONDS]
+	-- Das Konzept sagt 45 s Schutz / 180 s Abklingzeit. Bei einem
+	-- Stage-3-Rundlauf von 140 s schuetzt das genau die Situation nicht,
+	-- fuer die es da ist. Siehe EconomyLogic.shieldWindow().
+	-- ---------------------------------------------------------------
+	SHIELD_COOLDOWN_RATIO = 2, -- Abklingzeit = 2x Schilddauer -&gt; jeder 2. Lauf geschuetzt
+
+	-- ---------------------------------------------------------------
+	-- Interaktion [ENTSCHEIDUNG, nicht aus dem Konzept]
+	-- ---------------------------------------------------------------
+	STEAL_HOLD_SECONDS = 4, -- Halten am Klau-Prompt (x2 wenn Besitzer zuhause)
+	CASHOUT_HOLD_SECONDS = 0.6, -- kurzes Halten statt Beruehrung [KONZEPT]
+	CARRY_SECONDS = 8, -- so lange traegt man die geklaute Taste sichtbar
+	SHOP_HOLD_SECONDS = 0.3,
+
+	-- Rate-Limit pro Spieler und Remote (Anfragen pro Sekunde).
+	REMOTE_RATE_LIMIT = 6,
+
+	-- Vorrat wird beim Verlassen NICHT gespeichert. Sonst waere Horten
+	-- offline risikofrei - genau das Loch, das die per-Taste-Aenderung
+	-- schliessen soll. Gespeichert werden Wins, Slots und Tasten.
+	PERSIST_VORRAT = false,
+
+	-- ---------------------------------------------------------------
+	-- NPC-Plots [ENTSCHEIDUNG]
+	-- Absichtlich schwach: sie sollen den leeren Server ueberbruecken,
+	-- nicht die beste Einnahmequelle sein. Deshalb nur die zwei untersten
+	-- Seltenheiten, gedeckelter Vorrat und eine lange Abklingzeit.
+	-- ---------------------------------------------------------------
+	NPC_KEY_COUNT = 4,
+	NPC_RARITIES = { "Common", "Common", "Uncommon", "Common" },
+	NPC_VORRAT_CAP = 1200, -- gedeckelt: kein Horten fuer den Dieb
+	NPC_RESPAWN_SECONDS = 60, -- geklaute NPC-Taste kommt danach wieder
+	NPC_PAIR_COOLDOWN_SECONDS = 45, -- eigene Abklingzeit pro Dieb und NPC-Plot
+}
+
+return EconomyConfig
+</ProtectedString>
+</Properties>
+</Item>
+<Item class="ModuleScript" referent="KC2">
+<Properties>
+<string name="Name">TutorialConfig</string>
+<ProtectedString name="Source">--!strict
+-- Onboarding-Schritte. Reihenfolge = Spielreihenfolge.
+--
+-- Ziel: ein neuer Spieler versteht in unter einer Minute, was zu tun ist.
+-- Jeder Schritt erklaert GENAU EINE Sache und wird durch eine Handlung
+-- abgeschlossen, nicht durch Wegklicken - sonst lernt niemand etwas.
+--
+-- `event` = was den Schritt abschliesst. "vorrat" ist der Sonderfall: er
+-- wird nicht gemeldet, sondern vom Server gegen die Speed-Kurve geprueft.
+
+local TutorialConfig = {
+	STEPS = {
+		{
+			id = "sammeln",
+			event = "vorrat",
+			requiresVorratForStage = 1, -- genug fuer das erste Tor
+			text = "Deine Tasten sammeln von selbst. Je mehr Vorrat, desto schneller laeufst du.",
+		},
+		{
+			id = "auszahlen",
+			event = "cashout",
+			text = "Du bist schnell genug! Lauf zum goldenen Pad und halte die Taste zum Auszahlen.",
+		},
+		{
+			id = "kaufen",
+			event = "buy",
+			text = "Wins gibt es im Laden. Kauf dir eine zweite Taste - mehr Tasten, mehr Vorrat.",
+		},
+		{
+			id = "klauen",
+			event = "steal",
+			text = "Am Ende der Reihe stehen fremde Plots. Halt dort die Klau-Taste und nimm dir eine.",
+		},
+	},
+
+	DONE_TEXT = "Fertig! Jetzt du: sammeln, auszahlen, aufruesten - und aufpassen, wer bei dir klaut.",
+	-- Belohnung fuers Durchspielen: reicht fuer ein paar Common-Tasten,
+	-- macht aber niemanden reich.
+	REWARD_WINS = 50,
+}
+
+return TutorialConfig
+</ProtectedString>
+</Properties>
+</Item>
+<Item class="ModuleScript" referent="KC3">
+<Properties>
+<string name="Name">WorldConfig</string>
+<ProtectedString name="Source">--!strict
+-- Aufbau der Karte. Alles wird zur Laufzeit aus Parts gebaut, damit die
+-- Place-Datei leer bleiben kann. Keine Magic Numbers in den Services.
+
+local WorldConfig = {
+	-- Plots: eine Reihe nebeneinander, je Spieler einer.
+	PLOT_COUNT = 12, -- Obergrenze fuer die Servergroesse
+	PLOT_SIZE = Vector3.new(48, 2, 48),
+	PLOT_SPACING = 64, -- Mittenabstand zweier Plots
+	PLOT_ORIGIN = Vector3.new(0, 8, 0), -- Mitte des ersten Plots
+
+	-- Steckplaetze auf dem Plot: Raster, auf dem die Tasten stehen.
+	SLOT_COLUMNS = 5,
+	SLOT_SPACING = 9,
+	KEY_SIZE = Vector3.new(6, 3, 6),
+
+	-- "Zuhause": Radius um die Plotmitte, in dem der Besitzer als anwesend
+	-- gilt (verdoppelt die Klau-Dauer).
+	PRESENCE_RADIUS = 34,
+
+	-- Parcours: drei Stages, jede weiter weg. Die Cash-Out-Pads stehen am
+	-- Ende der jeweiligen Stage.
+	STAGE_PAD_POSITIONS = {
+		Vector3.new(0, 8, -140),
+		Vector3.new(0, 8, -300),
+		Vector3.new(0, 8, -520),
+	},
+	STAGE_PAD_SIZE = Vector3.new(24, 2, 24),
+
+	-- Speed-Tore: wer langsamer ist, kommt nicht durch.
+	STAGE_GATE_POSITIONS = {
+		Vector3.new(0, 12, -60),
+		Vector3.new(0, 12, -210),
+		Vector3.new(0, 12, -400),
+	},
+	STAGE_GATE_SIZE = Vector3.new(40, 12, 2),
+
+	-- Laufwege. Ohne die faellt man ins Leere: zwischen zwei Plots liegen
+	-- PLOT_SPACING - PLOT_SIZE.X = 16 Studs Luecke, und zwischen Plotreihe
+	-- und Stage 1 war ueberhaupt nichts.
+	PATH_WIDTH = 40, -- Breite des Wegs zu den Stages
+	PROMENADE_DEPTH = 24, -- Streifen vor der Plotreihe, verbindet alle Plots
+	PATH_MARGIN = 12, -- wie weit der Weg ueber das letzte Pad hinausgeht
+
+	-- Wie oft der Server den Zustand an die Clients schickt.
+	STATE_PUSH_INTERVAL = 0.5,
+
+	-- NPC-Plots [ENTSCHEIDUNG]
+	-- Die Bewertung: "Der Loop braucht Mitspieler und du hast keine."
+	-- Auf einem leeren Server waere KEYCAP RUSH ein Farm-Spiel. NPC-Plots
+	-- sind immer da und immer beklaubar - sie fuellen die Luecke, ohne den
+	-- Wettbewerb zwischen echten Spielern zu ersetzen.
+	NPC_PLOT_COUNT = 3, -- belegen die letzten Plots der Reihe
+	NPC_NAMES = { "Alte Tastatur", "Fundbuero", "Schrottplatz" },
+
+	-- Tastenbeschriftung. Eine Taste ohne Buchstabe ist ein Wuerfel - der
+	-- Buchstabe ist die ganze optische Identitaet des Spiels. Reihenfolge
+	-- wie auf einer Tastatur, damit ein voller Plot lesbar wirkt.
+	KEY_LEGENDS = {
+		"A", "S", "D", "F", "G",
+		"H", "J", "K", "L", "Q",
+		"W", "E", "R", "T", "Y",
+		"U", "I", "O", "P", "Z",
+	},
+
+	-- Beleuchtung: hell und freundlich, kein Daemmerlicht. [ENTSCHEIDUNG]
+	LIGHTING = {
+		AMBIENT = Color3.fromRGB(118, 116, 112),
+		OUTDOOR_AMBIENT = Color3.fromRGB(162, 160, 152),
+		BRIGHTNESS = 2.4,
+		CLOCK_TIME = 14, -- fruehe Nachmittagssonne, kurze Schatten
+		GEOGRAPHIC_LATITUDE = 20,
+		ENVIRONMENT_DIFFUSE = 0.55,
+		ENVIRONMENT_SPECULAR = 0.35,
+		ATMOSPHERE_DENSITY = 0.26,
+		ATMOSPHERE_HAZE = 1.1,
+		ATMOSPHERE_GLARE = 0.1,
+		ATMOSPHERE_COLOR = Color3.fromRGB(238, 236, 228),
+		ATMOSPHERE_DECAY = Color3.fromRGB(190, 200, 214),
+		BLOOM_INTENSITY = 0.35, -- dezent: Gold und Neon sollen leuchten, nicht blenden
+		BLOOM_SIZE = 20,
+		BLOOM_THRESHOLD = 1.4,
+	},
+
+	-- Part-Budget: obere Schranke fuer alles, was der Server baut.
+	-- Auf dem Handy ist die Zahl gleichzeitig sichtbarer ProximityPrompts
+	-- oft das engere Limit als die reine Part-Zahl. UNGEPRUEFT - nicht gemessen.
+	PART_BUDGET = 3000,
+}
+
+return WorldConfig
+</ProtectedString>
+</Properties>
+</Item>
+</Item>
+<Item class="ModuleScript" referent="KC5">
+<Properties>
+<string name="Name">EconomyLogic</string>
+<ProtectedString name="Source">--!strict
+-- Reine Rechenlogik der KEYCAP-RUSH-Oekonomie. Kein Roblox-API, keine
+-- Instanzen - damit laeuft dieses Modul in der Test-VM (keycap/tests) und
+-- auf dem Server dieselbe Rechnung. Der Client bekommt nur Ergebnisse.
+
+local EconomyConfig = require(script.Parent.Config.EconomyConfig)
+
+local EconomyLogic = {}
+
+-- ---------------------------------------------------------------------
+-- Speed
+-- ---------------------------------------------------------------------
+
+function EconomyLogic.walkSpeed(vorrat: number): number
+	local bonus = math.min(vorrat * EconomyConfig.SPEED_PER_VORRAT, EconomyConfig.MAX_SPEED_BONUS)
+	return EconomyConfig.BASE_WALK_SPEED + bonus
+end
+
+function EconomyLogic.carryWalkSpeed(vorrat: number): number
+	return EconomyLogic.walkSpeed(vorrat) * EconomyConfig.CARRY_SPEED_FACTOR
+end
+
+-- Umkehrung: wie viel Vorrat braucht es fuer diese WalkSpeed?
+function EconomyLogic.vorratForSpeed(speed: number): number
+	local bonus = speed - EconomyConfig.BASE_WALK_SPEED
+	if bonus &lt;= 0 then
+		return 0
+	end
+	return bonus / EconomyConfig.SPEED_PER_VORRAT
+end
+
+function EconomyLogic.vorratForStage(stageIndex: number): number
+	local gate = EconomyConfig.STAGE_GATES[stageIndex]
+	assert(gate ~= nil, "unbekannte Stage: " .. tostring(stageIndex))
+	return EconomyLogic.vorratForSpeed(gate)
+end
+
+function EconomyLogic.canEnterStage(vorrat: number, stageIndex: number): boolean
+	local gate = EconomyConfig.STAGE_GATES[stageIndex]
+	if gate == nil then
+		return false
+	end
+	return EconomyLogic.walkSpeed(vorrat) &gt;= gate
+end
+
+-- ---------------------------------------------------------------------
+-- Auszahlung
+--
+-- Die Faktoren werden aus den Rundlaufzeiten abgeleitet, nicht gesetzt.
+-- Grundgedanke: Wins/h an Pad i sind f_i * R * T / (T + t_i) * 3600.
+-- Waeren alle Pads gleich gut, gaelte f_i proportional zu (T + t_i) -
+-- dann entscheidet nur noch das Risiko. Genau das will das Design, also
+-- nehmen wir diese Gleichstellung und legen pro Stage einen kleinen
+-- Bonus (DISTANCE_PREMIUM) drauf, damit der Umweg sich lohnt, aber
+-- nicht dominiert.
+-- ---------------------------------------------------------------------
+
+function EconomyLogic.payoutFactors(): { number }
+	local runs = EconomyConfig.STAGE_RUN_SECONDS
+	local hold = EconomyConfig.REFERENCE_HOLD_SECONDS
+	local base = EconomyConfig.BASE_PAYOUT_FACTOR
+	local premium = EconomyConfig.DISTANCE_PREMIUM
+
+	local factors = {}
+	for i = 1, #runs do
+		local equalised = (hold + runs[i]) / (hold + runs[1])
+		factors[i] = base * equalised * premium ^ (i - 1)
+	end
+	return factors
+end
+
+function EconomyLogic.payout(vorrat: number, stageIndex: number): number
+	local factor = EconomyLogic.payoutFactors()[stageIndex]
+	assert(factor ~= nil, "unbekannte Stage: " .. tostring(stageIndex))
+	return math.floor(vorrat * factor)
+end
+
+-- Wins pro Stunde bei Produktionsrate `rate`, wenn alle `holdSeconds`
+-- an Pad `stageIndex` ausgezahlt wird. Das ist die Formel aus Abschnitt 2
+-- der Bewertung - sie steigt streng monoton in holdSeconds und laeuft in
+-- eine Asymptote, hat also KEIN Optimum bei 10 Minuten.
+function EconomyLogic.winsPerHour(rate: number, holdSeconds: number, stageIndex: number): number
+	local run = EconomyConfig.STAGE_RUN_SECONDS[stageIndex]
+	local factor = EconomyLogic.payoutFactors()[stageIndex]
+	assert(run ~= nil and factor ~= nil, "unbekannte Stage: " .. tostring(stageIndex))
+	return factor * rate * holdSeconds / (holdSeconds + run) * 3600
+end
+
+-- ---------------------------------------------------------------------
+-- Tasten
+-- ---------------------------------------------------------------------
+
+function EconomyLogic.rarity(name: string)
+	local r = EconomyConfig.RARITIES[name]
+	assert(r ~= nil, "unbekannte Seltenheit: " .. tostring(name))
+	return r
+end
+
+-- Wie lange braucht eine Taste, bis sie sich bezahlt gemacht hat?
+-- Gerechnet an Stage 1, weil das der Pad ist, den ein neuer Spieler nimmt.
+function EconomyLogic.paybackSeconds(name: string): number
+	local r = EconomyLogic.rarity(name)
+	local winsPerSecond = EconomyLogic.payoutFactors()[1] * r.vorratPerSecond
+	return r.price / winsPerSecond
+end
+
+-- Preis pro Produktionseinheit. Steigt bewusst mit der Seltenheit.
+function EconomyLogic.pricePerRate(name: string): number
+	local r = EconomyLogic.rarity(name)
+	return r.price / r.vorratPerSecond
+end
+
+-- Preis fuer den naechsten Steckplatz. `owned` = aktuelle Slot-Zahl.
+function EconomyLogic.slotPrice(owned: number): number?
+	if owned &gt;= EconomyConfig.MAX_KEY_SLOTS then
+		return nil
+	end
+	local steps = owned - EconomyConfig.START_KEY_SLOTS
+	if steps &lt; 0 then
+		steps = 0
+	end
+	return math.floor(EconomyConfig.SLOT_PRICE_BASE * EconomyConfig.SLOT_PRICE_GROWTH ^ steps)
+end
+
+-- ---------------------------------------------------------------------
+-- Diebstahl
+-- ---------------------------------------------------------------------
+
+-- Wie viel Vorrat wandert beim Klau mit? Rest verfaellt (nicht an das
+-- Opfer zurueck - sonst waere Klauen fuer das Opfer folgenlos).
+function EconomyLogic.stealTransfer(keyVorrat: number): number
+	local share = keyVorrat * EconomyConfig.STEAL_VORRAT_SHARE
+	return math.floor(math.min(share, EconomyConfig.STEAL_VORRAT_CAP))
+end
+
+-- Plot-Vorrat ist die Summe der Tastenvorraete - eine einzige Quelle,
+-- kein zweiter Zaehler daneben.
+function EconomyLogic.plotVorrat(keyVorrats: { number }): number
+	local sum = 0
+	for _, v in keyVorrats do
+		sum += v
+	end
+	return sum
+end
+
+function EconomyLogic.plotRate(keyRarities: { string }): number
+	local rate = 0
+	for _, name in keyRarities do
+		rate += EconomyLogic.rarity(name).vorratPerSecond
+	end
+	return rate
+end
+
+-- ---------------------------------------------------------------------
+-- Schild
+--
+-- Muss mindestens einen kompletten Rundlauf zum weitesten Pad abdecken,
+-- sonst schuetzt es genau die Situation nicht, fuer die es da ist.
+-- ---------------------------------------------------------------------
+
+function EconomyLogic.shieldWindow(): (number, number)
+	local longest = 0
+	for _, t in EconomyConfig.STAGE_RUN_SECONDS do
+		longest = math.max(longest, t)
+	end
+	local duration = math.ceil(longest / 10) * 10 -- auf 10 s aufgerundet
+	return duration, duration * EconomyConfig.SHIELD_COOLDOWN_RATIO
+end
+
+return EconomyLogic
+</ProtectedString>
+</Properties>
+</Item>
+<Item class="ModuleScript" referent="KC6">
+<Properties>
+<string name="Name">RateLimit</string>
+<ProtectedString name="Source">--!strict
+-- Rate-Limit pro Spieler und Kanal. Jede Remote am Server-Eingang benutzt
+-- das - sonst kann ein Client den Server mit Anfragen fluten.
+
+local RateLimit = {}
+
+local buckets: { [string]: { tokens: number, last: number } } = {}
+
+-- true = erlaubt. `perSecond` ist zugleich die Eimergroesse, ein Spieler
+-- kann also kurz bursten und muss dann warten.
+function RateLimit.allow(userId: number, channel: string, perSecond: number): boolean
+	local id = userId .. "|" .. channel
+	local now = os.clock()
+	local bucket = buckets[id]
+	if not bucket then
+		buckets[id] = { tokens = perSecond - 1, last = now }
+		return true
+	end
+	bucket.tokens = math.min(perSecond, bucket.tokens + (now - bucket.last) * perSecond)
+	bucket.last = now
+	if bucket.tokens &lt; 1 then
+		return false
+	end
+	bucket.tokens -= 1
+	return true
+end
+
+function RateLimit.forget(userId: number)
+	for id in buckets do
+		if id:sub(1, #tostring(userId) + 1) == userId .. "|" then
+			buckets[id] = nil
+		end
+	end
+end
+
+return RateLimit
+</ProtectedString>
+</Properties>
+</Item>
+<Item class="ModuleScript" referent="KC7">
+<Properties>
+<string name="Name">Remotes</string>
+<ProtectedString name="Source">--!strict
+-- Einziger Ort, an dem RemoteEvents/-Functions entstehen. Server legt an,
+-- Client wartet darauf. Der Client sendet nur ABSICHTEN - jede Pruefung
+-- (Besitz, Kosten, Distanz, Cooldown) passiert im Service dahinter.
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+
+local FOLDER_NAME = "KeycapRemotes"
+
+local EVENTS = {
+	"StateChanged", -- Server -&gt; Client: {wins, vorrat, rate, slots, keys, speed}
+	"Notify", -- Server -&gt; Client: kurze Meldung (Klau, Auszahlung, Fehler)
+	"BuyKey", -- Client -&gt; Server: rarityName
+	"BuySlot", -- Client -&gt; Server: (keine Argumente)
+	"ActivateShield", -- Client -&gt; Server: (keine Argumente)
+}
+
+local Remotes = {}
+
+local folder: Folder
+if RunService:IsServer() then
+	folder = ReplicatedStorage:FindFirstChild(FOLDER_NAME) :: Folder
+	if not folder then
+		local created = Instance.new("Folder")
+		created.Name = FOLDER_NAME
+		created.Parent = ReplicatedStorage
+		folder = created
+	end
+	for _, name in EVENTS do
+		if not folder:FindFirstChild(name) then
+			local remote = Instance.new("RemoteEvent")
+			remote.Name = name
+			remote.Parent = folder
+		end
+	end
+else
+	folder = ReplicatedStorage:WaitForChild(FOLDER_NAME) :: Folder
+end
+
+local cache: { [string]: RemoteEvent } = {}
+
+function Remotes.get(name: string): RemoteEvent
+	local cached = cache[name]
+	if cached then
+		return cached
+	end
+	local remote = folder:WaitForChild(name, 10)
+	assert(remote and remote:IsA("RemoteEvent"), "Remote fehlt: " .. name)
+	cache[name] = remote :: RemoteEvent
+	return remote :: RemoteEvent
+end
+
+return Remotes
+</ProtectedString>
+</Properties>
+</Item>
+<Item class="ModuleScript" referent="KC8">
+<Properties>
+<string name="Name">Theme</string>
+<ProtectedString name="Source">--!strict
+-- Design-System. Farben, Schrift, Abstaende und Groessen stehen NUR hier -
+-- weder Controller noch Services setzen eigene Werte.
+--
+-- Stil: hell und freundlich, creme-weisse Flaechen, kraeftige Akzente,
+-- runde Ecken, Knoepfe mit dunklerer Unterkante. Kein dunkles Dashboard.
+
+local Theme = {
+	FONT = Enum.Font.FredokaOne,
+
+	-- ---------------------------------------------------------------
+	-- Farben
+	-- ---------------------------------------------------------------
+	PANEL = Color3.fromRGB(252, 249, 240), -- creme-weiss
+	PANEL_EDGE = Color3.fromRGB(214, 206, 188),
+	TEXT = Color3.fromRGB(58, 52, 44),
+	TEXT_MUTED = Color3.fromRGB(108, 100, 88),
+
+	-- Knopfschrift ist IMMER dunkel, nie weiss. Weiss auf diesen hellen
+	-- Akzenten kommt nur auf 2,4:1 - fuer Kinder auf einem Handy im
+	-- Hellen unlesbar. Dunkle Schrift schafft ueberall mindestens 4,5:1,
+	-- und die Akzente bleiben so kraeftig, wie sie sein sollen.
+	-- Nachgerechnet im Testlauf, nicht geschaetzt.
+	GREEN = Color3.fromRGB(86, 190, 96),
+	GREEN_DARK = Color3.fromRGB(58, 146, 68),
+	BLUE = Color3.fromRGB(108, 186, 240),
+	BLUE_DARK = Color3.fromRGB(62, 132, 190),
+	GOLD = Color3.fromRGB(248, 196, 62),
+	GOLD_DARK = Color3.fromRGB(206, 152, 32),
+	RED = Color3.fromRGB(230, 96, 88), -- nur fuer Flaechen
+	RED_DARK = Color3.fromRGB(168, 60, 54), -- Kante unter einer roten Flaeche
+
+	-- Textfarben der Akzente. Bewusst eigene Werte statt der _DARK-Kanten:
+	-- eine Knopfkante muss nur dunkler sein als ihre Flaeche, eine Schrift
+	-- muss 4,5:1 gegen das creme-weisse Panel schaffen. GOLD_DARK kommt dort
+	-- nur auf 2,45:1 - als grosse Wins-Zahl waere das unlesbar gewesen.
+	GOLD_TEXT = Color3.fromRGB(140, 96, 10),
+	GREEN_TEXT = Color3.fromRGB(44, 116, 54),
+	RED_TEXT = Color3.fromRGB(186, 68, 62),
+
+	RARITY_COLORS = {
+		Common = Color3.fromRGB(206, 206, 206),
+		Uncommon = Color3.fromRGB(120, 206, 120),
+		Rare = Color3.fromRGB(134, 190, 248),
+		Epic = Color3.fromRGB(206, 164, 248),
+		Legendary = Color3.fromRGB(248, 186, 70),
+	},
+
+	-- ---------------------------------------------------------------
+	-- Abstaende. Eine Skala, keine krummen Zwischenwerte.
+	-- ---------------------------------------------------------------
+	SPACE = { XS = 4, S = 8, M = 12, L = 16, XL = 24, XXL = 40 },
+
+	-- ---------------------------------------------------------------
+	-- Schriftgroessen in Pixeln (bei UIScale 1).
+	-- ---------------------------------------------------------------
+	TEXT_SIZE = { SMALL = 16, BODY = 20, LEAD = 24, TITLE = 30, HERO = 38 },
+
+	-- ---------------------------------------------------------------
+	-- Formen
+	-- ---------------------------------------------------------------
+	CORNER = UDim.new(0, 12),
+	BUTTON_EDGE_HEIGHT = 4, -- dunklere Unterkante fuer den 3D-Effekt
+	-- Kleinstes Touch-Ziel. Alles Anklickbare ist mindestens so hoch -
+	-- darunter trifft ein Kinderdaumen auf dem Handy nicht zuverlaessig.
+	TOUCH_MIN = 56,
+
+	-- ---------------------------------------------------------------
+	-- Layout des HUD
+	-- ---------------------------------------------------------------
+	HUD_PANEL_WIDTH = 320,
+	HUD_STATS_HEIGHT = 156, -- Statuskarte; die Knoepfe darunter richten sich danach
+	SHOP_PANEL_WIDTH = 400,
+
+	-- ---------------------------------------------------------------
+	-- UIScale: das HUD ist in festen Pixeln gebaut und wird fuer kleine
+	-- Bildschirme heruntergerechnet. Referenz ist eine 1280 Pixel breite
+	-- Ansicht; darunter wird verkleinert, darueber nicht vergroessert
+	-- (sonst wirkt das HUD auf dem Monitor klobig).
+	-- ---------------------------------------------------------------
+	SCALE_REFERENCE_WIDTH = 1280,
+	SCALE_MIN = 0.7,
+	SCALE_MAX = 1,
+}
+
+return Theme
+</ProtectedString>
+</Properties>
+</Item>
+</Item>
+</Item>
+<Item class="ServerScriptService" referent="KC33">
+<Properties>
+<string name="Name">ServerScriptService</string>
+</Properties>
+<Item class="Script" referent="KC24">
+<Properties>
+<string name="Name">KeycapRush</string>
+<ProtectedString name="Source">--!strict
+-- Startet alle Services in fester Reihenfolge.
+--
+-- Die Reihenfolge ist nicht beliebig:
+--   Remotes zuerst, sonst sucht ein Client sie vergeblich.
+--   Plots bauen, dann NPC-Plots belegen, dann erst Spieler zulassen -
+--   sonst nimmt ein frueh beigetretener Spieler den Platz eines NPC-Plots.
+--   StealService vor allem, was Tasten erzeugen kann.
+
+local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
+require(Shared:WaitForChild("Remotes")) -- legt die RemoteEvents an
+
+local WorldConfig = require(Shared:WaitForChild("Config"):WaitForChild("WorldConfig"))
+
+local Services = script:WaitForChild("Services")
+
+local DataService = require(Services.DataService)
+local LightingService = require(Services.LightingService)
+local PlotService = require(Services.PlotService)
+local NpcPlotService = require(Services.NpcPlotService)
+local ProductionService = require(Services.ProductionService)
+local SpeedService = require(Services.SpeedService)
+local CarryService = require(Services.CarryService)
+local TutorialService = require(Services.TutorialService)
+local CourseService = require(Services.CourseService)
+local StealService = require(Services.StealService)
+local ShopService = require(Services.ShopService)
+local RunTimerService = require(Services.RunTimerService)
+local StateService = require(Services.StateService)
+
+print("[KEYCAP] Server startet ...")
+
+DataService.start()
+LightingService.start()
+PlotService.buildWorld()
+NpcPlotService.start()
+PlotService.start()
+TutorialService.start()
+CourseService.start()
+ProductionService.start()
+SpeedService.start()
+CarryService.start()
+StealService.start()
+ShopService.start()
+RunTimerService.start()
+StateService.start()
+
+-- Part-Budget: die Bewertung nennt 3000 als Ziel. Hier steht, wo wir
+-- wirklich landen - wenn die Zahl beim Bauen der Karte steigt, faellt es
+-- beim Serverstart auf und nicht erst auf dem Handy.
+local parts = PlotService.countParts()
+if parts &gt; WorldConfig.PART_BUDGET then
+	warn(("[KEYCAP] Part-Budget gerissen: %d von %d"):format(parts, WorldConfig.PART_BUDGET))
+else
+	print(("[KEYCAP] Parts in workspace: %d von %d erlaubt"):format(parts, WorldConfig.PART_BUDGET))
+end
+
+print("[KEYCAP] Server bereit.")
+</ProtectedString>
+</Properties>
+<Item class="Folder" referent="KC23">
+<Properties>
+<string name="Name">Services</string>
+</Properties>
+<Item class="ModuleScript" referent="KC10">
+<Properties>
+<string name="Name">CarryService</string>
+<ProtectedString name="Source">--!strict
+-- Sichtbares Tragen der Beute.
+--
+-- Die Bewertung nennt das den Clip-Moment: "Diebstahl muss fuer Umstehende
+-- lesbar sein, sonst passiert er sozial gar nicht." Wer klaut, traegt die
+-- Taste ueber dem Kopf, ist langsamer (SpeedService) und ist damit fuer
+-- alle als Dieb erkennbar.
+
+local Players = game:GetService("Players")
+
+local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
+local EconomyConfig = require(Shared.Config.EconomyConfig)
+local WorldConfig = require(Shared.Config.WorldConfig)
+local Theme = require(Shared.Theme)
+
+local CarryService = {}
+
+local active: { [number]: Model } = {} -- userId -&gt; Trage-Modell
+
+local function clear(userId: number)
+	local model = active[userId]
+	if model then
+		model:Destroy()
+		active[userId] = nil
+	end
+end
+
+-- Haengt eine sichtbare Taste ueber den Kopf des Diebes. Wird nach
+-- CARRY_SECONDS automatisch entfernt.
+function CarryService.show(player: Player, rarity: string, vorrat: number)
+	clear(player.UserId)
+
+	local character = player.Character
+	local head = character and character:FindFirstChild("Head")
+	if not head or not head:IsA("BasePart") then
+		return
+	end
+
+	local model = Instance.new("Model")
+	model.Name = "Beute"
+
+	local part = Instance.new("Part")
+	part.Name = "Key"
+	part.Size = WorldConfig.KEY_SIZE * 0.5
+	part.CFrame = head.CFrame * CFrame.new(0, 3.5, 0)
+	part.Anchored = false
+	part.CanCollide = false
+	part.CanQuery = false
+	part.Massless = true -- darf die Physik des Diebes nicht veraendern
+	part.Material = Enum.Material.SmoothPlastic
+	part.Color = Theme.RARITY_COLORS[rarity] or Theme.PANEL
+	part.Parent = model
+
+	local billboard = Instance.new("BillboardGui")
+	billboard.Size = UDim2.new(0, 190, 0, 46)
+	billboard.StudsOffset = Vector3.new(0, 2.4, 0)
+	billboard.AlwaysOnTop = true
+	billboard.MaxDistance = 260
+
+	local label = Instance.new("TextLabel")
+	label.Size = UDim2.new(1, 0, 1, 0)
+	label.BackgroundTransparency = 1
+	label.Font = Theme.FONT
+	label.TextScaled = true
+	label.TextColor3 = Theme.RED
+	label.TextStrokeTransparency = 0.35
+	label.Text = ("BEUTE: %s (%d)"):format(rarity, vorrat)
+	label.Parent = billboard
+	billboard.Parent = part
+
+	-- Reihenfolge zaehlt: erst in die Welt haengen, dann schweissen. Andersherum
+	-- ist das Teil einen Frame lang ein freier Koerper und faellt sichtbar weg.
+	-- Zwischen diesen Zeilen wird nicht geyieldet, also sieht die Physik nie
+	-- einen ungeschweissten Zustand.
+	model.Parent = character
+
+	local weld = Instance.new("WeldConstraint")
+	weld.Part0 = head
+	weld.Part1 = part
+	weld.Parent = part
+
+	active[player.UserId] = model
+
+	task.delay(EconomyConfig.CARRY_SECONDS, function()
+		if active[player.UserId] == model then
+			clear(player.UserId)
+		end
+	end)
+end
+
+function CarryService.start()
+	Players.PlayerRemoving:Connect(function(player)
+		clear(player.UserId)
+	end)
+	-- Beim Respawn haengt nichts mehr am neuen Charakter - Zustand
+	-- aufraeumen, damit kein verwaistes Modell zurueckbleibt.
+	local function watch(player: Player)
+		player.CharacterAdded:Connect(function()
+			clear(player.UserId)
+		end)
+	end
+	for _, player in Players:GetPlayers() do
+		watch(player)
+	end
+	Players.PlayerAdded:Connect(watch)
+	print("[KEYCAP] CarryService laeuft (" .. EconomyConfig.CARRY_SECONDS .. "s sichtbar)")
+end
+
+return CarryService
+</ProtectedString>
+</Properties>
+</Item>
+<Item class="ModuleScript" referent="KC11">
+<Properties>
+<string name="Name">CourseService</string>
+<ProtectedString name="Source">--!strict
+-- Parcours: Speed-Tore und Cash-Out-Pads.
+--
+-- Auszahlen ist bewusst ein ProximityPrompt, kein Beruehrungs-Trigger:
+-- ein versehentlicher Vorrat-Reset waere der schlimmste Moment im Spiel.
+
+local Players = game:GetService("Players")
+
+local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
+local EconomyConfig = require(Shared.Config.EconomyConfig)
+local EconomyLogic = require(Shared.EconomyLogic)
+local WorldConfig = require(Shared.Config.WorldConfig)
+local Theme = require(Shared.Theme)
+local Remotes = require(Shared.Remotes)
+local DataService = require(script.Parent.DataService)
+local ProductionService = require(script.Parent.ProductionService)
+local RunTimerService = require(script.Parent.RunTimerService)
+local TutorialService = require(script.Parent.TutorialService)
+
+local CourseService = {}
+
+local pads: { BasePart } = {}
+local lastBlock: { [number]: number } = {} -- userId -&gt; os.clock, entprellt das Tor
+
+local function notify(player: Player, text: string)
+	Remotes.get("Notify"):FireClient(player, text)
+end
+
+local function buildGate(stageIndex: number)
+	local gate = Instance.new("Part")
+	gate.Name = "Gate" .. stageIndex
+	gate.Size = WorldConfig.STAGE_GATE_SIZE
+	gate.Position = WorldConfig.STAGE_GATE_POSITIONS[stageIndex]
+	gate.Anchored = true
+	gate.CanCollide = false
+	gate.Transparency = 0.55
+	gate.Material = Enum.Material.Neon
+	gate.Color = Theme.BLUE
+	gate.Parent = workspace
+
+	local billboard = Instance.new("BillboardGui")
+	billboard.Size = UDim2.new(0, 260, 0, 70)
+	billboard.StudsOffset = Vector3.new(0, 8, 0)
+	billboard.AlwaysOnTop = true
+	billboard.MaxDistance = 300
+
+	local label = Instance.new("TextLabel")
+	label.Size = UDim2.new(1, 0, 1, 0)
+	label.BackgroundTransparency = 1
+	label.Font = Theme.FONT
+	label.TextScaled = true
+	label.TextColor3 = Theme.TEXT
+	label.TextStrokeTransparency = 0.4
+	label.Text = ("Stage %d\nab Tempo %d"):format(stageIndex, EconomyConfig.STAGE_GATES[stageIndex])
+	label.Parent = billboard
+	billboard.Parent = gate
+
+	-- Wer zu langsam ist, wird zurueckgesetzt. Kein Kick, kein Schaden -
+	-- das Tor ist eine Mautstation, keine Strafe.
+	gate.Touched:Connect(function(hit)
+		local character = hit.Parent
+		local player = character and Players:GetPlayerFromCharacter(character)
+		if not player then
+			return
+		end
+		local root = character:FindFirstChild("HumanoidRootPart")
+		if not root or not root:IsA("BasePart") then
+			return
+		end
+		local profile = DataService.get(player)
+		if not profile then
+			return
+		end
+		local vorrat = ProductionService.totalVorrat(profile)
+		if EconomyLogic.canEnterStage(vorrat, stageIndex) then
+			return
+		end
+		local now = os.clock()
+		if (lastBlock[player.UserId] or 0) + 1.5 &gt; now then
+			return
+		end
+		lastBlock[player.UserId] = now
+		root.CFrame = root.CFrame + Vector3.new(0, 0, 12) -- zurueck Richtung Plots
+		local needed = EconomyLogic.vorratForStage(stageIndex)
+		notify(player, ("Zu langsam fuer Stage %d - du brauchst %d Vorrat."):format(stageIndex, needed))
+	end)
+end
+
+local function cashOut(player: Player, stageIndex: number, pad: BasePart)
+	local profile = DataService.get(player)
+	if not profile then
+		return
+	end
+
+	-- Distanz serverseitig nachpruefen, nicht dem Prompt vertrauen.
+	local character = player.Character
+	local root = character and character:FindFirstChild("HumanoidRootPart")
+	if not root or not root:IsA("BasePart") then
+		return
+	end
+	if (root.Position - pad.Position).Magnitude &gt; pad.Size.X then
+		return
+	end
+
+	local vorrat = ProductionService.totalVorrat(profile)
+	if not EconomyLogic.canEnterStage(vorrat, stageIndex) then
+		notify(player, "Du bist zu langsam fuer dieses Pad.")
+		return
+	end
+
+	local wins = EconomyLogic.payout(vorrat, stageIndex)
+	if wins &lt;= 0 then
+		notify(player, "Zu wenig Vorrat - das lohnt sich noch nicht.")
+		return
+	end
+
+	profile.wins += wins
+	profile.totalCashedOut += wins
+	for _, key in profile.keys do
+		key.vorrat = 0 -- Auszahlen leert ALLE Tasten
+	end
+
+	DataService.syncLeaderstats(player)
+	RunTimerService.markCashOut(player, stageIndex)
+	TutorialService.report(player, "cashout")
+	notify(player, ("+%d Wins ausgezahlt (Stage %d)."):format(wins, stageIndex))
+end
+
+local function buildPad(stageIndex: number)
+	local pad = Instance.new("Part")
+	pad.Name = "CashOut" .. stageIndex
+	pad.Size = WorldConfig.STAGE_PAD_SIZE
+	pad.Position = WorldConfig.STAGE_PAD_POSITIONS[stageIndex]
+	pad.Anchored = true
+	pad.TopSurface = Enum.SurfaceType.Smooth
+	pad.Material = Enum.Material.SmoothPlastic
+	pad.Color = Theme.GOLD
+	pad.Parent = workspace
+	pads[stageIndex] = pad
+
+	local factors = EconomyLogic.payoutFactors()
+
+	local billboard = Instance.new("BillboardGui")
+	billboard.Size = UDim2.new(0, 280, 0, 80)
+	billboard.StudsOffset = Vector3.new(0, 7, 0)
+	billboard.AlwaysOnTop = true
+	billboard.MaxDistance = 300
+
+	local label = Instance.new("TextLabel")
+	label.Size = UDim2.new(1, 0, 1, 0)
+	label.BackgroundTransparency = 1
+	label.Font = Theme.FONT
+	label.TextScaled = true
+	label.TextColor3 = Theme.TEXT
+	label.TextStrokeTransparency = 0.4
+	label.Text = ("AUSZAHLEN %d\n%.1f%% vom Vorrat"):format(stageIndex, factors[stageIndex] * 100)
+	label.Parent = billboard
+	billboard.Parent = pad
+
+	local prompt = Instance.new("ProximityPrompt")
+	prompt.ActionText = "Auszahlen"
+	prompt.ObjectText = "Stage " .. stageIndex
+	prompt.HoldDuration = EconomyConfig.CASHOUT_HOLD_SECONDS
+	prompt.MaxActivationDistance = 14
+	prompt.RequiresLineOfSight = false
+	prompt.Parent = pad
+	prompt.Triggered:Connect(function(player)
+		cashOut(player, stageIndex, pad)
+	end)
+end
+
+-- Boden. Die Plots stehen mit Luecke nebeneinander und der Parcours haengt
+-- in der Luft - ohne diese beiden Flaechen faellt jeder Spieler beim ersten
+-- Schritt vom Plot herunter.
+local function buildGround()
+	local origin = WorldConfig.PLOT_ORIGIN
+	local promenadeZ = origin.Z + WorldConfig.PLOT_SIZE.Z / 2 + WorldConfig.PROMENADE_DEPTH / 2
+
+	local promenade = Instance.new("Part")
+	promenade.Name = "Promenade"
+	promenade.Size = Vector3.new(
+		WorldConfig.PLOT_COUNT * WorldConfig.PLOT_SPACING,
+		WorldConfig.PLOT_SIZE.Y,
+		WorldConfig.PROMENADE_DEPTH
+	)
+	promenade.Position = Vector3.new(origin.X, origin.Y, promenadeZ)
+	promenade.Anchored = true
+	promenade.TopSurface = Enum.SurfaceType.Smooth
+	promenade.BottomSurface = Enum.SurfaceType.Smooth
+	promenade.Material = Enum.Material.SmoothPlastic
+	promenade.Color = Theme.PANEL_EDGE
+	promenade.Parent = workspace
+
+	-- Weg von der Promenade bis hinter das letzte Pad.
+	local farthestZ = 0
+	for _, position in WorldConfig.STAGE_PAD_POSITIONS do
+		farthestZ = math.min(farthestZ, position.Z)
+	end
+	local startZ = promenadeZ + WorldConfig.PROMENADE_DEPTH / 2
+	local endZ = farthestZ - WorldConfig.STAGE_PAD_SIZE.Z / 2 - WorldConfig.PATH_MARGIN
+
+	local path = Instance.new("Part")
+	path.Name = "Path"
+	path.Size = Vector3.new(WorldConfig.PATH_WIDTH, WorldConfig.PLOT_SIZE.Y, startZ - endZ)
+	path.Position = Vector3.new(origin.X, origin.Y, (startZ + endZ) / 2)
+	path.Anchored = true
+	path.TopSurface = Enum.SurfaceType.Smooth
+	path.BottomSurface = Enum.SurfaceType.Smooth
+	path.Material = Enum.Material.SmoothPlastic
+	path.Color = Theme.PANEL_EDGE
+	path.Parent = workspace
+end
+
+function CourseService.start()
+	buildGround()
+	for stageIndex = 1, #EconomyConfig.STAGE_GATES do
+		buildGate(stageIndex)
+		buildPad(stageIndex)
+	end
+	local duration, cooldown = EconomyLogic.shieldWindow()
+	print(("[KEYCAP] CourseService: %d Stages gebaut, Schild %ds/%ds"):format(#pads, duration, cooldown))
+end
+
+return CourseService
+</ProtectedString>
+</Properties>
+</Item>
+<Item class="ModuleScript" referent="KC12">
+<Properties>
+<string name="Name">DataService</string>
+<ProtectedString name="Source">--!strict
+-- Profil-Speicher mit Session-Lock, Autosave und Speichern beim Verlassen.
+--
+-- Warum handgeschrieben statt ProfileService: das Konzept verbietet fremde
+-- Bibliotheken. Der Lock ist deshalb hier drin - ohne ihn koennen zwei
+-- Server dasselbe Profil schreiben und beim Server-Hopping gehen Tasten
+-- verloren oder verdoppeln sich.
+
+local DataStoreService = game:GetService("DataStoreService")
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+
+local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
+local EconomyConfig = require(Shared.Config.EconomyConfig)
+
+-- 2: tutorialStep dazu. Profile aus Version 1 bekommen ihn per Migration
+-- auf 1 gesetzt und laufen das Tutorial einmal - das Spiel ist nie
+-- veroeffentlicht worden, es gibt also niemanden, den das stoert.
+local SCHEMA_VERSION = 2
+local STORE_NAME = "KeycapRush_Profiles_v1"
+local LOCK_STALE_SECONDS = 120 -- aelterer Lock gilt als abgestuerzter Server
+-- Ein Schreibvorgang erneuert Daten UND Lock, deshalb nur ein Intervall.
+-- Nicht bei jeder Aenderung speichern - der Vorrat waechst sekuendlich und
+-- DataStore drosselt Schreibvorgaenge.
+local AUTOSAVE_SECONDS = 45
+local MAX_RETRIES = 4
+
+export type Key = { rarity: string, vorrat: number }
+export type Profile = {
+	schemaVersion: number,
+	wins: number,
+	slots: number,
+	keys: { Key },
+	totalStolen: number,
+	totalCashedOut: number,
+	tutorialStep: number,
+}
+
+local DataService = {}
+DataService.__index = DataService
+
+local store = DataStoreService:GetDataStore(STORE_NAME)
+local profiles: { [number]: Profile } = {}
+local loading: { [number]: boolean } = {}
+
+local function defaultProfile(): Profile
+	local keys: { Key } = {}
+	-- Startausstattung: zwei Common-Tasten, damit sofort etwas produziert.
+	for _ = 1, 2 do
+		table.insert(keys, { rarity = "Common", vorrat = 0 })
+	end
+	return {
+		schemaVersion = SCHEMA_VERSION,
+		wins = 0,
+		slots = EconomyConfig.START_KEY_SLOTS,
+		keys = keys,
+		totalStolen = 0,
+		totalCashedOut = 0,
+		tutorialStep = 1,
+	}
+end
+
+-- Generische Migration: fehlende Felder aus dem Default auffuellen. Kein
+-- Loeschen unbekannter Felder, damit ein Rollback nichts vernichtet.
+local function migrate(raw: any): Profile
+	local base = defaultProfile()
+	if type(raw) ~= "table" then
+		return base
+	end
+	for field, value in base :: any do
+		if raw[field] == nil then
+			raw[field] = value
+		end
+	end
+	raw.schemaVersion = SCHEMA_VERSION
+	-- Vorrat wird bewusst nicht uebernommen (siehe PERSIST_VORRAT).
+	if not EconomyConfig.PERSIST_VORRAT then
+		for _, key in raw.keys do
+			key.vorrat = 0
+		end
+	end
+	return raw :: Profile
+end
+
+local function retry&lt;T&gt;(label: string, fn: () -&gt; T): (boolean, T?)
+	local delaySeconds = 1
+	for attempt = 1, MAX_RETRIES do
+		local ok, result = pcall(fn)
+		if ok then
+			return true, result
+		end
+		warn(("[DataService] %s fehlgeschlagen (Versuch %d): %s"):format(label, attempt, tostring(result)))
+		if attempt &lt; MAX_RETRIES then
+			task.wait(delaySeconds)
+			delaySeconds *= 2
+		end
+	end
+	return false, nil
+end
+
+local function storeKey(userId: number): string
+	return "player_" .. userId
+end
+
+-- Lock nehmen und Profil holen. Gibt nil zurueck, wenn ein anderer Server
+-- das Profil noch haelt - dann darf der Spieler NICHT spielen.
+local function acquire(userId: number): Profile?
+	local jobId = if RunService:IsStudio() then "studio" else game.JobId
+	local blocked = false
+	local loaded: any = nil
+
+	-- Ein einziger UpdateAsync: Lock nehmen UND die Daten mitlesen. Ein
+	-- zusaetzliches GetAsync waere ein zweiter Request ohne Mehrwert.
+	local ok = retry("Lock " .. userId, function()
+		blocked = false
+		loaded = nil
+		store:UpdateAsync(storeKey(userId), function(raw)
+			local entry = raw
+			if type(entry) ~= "table" or entry.data == nil then
+				entry = { lock = nil, data = entry }
+			end
+			local lock = entry.lock
+			if lock and lock.jobId ~= jobId and (os.time() - (lock.at or 0)) &lt; LOCK_STALE_SECONDS then
+				blocked = true
+				return nil -- nichts schreiben, fremder Lock ist frisch
+			end
+			entry.lock = { jobId = jobId, at = os.time() }
+			loaded = entry.data
+			return entry
+		end)
+		return true
+	end)
+
+	if not ok or blocked then
+		return nil
+	end
+	return migrate(loaded)
+end
+
+local function write(userId: number, profile: Profile, releaseLock: boolean): boolean
+	local jobId = if RunService:IsStudio() then "studio" else game.JobId
+	local ok = retry("Speichern " .. userId, function()
+		store:UpdateAsync(storeKey(userId), function(raw)
+			local entry = if type(raw) == "table" and raw.data ~= nil then raw else { lock = nil }
+			local lock = entry.lock
+			-- Nur schreiben, wenn wir den Lock halten (oder er verwaist ist).
+			if lock and lock.jobId ~= jobId and (os.time() - (lock.at or 0)) &lt; LOCK_STALE_SECONDS then
+				return nil
+			end
+			entry.data = profile
+			entry.lock = if releaseLock then nil else { jobId = jobId, at = os.time() }
+			return entry
+		end)
+		return true
+	end)
+	return ok
+end
+
+function DataService.get(player: Player): Profile?
+	return profiles[player.UserId]
+end
+
+function DataService.save(player: Player, releaseLock: boolean): boolean
+	local profile = profiles[player.UserId]
+	if not profile then
+		return false
+	end
+	return write(player.UserId, profile, releaseLock)
+end
+
+local function onPlayerAdded(player: Player)
+	loading[player.UserId] = true
+	local profile = acquire(player.UserId)
+	loading[player.UserId] = nil
+
+	if not profile then
+		if player.Parent then
+			player:Kick("Deine Daten werden noch von einem anderen Server benutzt. Bitte in einer Minute nochmal beitreten.")
+		end
+		return
+	end
+	if not player.Parent then
+		write(player.UserId, profile, true) -- schon wieder weg: Lock freigeben
+		return
+	end
+	profiles[player.UserId] = profile
+
+	local stats = Instance.new("Folder")
+	stats.Name = "leaderstats"
+	local wins = Instance.new("IntValue")
+	wins.Name = "Wins"
+	wins.Value = profile.wins
+	wins.Parent = stats
+	local stolen = Instance.new("IntValue")
+	-- Die Bewertung: die Rangliste eines Klau-Spiels soll Beute zeigen.
+	stolen.Name = "Beute"
+	stolen.Value = profile.totalStolen
+	stolen.Parent = stats
+	stats.Parent = player
+end
+
+local function onPlayerRemoving(player: Player)
+	if profiles[player.UserId] then
+		write(player.UserId, profiles[player.UserId], true)
+		profiles[player.UserId] = nil
+	end
+end
+
+function DataService.syncLeaderstats(player: Player)
+	local profile = profiles[player.UserId]
+	local stats = player:FindFirstChild("leaderstats")
+	if not profile or not stats then
+		return
+	end
+	local wins = stats:FindFirstChild("Wins")
+	if wins and wins:IsA("IntValue") then
+		wins.Value = profile.wins
+	end
+	local stolen = stats:FindFirstChild("Beute")
+	if stolen and stolen:IsA("IntValue") then
+		stolen.Value = profile.totalStolen
+	end
+end
+
+function DataService.start()
+	for _, player in Players:GetPlayers() do
+		task.spawn(onPlayerAdded, player)
+	end
+	Players.PlayerAdded:Connect(function(player)
+		task.spawn(onPlayerAdded, player)
+	end)
+	Players.PlayerRemoving:Connect(onPlayerRemoving)
+
+	-- Autosave: erneuert in einem Zug die Daten und den Lock, damit kein
+	-- anderer Server das Profil uebernimmt, solange der Spieler hier ist.
+	task.spawn(function()
+		while true do
+			task.wait(AUTOSAVE_SECONDS)
+			for userId, profile in profiles do
+				write(userId, profile, false)
+			end
+		end
+	end)
+
+	game:BindToClose(function()
+		for userId, profile in profiles do
+			write(userId, profile, true)
+		end
+	end)
+
+	print("[KEYCAP] DataService bereit (Schema " .. SCHEMA_VERSION .. ")")
+end
+
+return DataService
+</ProtectedString>
+</Properties>
+</Item>
+<Item class="ModuleScript" referent="KC13">
+<Properties>
+<string name="Name">LightingService</string>
+<ProtectedString name="Source">--!strict
+-- Beleuchtung. Zielgruppe jung, Stil hell und freundlich - kein
+-- Daemmerlicht, keine harten Schatten.
+--
+-- Wird beim Serverstart gesetzt statt in Studio geklickt, damit die Werte
+-- versioniert sind und nicht beim naechsten Rojo-Sync verschwinden.
+-- Keine Asset-IDs: eine Sky-Textur braeuchte eine hochgeladene Datei, und
+-- eine erfundene ID waere ein grauer Himmel ohne Fehlermeldung.
+
+local Lighting = game:GetService("Lighting")
+
+local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
+local WorldConfig = require(Shared.Config.WorldConfig)
+
+local LightingService = {}
+
+function LightingService.start()
+	local config = WorldConfig.LIGHTING
+
+	Lighting.Ambient = config.AMBIENT
+	Lighting.OutdoorAmbient = config.OUTDOOR_AMBIENT
+	Lighting.Brightness = config.BRIGHTNESS
+	Lighting.ClockTime = config.CLOCK_TIME
+	Lighting.GeographicLatitude = config.GEOGRAPHIC_LATITUDE
+	Lighting.EnvironmentDiffuseScale = config.ENVIRONMENT_DIFFUSE
+	Lighting.EnvironmentSpecularScale = config.ENVIRONMENT_SPECULAR
+
+	-- Vorhandene Effekte ersetzen, nicht stapeln: sonst haengt nach einem
+	-- zweiten Serverstart in Studio alles doppelt drin.
+	local oldAtmosphere = Lighting:FindFirstChildOfClass("Atmosphere")
+	if oldAtmosphere then
+		oldAtmosphere:Destroy()
+	end
+	local atmosphere = Instance.new("Atmosphere")
+	atmosphere.Density = config.ATMOSPHERE_DENSITY
+	atmosphere.Haze = config.ATMOSPHERE_HAZE
+	atmosphere.Glare = config.ATMOSPHERE_GLARE
+	atmosphere.Color = config.ATMOSPHERE_COLOR
+	atmosphere.Decay = config.ATMOSPHERE_DECAY
+	atmosphere.Parent = Lighting
+
+	local oldBloom = Lighting:FindFirstChildOfClass("BloomEffect")
+	if oldBloom then
+		oldBloom:Destroy()
+	end
+	local bloom = Instance.new("BloomEffect")
+	bloom.Intensity = config.BLOOM_INTENSITY
+	bloom.Size = config.BLOOM_SIZE
+	bloom.Threshold = config.BLOOM_THRESHOLD
+	bloom.Parent = Lighting
+
+	print(("[KEYCAP] LightingService: Helligkeit %.1f, Uhrzeit %d"):format(config.BRIGHTNESS, config.CLOCK_TIME))
+end
+
+return LightingService
+</ProtectedString>
+</Properties>
+</Item>
+<Item class="ModuleScript" referent="KC14">
+<Properties>
+<string name="Name">NpcPlotService</string>
+<ProtectedString name="Source">--!strict
+-- NPC-Plots: Klau-Ziele, die immer da sind.
+--
+-- Die Bewertung: "Der Loop braucht Mitspieler und du hast keine." Auf einem
+-- frischen Server mit zwei Leuten waere KEYCAP RUSH ein Farm-Spiel mit
+-- gelegentlichem Aergern. Diese Plots ueberbruecken das - bewusst schwach,
+-- damit sie den Wettbewerb zwischen echten Spielern nicht ersetzen.
+
+local RunService = game:GetService("RunService")
+
+local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
+local EconomyConfig = require(Shared.Config.EconomyConfig)
+local EconomyLogic = require(Shared.EconomyLogic)
+local WorldConfig = require(Shared.Config.WorldConfig)
+local PlotService = require(script.Parent.PlotService)
+
+local NpcPlotService = {}
+
+type NpcKey = { rarity: string, vorrat: number }
+type NpcPlot = { plot: PlotService.Plot, keys: { NpcKey }, respawnAt: { [number]: number } }
+
+local npcPlots: { [number]: NpcPlot } = {} -- plotIndex -&gt; NpcPlot
+local LABEL_INTERVAL = 2
+
+local function makeKeys(): { NpcKey }
+	local keys: { NpcKey } = {}
+	for index = 1, EconomyConfig.NPC_KEY_COUNT do
+		local rarity = EconomyConfig.NPC_RARITIES[index] or "Common"
+		table.insert(keys, { rarity = rarity, vorrat = 0 })
+	end
+	return keys
+end
+
+function NpcPlotService.isNpcPlot(plotIndex: number): boolean
+	return npcPlots[plotIndex] ~= nil
+end
+
+function NpcPlotService.keysOf(plotIndex: number): { NpcKey }?
+	local entry = npcPlots[plotIndex]
+	return if entry then entry.keys else nil
+end
+
+-- Eine NPC-Taste wird geklaut: Vorrat wandert anteilig mit, die Taste
+-- selbst bleibt als leerer Platzhalter stehen und fuellt sich wieder.
+-- So gehen dem Server nie die Ziele aus.
+function NpcPlotService.takeKey(plotIndex: number, keyIndex: number): NpcKey?
+	local entry = npcPlots[plotIndex]
+	if not entry then
+		return nil
+	end
+	local key = entry.keys[keyIndex]
+	if not key then
+		return nil
+	end
+	if (entry.respawnAt[keyIndex] or 0) &gt; os.clock() then
+		return nil -- diese Taste wurde gerade erst geleert
+	end
+
+	local taken = { rarity = key.rarity, vorrat = EconomyLogic.stealTransfer(key.vorrat) }
+	key.vorrat = 0
+	entry.respawnAt[keyIndex] = os.clock() + EconomyConfig.NPC_RESPAWN_SECONDS
+	return taken
+end
+
+function NpcPlotService.start()
+	for slot = 1, WorldConfig.NPC_PLOT_COUNT do
+		local name = WorldConfig.NPC_NAMES[slot] or ("NPC " .. slot)
+		local plot = PlotService.claimForNpc(slot, name)
+		if plot then
+			local entry: NpcPlot = { plot = plot, keys = makeKeys(), respawnAt = {} }
+			npcPlots[plot.index] = entry
+			PlotService.renderKeys(plot, entry.keys)
+		end
+	end
+
+	local sinceLabel = 0
+	RunService.Heartbeat:Connect(function(deltaTime)
+		local now = os.clock()
+		for _, entry in npcPlots do
+			for keyIndex, key in entry.keys do
+				if (entry.respawnAt[keyIndex] or 0) &gt; now then
+					continue -- pausiert nach dem Klau
+				end
+				local rate = EconomyLogic.rarity(key.rarity).vorratPerSecond
+				key.vorrat = math.min(key.vorrat + rate * deltaTime, EconomyConfig.NPC_VORRAT_CAP)
+			end
+		end
+
+		sinceLabel += deltaTime
+		if sinceLabel &gt;= LABEL_INTERVAL then
+			sinceLabel = 0
+			for _, entry in npcPlots do
+				PlotService.refreshLabels(entry.plot, entry.keys)
+			end
+		end
+	end)
+
+	local count = 0
+	for _ in npcPlots do
+		count += 1
+	end
+	print(("[KEYCAP] NpcPlotService: %d NPC-Plots, Vorrat gedeckelt bei %d"):format(count, EconomyConfig.NPC_VORRAT_CAP))
+end
+
+return NpcPlotService
+</ProtectedString>
+</Properties>
+</Item>
+<Item class="ModuleScript" referent="KC15">
+<Properties>
+<string name="Name">PlotService</string>
+<ProtectedString name="Source">--!strict
+-- Baut die Plots, vergibt sie an Spieler oder an NPC-Besitzer und haelt die
+-- Tasten-Parts synchron mit der jeweiligen Tastenliste.
+--
+-- Ein Plot gehoert entweder niemandem, einem Spieler oder einem NPC. Die
+-- Tasten-Parts sehen in allen Faellen gleich aus - ein Dieb soll nicht auf
+-- den ersten Blick erkennen, ob es sich "lohnt", sondern hinlaufen muessen.
+
+local Players = game:GetService("Players")
+
+local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
+local EconomyConfig = require(Shared.Config.EconomyConfig)
+local WorldConfig = require(Shared.Config.WorldConfig)
+local Theme = require(Shared.Theme)
+local DataService = require(script.Parent.DataService)
+
+local PlotService = {}
+
+export type OwnerKind = "none" | "player" | "npc"
+export type Plot = {
+	index: number,
+	model: Model,
+	base: BasePart,
+	keyFolder: Folder,
+	ownerKind: OwnerKind,
+	ownerUserId: number?,
+	signLabel: TextLabel,
+}
+export type KeyRef = { kind: OwnerKind, userId: number?, plotIndex: number, index: number }
+
+local plots: { Plot } = {}
+local plotByUser: { [number]: Plot } = {}
+-- Rueckweg vom Part zum Eintrag, damit StealService nichts raten muss.
+local keyOwner: { [BasePart]: KeyRef } = {}
+
+local function plotPosition(index: number): Vector3
+	local origin = WorldConfig.PLOT_ORIGIN
+	local offset = (index - 1) * WorldConfig.PLOT_SPACING
+	local centering = (WorldConfig.PLOT_COUNT - 1) * WorldConfig.PLOT_SPACING / 2
+	return Vector3.new(origin.X + offset - centering, origin.Y, origin.Z)
+end
+
+local function slotPosition(plot: Plot, slotIndex: number): Vector3
+	local columns = WorldConfig.SLOT_COLUMNS
+	local col = (slotIndex - 1) % columns
+	local row = math.floor((slotIndex - 1) / columns)
+	local spacing = WorldConfig.SLOT_SPACING
+	local center = plot.base.Position
+	local xOffset = (col - (columns - 1) / 2) * spacing
+	local zOffset = (row - 1) * spacing
+	local top = center.Y + WorldConfig.PLOT_SIZE.Y / 2 + WorldConfig.KEY_SIZE.Y / 2
+	return Vector3.new(center.X + xOffset, top, center.Z + zOffset)
+end
+
+local built = false
+
+-- Idempotent: init darf buildWorld vor NpcPlotService rufen, PlotService.start
+-- ruft es danach nochmal. Zweimal bauen wuerde doppelte Plots erzeugen.
+function PlotService.buildWorld()
+	if built then
+		return
+	end
+	built = true
+
+	local container = Instance.new("Folder")
+	container.Name = "Plots"
+
+	for index = 1, WorldConfig.PLOT_COUNT do
+		local model = Instance.new("Model")
+		model.Name = "Plot" .. index
+
+		local base = Instance.new("Part")
+		base.Name = "Base"
+		base.Size = WorldConfig.PLOT_SIZE
+		base.Position = plotPosition(index)
+		base.Anchored = true
+		base.TopSurface = Enum.SurfaceType.Smooth
+		base.BottomSurface = Enum.SurfaceType.Smooth
+		base.Color = Theme.PANEL
+		base.Material = Enum.Material.SmoothPlastic
+		base.Parent = model
+
+		local sign = Instance.new("Part")
+		sign.Name = "Sign"
+		sign.Size = Vector3.new(10, 1, 1)
+		sign.Position = base.Position + Vector3.new(0, 8, WorldConfig.PLOT_SIZE.Z / 2)
+		sign.Anchored = true
+		sign.CanCollide = false
+		sign.Transparency = 1
+		sign.Parent = model
+
+		local billboard = Instance.new("BillboardGui")
+		billboard.Name = "Label"
+		billboard.Size = UDim2.new(0, 260, 0, 60)
+		billboard.AlwaysOnTop = true
+		billboard.MaxDistance = 220
+
+		local label = Instance.new("TextLabel")
+		label.Size = UDim2.new(1, 0, 1, 0)
+		label.BackgroundTransparency = 1
+		label.Font = Theme.FONT
+		label.TextScaled = true
+		label.TextColor3 = Theme.TEXT
+		label.TextStrokeTransparency = 0.4
+		label.Text = "Frei"
+		label.Parent = billboard
+		billboard.Parent = sign
+
+		local keyFolder = Instance.new("Folder")
+		keyFolder.Name = "Keys"
+		keyFolder.Parent = model
+
+		model.PrimaryPart = base
+		model.Parent = container
+
+		plots[index] = {
+			index = index,
+			model = model,
+			base = base,
+			keyFolder = keyFolder,
+			ownerKind = "none",
+			ownerUserId = nil,
+			signLabel = label,
+		}
+	end
+
+	container.Parent = workspace
+end
+
+local function clearKeys(plot: Plot)
+	for _, child in plot.keyFolder:GetChildren() do
+		if child:IsA("BasePart") then
+			keyOwner[child] = nil
+		end
+		child:Destroy()
+	end
+end
+
+-- Baut die Tasten-Parts eines Plots neu. `keys` ist die Liste, die dieser
+-- Plot gerade haelt - beim Spieler das Profil, beim NPC die NPC-Liste.
+function PlotService.renderKeys(plot: Plot, keys: { { rarity: string, vorrat: number } })
+	clearKeys(plot)
+
+	for index, key in keys do
+		local part = Instance.new("Part")
+		part.Name = "Key" .. index
+		part.Size = WorldConfig.KEY_SIZE
+		part.Position = slotPosition(plot, index)
+		part.Anchored = true
+		part.TopSurface = Enum.SurfaceType.Smooth
+		part.Material = Enum.Material.SmoothPlastic
+		part.Color = Theme.RARITY_COLORS[key.rarity] or Theme.PANEL
+
+		local billboard = Instance.new("BillboardGui")
+		billboard.Name = "Info"
+		billboard.Size = UDim2.new(0, 150, 0, 44)
+		billboard.StudsOffset = Vector3.new(0, 3, 0)
+		billboard.AlwaysOnTop = false
+		billboard.MaxDistance = 120
+
+		local label = Instance.new("TextLabel")
+		label.Name = "Vorrat"
+		label.Size = UDim2.new(1, 0, 1, 0)
+		label.BackgroundTransparency = 1
+		label.Font = Theme.FONT
+		label.TextScaled = true
+		label.TextColor3 = Theme.TEXT
+		label.TextStrokeTransparency = 0.5
+		label.Text = key.rarity
+		label.Parent = billboard
+		billboard.Parent = part
+
+		-- Buchstabe auf der Oberseite: macht aus dem Wuerfel eine Taste.
+		local legend = Instance.new("SurfaceGui")
+		legend.Name = "Legend"
+		legend.Face = Enum.NormalId.Top
+		legend.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+		legend.PixelsPerStud = 50
+
+		local letter = Instance.new("TextLabel")
+		letter.Size = UDim2.new(1, 0, 1, 0)
+		letter.BackgroundTransparency = 1
+		letter.Font = Theme.FONT
+		letter.TextScaled = true
+		letter.TextColor3 = Theme.TEXT
+		letter.Text = WorldConfig.KEY_LEGENDS[index] or "?"
+		letter.Parent = legend
+		legend.Parent = part
+
+		local prompt = Instance.new("ProximityPrompt")
+		prompt.Name = "Steal"
+		prompt.ActionText = "Klauen"
+		prompt.ObjectText = key.rarity
+		prompt.HoldDuration = EconomyConfig.STEAL_HOLD_SECONDS
+		prompt.MaxActivationDistance = 10
+		prompt.RequiresLineOfSight = false
+		prompt.Parent = part
+
+		part.Parent = plot.keyFolder
+		keyOwner[part] = {
+			kind = plot.ownerKind,
+			userId = plot.ownerUserId,
+			plotIndex = plot.index,
+			index = index,
+		}
+	end
+end
+
+-- Bequemer Weg fuer den Spielerfall: Liste kommt aus dem Profil.
+function PlotService.rebuildKeys(userId: number)
+	local plot = plotByUser[userId]
+	if not plot then
+		return
+	end
+	local player = Players:GetPlayerByUserId(userId)
+	local profile = if player then DataService.get(player) else nil
+	if not profile then
+		clearKeys(plot)
+		return
+	end
+	PlotService.renderKeys(plot, profile.keys)
+end
+
+-- Beschriftungen aktualisieren (eigener Takt, damit nicht jede Sekunde
+-- hunderte Labels repliziert werden).
+function PlotService.refreshLabels(plot: Plot, keys: { { rarity: string, vorrat: number } })
+	for _, part in plot.keyFolder:GetChildren() do
+		if not part:IsA("BasePart") then
+			continue
+		end
+		local ref = keyOwner[part]
+		local key = if ref then keys[ref.index] else nil
+		local billboard = part:FindFirstChild("Info")
+		local label = if billboard then billboard:FindFirstChild("Vorrat") else nil
+		if key and label and label:IsA("TextLabel") then
+			label.Text = ("%s\n%d"):format(key.rarity, math.floor(key.vorrat))
+		end
+	end
+end
+
+function PlotService.refreshKeyLabels(userId: number)
+	local plot = plotByUser[userId]
+	local player = Players:GetPlayerByUserId(userId)
+	local profile = if player then DataService.get(player) else nil
+	if plot and profile then
+		PlotService.refreshLabels(plot, profile.keys)
+	end
+end
+
+-- NPC-Plots belegen die letzten Plots der Reihe, damit die Spieler vorne
+-- nebeneinander stehen.
+function PlotService.claimForNpc(slot: number, name: string): Plot?
+	local index = WorldConfig.PLOT_COUNT - slot + 1
+	local plot = plots[index]
+	if not plot or plot.ownerKind ~= "none" then
+		return nil
+	end
+	plot.ownerKind = "npc"
+	plot.ownerUserId = nil
+	plot.signLabel.Text = name
+	plot.signLabel.TextColor3 = Theme.TEXT_MUTED
+	return plot
+end
+
+function PlotService.assign(player: Player): boolean
+	for _, plot in plots do
+		if plot.ownerKind == "none" then
+			plot.ownerKind = "player"
+			plot.ownerUserId = player.UserId
+			plotByUser[player.UserId] = plot
+			plot.signLabel.Text = player.DisplayName
+			plot.signLabel.TextColor3 = Theme.TEXT
+			PlotService.rebuildKeys(player.UserId)
+			return true
+		end
+	end
+	return false
+end
+
+-- Verlassene Plots: Plot und Tasten verschwinden mit dem Besitzer.
+-- Entscheidung (im Konzept undefiniert): sonst waeren herrenlose Plots
+-- unbewachte Beutekisten und der Anwesenheits-Bonus haette keinen Wert.
+function PlotService.release(userId: number)
+	local plot = plotByUser[userId]
+	if not plot then
+		return
+	end
+	clearKeys(plot)
+	plot.ownerKind = "none"
+	plot.ownerUserId = nil
+	plot.signLabel.Text = "Frei"
+	plotByUser[userId] = nil
+end
+
+function PlotService.getPlot(userId: number): Plot?
+	return plotByUser[userId]
+end
+
+function PlotService.plotAt(index: number): Plot?
+	return plots[index]
+end
+
+function PlotService.keyRefFromPart(part: BasePart): KeyRef?
+	return keyOwner[part]
+end
+
+-- Ist der Besitzer zuhause? Verdoppelt die Klau-Dauer.
+function PlotService.isOwnerHome(userId: number): boolean
+	local plot = plotByUser[userId]
+	local player = Players:GetPlayerByUserId(userId)
+	if not plot or not player then
+		return false
+	end
+	local character = player.Character
+	local root = character and character:FindFirstChild("HumanoidRootPart")
+	if not root or not root:IsA("BasePart") then
+		return false
+	end
+	return (root.Position - plot.base.Position).Magnitude &lt;= WorldConfig.PRESENCE_RADIUS
+end
+
+function PlotService.spawnPositionFor(userId: number): Vector3?
+	local plot = plotByUser[userId]
+	if not plot then
+		return nil
+	end
+	return plot.base.Position + Vector3.new(0, 6, WorldConfig.PLOT_SIZE.Z / 2 - 4)
+end
+
+-- Zaehlt alles, was der Server gebaut hat - fuer das Part-Budget.
+function PlotService.countParts(): number
+	local count = 0
+	for _, descendant in workspace:GetDescendants() do
+		if descendant:IsA("BasePart") then
+			count += 1
+		end
+	end
+	return count
+end
+
+-- Plot zuweisen, sobald das Profil geladen ist, und den Spieler dorthin
+-- setzen. Das Profil kommt asynchron aus dem DataStore, deshalb warten
+-- wir kurz darauf statt anzunehmen, dass es schon da ist.
+local function onPlayerAdded(player: Player)
+	local deadline = os.clock() + 20
+	while os.clock() &lt; deadline do
+		if DataService.get(player) then
+			break
+		end
+		task.wait(0.25)
+	end
+	if not player.Parent or not DataService.get(player) then
+		return
+	end
+	if not PlotService.assign(player) then
+		player:Kick("Der Server ist voll - alle Plots sind vergeben.")
+		return
+	end
+
+	local function place(character: Model)
+		local target = PlotService.spawnPositionFor(player.UserId)
+		if target then
+			character:PivotTo(CFrame.new(target))
+		end
+	end
+	if player.Character then
+		place(player.Character)
+	end
+	player.CharacterAdded:Connect(place)
+end
+
+function PlotService.start()
+	PlotService.buildWorld()
+	for _, player in Players:GetPlayers() do
+		task.spawn(onPlayerAdded, player)
+	end
+	Players.PlayerAdded:Connect(function(player)
+		task.spawn(onPlayerAdded, player)
+	end)
+	Players.PlayerRemoving:Connect(function(player)
+		PlotService.release(player.UserId)
+	end)
+	print("[KEYCAP] PlotService: " .. WorldConfig.PLOT_COUNT .. " Plots gebaut")
+end
+
+return PlotService
+</ProtectedString>
+</Properties>
+</Item>
+<Item class="ModuleScript" referent="KC16">
+<Properties>
+<string name="Name">ProductionService</string>
+<ProtectedString name="Source">--!strict
+-- Jede Taste produziert ihren EIGENEN Vorrat. Der Plot-Vorrat ist die
+-- Summe - es gibt keinen zweiten Zaehler daneben. Das ist die Aenderung
+-- aus Abschnitt 6 der Bewertung: dadurch klaut ein Dieb echten Vorrat mit
+-- und Horten ist nicht mehr gratis.
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+
+local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
+local EconomyLogic = require(Shared.EconomyLogic)
+local WorldConfig = require(Shared.Config.WorldConfig)
+local DataService = require(script.Parent.DataService)
+local PlotService = require(script.Parent.PlotService)
+
+local LABEL_INTERVAL = 2 -- Sekunden zwischen zwei Label-Updates
+
+local ProductionService = {}
+
+function ProductionService.totalVorrat(profile: DataService.Profile): number
+	local sum = 0
+	for _, key in profile.keys do
+		sum += key.vorrat
+	end
+	return sum
+end
+
+function ProductionService.rate(profile: DataService.Profile): number
+	local rate = 0
+	for _, key in profile.keys do
+		rate += EconomyLogic.rarity(key.rarity).vorratPerSecond
+	end
+	return rate
+end
+
+function ProductionService.start()
+	local sinceLabel = 0
+
+	RunService.Heartbeat:Connect(function(deltaTime)
+		for _, player in Players:GetPlayers() do
+			local profile = DataService.get(player)
+			if not profile then
+				continue
+			end
+			-- Produktion laeuft ortsunabhaengig weiter, auch waehrend des
+			-- Laufs zum Pad. Nur der Vorrat auf dem Plot ist klaubar.
+			for _, key in profile.keys do
+				key.vorrat += EconomyLogic.rarity(key.rarity).vorratPerSecond * deltaTime
+			end
+		end
+
+		sinceLabel += deltaTime
+		if sinceLabel &gt;= LABEL_INTERVAL then
+			sinceLabel = 0
+			for _, player in Players:GetPlayers() do
+				PlotService.refreshKeyLabels(player.UserId)
+			end
+		end
+	end)
+
+	print("[KEYCAP] ProductionService laeuft (Label-Takt " .. LABEL_INTERVAL .. "s)")
+end
+
+-- Wie oft der Zustand an die Clients geht, steht in WorldConfig - hier nur
+-- als Erinnerung, dass ProductionService selbst nichts an Clients schickt.
+ProductionService.STATE_PUSH_INTERVAL = WorldConfig.STATE_PUSH_INTERVAL
+
+return ProductionService
+</ProtectedString>
+</Properties>
+</Item>
+<Item class="ModuleScript" referent="KC17">
+<Properties>
+<string name="Name">RunTimerService</string>
+<ProtectedString name="Source">--!strict
+-- Misst, wie lange ein Rundlauf Plot -&gt; Pad -&gt; Plot wirklich dauert.
+--
+-- Die Bewertung: "Miss zuerst, wie lange Stage 1 und Stage 3 hin und zurueck
+-- wirklich dauern, und setz die Faktoren dann knapp unter dieses Verhaeltnis."
+-- STAGE_RUN_SECONDS ist der einzige geschaetzte Wert im Balancing - alle
+-- Auszahlungsfaktoren und die Schilddauer haengen daran. Statt Stoppuhr
+-- misst der Server selbst und schreibt das Ergebnis ins Output-Fenster.
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+
+local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
+local EconomyConfig = require(Shared.Config.EconomyConfig)
+local PlotService = require(script.Parent.PlotService)
+
+local RunTimerService = {}
+
+local CHECK_INTERVAL = 0.5
+local REPORT_EVERY = 3 -- nach so vielen Laeufen je Stage einmal berichten
+
+type Run = { away: boolean, leftAt: number, stage: number?, cashOuts: number }
+
+local runs: { [number]: Run } = {}
+local samples: { [number]: { number } } = {} -- stageIndex -&gt; Rundlaufzeiten
+
+-- Wird von CourseService nach einer erfolgreichen Auszahlung gerufen.
+function RunTimerService.markCashOut(player: Player, stageIndex: number)
+	local run = runs[player.UserId]
+	if run and run.away then
+		run.stage = stageIndex
+		run.cashOuts += 1
+	end
+end
+
+function RunTimerService.average(stageIndex: number): (number?, number)
+	local list = samples[stageIndex]
+	if not list or #list == 0 then
+		return nil, 0
+	end
+	local sum = 0
+	for _, value in list do
+		sum += value
+	end
+	return sum / #list, #list
+end
+
+-- Gibt die gemessenen Zeiten als fertige Config-Zeile aus, damit sie ohne
+-- Nachdenken in EconomyConfig.STAGE_RUN_SECONDS uebernommen werden kann.
+function RunTimerService.report(): string
+	local parts = {}
+	for stageIndex = 1, #EconomyConfig.STAGE_RUN_SECONDS do
+		local average, count = RunTimerService.average(stageIndex)
+		if average then
+			table.insert(parts, ("%d (%d Laeufe)"):format(math.floor(average + 0.5), count))
+		else
+			table.insert(parts, "? (0 Laeufe)")
+		end
+	end
+	return "STAGE_RUN_SECONDS = { " .. table.concat(parts, ", ") .. " }"
+end
+
+local function record(userId: number, stageIndex: number, seconds: number)
+	samples[stageIndex] = samples[stageIndex] or {}
+	table.insert(samples[stageIndex], seconds)
+	local list = samples[stageIndex]
+	if #list % REPORT_EVERY == 0 then
+		local average = RunTimerService.average(stageIndex)
+		print(("[KEYCAP] Messung Stage %d: %.1fs dieser Lauf, Schnitt %.1fs aus %d Laeufen"):format(
+			stageIndex,
+			seconds,
+			average or seconds,
+			#list
+		))
+		print("[KEYCAP] " .. RunTimerService.report())
+	end
+end
+
+function RunTimerService.start()
+	local accumulator = 0
+
+	RunService.Heartbeat:Connect(function(deltaTime)
+		accumulator += deltaTime
+		if accumulator &lt; CHECK_INTERVAL then
+			return
+		end
+		accumulator = 0
+		local now = os.clock()
+
+		for _, player in Players:GetPlayers() do
+			local home = PlotService.isOwnerHome(player.UserId)
+			local run = runs[player.UserId]
+
+			if not run then
+				runs[player.UserId] = { away = false, leftAt = now, stage = nil, cashOuts = 0 }
+				continue
+			end
+
+			if home and run.away then
+				-- Nur zaehlen, wenn unterwegs GENAU EINMAL ausgezahlt wurde.
+				-- Wer erst an Stage 1 und dann an Stage 3 kassiert, liefert
+				-- fuer beide eine zu lange Zeit - so eine Runde ist als
+				-- Messwert unbrauchbar und wird verworfen.
+				if run.stage and run.cashOuts == 1 then
+					record(player.UserId, run.stage, now - run.leftAt)
+				end
+				run.away = false
+				run.stage = nil
+				run.cashOuts = 0
+			elseif not home and not run.away then
+				run.away = true
+				run.leftAt = now
+				run.stage = nil
+				run.cashOuts = 0
+			end
+		end
+	end)
+
+	Players.PlayerRemoving:Connect(function(player)
+		runs[player.UserId] = nil
+	end)
+
+	print("[KEYCAP] RunTimerService misst Rundlaufzeiten")
+end
+
+return RunTimerService
+</ProtectedString>
+</Properties>
+</Item>
+<Item class="ModuleScript" referent="KC18">
+<Properties>
+<string name="Name">ShopService</string>
+<ProtectedString name="Source">--!strict
+-- Kauf von Tasten und Steckplaetzen. Der Client schickt nur eine Absicht -
+-- Preis, Kontostand und Platz prueft ausschliesslich der Server.
+
+local Players = game:GetService("Players")
+
+local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
+local EconomyConfig = require(Shared.Config.EconomyConfig)
+local EconomyLogic = require(Shared.EconomyLogic)
+local Remotes = require(Shared.Remotes)
+local RateLimit = require(Shared.RateLimit)
+local DataService = require(script.Parent.DataService)
+local PlotService = require(script.Parent.PlotService)
+local TutorialService = require(script.Parent.TutorialService)
+
+local ShopService = {}
+
+local function notify(player: Player, text: string)
+	Remotes.get("Notify"):FireClient(player, text)
+end
+
+local function isKnownRarity(name: any): boolean
+	if type(name) ~= "string" then
+		return false
+	end
+	return EconomyConfig.RARITIES[name] ~= nil
+end
+
+local function onBuyKey(player: Player, rarityName: any)
+	if not RateLimit.allow(player.UserId, "buyKey", EconomyConfig.REMOTE_RATE_LIMIT) then
+		return
+	end
+	if not isKnownRarity(rarityName) then
+		return -- Typ-Check am Server-Eingang: unbekannte Werte still verwerfen
+	end
+	local profile = DataService.get(player)
+	if not profile then
+		return
+	end
+	if #profile.keys &gt;= profile.slots then
+		notify(player, "Alle Steckplaetze belegt - erst einen Slot kaufen.")
+		return
+	end
+	local price = EconomyLogic.rarity(rarityName).price
+	if profile.wins &lt; price then
+		notify(player, ("Zu wenig Wins: %d von %d."):format(profile.wins, price))
+		return
+	end
+
+	profile.wins -= price
+	table.insert(profile.keys, { rarity = rarityName, vorrat = 0 })
+	PlotService.rebuildKeys(player.UserId)
+	DataService.syncLeaderstats(player)
+	TutorialService.report(player, "buy")
+	notify(player, ("%s gekauft (-%d Wins)."):format(rarityName, price))
+end
+
+local function onBuySlot(player: Player)
+	if not RateLimit.allow(player.UserId, "buySlot", EconomyConfig.REMOTE_RATE_LIMIT) then
+		return
+	end
+	local profile = DataService.get(player)
+	if not profile then
+		return
+	end
+	local price = EconomyLogic.slotPrice(profile.slots)
+	if not price then
+		notify(player, "Du hast schon alle Steckplaetze.")
+		return
+	end
+	if profile.wins &lt; price then
+		notify(player, ("Zu wenig Wins: %d von %d."):format(profile.wins, price))
+		return
+	end
+
+	profile.wins -= price
+	profile.slots += 1
+	DataService.syncLeaderstats(player)
+	notify(player, ("Steckplatz %d gekauft (-%d Wins)."):format(profile.slots, price))
+end
+
+function ShopService.start()
+	Remotes.get("BuyKey").OnServerEvent:Connect(onBuyKey)
+	Remotes.get("BuySlot").OnServerEvent:Connect(onBuySlot)
+	Players.PlayerRemoving:Connect(function(player)
+		RateLimit.forget(player.UserId)
+	end)
+	print("[KEYCAP] ShopService laeuft")
+end
+
+return ShopService
+</ProtectedString>
+</Properties>
+</Item>
+<Item class="ModuleScript" referent="KC19">
+<Properties>
+<string name="Name">SpeedService</string>
+<ProtectedString name="Source">--!strict
+-- Setzt die WalkSpeed aus dem Vorrat. Server-autoritativ: der Client
+-- rechnet nichts aus und schickt nichts - er sieht nur das Ergebnis.
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+
+local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
+local EconomyLogic = require(Shared.EconomyLogic)
+local EconomyConfig = require(Shared.Config.EconomyConfig)
+local DataService = require(script.Parent.DataService)
+local ProductionService = require(script.Parent.ProductionService)
+
+local SpeedService = {}
+
+-- Wer eine geklaute Taste traegt, ist langsamer. Wird von StealService
+-- gesetzt und laeuft nach CARRY_SECONDS aus.
+local carrying: { [number]: number } = {} -- userId -&gt; Ablaufzeitpunkt (os.clock)
+
+function SpeedService.setCarrying(userId: number, seconds: number)
+	carrying[userId] = os.clock() + seconds
+end
+
+function SpeedService.clearCarrying(userId: number)
+	carrying[userId] = nil
+end
+
+function SpeedService.isCarrying(userId: number): boolean
+	local until_ = carrying[userId]
+	return until_ ~= nil and os.clock() &lt; until_
+end
+
+function SpeedService.speedFor(player: Player): number
+	local profile = DataService.get(player)
+	if not profile then
+		return EconomyConfig.BASE_WALK_SPEED
+	end
+	local vorrat = ProductionService.totalVorrat(profile)
+	if SpeedService.isCarrying(player.UserId) then
+		return EconomyLogic.carryWalkSpeed(vorrat)
+	end
+	return EconomyLogic.walkSpeed(vorrat)
+end
+
+function SpeedService.start()
+	local accumulator = 0
+
+	RunService.Heartbeat:Connect(function(deltaTime)
+		accumulator += deltaTime
+		if accumulator &lt; 0.25 then
+			return
+		end
+		accumulator = 0
+
+		for _, player in Players:GetPlayers() do
+			local character = player.Character
+			local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+			if humanoid then
+				humanoid.WalkSpeed = SpeedService.speedFor(player)
+			end
+		end
+	end)
+
+	print("[KEYCAP] SpeedService laeuft")
+end
+
+return SpeedService
+</ProtectedString>
+</Properties>
+</Item>
+<Item class="ModuleScript" referent="KC20">
+<Properties>
+<string name="Name">StateService</string>
+<ProtectedString name="Source">--!strict
+-- Schickt den Spielzustand an die Clients. Der Client rechnet nichts aus,
+-- er zeigt nur an, was hier drin steht.
+
+local Players = game:GetService("Players")
+
+local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
+local EconomyLogic = require(Shared.EconomyLogic)
+local WorldConfig = require(Shared.Config.WorldConfig)
+local Remotes = require(Shared.Remotes)
+local DataService = require(script.Parent.DataService)
+local ProductionService = require(script.Parent.ProductionService)
+local SpeedService = require(script.Parent.SpeedService)
+local StealService = require(script.Parent.StealService)
+local TutorialService = require(script.Parent.TutorialService)
+
+local StateService = {}
+
+function StateService.start()
+	local remote = Remotes.get("StateChanged")
+
+	task.spawn(function()
+		while true do
+			task.wait(WorldConfig.STATE_PUSH_INTERVAL)
+			for _, player in Players:GetPlayers() do
+				local profile = DataService.get(player)
+				if not profile then
+					continue
+				end
+				local vorrat = ProductionService.totalVorrat(profile)
+				local shieldLeft, shieldCooldown = StealService.shieldState(player.UserId)
+				local nextStage = nil
+				for stageIndex = 1, #EconomyLogic.payoutFactors() do
+					if not EconomyLogic.canEnterStage(vorrat, stageIndex) then
+						nextStage = stageIndex
+						break
+					end
+				end
+
+				remote:FireClient(player, {
+					wins = profile.wins,
+					vorrat = math.floor(vorrat),
+					rate = ProductionService.rate(profile),
+					speed = SpeedService.speedFor(player),
+					slots = profile.slots,
+					keyCount = #profile.keys,
+					slotPrice = EconomyLogic.slotPrice(profile.slots),
+					carrying = SpeedService.isCarrying(player.UserId),
+					shieldLeft = math.floor(shieldLeft),
+					shieldCooldown = math.floor(shieldCooldown),
+					-- naechstes Tor, das noch nicht offen ist (nil = alle offen)
+					nextStage = nextStage,
+					nextStageVorrat = if nextStage then EconomyLogic.vorratForStage(nextStage) else nil,
+					-- nil = Tutorial durch
+					tutorial = TutorialService.stateFor(player),
+				})
+			end
+		end
+	end)
+
+	print("[KEYCAP] StateService sendet alle " .. WorldConfig.STATE_PUSH_INTERVAL .. "s")
+end
+
+return StateService
+</ProtectedString>
+</Properties>
+</Item>
+<Item class="ModuleScript" referent="KC21">
+<Properties>
+<string name="Name">StealService</string>
+<ProtectedString name="Source">--!strict
+-- Diebstahl und Schild.
+--
+-- Geklaut wird eine TASTE MITSAMT IHREM VORRAT (Abschnitt 6 der Bewertung).
+-- Der Dieb bekommt nur einen Anteil, der Rest verfaellt - sonst waere ein
+-- Klau bei einem Horter ein Sofortsieg.
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+
+local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
+local EconomyConfig = require(Shared.Config.EconomyConfig)
+local EconomyLogic = require(Shared.EconomyLogic)
+local Remotes = require(Shared.Remotes)
+local RateLimit = require(Shared.RateLimit)
+local DataService = require(script.Parent.DataService)
+local PlotService = require(script.Parent.PlotService)
+local SpeedService = require(script.Parent.SpeedService)
+local CarryService = require(script.Parent.CarryService)
+local NpcPlotService = require(script.Parent.NpcPlotService)
+local TutorialService = require(script.Parent.TutorialService)
+
+local StealService = {}
+
+local pairCooldown: { [string]: number } = {} -- "dieb|opfer" -&gt; os.clock
+local shieldUntil: { [number]: number } = {}
+local shieldReadyAt: { [number]: number } = {}
+
+local function notify(player: Player, text: string)
+	Remotes.get("Notify"):FireClient(player, text)
+end
+
+function StealService.isShielded(userId: number): boolean
+	return (shieldUntil[userId] or 0) &gt; os.clock()
+end
+
+function StealService.shieldState(userId: number): (number, number)
+	local now = os.clock()
+	return math.max(0, (shieldUntil[userId] or 0) - now), math.max(0, (shieldReadyAt[userId] or 0) - now)
+end
+
+local function activateShield(player: Player)
+	if not RateLimit.allow(player.UserId, "shield", EconomyConfig.REMOTE_RATE_LIMIT) then
+		return
+	end
+	local now = os.clock()
+	if (shieldReadyAt[player.UserId] or 0) &gt; now then
+		notify(player, "Schild laedt noch.")
+		return
+	end
+	local duration, cooldown = EconomyLogic.shieldWindow()
+	shieldUntil[player.UserId] = now + duration
+	shieldReadyAt[player.UserId] = now + cooldown
+	notify(player, ("Schild an - %ds geschuetzt."):format(duration))
+end
+
+-- Gemeinsame Vorpruefungen fuer jeden Klau. Gibt das Profil des Diebes
+-- zurueck, oder nil mit dem Grund als Meldung.
+local function checkThief(thief: Player, part: BasePart): any
+	if not RateLimit.allow(thief.UserId, "steal", EconomyConfig.REMOTE_RATE_LIMIT) then
+		return nil
+	end
+	local profile = DataService.get(thief)
+	if not profile then
+		return nil
+	end
+	if #profile.keys &gt;= profile.slots then
+		notify(thief, "Kein freier Steckplatz - erst einen Slot kaufen.")
+		return nil
+	end
+	-- Distanz serverseitig pruefen, nicht dem Prompt vertrauen.
+	local character = thief.Character
+	local root = character and character:FindFirstChild("HumanoidRootPart")
+	if not root or not root:IsA("BasePart") then
+		return nil
+	end
+	if (root.Position - part.Position).Magnitude &gt; 16 then
+		return nil
+	end
+	return profile
+end
+
+local function stealFromNpc(thief: Player, part: BasePart, ref)
+	local thiefProfile = checkThief(thief, part)
+	if not thiefProfile then
+		return
+	end
+
+	local pairId = thief.UserId .. "|npc" .. ref.plotIndex
+	local now = os.clock()
+	if (pairCooldown[pairId] or 0) &gt; now then
+		local left = math.ceil((pairCooldown[pairId] :: number) - now)
+		notify(thief, ("An diesem Plot erst wieder in %ds."):format(left))
+		return
+	end
+
+	local taken = NpcPlotService.takeKey(ref.plotIndex, ref.index)
+	if not taken then
+		notify(thief, "Diese Taste ist gerade leer.")
+		return
+	end
+
+	table.insert(thiefProfile.keys, { rarity = taken.rarity, vorrat = taken.vorrat })
+	thiefProfile.totalStolen += 1
+	pairCooldown[pairId] = now + EconomyConfig.NPC_PAIR_COOLDOWN_SECONDS
+
+	SpeedService.setCarrying(thief.UserId, EconomyConfig.CARRY_SECONDS)
+	CarryService.show(thief, taken.rarity, taken.vorrat)
+	PlotService.rebuildKeys(thief.UserId)
+	DataService.syncLeaderstats(thief)
+	TutorialService.report(thief, "steal")
+	notify(thief, ("Mitgenommen: %s mit %d Vorrat."):format(taken.rarity, taken.vorrat))
+end
+
+local function stealFromPlayer(thief: Player, part: BasePart, ref)
+	if ref.userId == thief.UserId then
+		notify(thief, "Das ist deine eigene Taste.")
+		return
+	end
+
+	local victim = Players:GetPlayerByUserId(ref.userId)
+	local victimProfile = if victim then DataService.get(victim) else nil
+	if not victim or not victimProfile then
+		return
+	end
+
+	if StealService.isShielded(victim.UserId) then
+		notify(thief, "Der Plot ist geschuetzt.")
+		return
+	end
+
+	-- Abklingzeit pro Dieb-Opfer-Paar: verhindert, dass ein starker Spieler
+	-- einen schwachen dauerhaft leerraeumt.
+	local pairId = thief.UserId .. "|" .. victim.UserId
+	local now = os.clock()
+	if (pairCooldown[pairId] or 0) &gt; now then
+		local left = math.ceil((pairCooldown[pairId] :: number) - now)
+		notify(thief, ("Bei diesem Spieler erst wieder in %ds."):format(left))
+		return
+	end
+
+	local thiefProfile = checkThief(thief, part)
+	if not thiefProfile then
+		return
+	end
+
+	local key = victimProfile.keys[ref.index]
+	if not key then
+		return -- Liste hat sich zwischenzeitlich geaendert
+	end
+
+	local carried = EconomyLogic.stealTransfer(key.vorrat)
+	local lost = math.floor(key.vorrat)
+	table.remove(victimProfile.keys, ref.index)
+	table.insert(thiefProfile.keys, { rarity = key.rarity, vorrat = carried })
+	thiefProfile.totalStolen += 1
+
+	pairCooldown[pairId] = now + EconomyConfig.STEAL_PAIR_COOLDOWN_SECONDS
+	SpeedService.setCarrying(thief.UserId, EconomyConfig.CARRY_SECONDS)
+	CarryService.show(thief, key.rarity, carried)
+
+	PlotService.rebuildKeys(victim.UserId)
+	PlotService.rebuildKeys(thief.UserId)
+	DataService.syncLeaderstats(thief)
+
+	TutorialService.report(thief, "steal")
+	notify(thief, ("Geklaut: %s mit %d Vorrat."):format(key.rarity, carried))
+	notify(victim, ("%s hat deine %s geklaut (%d Vorrat weg)."):format(thief.DisplayName, key.rarity, lost))
+end
+
+local function attemptSteal(thief: Player, part: BasePart)
+	local ref = PlotService.keyRefFromPart(part)
+	if not ref then
+		return
+	end
+	if ref.kind == "npc" then
+		stealFromNpc(thief, part, ref)
+	elseif ref.kind == "player" and ref.userId then
+		stealFromPlayer(thief, part, ref)
+	end
+end
+
+-- Anwesenheit des Besitzers verdoppelt die Klau-Dauer. ProximityPrompt hat
+-- keine Einstellung pro Spieler, also wird die Dauer am Prompt selbst
+-- nachgezogen.
+local function refreshHoldDurations()
+	-- Nur Spielerplots: an einem NPC-Plot ist nie jemand zuhause.
+	for _, player in Players:GetPlayers() do
+		local plot = PlotService.getPlot(player.UserId)
+		if not plot then
+			continue
+		end
+		local factor = if PlotService.isOwnerHome(player.UserId) then EconomyConfig.PRESENCE_HOLD_FACTOR else 1
+		local duration = EconomyConfig.STEAL_HOLD_SECONDS * factor
+		for _, part in plot.keyFolder:GetChildren() do
+			local prompt = part:FindFirstChild("Steal")
+			if prompt and prompt:IsA("ProximityPrompt") then
+				prompt.HoldDuration = duration
+			end
+		end
+	end
+end
+
+function StealService.start()
+	local plots = workspace:WaitForChild("Plots")
+
+	local function hook(descendant: Instance)
+		if not descendant:IsA("ProximityPrompt") or descendant.Name ~= "Steal" then
+			return
+		end
+		local part = descendant.Parent
+		if part and part:IsA("BasePart") then
+			descendant.Triggered:Connect(function(thief)
+				attemptSteal(thief, part)
+			end)
+		end
+	end
+
+	plots.DescendantAdded:Connect(hook)
+	-- Prompts, die vor diesem Verbinden schon existierten, nachziehen:
+	-- PlotService vergibt Plots asynchron und kann schneller sein.
+	for _, descendant in plots:GetDescendants() do
+		hook(descendant)
+	end
+
+	Remotes.get("ActivateShield").OnServerEvent:Connect(activateShield)
+
+	Players.PlayerRemoving:Connect(function(player)
+		shieldUntil[player.UserId] = nil
+		shieldReadyAt[player.UserId] = nil
+		RateLimit.forget(player.UserId)
+		SpeedService.clearCarrying(player.UserId)
+	end)
+
+	local accumulator = 0
+	RunService.Heartbeat:Connect(function(deltaTime)
+		accumulator += deltaTime
+		if accumulator &gt;= 1 then
+			accumulator = 0
+			refreshHoldDurations()
+		end
+	end)
+
+	print("[KEYCAP] StealService laeuft")
+end
+
+return StealService
+</ProtectedString>
+</Properties>
+</Item>
+<Item class="ModuleScript" referent="KC22">
+<Properties>
+<string name="Name">TutorialService</string>
+<ProtectedString name="Source">--!strict
+-- Onboarding. Der Fortschritt liegt im Profil, nicht im Client - nach einem
+-- Rejoin faengt niemand von vorne an, und der Client kann sich die
+-- Abschluss-Belohnung nicht selbst geben.
+
+local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
+local EconomyLogic = require(Shared.EconomyLogic)
+local TutorialConfig = require(Shared.Config.TutorialConfig)
+local Remotes = require(Shared.Remotes)
+local DataService = require(script.Parent.DataService)
+local ProductionService = require(script.Parent.ProductionService)
+
+local TutorialService = {}
+
+local function notify(player: Player, text: string)
+	Remotes.get("Notify"):FireClient(player, text)
+end
+
+local function currentStep(profile: DataService.Profile)
+	return TutorialConfig.STEPS[profile.tutorialStep]
+end
+
+local function advance(player: Player, profile: DataService.Profile)
+	profile.tutorialStep += 1
+	if profile.tutorialStep &gt; #TutorialConfig.STEPS then
+		profile.wins += TutorialConfig.REWARD_WINS
+		DataService.syncLeaderstats(player)
+		notify(player, ("%s  (+%d Wins)"):format(TutorialConfig.DONE_TEXT, TutorialConfig.REWARD_WINS))
+	end
+end
+
+-- Wird von CourseService, ShopService und StealService gerufen. Der Name
+-- muss zum `event` des aktuellen Schritts passen, sonst passiert nichts -
+-- so kann kein Schritt uebersprungen werden.
+function TutorialService.report(player: Player, event: string)
+	local profile = DataService.get(player)
+	if not profile then
+		return
+	end
+	local step = currentStep(profile)
+	if step and step.event == event then
+		advance(player, profile)
+	end
+end
+
+-- Zustand fuer den Client. Gibt nil zurueck, wenn das Tutorial durch ist.
+--
+-- ACHTUNG: Diese Funktion kann den Fortschritt WEITERSCHALTEN. Der erste
+-- Schritt haengt an einer Zahl statt an einer Handlung, es gibt also nichts,
+-- was ihn melden koennte - er wird hier beim Abfragen geprueft. StateService
+-- ruft das im festen Takt, damit ist das der einzige Ort, an dem gepollt wird.
+function TutorialService.stateFor(player: Player): { step: number, text: string }?
+	local profile = DataService.get(player)
+	if not profile then
+		return nil
+	end
+	local step = currentStep(profile)
+	if not step then
+		return nil
+	end
+
+	-- Der erste Schritt haengt an einer Zahl, nicht an einer Handlung:
+	-- sobald genug Vorrat da ist, ist er erledigt.
+	if step.event == "vorrat" and step.requiresVorratForStage then
+		local vorrat = ProductionService.totalVorrat(profile)
+		if EconomyLogic.canEnterStage(vorrat, step.requiresVorratForStage) then
+			advance(player, profile)
+			step = currentStep(profile)
+			if not step then
+				return nil
+			end
+		end
+	end
+
+	return { step = profile.tutorialStep, text = step.text }
+end
+
+function TutorialService.start()
+	print(("[KEYCAP] TutorialService: %d Schritte, %d Wins Belohnung"):format(
+		#TutorialConfig.STEPS,
+		TutorialConfig.REWARD_WINS
+	))
+end
+
+return TutorialService
+</ProtectedString>
+</Properties>
+</Item>
+</Item>
+</Item>
+</Item>
+<Item class="Lighting" referent="KC34">
+<Properties>
+<string name="Name">Lighting</string>
+<token name="Technology">4</token>
+</Properties>
+</Item>
+<Item class="StarterPlayer" referent="KC35">
+<Properties>
+<string name="Name">StarterPlayer</string>
+</Properties>
+<Item class="StarterPlayerScripts" referent="KC36">
+<Properties>
+<string name="Name">StarterPlayerScripts</string>
+</Properties>
+<Item class="LocalScript" referent="KC29">
+<Properties>
+<string name="Name">KeycapRush</string>
+<ProtectedString name="Source">--!strict
+-- Startet die Controller. Der Client zeigt nur an und schickt Absichten.
+
+local Controllers = script:WaitForChild("Controllers")
+
+local HudController = require(Controllers.HudController)
+local ShopController = require(Controllers.ShopController)
+
+HudController.start()
+ShopController.start()
+
+print("[KEYCAP] Client bereit.")
+</ProtectedString>
+</Properties>
+<Item class="Folder" referent="KC27">
+<Properties>
+<string name="Name">Controllers</string>
+</Properties>
+<Item class="ModuleScript" referent="KC25">
+<Properties>
+<string name="Name">HudController</string>
+<ProtectedString name="Source">--!strict
+-- HUD: Vorrat, Rate, Wins, naechstes Tor, Schild, Tutorial-Karte.
+-- Baut ausschliesslich mit UiKit - hier steht keine eigene Farbe und
+-- keine eigene Pixelzahl.
+
+local Players = game:GetService("Players")
+
+local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
+local Theme = require(Shared:WaitForChild("Theme"))
+local Remotes = require(Shared:WaitForChild("Remotes"))
+local UiKit = require(script.Parent.Parent.UiKit)
+
+local HudController = {}
+
+local player = Players.LocalPlayer
+
+local TOAST_SECONDS = 3.5
+
+function HudController.start()
+	local gui = Instance.new("ScreenGui")
+	gui.Name = "KeycapHud"
+	gui.ResetOnSpawn = false
+	gui.IgnoreGuiInset = true
+	UiKit.autoScale(gui)
+
+	local margin = Theme.SPACE.L
+	local width = Theme.HUD_PANEL_WIDTH
+
+	-- Statuskarte oben links. Die Zeilen sind nach Wichtigkeit gestaffelt:
+	-- Vorrat ist die Zahl, auf die der Spieler schaut, Wins die zweite.
+	local stats = UiKit.panel(gui, UDim2.new(0, width, 0, Theme.HUD_STATS_HEIGHT), UDim2.new(0, margin, 0, margin))
+	local inner = UDim2.new(1, -Theme.SPACE.XL, 0, 0)
+	local left = Theme.SPACE.M
+
+	local vorratLabel = UiKit.text(stats, {
+		size = inner + UDim2.new(0, 0, 0, 44),
+		position = UDim2.new(0, left, 0, Theme.SPACE.S),
+		textSize = Theme.TEXT_SIZE.HERO,
+		text = "Vorrat 0",
+	})
+	local rateLabel = UiKit.text(stats, {
+		size = inner + UDim2.new(0, 0, 0, 24),
+		position = UDim2.new(0, left, 0, 54),
+		textSize = Theme.TEXT_SIZE.SMALL,
+		color = Theme.TEXT_MUTED,
+		text = "+0 pro Sekunde",
+	})
+	local winsLabel = UiKit.text(stats, {
+		size = inner + UDim2.new(0, 0, 0, 34),
+		position = UDim2.new(0, left, 0, 84),
+		textSize = Theme.TEXT_SIZE.TITLE,
+		color = Theme.GOLD_TEXT,
+		text = "0 Wins",
+	})
+	local hintLabel = UiKit.text(stats, {
+		size = inner + UDim2.new(0, 0, 0, 22),
+		position = UDim2.new(0, left, 0, 124),
+		textSize = Theme.TEXT_SIZE.SMALL,
+		color = Theme.TEXT_MUTED,
+		text = "",
+	})
+
+	local shieldButton = UiKit.button(gui, {
+		size = UDim2.new(0, width, 0, Theme.TOUCH_MIN),
+		position = UDim2.new(0, margin, 0, Theme.HUD_STATS_HEIGHT + margin + Theme.SPACE.S),
+		text = "Schild",
+		base = Theme.BLUE,
+		edge = Theme.BLUE_DARK,
+	})
+
+	-- Tutorial-Karte unten mittig. Der Abstand nach unten laesst den
+	-- Sprung-Knopf frei, der auf dem Handy unten rechts sitzt.
+	local tutorialCard = UiKit.panel(gui, UDim2.new(0.9, 0, 0, 84), UDim2.new(0.05, 0, 1, -200))
+	tutorialCard.Visible = false
+	local tutorialText = UiKit.text(tutorialCard, {
+		size = UDim2.new(1, -Theme.SPACE.XL, 1, -Theme.SPACE.L),
+		position = UDim2.new(0, Theme.SPACE.M, 0, Theme.SPACE.S),
+		textSize = Theme.TEXT_SIZE.LEAD,
+		align = Enum.TextXAlignment.Center,
+		wrapped = true,
+	})
+
+	local toast = UiKit.text(gui, {
+		size = UDim2.new(0, 520, 0, 40),
+		position = UDim2.new(0.5, -260, 0, Theme.SPACE.XL),
+		textSize = Theme.TEXT_SIZE.LEAD,
+		align = Enum.TextXAlignment.Center,
+	})
+	toast.TextStrokeTransparency = 0.4
+
+	gui.Parent = player:WaitForChild("PlayerGui")
+
+	shieldButton.Activated:Connect(function()
+		Remotes.get("ActivateShield"):FireServer()
+	end)
+
+	Remotes.get("StateChanged").OnClientEvent:Connect(function(state)
+		vorratLabel.Text = ("Vorrat %d"):format(state.vorrat)
+		rateLabel.Text = ("+%d pro Sekunde   ·   Tempo %d"):format(state.rate, math.floor(state.speed))
+		winsLabel.Text = ("%d Wins"):format(state.wins)
+
+		if state.carrying then
+			hintLabel.Text = "Du traegst Beute - lauf nach Hause!"
+			hintLabel.TextColor3 = Theme.RED_TEXT
+		elseif state.nextStage then
+			hintLabel.Text = ("Stage %d ab %d Vorrat"):format(state.nextStage, state.nextStageVorrat)
+			hintLabel.TextColor3 = Theme.TEXT_MUTED
+		else
+			hintLabel.Text = "Alle Tore offen - lauf zu Stage 3!"
+			hintLabel.TextColor3 = Theme.GREEN_TEXT
+		end
+
+		if state.tutorial then
+			tutorialCard.Visible = true
+			tutorialText.Text = ("Schritt %d: %s"):format(state.tutorial.step, state.tutorial.text)
+		else
+			tutorialCard.Visible = false
+		end
+
+		if state.shieldLeft &gt; 0 then
+			shieldButton.Text = ("Schild aktiv - %ds"):format(state.shieldLeft)
+		elseif state.shieldCooldown &gt; 0 then
+			shieldButton.Text = ("Schild laedt - %ds"):format(state.shieldCooldown)
+		else
+			shieldButton.Text = "Schild einschalten"
+		end
+	end)
+
+	local toastToken = 0
+	Remotes.get("Notify").OnClientEvent:Connect(function(text)
+		toast.Text = tostring(text)
+		toastToken += 1
+		local myToken = toastToken
+		task.delay(TOAST_SECONDS, function()
+			if toastToken == myToken then
+				toast.Text = ""
+			end
+		end)
+	end)
+end
+
+return HudController
+</ProtectedString>
+</Properties>
+</Item>
+<Item class="ModuleScript" referent="KC26">
+<Properties>
+<string name="Name">ShopController</string>
+<ProtectedString name="Source">--!strict
+-- Laden: Tasten und Steckplaetze kaufen. Die Preise hier sind nur Anzeige -
+-- was ein Kauf kostet, entscheidet allein der Server.
+
+local Players = game:GetService("Players")
+
+local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
+local Theme = require(Shared:WaitForChild("Theme"))
+local Remotes = require(Shared:WaitForChild("Remotes"))
+local EconomyConfig = require(Shared:WaitForChild("Config"):WaitForChild("EconomyConfig"))
+local UiKit = require(script.Parent.Parent.UiKit)
+
+local ShopController = {}
+
+local player = Players.LocalPlayer
+
+function ShopController.start()
+	local gui = Instance.new("ScreenGui")
+	gui.Name = "KeycapShop"
+	gui.ResetOnSpawn = false
+	gui.IgnoreGuiInset = true
+	UiKit.autoScale(gui)
+
+	local margin = Theme.SPACE.L
+	-- Sitzt in der linken Spalte unter der Statuskarte und dem Schild-Knopf.
+	local shieldBottom = Theme.HUD_STATS_HEIGHT + margin + Theme.SPACE.S + Theme.TOUCH_MIN
+	local openButton = UiKit.button(gui, {
+		size = UDim2.new(0, Theme.HUD_PANEL_WIDTH, 0, Theme.TOUCH_MIN),
+		position = UDim2.new(0, margin, 0, shieldBottom + Theme.SPACE.S),
+		text = "Laden",
+		base = Theme.GREEN,
+		edge = Theme.GREEN_DARK,
+	})
+
+	-- Hoehe nicht ausrechnen, sondern vom Layout bestimmen lassen - sonst
+	-- passt sie nicht mehr, sobald eine Seltenheit dazukommt.
+	local panel = UiKit.panel(gui, UDim2.new(0, Theme.SHOP_PANEL_WIDTH, 0, 0), UDim2.new(0.5, -Theme.SHOP_PANEL_WIDTH / 2, 0.5, -240))
+	panel.AutomaticSize = Enum.AutomaticSize.Y
+	panel.Visible = false
+	UiKit.stack(panel)
+
+	UiKit.text(panel, {
+		size = UDim2.new(1, 0, 0, 38),
+		textSize = Theme.TEXT_SIZE.TITLE,
+		align = Enum.TextXAlignment.Center,
+		text = "Tasten kaufen",
+		layoutOrder = 0,
+	})
+
+	for index, rarityName in EconomyConfig.RARITY_ORDER do
+		local rarity = EconomyConfig.RARITIES[rarityName]
+		local button = UiKit.button(panel, {
+			size = UDim2.new(1, 0, 0, Theme.TOUCH_MIN),
+			text = ("%s   +%d/s   %d Wins"):format(rarityName, rarity.vorratPerSecond, rarity.price),
+			base = Theme.RARITY_COLORS[rarityName] or Theme.PANEL,
+			edge = Theme.PANEL_EDGE,
+			layoutOrder = index,
+		})
+		button.Activated:Connect(function()
+			Remotes.get("BuyKey"):FireServer(rarityName)
+		end)
+	end
+
+	local slotButton = UiKit.button(panel, {
+		size = UDim2.new(1, 0, 0, Theme.TOUCH_MIN),
+		text = "Steckplatz kaufen",
+		base = Theme.GOLD,
+		edge = Theme.GOLD_DARK,
+		layoutOrder = #EconomyConfig.RARITY_ORDER + 1,
+	})
+	slotButton.Activated:Connect(function()
+		Remotes.get("BuySlot"):FireServer()
+	end)
+
+	local closeButton = UiKit.button(panel, {
+		size = UDim2.new(1, 0, 0, Theme.TOUCH_MIN),
+		text = "Schliessen",
+		base = Theme.PANEL,
+		edge = Theme.PANEL_EDGE,
+		layoutOrder = #EconomyConfig.RARITY_ORDER + 2,
+	})
+	closeButton.Activated:Connect(function()
+		panel.Visible = false
+	end)
+
+	gui.Parent = player:WaitForChild("PlayerGui")
+
+	openButton.Activated:Connect(function()
+		panel.Visible = not panel.Visible
+	end)
+
+	Remotes.get("StateChanged").OnClientEvent:Connect(function(state)
+		if state.slotPrice then
+			slotButton.Text = ("Steckplatz %d   %d Wins"):format(state.slots + 1, state.slotPrice)
+		else
+			slotButton.Text = "Alle Steckplaetze gekauft"
+		end
+		openButton.Text = ("Laden   %d von %d Tasten"):format(state.keyCount, state.slots)
+	end)
+end
+
+return ShopController
+</ProtectedString>
+</Properties>
+</Item>
+</Item>
+<Item class="ModuleScript" referent="KC28">
+<Properties>
+<string name="Name">UiKit</string>
+<ProtectedString name="Source">--!strict
+-- Bausteine fuer die Oberflaeche. Jeder Controller baut damit, keiner baut
+-- eigene Rahmen oder Knoepfe - sonst laufen die Panels optisch auseinander.
+--
+-- Alle Werte kommen aus Theme. In dieser Datei steht keine Farbe und keine
+-- Pixelzahl, die nicht von dort kommt.
+
+local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
+local Theme = require(Shared:WaitForChild("Theme"))
+
+local UiKit = {}
+
+local function round(instance: Instance)
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = Theme.CORNER
+	corner.Parent = instance
+end
+
+-- Creme-weisse Flaeche mit runden Ecken.
+function UiKit.panel(parent: Instance, size: UDim2, position: UDim2): Frame
+	local frame = Instance.new("Frame")
+	frame.Size = size
+	frame.Position = position
+	frame.BackgroundColor3 = Theme.PANEL
+	frame.BorderSizePixel = 0
+	round(frame)
+	frame.Parent = parent
+	return frame
+end
+
+export type TextOptions = {
+	size: UDim2,
+	position: UDim2?,
+	text: string?,
+	textSize: number?,
+	color: Color3?,
+	align: Enum.TextXAlignment?,
+	wrapped: boolean?,
+	layoutOrder: number?,
+}
+
+function UiKit.text(parent: Instance, options: TextOptions): TextLabel
+	local element = Instance.new("TextLabel")
+	element.Size = options.size
+	element.Position = options.position or UDim2.new(0, 0, 0, 0)
+	element.BackgroundTransparency = 1
+	element.Font = Theme.FONT
+	element.TextScaled = false
+	element.TextSize = options.textSize or Theme.TEXT_SIZE.BODY
+	element.TextColor3 = options.color or Theme.TEXT
+	element.TextXAlignment = options.align or Enum.TextXAlignment.Left
+	element.TextWrapped = options.wrapped or false
+	element.LayoutOrder = options.layoutOrder or 0
+	element.Text = options.text or ""
+	element.Parent = parent
+	return element
+end
+
+export type ButtonOptions = {
+	size: UDim2,
+	position: UDim2?,
+	text: string,
+	base: Color3,
+	edge: Color3,
+	textColor: Color3?,
+	textSize: number?,
+	layoutOrder: number?,
+}
+
+-- Knopf mit dunklerer Unterkante. Beim Druecken rutscht die Oberseite auf
+-- die Kante - dieselbe Bewegung, die ein echter Tastenanschlag macht.
+-- Ohne diese Rueckmeldung fuehlt sich auf dem Handy nichts an, weil es
+-- keinen Hover-Zustand gibt.
+function UiKit.button(parent: Instance, options: ButtonOptions): TextButton
+	local holder = Instance.new("Frame")
+	holder.Size = options.size
+	holder.Position = options.position or UDim2.new(0, 0, 0, 0)
+	holder.BackgroundColor3 = options.edge
+	holder.BorderSizePixel = 0
+	holder.LayoutOrder = options.layoutOrder or 0
+	round(holder)
+
+	local button = Instance.new("TextButton")
+	button.Size = UDim2.new(1, 0, 1, -Theme.BUTTON_EDGE_HEIGHT)
+	button.Position = UDim2.new(0, 0, 0, 0)
+	button.BackgroundColor3 = options.base
+	button.BorderSizePixel = 0
+	button.AutoButtonColor = false -- eigene Rueckmeldung statt Roblox-Graufilter
+	button.Font = Theme.FONT
+	button.TextScaled = false
+	button.TextSize = options.textSize or Theme.TEXT_SIZE.BODY
+	button.TextColor3 = options.textColor or Theme.TEXT
+	button.Text = options.text
+	round(button)
+
+	local raised = UDim2.new(0, 0, 0, 0)
+	local pressed = UDim2.new(0, 0, 0, Theme.BUTTON_EDGE_HEIGHT)
+	button.MouseButton1Down:Connect(function()
+		button.Position = pressed
+	end)
+	button.MouseButton1Up:Connect(function()
+		button.Position = raised
+	end)
+	-- Wer den Finger neben dem Knopf loslaesst, bekommt kein MouseButton1Up.
+	button.MouseLeave:Connect(function()
+		button.Position = raised
+	end)
+
+	button.Parent = holder
+	holder.Parent = parent
+	return button
+end
+
+-- Untereinander-Layout mit gleichmaessigem Abstand und Innenrand.
+function UiKit.stack(parent: Instance, padding: number?)
+	local layout = Instance.new("UIListLayout")
+	layout.Padding = UDim.new(0, padding or Theme.SPACE.S)
+	layout.SortOrder = Enum.SortOrder.LayoutOrder
+	layout.Parent = parent
+
+	local inset = Instance.new("UIPadding")
+	local space = UDim.new(0, Theme.SPACE.M)
+	inset.PaddingTop = space
+	inset.PaddingBottom = space
+	inset.PaddingLeft = space
+	inset.PaddingRight = space
+	inset.Parent = parent
+
+	return layout
+end
+
+-- Skaliert das ganze HUD fuer kleine Bildschirme. Ohne das ist das HUD auf
+-- dem Handy zu gross und verdeckt das Spiel.
+function UiKit.autoScale(gui: ScreenGui): UIScale
+	local scale = Instance.new("UIScale")
+	scale.Parent = gui
+
+	local camera = workspace.CurrentCamera
+
+	local function apply()
+		local viewport = if camera then camera.ViewportSize else Vector2.new(Theme.SCALE_REFERENCE_WIDTH, 720)
+		local factor = viewport.X / Theme.SCALE_REFERENCE_WIDTH
+		scale.Scale = math.clamp(factor, Theme.SCALE_MIN, Theme.SCALE_MAX)
+	end
+
+	apply()
+	if camera then
+		camera:GetPropertyChangedSignal("ViewportSize"):Connect(apply)
+	end
+	return scale
+end
+
+return UiKit
+</ProtectedString>
+</Properties>
+</Item>
+</Item>
+</Item>
+</Item>
+</roblox>
