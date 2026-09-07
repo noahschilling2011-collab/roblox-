@@ -7,7 +7,7 @@
 <meta name="description" content="Lebenslinie – ein Leben, Jahr für Jahr. Eine eigenständige Lebenssimulation mit Hobbys, Karriere, Beziehungen und einer Creator-Laufbahn.">
 <title>Lebenslinie · Dein nächstes Kapitel</title>
 <style>
-:root{color-scheme:dark;--bg:#0a0a0c;--card:#121216;--modal:#1a1a20;--hover:#22222a;--text:#e8e8ec;--head:#f4f4f7;--muted:#8b8b95;--accent:#b8d7e4;--line:#29292f;--good:#8bc8a2;--bad:#e09a99;--space-1:4px;--space-2:8px;--space-3:12px;--space-4:16px;--space-5:20px;--space-6:24px;--space-8:32px;--space-10:40px;--step--1:clamp(.83rem,.80rem + .15vw,.94rem);--step-0:clamp(1rem,.95rem + .25vw,1.13rem);--step-1:clamp(1.2rem,1.11rem + .45vw,1.5rem);--step-2:clamp(1.44rem,1.29rem + .75vw,2rem);--step-3:clamp(1.73rem,1.49rem + 1.2vw,2.66rem)}
+:root{color-scheme:dark;--bg:#0a0a0c;--card:#121216;--modal:#1a1a20;--hover:#22222a;--text:#e8e8ec;--head:#f4f4f7;--muted:#8b8b95;--accent:#b8d7e4;--line:#29292f;--good:#8bc8a2;--bad:#e09a99;--wand-warm:#2a2a31;--wand-salbei:#2b3a33;--wand-sand:#3a332a;--wand-tief:#242c3d;--boden-holz:#5a4433;--boden-estrich:#3a3a40;--boden-teppich:#463a46;--space-1:4px;--space-2:8px;--space-3:12px;--space-4:16px;--space-5:20px;--space-6:24px;--space-8:32px;--space-10:40px;--step--1:clamp(.83rem,.80rem + .15vw,.94rem);--step-0:clamp(1rem,.95rem + .25vw,1.13rem);--step-1:clamp(1.2rem,1.11rem + .45vw,1.5rem);--step-2:clamp(1.44rem,1.29rem + .75vw,2rem);--step-3:clamp(1.73rem,1.49rem + 1.2vw,2.66rem)}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:16px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}button,input,select,textarea{font:inherit}button{cursor:pointer}button:disabled{cursor:not-allowed;opacity:.38}button,a,input,select,textarea{-webkit-tap-highlight-color:transparent}:focus-visible{outline:2px solid var(--accent);outline-offset:3px}button{color:inherit}h1,h2,h3,p{margin:0}h1,h2,h3{color:var(--head)}h2{font-size:var(--step-2);letter-spacing:-.04em;font-weight:550}h3{font-size:1rem;font-weight:550}svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}small,.small{font-size:.875rem}.muted{color:var(--muted)}.eyebrow{text-transform:uppercase;font-size:.75rem;letter-spacing:.15em;color:var(--muted);font-weight:600}.hidden{display:none!important}.row{display:flex;align-items:center;gap:12px}.between{justify-content:space-between}.stack{display:grid;gap:16px}.grow{flex:1;min-width:0}.accent{color:var(--accent)}.positive{color:var(--good)}.negative{color:var(--bad)}
 .shell{display:grid;grid-template-columns:232px minmax(0,1fr);min-height:100dvh}.sidebar{border-right:1px solid var(--line);padding:36px 20px 24px;display:flex;flex-direction:column;gap:40px;position:sticky;top:0;height:100dvh}.brand{font-size:1.2rem;letter-spacing:-.05em;font-weight:650;display:flex;align-items:center;gap:10px;padding-left:12px}.brand svg{width:28px;height:28px;color:var(--accent)}.brand .period{color:var(--accent)}.nav{display:grid;gap:6px}.nav button{border:0;background:none;display:flex;align-items:center;gap:12px;text-align:left;padding:13px 14px;border-radius:8px;color:var(--muted);font-size:.94rem;transition:background .15s ease-out,color .15s ease-out}.nav button:hover{background:var(--card);color:var(--text)}.nav button.active{background:#1d242a;color:var(--accent)}.nav .lock{font-size:.75rem;margin-left:auto}.nav-section{margin:20px 14px 8px}.side-bottom{margin-top:auto;display:grid;gap:6px}.side-bottom button{justify-content:flex-start}.side-foot{border-top:1px solid var(--line);padding:20px 12px 0;color:var(--muted);font-size:.75rem}.main{min-width:0;padding:0 44px 32px;max-width:1600px;width:100%;margin:auto}.topbar{height:92px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:12px}.breadcrumb{color:var(--muted);font-size:.875rem;display:flex;align-items:center;gap:14px}.breadcrumb span:last-child{color:var(--text)}.topbar-right{display:flex;align-items:center;gap:12px;font-size:.875rem}.pill{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:6px;padding:4px 8px;color:var(--muted);font-size:.75rem;white-space:nowrap}.pill svg{width:13px;height:13px}.icon-button{border:1px solid var(--line);background:none;border-radius:8px;width:36px;height:36px;display:grid;place-items:center}.mobile-brand{display:none}
 .identity{padding:36px 0 28px;display:flex;align-items:center;gap:20px}.monogram{width:60px;height:60px;display:grid;place-items:center;border:1px solid #44535c;border-radius:50%;color:var(--accent);font-size:1.35rem;background:#192027;flex-shrink:0}.identity h1{font-size:var(--step-3);font-weight:550;line-height:1.1;letter-spacing:-.055em;overflow-wrap:anywhere}.identity .subline{margin-top:8px;display:flex;align-items:center;flex-wrap:wrap;gap:12px;font-size:.875rem;color:var(--muted)}.age-block{margin-left:auto;text-align:right;white-space:nowrap}.age-number{font-size:3.2rem;letter-spacing:-.065em;line-height:1}.age-block small{display:block;color:var(--muted);margin-top:4px}.stat-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:20px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:20px 24px}.stat-label{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:.875rem}.stat-label svg{width:16px;height:16px}.stat-top{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:12px}.stat-top strong{font-size:.875rem;font-weight:500}.bar{height:4px;background:#2a2c31;border-radius:8px;overflow:hidden}.bar>span{display:block;width:100%;height:100%;background:var(--accent);transform-origin:left;transition:transform .45s cubic-bezier(.2,.8,.2,1)}.body-grid{display:grid;grid-template-columns:minmax(0,1fr) 272px;gap:32px;margin-top:36px}.section-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:24px}.section-head p{margin-top:6px;font-size:.875rem;color:var(--muted)}.text-btn{display:inline-flex;align-items:center;gap:8px;border:0;background:none;color:var(--muted);padding:6px 0;font-size:.875rem}.text-btn:hover{color:var(--accent)}.text-btn svg{width:15px;height:15px}.tabs{display:flex;gap:8px;margin:0 0 24px;flex-wrap:wrap}.tabs button{padding:7px 12px;background:none;border:1px solid transparent;color:var(--muted);border-radius:6px;font-size:.875rem}.tabs button.active{background:var(--card);border-color:var(--line);color:var(--text)}.timeline{height:min(48vh,570px);min-height:290px;overflow-y:auto;scrollbar-width:thin;scrollbar-color:#37373e transparent;overscroll-behavior:contain;padding-right:12px}.year-group{display:grid;grid-template-columns:52px minmax(0,1fr);position:relative}.year-age{color:var(--muted);font-size:.875rem;padding-top:4px;position:relative}.year-age:after{content:"";position:absolute;left:42px;top:26px;bottom:0;border-left:1px solid var(--line)}.year-events{padding:0 0 28px 18px;min-width:0}.year-marker{font-size:.75rem;color:var(--muted);margin-bottom:12px;display:flex;align-items:center;gap:8px}.year-marker:before{content:"";height:6px;width:6px;border:1px solid #566671;border-radius:50%;margin-left:-31px;margin-right:18px;background:var(--bg)}.log-entry{max-width:65ch;margin-bottom:12px;font-size:1rem;line-height:1.6;overflow-wrap:anywhere}.log-entry.gut{color:var(--good)}.log-entry.schlecht{color:var(--bad)}.log-entry.gross{color:var(--accent)}.log-entry.fresh{animation:arrive .3s cubic-bezier(.2,.8,.2,1) both;animation-delay:calc(var(--i)*50ms)}@keyframes arrive{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}.rail{display:grid;gap:16px;align-content:start}.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:22px}.card .eyebrow{margin-bottom:16px}.balance{font-size:1.9rem;letter-spacing:-.055em;line-height:1.2;overflow-wrap:anywhere}.mini-list{display:grid;gap:12px;margin-top:20px;padding-top:16px;border-top:1px solid var(--line);font-size:.875rem}.mini-list .row{align-items:flex-start;gap:8px}.mini-list .row span:last-child{text-align:right}.rail-note{font-size:.875rem;color:var(--muted);line-height:1.7;padding:4px 8px}.rail-note svg{width:16px;height:16px;vertical-align:middle;margin-right:6px}.year-footer{margin-top:24px;border-top:1px solid var(--line);padding-top:20px;display:flex;align-items:center;justify-content:space-between;gap:16px}.year-footer .hint{font-size:.875rem;color:var(--muted)}.btn{border:1px solid var(--line);background:var(--card);border-radius:8px;padding:11px 16px;min-height:46px;display:inline-flex;justify-content:center;align-items:center;gap:9px;font-size:.875rem;transition:background .15s ease-out,transform .15s ease-out}.btn:not(:disabled):hover{background:var(--hover)}.btn.primary{background:var(--accent);border-color:var(--accent);color:#141a1e;font-weight:600}.btn.primary:not(:disabled):hover{background:#cce4ed;transform:translateY(-1px)}.btn.full{width:100%}.btn svg{width:18px;height:18px}.action-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.action-card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:18px;text-align:left;min-width:0;transition:background .15s ease-out}.action-card:not(:disabled):hover{background:var(--hover)}.action-card .row{margin-bottom:10px}.action-card .row svg{color:var(--accent)}.action-card p{color:var(--muted);font-size:.875rem;line-height:1.55}.action-card .price{display:block;margin-top:14px;color:var(--accent);font-size:.875rem}.panel-list{display:grid;gap:12px}.list-item{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:18px}.list-item p{font-size:.875rem;color:var(--muted);margin:6px 0 12px}.list-item .bar{margin-top:14px}.metric-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:20px}.metric{border:1px solid var(--line);background:var(--card);border-radius:10px;padding:16px;min-width:0}.metric strong{display:block;font-size:1.6rem;font-weight:500;letter-spacing:-.04em;overflow-wrap:anywhere}.metric span{font-size:.75rem;color:var(--muted)}.empty{padding:32px 24px;border:1px dashed #35353d;border-radius:12px;text-align:center}.empty>svg{height:32px;width:32px;color:var(--accent);margin-bottom:12px}.empty h3{font-size:var(--step-1);margin-bottom:10px}.empty p{color:var(--muted);font-size:.94rem;max-width:42ch;margin:0 auto 20px}.notice{padding:12px 16px;border:1px solid #37464f;border-radius:8px;background:#151d22;color:var(--accent);font-size:.875rem;margin:16px 0}.notice p+p{margin-top:6px}
@@ -49,6 +49,46 @@ const MARKT={mittel:.07,streuung:.18,crashVon:-.40,crashBis:-.25,crashAlleMin:8,
 const ANLAGE=[500,2000,10000,50000];
 const AUTO={minAlter:18,zeitKauf:2,zeitVerkauf:1,verlustErstJahr:.15,verlustDanach:.10,verschleissMin:3,verschleissMax:8,schrottUnter:8,schrottErloes:.08,nutzenTeiler:400};
 const IMMO={minAlter:18,zeitKauf:2,zeitAktion:1,eigenkapital:.25,nebenkosten:.09,zins:.039,tilgung:.025,wertMittel:.012,wertStreuung:.045,marktKopplung:.40,zustandWirkung:.08,zustandNeutral:70,verfallMin:2,verfallMax:5,instandRate:.012,mietRendite:.042,auszugUnter:35,maxObjekte:3,renovierBasis:.06,handwerkRabatt:.004,eigenNutzenSparnis:3000};
+const EINRICHTUNG={zeit:1,anstrichPreis:600,lackPreis:900};
+const WAND=[
+{id:'warm',name:'Warmes Grau',farbe:'var(--wand-warm)'},
+{id:'salbei',name:'Salbei',farbe:'var(--wand-salbei)'},
+{id:'sand',name:'Sand',farbe:'var(--wand-sand)'},
+{id:'tief',name:'Tiefblau',farbe:'var(--wand-tief)'}
+];
+const BODEN=[
+{id:'holz',name:'Holzdielen',farbe:'var(--boden-holz)'},
+{id:'estrich',name:'Estrich',farbe:'var(--boden-estrich)'},
+{id:'teppich',name:'Teppichboden',farbe:'var(--boden-teppich)'}
+];
+const LACK=[
+{id:'nacht',name:'Nachtblau',farbe:'#3d5a80'},
+{id:'creme',name:'Creme',farbe:'#d8cfc0'},
+{id:'gruen',name:'Tannengrün',farbe:'#4a6b52'},
+{id:'rost',name:'Rostrot',farbe:'#9c5a43'},
+{id:'grau',name:'Anthrazit',farbe:'#4a4a52'}
+];
+const GRUNDRISSE={miete:{name:'Mietwohnung',spalten:2,etagen:1},zimmer:{name:'Einzimmerwohnung',spalten:1,etagen:1},wohnung:{name:'Dreizimmerwohnung',spalten:3,etagen:1},altbau:{name:'Altbau',spalten:2,etagen:2},reihenhaus:{name:'Reihenhaus',spalten:2,etagen:2},haus:{name:'Einfamilienhaus',spalten:3,etagen:2}};
+const MOEBEL=[
+{id:'sofa',name:'Sofa',preis:450,glueck:4,svg:(x,y)=>`<rect x="${x+2}" y="${y-20}" width="44" height="14" rx="4" fill="var(--accent)" opacity=".8"/><rect x="${x+2}" y="${y-28}" width="44" height="9" rx="4" fill="var(--accent)" opacity=".5"/><rect x="${x+4}" y="${y-6}" width="5" height="6" fill="var(--line)"/><rect x="${x+39}" y="${y-6}" width="5" height="6" fill="var(--line)"/>`},
+{id:'sessel',name:'Sessel',preis:220,glueck:2,svg:(x,y)=>`<rect x="${x+8}" y="${y-18}" width="24" height="13" rx="4" fill="var(--accent)" opacity=".65"/><rect x="${x+8}" y="${y-26}" width="24" height="9" rx="4" fill="var(--accent)" opacity=".45"/>`},
+{id:'bett',name:'Bett',preis:600,glueck:5,svg:(x,y)=>`<rect x="${x+2}" y="${y-14}" width="46" height="12" rx="3" fill="var(--accent)" opacity=".55"/><rect x="${x+2}" y="${y-24}" width="14" height="11" rx="3" fill="var(--accent)" opacity=".85"/>`},
+{id:'tisch',name:'Esstisch',preis:380,glueck:3,svg:(x,y)=>`<rect x="${x+4}" y="${y-20}" width="40" height="5" rx="2" fill="var(--boden-holz)"/><rect x="${x+8}" y="${y-15}" width="4" height="15" fill="var(--line)"/><rect x="${x+36}" y="${y-15}" width="4" height="15" fill="var(--line)"/>`},
+{id:'stuhl',name:'Zwei Stühle',preis:160,glueck:2,svg:(x,y)=>`<rect x="${x+6}" y="${y-13}" width="13" height="4" fill="var(--line)"/><rect x="${x+6}" y="${y-26}" width="4" height="14" fill="var(--line)"/><rect x="${x+28}" y="${y-13}" width="13" height="4" fill="var(--line)"/><rect x="${x+37}" y="${y-26}" width="4" height="14" fill="var(--line)"/>`},
+{id:'regal',name:'Bücherregal',preis:240,glueck:3,svg:(x,y)=>`<rect x="${x+8}" y="${y-46}" width="30" height="46" fill="var(--boden-holz)" opacity=".7"/><rect x="${x+10}" y="${y-42}" width="26" height="3" fill="var(--accent)" opacity=".7"/><rect x="${x+10}" y="${y-29}" width="26" height="3" fill="var(--good)" opacity=".6"/><rect x="${x+10}" y="${y-16}" width="26" height="3" fill="var(--accent)" opacity=".5"/>`},
+{id:'schrank',name:'Kleiderschrank',preis:420,glueck:2,svg:(x,y)=>`<rect x="${x+10}" y="${y-52}" width="28" height="52" rx="2" fill="var(--boden-holz)" opacity=".55"/><line x1="${x+24}" y1="${y-52}" x2="${x+24}" y2="${y}" stroke="var(--line)" stroke-width="1.5"/>`},
+{id:'lampe',name:'Stehlampe',preis:90,glueck:2,svg:(x,y)=>`<rect x="${x+21}" y="${y-40}" width="3" height="40" fill="var(--line)"/><path d="M${x+13} ${y-40} L${x+32} ${y-40} L${x+28} ${y-52} L${x+17} ${y-52} Z" fill="var(--wand-sand)" opacity=".9"/>`},
+{id:'teppich',name:'Teppich',preis:180,glueck:2,svg:(x,y)=>`<rect x="${x}" y="${y-4}" width="50" height="4" rx="2" fill="var(--good)" opacity=".45"/>`},
+{id:'pflanze',name:'Zimmerpflanze',preis:45,glueck:2,svg:(x,y)=>`<rect x="${x+18}" y="${y-10}" width="12" height="10" rx="2" fill="var(--bad)" opacity=".55"/><path d="M${x+24} ${y-10} C ${x+12} ${y-22} ${x+16} ${y-34} ${x+24} ${y-32} C ${x+32} ${y-34} ${x+36} ${y-22} ${x+24} ${y-10} Z" fill="var(--good)" opacity=".8"/>`},
+{id:'tv',name:'Fernseher',preis:700,glueck:4,svg:(x,y)=>`<rect x="${x+6}" y="${y-34}" width="38" height="23" rx="2" fill="var(--bg)" stroke="var(--line)"/><rect x="${x+22}" y="${y-11}" width="6" height="7" fill="var(--line)"/><rect x="${x+15}" y="${y-5}" width="20" height="3" rx="1" fill="var(--line)"/>`},
+{id:'schreibtisch',name:'Schreibtisch',preis:300,glueck:3,svg:(x,y)=>`<rect x="${x+4}" y="${y-24}" width="42" height="4" fill="var(--boden-holz)"/><rect x="${x+6}" y="${y-20}" width="12" height="20" fill="var(--line)" opacity=".7"/><rect x="${x+30}" y="${y-36}" width="14" height="11" rx="1" fill="var(--bg)" stroke="var(--line)"/>`},
+{id:'kueche',name:'Einbauküche',preis:3200,glueck:6,svg:(x,y)=>`<rect x="${x}" y="${y-24}" width="50" height="24" fill="var(--card)" stroke="var(--line)"/><rect x="${x}" y="${y-28}" width="50" height="5" fill="var(--line)"/><circle cx="${x+12}" cy="${y-13}" r="3" fill="var(--accent)" opacity=".7"/><circle cx="${x+30}" cy="${y-13}" r="3" fill="var(--accent)" opacity=".7"/><rect x="${x+38}" y="${y-20}" width="9" height="16" fill="var(--bg)"/>`},
+{id:'bild',name:'Bild an der Wand',preis:130,glueck:2,svg:(x,y)=>`<rect x="${x+12}" y="${y-58}" width="26" height="20" fill="var(--card)" stroke="var(--accent)" stroke-width="1.5"/><path d="M${x+15} ${y-42} L${x+22} ${y-51} L${x+28} ${y-45} L${x+35} ${y-41} Z" fill="var(--good)" opacity=".7"/>`},
+{id:'klavier',name:'Klavier',preis:2600,glueck:7,svg:(x,y)=>`<rect x="${x+2}" y="${y-30}" width="46" height="22" rx="2" fill="var(--bg)" stroke="var(--line)"/><rect x="${x+4}" y="${y-18}" width="42" height="5" fill="#e8e8ec"/><rect x="${x+8}" y="${y-18}" width="2" height="5" fill="#111"/><rect x="${x+16}" y="${y-18}" width="2" height="5" fill="#111"/><rect x="${x+28}" y="${y-18}" width="2" height="5" fill="#111"/><rect x="${x+36}" y="${y-18}" width="2" height="5" fill="#111"/><rect x="${x+6}" y="${y-8}" width="4" height="8" fill="var(--line)"/><rect x="${x+40}" y="${y-8}" width="4" height="8" fill="var(--line)"/>`},
+{id:'katzenbaum',name:'Katzenbaum',preis:120,glueck:3,svg:(x,y)=>`<rect x="${x+20}" y="${y-38}" width="6" height="38" fill="var(--boden-holz)" opacity=".7"/><rect x="${x+12}" y="${y-46}" width="22" height="8" rx="3" fill="var(--wand-sand)" opacity=".8"/><circle cx="${x+23}" cy="${y-50}" r="4" fill="var(--muted)"/>`},
+{id:'spiegel',name:'Großer Spiegel',preis:210,glueck:2,svg:(x,y)=>`<rect x="${x+16}" y="${y-54}" width="18" height="54" rx="9" fill="var(--hover)" stroke="var(--line)"/><path d="M${x+20} ${y-46} L${x+30} ${y-30}" stroke="var(--accent)" stroke-width="2" opacity=".5"/>`},
+{id:'kamin',name:'Kaminofen',preis:1900,glueck:5,svg:(x,y)=>`<rect x="${x+12}" y="${y-34}" width="26" height="34" rx="2" fill="var(--bg)" stroke="var(--line)"/><rect x="${x+16}" y="${y-24}" width="18" height="14" rx="2" fill="var(--bad)" opacity=".75"/><rect x="${x+22}" y="${y-52}" width="6" height="18" fill="var(--line)"/>`}
+];
 const PARTNER={minAlter:16,zeitSuche:1,zeitAktion:1,basis:8,gewichtAussehen:.34,gewichtGlueck:.22,gewichtKontakte:2.2,minChance:12,maxChance:88,jobChance:.72,ohneJob:'ohne Arbeit',bruchUnter:8,glueckTeiler:25,umzugKosten:3200,hochzeitKosten:9000,beratungKosten:1400,scheidungMin:6000,scheidungAnteil:.22,kostenAnteil:.5};
 const IMMOBILIEN=[
 {id:'zimmer',typ:'Einzimmerwohnung',preis:120000},
@@ -68,7 +108,7 @@ const AUTOS=[
 {id:'luxus',name:'Luxuslimousine',preis:120000,unterhalt:9800,wirkung:{glueck:15,aussehen:15}}
 ];
 const BILDUNG={keine:'Noch ganz am Anfang',schule:'Schule',mittlere_reife:'Mittlere Reife',oberstufe:'Oberstufe',abitur:'Abitur',ausbildung:'Ausbildung',berufsabschluss:'Berufsabschluss',studium:'Studium',abschluss:'Studienabschluss'};
-function fresh(name='Alex Winter',gender='d',city='Stuttgart'){return {version:1,jahr:2026,alter:0,lebendig:true,name,geschlecht:gender,stadt:city,stats:{gesundheit:rnd(75,95),glueck:rnd(65,90),intelligenz:rnd(35,80),aussehen:rnd(40,85)},geld:0,job:null,bildung:'keine',hobbys:[],kanal:null,onlyfans:null,beziehungen:[{id:'mutter',name:'Mama',typ:'Familie',verhaeltnis:85},{id:'vater',name:'Papa',typ:'Familie',verhaeltnis:80},{id:'geschwister',name:pick(FIRST),typ:'Geschwister',verhaeltnis:70}],log:[],zeit:{max:ZEIT.kind,genutzt:0},depot:{bar:0,aktien:0,einstand:0},auto:null,immobilien:[],markt:{rendite:0,crash:false,crashIn:rnd(MARKT.crashAlleMin,MARKT.crashAlleMax)},flags:{gesehen:[],folge:[],aktion:false,pend:[],endePruefen:false,rendered:0,insolvenzBis:0,insolvenzen:0,geistJahr:0,grundJahr:0},records:{job:'Noch kein Beruf',gehalt:0,kanal:0,hobby:'Noch kein Hobby',niveau:0,einnahmen:0},finanzen:{gehalt:0,creator:0,abo:0,kosten:0,hobby:0,grund:0,auto:0,miete:0,immo:0},ui:{view:'leben',filter:'alle',started:false,modal:null}};}
+function fresh(name='Alex Winter',gender='d',city='Stuttgart'){return {version:1,jahr:2026,alter:0,lebendig:true,name,geschlecht:gender,stadt:city,stats:{gesundheit:rnd(75,95),glueck:rnd(65,90),intelligenz:rnd(35,80),aussehen:rnd(40,85)},geld:0,job:null,bildung:'keine',hobbys:[],kanal:null,onlyfans:null,beziehungen:[{id:'mutter',name:'Mama',typ:'Familie',verhaeltnis:85},{id:'vater',name:'Papa',typ:'Familie',verhaeltnis:80},{id:'geschwister',name:pick(FIRST),typ:'Geschwister',verhaeltnis:70}],log:[],zeit:{max:ZEIT.kind,genutzt:0},depot:{bar:0,aktien:0,einstand:0},auto:null,immobilien:[],einrichtung:{moebel:[],wand:'warm',boden:'holz'},markt:{rendite:0,crash:false,crashIn:rnd(MARKT.crashAlleMin,MARKT.crashAlleMax)},flags:{gesehen:[],folge:[],aktion:false,pend:[],endePruefen:false,rendered:0,insolvenzBis:0,insolvenzen:0,geistJahr:0,grundJahr:0},records:{job:'Noch kein Beruf',gehalt:0,kanal:0,hobby:'Noch kein Hobby',niveau:0,einnahmen:0},finanzen:{gehalt:0,creator:0,abo:0,kosten:0,hobby:0,grund:0,auto:0,miete:0,immo:0},ui:{view:'leben',filter:'alle',started:false,modal:null}};}
 let state=fresh();
 function addLog(text,art='info'){state.log.push({alter:state.alter,text,art});}
 function lernFaktor(quelle){const teiler=quelle==='ereignis'?GEIST.teilerPassiv:GEIST.teilerAktiv;return Math.max(0,1-state.stats.intelligenz/teiler);}
@@ -243,7 +283,7 @@ const def=AUTOS.find(a=>a.id===id);
 if(!def||state.auto||!canAct(AUTO.minAlter,def.preis,AUTO.zeitKauf)||gesperrt())return false;
 consume(AUTO.zeitKauf);
 state.geld-=def.preis;
-state.auto={modell:def.id,wert:def.preis,alter:0,zustand:100};
+state.auto={modell:def.id,wert:def.preis,alter:0,zustand:100,farbe:pick(LACK).id};
 apply(def.wirkung);
 addLog(`Du kaufst dir ${def.name} für ${eur(def.preis)}. Der erste Kilometer fühlt sich anders an als alle danach.`,'gross');
 return true;
@@ -332,6 +372,94 @@ if(im.bewohnt==='selbst'){im.bewohnt='leer';im.mieteinnahme=0;addLog(`Du ziehst 
 else if(im.bewohnt==='vermietet'){im.bewohnt='selbst';im.mieteinnahme=0;im.mieterZufriedenheit=0;addLog('Du kündigst dem Mieter und ziehst selbst ein.','info');apply({glueck:-4});}
 else{if(state.immobilien.some(x=>x.bewohnt==='selbst')){im.bewohnt='vermietet';im.mieterZufriedenheit=rnd(55,80);im.mieteinnahme=neueMiete(im);addLog(`Du vermietest für ${eur(im.mieteinnahme)} im Jahr.`,'gut');}
 else{im.bewohnt='selbst';addLog('Du ziehst selbst ein.','gut');apply({glueck:8});}}
+return true;
+}
+function wohnort(){const eigen=state.immobilien.find(im=>im.bewohnt==='selbst');return eigen?GRUNDRISSE[eigen.typ]||GRUNDRISSE.miete:GRUNDRISSE.miete;}
+function wandFarbe(){return (WAND.find(w=>w.id===state.einrichtung.wand)||WAND[0]).farbe;}
+function bodenFarbe(){return (BODEN.find(b=>b.id===state.einrichtung.boden)||BODEN[0]).farbe;}
+function lackFarbe(){return (LACK.find(l=>l.id===(state.auto&&state.auto.farbe))||LACK[0]).farbe;}
+function moebelBesitz(){return state.einrichtung.moebel.map(id=>MOEBEL.find(m=>m.id===id)).filter(Boolean);}
+function moebelPlaetze(){const g=wohnort();return g.spalten*g.etagen*3;}
+function wohnungSzene(){
+const g=wohnort(),RW=120,RH=62,rand=8,dach=22,SLOTS=3,BODEN_H=6;
+const breite=g.spalten*RW+rand*2,hoehe=g.etagen*RH+rand*2+dach;
+const stuecke=moebelBesitz();
+const slotBreite=(RW-6)/SLOTS,skala=slotBreite/50;
+let clips='',raeume='',moebel='';
+let slot=0;
+for(let e=0;e<g.etagen;e++)for(let c=0;c<g.spalten;c++){
+const x=rand+c*RW,y=rand+dach+e*RH,rid='r'+e+'_'+c;
+clips+=`<clipPath id="${rid}"><rect x="${x+1}" y="${y+1}" width="${RW-2}" height="${RH-2}"/></clipPath>`;
+raeume+=`<rect x="${x}" y="${y}" width="${RW}" height="${RH}" fill="${wandFarbe()}" stroke="var(--line)" stroke-width="1.5"/>`;
+raeume+=`<rect x="${x}" y="${y+RH-BODEN_H}" width="${RW}" height="${BODEN_H}" fill="${bodenFarbe()}"/>`;
+let inhalt='';
+for(let p=0;p<SLOTS;p++){
+const m=stuecke[slot++];
+if(!m)continue;
+const sx=x+3+p*slotBreite,sy=y+RH-BODEN_H;
+inhalt+=`<g transform="translate(${sx} ${sy}) scale(${skala.toFixed(3)})">${m.svg(0,0)}</g>`;
+}
+if(inhalt)moebel+=`<g clip-path="url(#${rid})">${inhalt}</g>`;
+}
+const dachPfad=`M${rand-4} ${rand+dach} L${breite/2} ${rand} L${breite-rand+4} ${rand+dach} Z`;
+return `<svg viewBox="0 0 ${breite} ${hoehe}" style="width:100%;max-width:${breite*3}px;height:auto;display:block;margin:0 auto;border-radius:10px;background:var(--card)" role="img" aria-label="Grundriss deiner Wohnung mit ${stuecke.length} Möbelstücken">
+<defs>${clips}</defs>
+<path d="${dachPfad}" fill="var(--line)"/>
+${raeume}${moebel}
+</svg>`;
+}
+function autoSzene(){
+const a=state.auto,def=autoDef();
+if(!a||!def)return `<svg viewBox="0 0 240 70" style="width:100%;max-width:560px;height:auto;display:block;margin:0 auto;border-radius:10px;background:var(--card)" role="img" aria-label="Kein Fahrzeug"><text x="120" y="40" text-anchor="middle" fill="var(--muted)" font-size="13" font-family="sans-serif">Noch kein Fahrzeug</text></svg>`;
+const f=lackFarbe(),z=a.zustand;
+const matt=z<50?.72:1;
+const form={
+kleinwagen:'M28 62 L34 42 L96 40 L112 62 Z',
+motorrad:'M52 62 L64 46 L94 46 L104 62 Z',
+kombi:'M24 62 L32 38 L118 38 L132 62 Z',
+oldtimer:'M26 62 L36 42 L70 36 L106 42 L124 62 Z',
+elektro:'M24 62 L40 36 L112 36 L134 62 Z',
+suv:'M22 62 L32 32 L120 32 L138 62 Z',
+sport:'M18 62 L44 44 L106 42 L142 62 Z',
+luxus:'M18 62 L34 36 L128 36 L150 62 Z'
+}[def.id]||'M24 62 L34 40 L112 40 L128 62 Z';
+const raeder=def.id==='motorrad'?[[62,68],[100,68]]:[[46,68],[118,68]];
+const kratzer=z<60?`<path d="M60 52 L84 56" stroke="var(--bg)" stroke-width="2" opacity=".5"/>`:'';
+const rost=z<35?`<circle cx="96" cy="58" r="6" fill="var(--bad)" opacity=".45"/><circle cx="42" cy="57" r="4" fill="var(--bad)" opacity=".35"/>`:'';
+return `<svg viewBox="10 26 156 58" style="width:100%;max-width:560px;height:auto;display:block;margin:0 auto;border-radius:10px;background:var(--card)" role="img" aria-label="${esc(def.name)}, Zustand ${z} Prozent">
+<line x1="8" y1="74" x2="168" y2="74" stroke="var(--line)" stroke-width="2"/>
+<path d="${form}" fill="${f}" opacity="${matt}" stroke="var(--line)" stroke-width="1.5"/>
+<path d="${form}" fill="none" stroke="var(--line)" stroke-width="1"/>
+<rect x="46" y="44" width="26" height="12" rx="2" fill="var(--bg)" opacity=".55"/>
+<rect x="78" y="44" width="24" height="12" rx="2" fill="var(--bg)" opacity=".55"/>
+${kratzer}${rost}
+${raeder.map(([cx,cy])=>`<circle cx="${cx}" cy="${cy}" r="10" fill="var(--bg)" stroke="var(--line)" stroke-width="2"/><circle cx="${cx}" cy="${cy}" r="3.5" fill="var(--line)"/>`).join('')}
+</svg>`;
+}
+function szeneHTML(typ){return typ==='wohnung'?wohnungSzene():typ==='auto'?autoSzene():'';}
+function moebelKaufen(id){
+const m=MOEBEL.find(x=>x.id===id);
+if(!m||state.einrichtung.moebel.includes(id))return false;
+if(state.einrichtung.moebel.length>=moebelPlaetze())return false;
+if(!canAct(0,m.preis,EINRICHTUNG.zeit)||gesperrt())return false;
+consume(EINRICHTUNG.zeit);
+state.geld-=m.preis;
+state.einrichtung.moebel.push(id);
+apply({glueck:m.glueck});
+addLog(`${m.name} für ${eur(m.preis)}. Der Raum sieht danach anders aus.`,'gut');
+return true;
+}
+function oberflaecheAendern(art,id){
+const liste=art==='wand'?WAND:art==='boden'?BODEN:LACK;
+if(!liste.some(x=>x.id===id))return false;
+if(art==='lack'&&!state.auto)return false;
+const preis=art==='lack'?EINRICHTUNG.lackPreis:EINRICHTUNG.anstrichPreis;
+if(!canAct(0,preis,EINRICHTUNG.zeit)||gesperrt())return false;
+consume(EINRICHTUNG.zeit);
+state.geld-=preis;
+if(art==='lack')state.auto.farbe=id;else state.einrichtung[art]=id;
+apply({glueck:2});
+addLog(art==='lack'?`Dein Auto bekommt eine neue Lackierung: ${liste.find(x=>x.id===id).name}.`:`${art==='wand'?'Neue Wandfarbe':'Neuer Boden'}: ${liste.find(x=>x.id===id).name}.`,'gut');
 return true;
 }
 function partner(){return state.beziehungen.find(b=>b.typ==='Partner')||null;}
@@ -467,9 +595,10 @@ return out;
 function autoHTML(){
 const a=state.auto,def=autoDef();
 if(a&&def)return `<h3 style="margin:28px 0 16px">Dein Fahrzeug</h3><section class="card"><div class="row between"><div><div class="eyebrow">${esc(def.name)}</div><h2>${eur(a.wert)}</h2><p class="muted">${a.alter} ${a.alter===1?'Jahr':'Jahre'} alt · Unterhalt ${eur(def.unterhalt)} pro Jahr</p></div></div>
+<div style="margin-top:14px">${szeneHTML('auto')}</div>
 <div class="bar" role="progressbar" aria-label="Zustand" aria-valuenow="${a.zustand}" aria-valuemin="0" aria-valuemax="100" style="margin-top:16px"><span style="transform:scaleX(${a.zustand/100})"></span></div>
 <p class="small muted" style="margin-top:10px">Zustand ${a.zustand} %${a.zustand<35?' · Es wird Zeit für eine Entscheidung.':''}</p>
-<div style="margin-top:16px">${btn(`Verkaufen · ${AUTO.zeitVerkauf} Zeit`,'auto-verkaufen','wallet',!canAct(0,0,AUTO.zeitVerkauf))}</div></section>`;
+<div class="dialog-actions" style="margin-top:16px">${btn('Lackieren','lack-aendern','spark',gesperrt()||!canAct(0,EINRICHTUNG.lackPreis,EINRICHTUNG.zeit))}${btn(`Verkaufen · ${AUTO.zeitVerkauf} Zeit`,'auto-verkaufen','wallet',!canAct(0,0,AUTO.zeitVerkauf))}</div></section>`;
 return `<h3 style="margin:28px 0 16px">Dein Fahrzeug</h3><div class="empty">${icon('activity')}<h3>Noch kein Auto.</h3><p>Ein Auto ist keine Geldanlage. Es kostet jedes Jahr und gibt dir dafür Glück und ein besseres Auftreten.</p>${btn('Fahrzeug kaufen','auto-kaufen','plus',state.alter<AUTO.minAlter||gesperrt()||!canAct(AUTO.minAlter,0,AUTO.zeitKauf),'',true)}</div>`;
 }
 function partnerHTML(){
@@ -481,12 +610,32 @@ return `<section class="card" style="margin-bottom:24px"><div class="row between
 <p class="small muted" style="margin-top:10px">Seit ${p.seit}${partnerTeiltKosten()?` · teilt sich die Lebenshaltung mit dir`:p.zusammen?' · ohne eigenes Einkommen':''}</p>
 <div class="dialog-actions" style="margin-top:16px">${btn('Zeit miteinander verbringen','relationship','users',!canAct(3,0,1),`data-id="${esc(p.id)}"`)}${btn('Trennen','partner-trennen','close',!canAct(0,0,PARTNER.zeitAktion))}</div></section>`;
 }
+function zuhauseHTML(){
+const g=wohnort(),stuecke=moebelBesitz(),plaetze=moebelPlaetze();
+const offen=MOEBEL.filter(m=>!state.einrichtung.moebel.includes(m.id));
+return `<h3 style="margin:28px 0 16px">Dein Zuhause</h3>
+<section class="card">
+<div class="row between" style="margin-bottom:14px"><div><div class="eyebrow">${esc(g.name)}</div><h3>${stuecke.length} von ${plaetze} Plätzen eingerichtet</h3></div></div>
+${szeneHTML('wohnung')}
+<div class="mini-list" style="margin-top:16px">
+<div class="row between"><span class="muted">Wandfarbe</span><span>${esc((WAND.find(w=>w.id===state.einrichtung.wand)||WAND[0]).name)}</span></div>
+<div class="row between"><span class="muted">Boden</span><span>${esc((BODEN.find(b=>b.id===state.einrichtung.boden)||BODEN[0]).name)}</span></div>
+</div>
+<div class="dialog-actions" style="margin-top:16px">
+${btn(`Möbel kaufen · ${EINRICHTUNG.zeit} Zeit`,'moebel-kaufen','plus',!offen.length||stuecke.length>=plaetze||gesperrt()||!canAct(0,0,EINRICHTUNG.zeit),'',true)}
+${btn('Streichen','wand-aendern','spark',gesperrt()||!canAct(0,EINRICHTUNG.anstrichPreis,EINRICHTUNG.zeit))}
+${btn('Boden erneuern','boden-aendern','leaf',gesperrt()||!canAct(0,EINRICHTUNG.anstrichPreis,EINRICHTUNG.zeit))}
+</div>
+${stuecke.length>=plaetze?'<p class="small muted" style="margin-top:12px">Alle Plätze belegt. Eine größere Wohnung schafft mehr Raum.</p>':''}
+</section>`;
+}
 function besitzPanel(){
 const d=state.depot,gewinn=Math.round(d.aktien-d.einstand),m=state.markt;
 return `<div class="section-head"><div><h2>Geld &amp; Besitz</h2><p>Tagesgeld ist langweilig und sicher. Aktien sind das Gegenteil.</p></div><span class="pill">${icon('wallet')}${eur(depotWert()+immoEigenkapital()+(state.auto?state.auto.wert:0))}</span></div>
 <div class="metric-row"><div class="metric"><strong>${eur(d.bar)}</strong><span>Tagesgeld</span></div><div class="metric"><strong>${eur(d.aktien)}</strong><span>Aktien</span></div><div class="metric"><strong>${gewinn>=0?'+':'−'}${eur(Math.abs(gewinn))}</strong><span>Kursgewinn</span></div></div>
 <section class="card"><div class="eyebrow">Das Börsenjahr ${state.jahr}</div><h2>${(m.rendite*100).toFixed(1).replace('.',',')} %</h2><p class="muted">${m.rendite<=-.2?'Ein Absturz. Wer jetzt verkauft, macht den Verlust echt.':m.rendite<0?'Ein schwaches Jahr. Das gehört dazu.':'Über lange Zeit bleiben im Schnitt ein paar Prozent übrig — einzelne Jahre sehen ganz anders aus.'}</p>
 <div class="dialog-actions" style="margin-top:20px">${btn('Geld anlegen','depot-ein','plus',!canAct(16,0,1)||gesperrt()||state.geld<=0,'',true)}${btn('Geld entnehmen','depot-aus','upload',!canAct(16,0,1)||depotWert()<=0)}</div></section>
+${zuhauseHTML()}
 ${autoHTML()}
 ${immoHTML()}
 ${state.alter<16?'<div class="notice">Anlegen kannst du ab 16 Jahren.</div>':''}
@@ -513,6 +662,12 @@ if(type==='of-new')return{title:'Dein nicht-erotisches Creator-Abo',body:`<form 
 if(type==='of-post'&&f)return{title:'Exklusives Video veröffentlichen',body:`<form id="of-post-form"><div class="field"><label for="of-video">Inhalt des Videos</label><select id="of-video"><option>Ein Blick hinter die Kulissen</option><option>Mein ausführliches Tutorial</option><option>Eine exklusive Musik-Session</option><option>Meine Trainingsroutine</option><option>Mein Kreativ-Workshop</option><option>Mein neues Rezept</option></select></div><div class="field"><label for="of-promo">Vorschauclip zur Werbung</label><select id="of-promo"><option value="none">Keine Cross-Promo</option><option value="tiktok" ${!c?.plattformen.tiktok.aktiv?'disabled':''}>Auf TikTok werben</option><option value="instagram" ${!c?.plattformen.instagram.aktiv?'disabled':''}>Auf Instagram werben</option><option value="both" ${!(c?.plattformen.tiktok.aktiv&&c?.plattformen.instagram.aktiv)?'disabled':''}>Auf TikTok und Instagram werben</option></select></div>${budgetHTML('of-budget')}<p class="small muted" style="margin-bottom:20px">Bezahlte Werbung ist nur mit einem aktiven Vorschaukanal möglich. Upload und Vorschauclip kosten zusammen ${ZEIT.upload} Zeiteinheit.</p><p id="of-error" class="form-error" role="alert"></p><button class="btn primary full" type="submit">Video posten ${icon('arrow')}</button></form>`};
 if(type==='depot-ein')return{title:'Geld anlegen',body:`<form id="depot-ein-form"><div class="field"><label for="dep-ein-betrag">Betrag</label><select id="dep-ein-betrag">${ANLAGE.filter(b=>b<=state.geld).map(b=>`<option value="${b}">${eur(b)}</option>`).join('')}<option value="alles">Alles · ${eur(Math.max(0,Math.floor(state.geld)))}</option></select></div><div class="field"><label for="dep-ein-ziel">Wohin</label><select id="dep-ein-ziel"><option value="aktien">Aktien · im Schnitt mehr, dafür schwankt es</option><option value="bar">Tagesgeld · sicher, kaum Zinsen</option></select></div><p class="small muted" style="margin-bottom:20px">Kostet eine Zeiteinheit. Angelegtes Geld steht dir im selben Jahr nicht mehr zur Verfügung.</p><button class="btn primary full" type="submit">Anlegen ${icon('arrow')}</button></form>`};
 if(type==='depot-aus')return{title:'Geld entnehmen',body:`<form id="depot-aus-form"><div class="field"><label for="dep-aus-betrag">Betrag</label><select id="dep-aus-betrag">${ANLAGE.filter(b=>b<=depotWert()).map(b=>`<option value="${b}">${eur(b)}</option>`).join('')}<option value="alles">Alles</option></select></div><div class="field"><label for="dep-aus-quelle">Woher</label><select id="dep-aus-quelle"><option value="aktien" ${state.depot.aktien<=0?'disabled':''}>Aktien · ${eur(state.depot.aktien)}</option><option value="bar" ${state.depot.bar<=0?'disabled':''}>Tagesgeld · ${eur(state.depot.bar)}</option></select></div><p class="small muted" style="margin-bottom:20px">Kostet eine Zeiteinheit.</p><button class="btn primary full" type="submit">Entnehmen ${icon('arrow')}</button></form>`};
+if(type==='moebel-kaufen'){const offen=MOEBEL.filter(m=>!state.einrichtung.moebel.includes(m.id));
+return{title:'Möbel kaufen',body:`<div class="panel-list">${offen.map(m=>`<section class="list-item"><div class="row between"><h3 class="grow">${esc(m.name)}</h3><span class="small accent">${eur(m.preis)}</span></div><p>Glück +${m.glueck}</p>${btn('Kaufen','moebel-kauf-id','arrow',!canAct(0,m.preis,EINRICHTUNG.zeit)||gesperrt()||state.einrichtung.moebel.length>=moebelPlaetze(),`data-id="${m.id}"`)}</section>`).join('')||'<p class="muted">Du hast schon alles.</p>'}</div><p class="small muted" style="margin-top:16px">Jedes Stück kostet ${EINRICHTUNG.zeit} Zeiteinheit und taucht sofort in der Zeichnung auf.</p>`};}
+if(type==='wand-aendern'||type==='boden-aendern'){const art=type==='wand-aendern'?'wand':'boden';const liste=art==='wand'?WAND:BODEN;
+return{title:art==='wand'?'Wände streichen':'Boden erneuern',body:`<div class="panel-list">${liste.map(o=>`<section class="list-item"><div class="row between"><h3 class="grow">${esc(o.name)}</h3><span class="small accent">${eur(EINRICHTUNG.anstrichPreis)}</span></div><div style="height:26px;border-radius:6px;background:${o.farbe};border:1px solid var(--line);margin:10px 0"></div>${btn(state.einrichtung[art]===o.id?'Aktuell':'Auswählen','flaeche-'+art,'arrow',state.einrichtung[art]===o.id||!canAct(0,EINRICHTUNG.anstrichPreis,EINRICHTUNG.zeit)||gesperrt(),`data-id="${o.id}"`)}</section>`).join('')}</div>`};}
+if(type==='lack-aendern'&&state.auto){
+return{title:'Auto lackieren',body:`<div class="panel-list">${LACK.map(o=>`<section class="list-item"><div class="row between"><h3 class="grow">${esc(o.name)}</h3><span class="small accent">${eur(EINRICHTUNG.lackPreis)}</span></div><div style="height:26px;border-radius:6px;background:${o.farbe};border:1px solid var(--line);margin:10px 0"></div>${btn(state.auto.farbe===o.id?'Aktuell':'Auswählen','flaeche-lack','arrow',state.auto.farbe===o.id||!canAct(0,EINRICHTUNG.lackPreis,EINRICHTUNG.zeit)||gesperrt(),`data-id="${o.id}"`)}</section>`).join('')}</div>`};}
 if(type==='partner-trennen'){const p=partner();return p?{title:'Die Beziehung beenden?',body:`<p>${p.verheiratet?`Eine Scheidung kostet dich mindestens ${eur(PARTNER.scheidungMin)} und einen Teil deines Vermögens.`:p.zusammen?`Ihr wohnt zusammen. Der Auszug kostet ${eur(PARTNER.umzugKosten)}.`:'Ihr wohnt nicht zusammen. Das macht es etwas leichter.'} Glück und Gesundheit leiden in jedem Fall.</p><div class="dialog-actions">${btn('Abbrechen','close','')}${btn('Beziehung beenden','partner-trennen-ok','close',false,'',true)}</div>`}:null;}
 if(type==='immo-kaufen')return{title:'Eine Immobilie kaufen',body:`<div class="panel-list">${IMMOBILIEN.map(d=>{const ek=Math.round(d.preis*IMMO.eigenkapital);return `<section class="list-item"><div class="row between"><h3 class="grow">${esc(d.typ)}</h3><span class="small accent">${eur(d.preis)}</span></div><p>Eigenkapital ${eur(ek)} + ${eur(Math.round(d.preis*IMMO.nebenkosten))} Nebenkosten · Hypothek ${eur(d.preis-ek)} · Miete grob ${eur(Math.round(d.preis*IMMO.mietRendite))} / Jahr</p>${btn('Kaufen','immo-kauf-id','arrow',!canAct(IMMO.minAlter,ek+Math.round(d.preis*IMMO.nebenkosten),IMMO.zeitKauf)||gesperrt()||state.immobilien.length>=IMMO.maxObjekte,`data-id="${d.id}"`)}</section>`;}).join('')}</div><p class="small muted" style="margin-top:16px">Zins ${(IMMO.zins*100).toFixed(1).replace('.',',')} Prozent, Tilgung ${(IMMO.tilgung*100).toFixed(1).replace('.',',')} Prozent vom Darlehen pro Jahr. Instandhaltung faellt immer an, auch wenn niemand drin wohnt.</p>`};
 if(type==='auto-kaufen')return{title:'Ein Fahrzeug kaufen',body:`<div class="panel-list">${AUTOS.map(d=>`<section class="list-item"><div class="row between"><h3 class="grow">${esc(d.name)}</h3><span class="small accent">${eur(d.preis)}</span></div><p>Glück +${d.wirkung.glueck}${d.wirkung.aussehen?' · Aussehen +'+d.wirkung.aussehen:''} · Unterhalt ${eur(d.unterhalt)} / Jahr${d.wertverlust===0?' · hält seinen Wert':''}${d.risiko?' · Unfallrisiko':''}</p>${btn('Kaufen','auto-kauf-id','arrow',!canAct(AUTO.minAlter,d.preis,AUTO.zeitKauf)||gesperrt(),`data-id="${d.id}"`)}</section>`).join('')}</div><p class="small muted" style="margin-top:16px">Ein Auto verliert im ersten Jahr rund 15 Prozent an Wert, danach etwa 10 Prozent pro Jahr. Reparaturen werden mit dem Alter wahrscheinlicher.</p>`};
@@ -536,6 +691,9 @@ else if(a==='immo-kauf-id'){if(immoKaufen(id)){closeDialog();state.ui.view='besi
 else if(a==='immo-verkaufen'){if(immoVerkaufen(id))render();}
 else if(a==='immo-renovieren'){if(immoRenovieren(id))render();}
 else if(a==='immo-nutzung'){if(immoNutzung(id))render();}
+else if(a==='moebel-kaufen'||a==='wand-aendern'||a==='boden-aendern'||a==='lack-aendern'){if(canAct(0,0,EINRICHTUNG.zeit)&&!gesperrt())openDialog(a);}
+else if(a==='moebel-kauf-id'){if(moebelKaufen(id)){closeDialog();render();}}
+else if(a==='flaeche-wand'||a==='flaeche-boden'||a==='flaeche-lack'){if(oberflaecheAendern(a.slice(8),id)){closeDialog();render();}}
 else if(a==='partner-suchen'){if(partnerSuchen())render();}
 else if(a==='partner-trennen'){if(partner()&&canAct(0,0,PARTNER.zeitAktion))openDialog('partner-trennen');}
 else if(a==='partner-trennen-ok'){if(partnerTrennen()){closeDialog();render();}}
@@ -589,6 +747,10 @@ mieteinnahme:bewohnt==='vermietet'?Math.round(n(ro.mieteinnahme,0,0,wert)):0,
 mieterZufriedenheit:bewohnt==='vermietet'?Math.round(n(ro.mieterZufriedenheit,60,0,100)):0});
 }
 if(s.immobilien.filter(im=>im.bewohnt==='selbst').length>1){let erste=true;for(const im of s.immobilien){if(im.bewohnt!=='selbst')continue;if(erste){erste=false;continue;}im.bewohnt='leer';}}
+const re=obj(raw.einrichtung);
+s.einrichtung={moebel:[...new Set(arr(re.moebel).filter(id=>MOEBEL.some(m=>m.id===id)))].slice(0,MOEBEL.length),
+wand:WAND.some(w=>w.id===re.wand)?re.wand:WAND[0].id,boden:BODEN.some(b=>b.id===re.boden)?re.boden:BODEN[0].id};
+if(s.auto)s.auto.farbe=LACK.some(l=>l.id===obj(raw.auto).farbe)?obj(raw.auto).farbe:LACK[0].id;
 s.zeit={max:zeitMax(s),genutzt:0};s.zeit.genutzt=Math.round(n(obj(raw.zeit).genutzt,0,0,s.zeit.max));
 let partnerGesehen=false;
 s.beziehungen=arr(raw.beziehungen).slice(0,20).filter(b=>typeof obj(b).name==='string').map((b,i)=>{
