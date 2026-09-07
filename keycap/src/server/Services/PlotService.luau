@@ -55,8 +55,8 @@ function PlotService.buildWorld()
 		base.Anchored = true
 		base.TopSurface = Enum.SurfaceType.Smooth
 		base.BottomSurface = Enum.SurfaceType.Smooth
-		base.Color = Theme.PANEL
-		base.Material = Enum.Material.SmoothPlastic
+		base.Color = Theme.WORLD.PLATE
+		base.Material = Theme.WORLD.PLATE_MATERIAL
 		base.Parent = model
 
 		-- Chassis: etwas groesser und dunkler, sitzt unter der Platte. Damit
@@ -74,8 +74,8 @@ function PlotService.buildWorld()
 		deck.Anchored = true
 		deck.TopSurface = Enum.SurfaceType.Smooth
 		deck.BottomSurface = Enum.SurfaceType.Smooth
-		deck.Color = Theme.PLOT_DECK
-		deck.Material = Enum.Material.SmoothPlastic
+		deck.Color = Theme.WORLD.CHASSIS
+		deck.Material = Theme.WORLD.CHASSIS_MATERIAL
 		deck.Parent = model
 
 		-- Leere Steckplaetze als flache Mulden. Sie werden EINMAL gebaut und
@@ -102,8 +102,8 @@ function PlotService.buildWorld()
 			marker.CanCollide = false
 			marker.CanQuery = false
 			marker.TopSurface = Enum.SurfaceType.Smooth
-			marker.Color = Theme.SLOT_MARKER
-			marker.Material = Enum.Material.SmoothPlastic
+			marker.Color = Theme.WORLD.SOCKET
+			marker.Material = Theme.WORLD.SOCKET_MATERIAL
 			marker.Parent = slotFolder
 		end
 		slotFolder.Parent = model
@@ -118,13 +118,13 @@ function PlotService.buildWorld()
 		sign.Anchored = true
 		sign.CanCollide = false
 		sign.TopSurface = Enum.SurfaceType.Smooth
-		sign.Color = Theme.SIGN_BOARD
-		sign.Material = Enum.Material.SmoothPlastic
+		sign.Color = Theme.WORLD.PLATE
+		sign.Material = Theme.WORLD.PLATE_MATERIAL
 		sign.Parent = model
 
 		local signEdge = Instance.new("SelectionBox")
 		signEdge.Adornee = sign
-		signEdge.Color3 = Theme.SIGN_BOARD_EDGE
+		signEdge.Color3 = Theme.WORLD.SEAM
 		signEdge.LineThickness = 0.06
 		signEdge.SurfaceTransparency = 1
 		signEdge.Parent = sign
@@ -216,14 +216,14 @@ function PlotService.renderKeys(plot: Plot, keys: { { rarity: string, vorrat: nu
 		part.Position = WorldLayout.slotPosition(plot.base.Position, index) + Vector3.new(0, extra / 2, 0)
 		part.Anchored = true
 		part.TopSurface = Enum.SurfaceType.Smooth
-		part.Material = if rank >= 5 then Enum.Material.Neon else Enum.Material.SmoothPlastic
-		part.Color = Theme.RARITY_COLORS[key.rarity] or Theme.PANEL
+		part.Material = Theme.RARITY_MATERIAL[key.rarity] or Enum.Material.SmoothPlastic
+		part.Color = Theme.RARITY_COLORS[key.rarity] or Theme.WORLD.PLATE
 
 		-- Kantenlicht statt Schatten: Roblox-UI kann keinen Schatten, und
 		-- in der Welt zeichnet eine SelectionBox die Kanten sauber nach.
 		local rim = Instance.new("SelectionBox")
 		rim.Adornee = part
-		rim.Color3 = Theme.RARITY_EDGE[key.rarity] or Theme.PANEL_EDGE
+		rim.Color3 = Theme.RARITY_EDGE[key.rarity] or Theme.WORLD.SEAM
 		rim.LineThickness = Theme.KEY_RIM_BASE + Theme.KEY_RIM_STEP * rank
 		rim.SurfaceTransparency = 1
 		rim.Parent = part

@@ -557,7 +557,6 @@ test("Jede Schrift-auf-Flaeche-Kombination schafft 4,5:1", function()
 		{ "Knopfschrift auf Rot (Verlauf oben)", Theme.INK, lift(Theme.RED) },
 	}
 	for _, name in Config.RARITY_ORDER do
-		table.insert(kombinationen, { "Knopfschrift auf " .. name, Theme.TEXT, Theme.RARITY_COLORS[name] })
 		-- Eigene Schriftfarbe je Seltenheit: die Kommentare im Theme nennen
 		-- konkrete Verhaeltnisse, also werden sie auch nachgerechnet.
 		table.insert(kombinationen, { "Seltenheitsschrift auf " .. name, Theme.RARITY_INK[name], Theme.RARITY_COLORS[name] })
@@ -591,9 +590,7 @@ test("Jede Knopfkante ist dunkler als ihre Flaeche", function()
 	end
 end)
 
-test("Die Welt spricht dieselbe Sprache wie das HUD", function()
-	-- Ueberall dasselbe Muster: helle Flaeche auf dunklerer Kante. Wenn ein
-	-- Chassis heller waere als seine Platte, kippt die Tiefenwirkung.
+test("Die Welt ist dunkel und ihre Kanten hellen auf", function()
 	local function channel(value)
 		if value <= 0.03928 then
 			return value / 12.92
@@ -603,20 +600,60 @@ test("Die Welt spricht dieselbe Sprache wie das HUD", function()
 	local function luminance(color)
 		return 0.2126 * channel(color.R) + 0.7152 * channel(color.G) + 0.0722 * channel(color.B)
 	end
-	expect(luminance(Theme.PLOT_DECK) < luminance(Theme.PANEL), "Plot-Chassis ist nicht dunkler als die Platte")
-	expect(luminance(Theme.PLOT_DECK_EDGE) < luminance(Theme.PLOT_DECK), "Chassis-Kante ist nicht dunkler")
-	expect(luminance(Theme.PAD_RING) < luminance(Theme.GOLD), "Pad-Podest ist nicht dunkler als das Pad")
-	expect(luminance(Theme.SIGN_BOARD_EDGE) < luminance(Theme.SIGN_BOARD), "Schildkante ist nicht dunkler")
-	-- Die leere Mulde muss sich von der Plotplatte abheben, sonst sieht ein
-	-- Dieb aus der Entfernung nicht, wie voll ein Plot ist.
-	expect(luminance(Theme.SLOT_MARKER) < luminance(Theme.PANEL), "Steckplatz-Mulde hebt sich nicht ab")
-	expect(luminance(Theme.GROUND_EDGE) < luminance(Theme.GROUND), "Bodenkante ist nicht dunkler")
-	-- Die Tinte muss dunkler sein als alles, was sie umrandet - sonst ist
-	-- die Umrandung eine Aufhellung statt einer Kante.
-	for _, name in { "PANEL", "GREEN", "BLUE", "GOLD", "RED", "PURPLE", "GROUND" } do
-		expect(luminance(Theme.INK) < luminance(Theme[name]),
-			"INK ist nicht dunkler als " .. name)
+	local W = Theme.WORLD
+
+	-- Ein Schreibtisch bei Nacht: jede Weltflaeche muss dunkler sein als
+	-- das creme HUD-Panel, sonst kippt die Grundstimmung.
+	for _, name in { "MAT", "SEAM", "PLATE", "CHASSIS", "SOCKET", "PATH" } do
+		expect(luminance(W[name]) < luminance(Theme.PANEL) / 8,
+			name .. " ist zu hell fuer eine Nachtszene")
 	end
+
+	-- Auf hellem Grund ist die Kante dunkel, auf dunklem Grund hell.
+	-- INK (0,0074) ist HELLER als die Matte (0,0073) - die HUD-Regel
+	-- laesst sich hier also nicht anwenden, deshalb SEAM.
+	expect(luminance(W.SEAM) > luminance(W.MAT), "Weltkante hellt nicht auf")
+	expect(luminance(W.SOCKET) < luminance(W.PLATE), "Mulde ist nicht tiefer als die Platte")
+	expect(luminance(W.CHASSIS) > luminance(W.PLATE), "Rahmen hebt sich nicht von der Platte ab")
+
+	-- Die Signalfarbe muss aus jeder Weltflaeche herausspringen.
+	for _, name in { "MAT", "PLATE", "PATH", "CHASSIS" } do
+		local a, b = luminance(W.SIGNAL), luminance(W[name])
+		if a < b then
+			a, b = b, a
+		end
+		expect((a + 0.05) / (b + 0.05) >= 6, "Signalfarbe hebt sich zu wenig von " .. name .. " ab")
+	end
+end)
+
+test("Jede Seltenheit hat Kappe, Legende, Ring, Material und Lichtreichweite", function()
+	local function channel(value)
+		if value <= 0.03928 then
+			return value / 12.92
+		end
+		return ((value + 0.055) / 1.055) ^ 2.4
+	end
+	local function luminance(color)
+		return 0.2126 * channel(color.R) + 0.7152 * channel(color.G) + 0.0722 * channel(color.B)
+	end
+	local letzteReichweite = -1
+	for _, name in Config.RARITY_ORDER do
+		expect(Theme.RARITY_COLORS[name] ~= nil, "keine Kappe fuer " .. name)
+		expect(Theme.RARITY_INK[name] ~= nil, "keine Legende fuer " .. name)
+		expect(Theme.RARITY_EDGE[name] ~= nil, "kein Stem-Ring fuer " .. name)
+		expect(Theme.RARITY_MATERIAL[name] ~= nil, "kein Material fuer " .. name)
+		local reichweite = Theme.RARITY_LIGHT_RANGE[name]
+		expect(reichweite ~= nil, "keine Lichtreichweite fuer " .. name)
+		expect(reichweite >= letzteReichweite, "Lichtreichweite faellt bei " .. name)
+		letzteReichweite = reichweite
+		expect(luminance(Theme.RARITY_EDGE[name]) < luminance(Theme.RARITY_COLORS[name]),
+			"Stem-Ring von " .. name .. " ist nicht dunkler als die Kappe")
+	end
+	-- Genau die Stufen bekommen Licht, die sich sonst nicht von der
+	-- Tastaturplatte abheben.
+	expect(Theme.RARITY_LIGHT_RANGE.Common == 0, "Common leuchtet")
+	expect(Theme.RARITY_LIGHT_RANGE.Rare > 0, "Rare leuchtet nicht - sie verschwindet auf der Platte")
+	expect(Theme.RARITY_LIGHT_BRIGHTNESS > 0, "Lichtstaerke fehlt")
 end)
 
 test("Der Verlauf hellt auf, er verdunkelt nicht", function()

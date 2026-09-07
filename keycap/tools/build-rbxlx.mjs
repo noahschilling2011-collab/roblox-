@@ -122,13 +122,13 @@ local function part(name, size, position, color, legende)
 end
 
 local promenade = Layout.promenade()
-part("Promenade", promenade.size, promenade.position, Theme.GROUND)
+part("Promenade", promenade.size, promenade.position, Theme.WORLD.PATH)
 local weg = Layout.path()
-part("Path", weg.size, weg.position, Theme.GROUND)
+part("Path", weg.size, weg.position, Theme.WORLD.PATH)
 
 for index = 1, World.PLOT_COUNT do
 	local mitte = Layout.plotPosition(index)
-	part("Plot" .. index, World.PLOT_SIZE, mitte, Theme.PANEL)
+	part("Plot" .. index, World.PLOT_SIZE, mitte, Theme.WORLD.PLATE)
 
 	-- Chassis unter der Platte, gleiche Rechnung wie PlotService.buildWorld.
 	part("Deck" .. index,
@@ -138,11 +138,11 @@ for index = 1, World.PLOT_COUNT do
 			World.PLOT_SIZE.Z + World.PLOT_DECK_OVERHANG * 2
 		),
 		Vector3.new(mitte.X, mitte.Y - World.PLOT_SIZE.Y / 2 - World.PLOT_DECK_HEIGHT / 2, mitte.Z),
-		Theme.PLOT_DECK)
+		Theme.WORLD.CHASSIS)
 
 	-- Schildtafel an der Vorderkante.
 	local schild = Layout.signPosition(mitte)
-	part("Sign" .. index, World.SIGN_BOARD_SIZE, schild, Theme.SIGN_BOARD)
+	part("Sign" .. index, World.SIGN_BOARD_SIZE, schild, Theme.WORLD.PLATE)
 end
 
 -- Steckplatz-Mulden fehlen in der Vorschau mit Absicht: auf einem frischen
@@ -171,7 +171,7 @@ for slot = 1, World.NPC_PLOT_COUNT do
 end
 
 for index, position in World.STAGE_PAD_POSITIONS do
-	part("CashOut" .. index, World.STAGE_PAD_SIZE, position, Theme.GOLD)
+	part("CashOut" .. index, World.STAGE_PAD_SIZE, position, Theme.WORLD.SIGNAL)
 	part("CashOutRing" .. index,
 		Vector3.new(
 			World.STAGE_PAD_SIZE.X + World.PAD_RING_OVERHANG * 2,
@@ -179,10 +179,10 @@ for index, position in World.STAGE_PAD_POSITIONS do
 			World.STAGE_PAD_SIZE.Z + World.PAD_RING_OVERHANG * 2
 		),
 		Vector3.new(position.X, position.Y - World.STAGE_PAD_SIZE.Y / 2 - World.PAD_RING_HEIGHT / 2, position.Z),
-		Theme.PAD_RING)
+		Theme.WORLD.SIGNAL_DIM)
 end
 for index, position in World.STAGE_GATE_POSITIONS do
-	part("Gate" .. index, World.STAGE_GATE_SIZE, position, Theme.BLUE)
+	part("Gate" .. index, World.STAGE_GATE_SIZE, position, Theme.WORLD.SIGNAL_DIM)
 end
 
 return table.concat(zeilen, "\\n")

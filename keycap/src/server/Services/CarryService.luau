@@ -48,7 +48,7 @@ function CarryService.show(player: Player, rarity: string, vorrat: number)
 	part.CanQuery = false
 	part.Massless = true -- darf die Physik des Diebes nicht veraendern
 	part.Material = Enum.Material.SmoothPlastic
-	part.Color = Theme.RARITY_COLORS[rarity] or Theme.PANEL
+	part.Color = Theme.RARITY_COLORS[rarity] or Theme.WORLD.PLATE
 	part.Parent = model
 
 	local billboard = Instance.new("BillboardGui")

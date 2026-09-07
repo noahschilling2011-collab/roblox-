@@ -36,7 +36,7 @@ local function buildGate(stageIndex: number)
 	gate.CanCollide = false
 	gate.Transparency = 0.55
 	gate.Material = Enum.Material.Neon
-	gate.Color = Theme.BLUE
+	gate.Color = Theme.WORLD.SIGNAL_DIM
 	gate.Parent = workspace
 
 	local billboard = Instance.new("BillboardGui")
@@ -141,8 +141,8 @@ local function buildPad(stageIndex: number)
 	pad.Position = WorldConfig.STAGE_PAD_POSITIONS[stageIndex]
 	pad.Anchored = true
 	pad.TopSurface = Enum.SurfaceType.Smooth
-	pad.Material = Enum.Material.SmoothPlastic
-	pad.Color = Theme.GOLD
+	pad.Material = Enum.Material.Neon
+	pad.Color = Theme.WORLD.SIGNAL
 	pad.Parent = workspace
 	pads[stageIndex] = pad
 
@@ -161,8 +161,8 @@ local function buildPad(stageIndex: number)
 	ring.Anchored = true
 	ring.TopSurface = Enum.SurfaceType.Smooth
 	ring.BottomSurface = Enum.SurfaceType.Smooth
-	ring.Material = Enum.Material.SmoothPlastic
-	ring.Color = Theme.PAD_RING
+	ring.Material = Theme.WORLD.PLATE_MATERIAL
+	ring.Color = Theme.WORLD.SIGNAL_DIM
 	ring.Parent = workspace
 
 	local factors = EconomyLogic.payoutFactors()
@@ -212,8 +212,8 @@ local function buildGround()
 		part.Anchored = true
 		part.TopSurface = Enum.SurfaceType.Smooth
 		part.BottomSurface = Enum.SurfaceType.Smooth
-		part.Material = Enum.Material.SmoothPlastic
-		part.Color = Theme.GROUND
+		part.Material = Theme.WORLD.PATH_MATERIAL
+		part.Color = Theme.WORLD.PATH
 		part.Parent = workspace
 	end
 

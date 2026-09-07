@@ -48,53 +48,108 @@ local Theme = {
 	GREEN_TEXT = Color3.fromRGB(44, 116, 54),
 	RED_TEXT = Color3.fromRGB(186, 68, 62),
 
+	-- Die Kappe. Eine echte Keycap-Farbwelt, kein Regenbogen: warmes
+	-- Off-White, Salbei, Petrol, Violett, Bernstein.
+	-- Rare und Epic sind gegenueber dem Entwurf zwei Toene dunkler - mit
+	-- den Originalwerten schaffte die Legende nur 3,91 bzw. 3,84:1.
 	RARITY_COLORS = {
-		Common = Color3.fromRGB(206, 206, 206),
-		Uncommon = Color3.fromRGB(120, 206, 120),
-		Rare = Color3.fromRGB(134, 190, 248),
-		Epic = Color3.fromRGB(206, 164, 248),
-		Legendary = Color3.fromRGB(248, 186, 70),
+		Common = Color3.fromRGB(232, 228, 218),
+		Uncommon = Color3.fromRGB(127, 168, 138),
+		Rare = Color3.fromRGB(53, 111, 147),
+		Epic = Color3.fromRGB(123, 79, 196),
+		Legendary = Color3.fromRGB(255, 159, 28),
 	},
 
 	-- ---------------------------------------------------------------
-	-- Welt. Dieselbe Sprache wie das HUD: helle Flaeche, dunklere Kante
-	-- darunter, Tiefe durch den Ueberstand - nicht durch Schatten, die
-	-- Roblox-Oberflaechen ohnehin nicht werfen wuerden.
+	-- WELT — "Du bist winzig auf einem Schreibtisch. Nachts."
+	--
+	-- Der Boden ist eine Schreibtischmatte, die Plots stehen auf einer
+	-- Tastaturplatte. Alles dunkel und kuehl; das Licht kommt vom Monitor
+	-- am Rand und von den Tasten selbst, nicht von der Sonne.
+	--
+	-- WICHTIG zur Kante: auf dem hellen HUD ist die Kante DUNKEL (INK).
+	-- Auf der dunklen Welt geht das nicht - INK hat Leuchtdichte 0,0074,
+	-- die Matte 0,0073, die Tinte waere heller als der Boden. Weltkanten
+	-- sind deshalb AUFHELLEND (SEAM). Zwei Gruende, zwei Farben.
+	--
+	-- Die Tonwerte liegen dicht beieinander (1,1-1,4:1). Das ist Absicht -
+	-- eine dunkle Szene lebt von feinen Abstufungen. Lesbarkeit tragen
+	-- Kanten und Licht, nicht Flaechenkontrast.
 	-- ---------------------------------------------------------------
-	GROUND = Color3.fromRGB(104, 190, 92), -- Boden: das Gruen, das dieses Genre unter den Fuessen hat
-	GROUND_EDGE = Color3.fromRGB(66, 146, 62),
-	PLOT_DECK = Color3.fromRGB(206, 198, 182), -- Chassis unter der Plotplatte
-	PLOT_DECK_EDGE = Color3.fromRGB(168, 160, 146),
-	SLOT_MARKER = Color3.fromRGB(214, 206, 188), -- leere Mulde
-	SIGN_BOARD = Color3.fromRGB(248, 244, 232),
-	SIGN_BOARD_EDGE = Color3.fromRGB(196, 188, 172),
-	PAD_RING = Color3.fromRGB(206, 152, 32), -- Podest unter dem Pad
+	WORLD = {
+		MAT = Color3.fromRGB(20, 20, 28), -- Schreibtischmatte, der Boden
+		MAT_MATERIAL = Enum.Material.Fabric,
+		SEAM = Color3.fromRGB(46, 46, 62), -- Naht und Kante, hellt auf
+		SEAM_MATERIAL = Enum.Material.Fabric,
+		PLATE = Color3.fromRGB(34, 34, 44), -- Tastaturplatte, traegt die Plots
+		PLATE_MATERIAL = Enum.Material.Metal,
+		CHASSIS = Color3.fromRGB(51, 51, 63), -- Rahmen um die Platte
+		CHASSIS_MATERIAL = Enum.Material.Metal,
+		SOCKET = Color3.fromRGB(14, 14, 20), -- leere Mulde, dunkler als die Platte
+		SOCKET_MATERIAL = Enum.Material.SmoothPlastic,
+		PATH = Color3.fromRGB(26, 26, 36), -- Weg und Promenade
+		PATH_MATERIAL = Enum.Material.Fabric,
+
+		-- Signalfarbe. NUR fuer Cash-Out-Pad, Schildkuppel und
+		-- Beute-Leuchtturm. Wenn Cyan leuchtet, passiert etwas - deshalb
+		-- kommt die Farbe sonst nirgends vor.
+		SIGNAL = Color3.fromRGB(61, 224, 224),
+		SIGNAL_DIM = Color3.fromRGB(28, 128, 128),
+	},
 
 	-- Dunkle Kante je Seltenheit. Ohne die ist eine Taste eine flache
 	-- Flaeche - weder der 3D-Effekt der Knoepfe noch das Kantenlicht der
 	-- Tasten in der Welt haben sonst einen Wert, aus dem sie sich rechnen.
+	-- Der Stem-Ring unter der Kappe, der sie vom Sockel absetzt. Jeweils
+	-- 55 % der Kappenhelligkeit - dieselbe Beziehung wie Knopf zu Kante.
 	RARITY_EDGE = {
-		Common = Color3.fromRGB(168, 168, 168),
-		Uncommon = Color3.fromRGB(78, 158, 78),
-		Rare = Color3.fromRGB(78, 136, 196),
-		Epic = Color3.fromRGB(144, 104, 196),
-		Legendary = Color3.fromRGB(196, 138, 30),
+		Common = Color3.fromRGB(128, 125, 120),
+		Uncommon = Color3.fromRGB(70, 92, 76),
+		Rare = Color3.fromRGB(29, 61, 81),
+		Epic = Color3.fromRGB(68, 43, 108),
+		Legendary = Color3.fromRGB(140, 87, 15),
 	},
 
 	-- Schrift AUF der jeweiligen Seltenheitsfarbe. Nachgerechnet gegen die
 	-- eigene Flaeche: Common 6,2:1 - Uncommon 5,1:1 - Rare 4,6:1 -
 	-- Epic 5,4:1 - Legendary 5,1:1. Weiss waere auf allen fuenf unlesbar.
+	-- Die Legende, also der Buchstabe auf der Kappe. Nachgerechnet gegen
+	-- die eigene Kappe: Common 11,8 - Uncommon 5,6 - Rare 4,9 - Epic 4,8 -
+	-- Legendary 8,2:1. Helle Kappen tragen dunkle Legenden und umgekehrt.
 	RARITY_INK = {
-		Common = Color3.fromRGB(74, 66, 56),
-		Uncommon = Color3.fromRGB(30, 76, 30),
-		Rare = Color3.fromRGB(30, 74, 120),
-		Epic = Color3.fromRGB(74, 46, 108),
-		Legendary = Color3.fromRGB(106, 66, 4),
+		Common = Color3.fromRGB(42, 38, 32),
+		Uncommon = Color3.fromRGB(28, 42, 32),
+		Rare = Color3.fromRGB(232, 244, 250),
+		Epic = Color3.fromRGB(244, 234, 255),
+		Legendary = Color3.fromRGB(42, 26, 0),
 	},
 
 	-- Rang 1-5. Traegt alles, was die Seltenheit OHNE Farbe zeigt:
 	-- Zahl der Punkte im Laden, Rahmenstaerke, Kantenlicht in der Welt.
 	-- Farbe allein reicht auf einem billigen Display in der Sonne nicht.
+	-- Material je Stufe. Ab Rare wird die Kappe glaenzender, Legendary
+	-- bekommt Metall - aus der Entfernung unterscheidbar, auch wenn ein
+	-- billiges Display die Farbe verwaescht.
+	RARITY_MATERIAL = {
+		Common = Enum.Material.SmoothPlastic,
+		Uncommon = Enum.Material.SmoothPlastic,
+		Rare = Enum.Material.Plastic,
+		Epic = Enum.Material.Plastic,
+		Legendary = Enum.Material.Metal,
+	},
+
+	-- Reichweite des PointLights in der Kappe. 0 = kein Licht.
+	-- Das ist keine Deko: Rare und Epic schaffen gegen die Tastaturplatte
+	-- nur 2,89 bzw. 2,82:1 - ohne eigenes Licht verschwinden sie darauf.
+	RARITY_LIGHT_RANGE = {
+		Common = 0,
+		Uncommon = 0,
+		Rare = 12,
+		Epic = 16,
+		Legendary = 24,
+	},
+	RARITY_LIGHT_BRIGHTNESS = 1.4,
+
 	RARITY_RANK = {
 		Common = 1,
 		Uncommon = 2,

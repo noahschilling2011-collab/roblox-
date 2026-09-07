@@ -23,7 +23,7 @@
 <bool name="Anchored">true</bool>
 <Vector3 name="size"><X>768</X><Y>2</Y><Z>24</Z></Vector3>
 <CoordinateFrame name="CFrame"><X>0</X><Y>8</Y><Z>36</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
-<Color3uint8 name="Color3uint8">4285054556</Color3uint8>
+<Color3uint8 name="Color3uint8">4279900708</Color3uint8>
 </Properties>
 </Item>
 <Item class="Part" referent="KC2">
@@ -32,7 +32,7 @@
 <bool name="Anchored">true</bool>
 <Vector3 name="size"><X>40</X><Y>2</Y><Z>592</Z></Vector3>
 <CoordinateFrame name="CFrame"><X>0</X><Y>8</Y><Z>-248</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
-<Color3uint8 name="Color3uint8">4285054556</Color3uint8>
+<Color3uint8 name="Color3uint8">4279900708</Color3uint8>
 </Properties>
 </Item>
 <Item class="Part" referent="KC3">
@@ -41,7 +41,7 @@
 <bool name="Anchored">true</bool>
 <Vector3 name="size"><X>48</X><Y>2</Y><Z>48</Z></Vector3>
 <CoordinateFrame name="CFrame"><X>-352</X><Y>8</Y><Z>0</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
-<Color3uint8 name="Color3uint8">4294769136</Color3uint8>
+<Color3uint8 name="Color3uint8">4280427052</Color3uint8>
 </Properties>
 </Item>
 <Item class="Part" referent="KC4">
@@ -50,7 +50,7 @@
 <bool name="Anchored">true</bool>
 <Vector3 name="size"><X>54</X><Y>1.6</Y><Z>54</Z></Vector3>
 <CoordinateFrame name="CFrame"><X>-352</X><Y>6.2</Y><Z>0</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
-<Color3uint8 name="Color3uint8">4291741366</Color3uint8>
+<Color3uint8 name="Color3uint8">4281545535</Color3uint8>
 </Properties>
 </Item>
 <Item class="Part" referent="KC5">
@@ -59,7 +59,7 @@
 <bool name="Anchored">true</bool>
 <Vector3 name="size"><X>16</X><Y>4.5</Y><Z>0.8</Z></Vector3>
 <CoordinateFrame name="CFrame"><X>-352</X><Y>16</Y><Z>24</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
-<Color3uint8 name="Color3uint8">4294505704</Color3uint8>
+<Color3uint8 name="Color3uint8">4280427052</Color3uint8>
 </Properties>
 </Item>
 <Item class="Part" referent="KC6">
@@ -68,7 +68,7 @@
 <bool name="Anchored">true</bool>
 <Vector3 name="size"><X>48</X><Y>2</Y><Z>48</Z></Vector3>
 <CoordinateFrame name="CFrame"><X>-288</X><Y>8</Y><Z>0</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
-<Color3uint8 name="Color3uint8">4294769136</Color3uint8>
+<Color3uint8 name="Color3uint8">4280427052</Color3uint8>
 </Properties>
 </Item>
 <Item class="Part" referent="KC7">
@@ -77,7 +77,7 @@
 <bool name="Anchored">true</bool>
 <Vector3 name="size"><X>54</X><Y>1.6</Y><Z>54</Z></Vector3>
 <CoordinateFrame name="CFrame"><X>-288</X><Y>6.2</Y><Z>0</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
-<Color3uint8 name="Color3uint8">4291741366</Color3uint8>
+<Color3uint8 name="Color3uint8">4281545535</Color3uint8>
 </Properties>
 </Item>
 <Item class="Part" referent="KC8">
@@ -86,7 +86,7 @@
 <bool name="Anchored">true</bool>
 <Vector3 name="size"><X>16</X><Y>4.5</Y><Z>0.8</Z></Vector3>
 <CoordinateFrame name="CFrame"><X>-288</X><Y>16</Y><Z>24</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
-<Color3uint8 name="Color3uint8">4294505704</Color3uint8>
+<Color3uint8 name="Color3uint8">4280427052</Color3uint8>
 </Properties>
 </Item>
 <Item class="Part" referent="KC9">
@@ -95,7 +95,7 @@
 <bool name="Anchored">true</bool>
 <Vector3 name="size"><X>48</X><Y>2</Y><Z>48</Z></Vector3>
 <CoordinateFrame name="CFrame"><X>-224</X><Y>8</Y><Z>0</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
-<Color3uint8 name="Color3uint8">4294769136</Color3uint8>
+<Color3uint8 name="Color3uint8">4280427052</Color3uint8>
 </Properties>
 </Item>
 <Item class="Part" referent="KC10">
@@ -104,7 +104,7 @@
 <bool name="Anchored">true</bool>
 <Vector3 name="size"><X>54</X><Y>1.6</Y><Z>54</Z></Vector3>
 <CoordinateFrame name="CFrame"><X>-224</X><Y>6.2</Y><Z>0</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
-<Color3uint8 name="Color3uint8">4291741366</Color3uint8>
+<Color3uint8 name="Color3uint8">4281545535</Color3uint8>
 </Properties>
 </Item>
 <Item class="Part" referent="KC11">
@@ -113,7 +113,7 @@
 <bool name="Anchored">true</bool>
 <Vector3 name="size"><X>16</X><Y>4.5</Y><Z>0.8</Z></Vector3>
 <CoordinateFrame name="CFrame"><X>-224</X><Y>16</Y><Z>24</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
-<Color3uint8 name="Color3uint8">4294505704</Color3uint8>
+<Color3uint8 name="Color3uint8">4280427052</Color3uint8>
 </Properties>
 </Item>
 <Item class="Part" referent="KC12">
@@ -122,7 +122,7 @@
 <bool name="Anchored">true</bool>
 <Vector3 name="size"><X>48</X><Y>2</Y><Z>48</Z></Vector3>
 <CoordinateFrame name="CFrame"><X>-160</X><Y>8</Y><Z>0</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
-<Color3uint8 name="Color3uint8">4294769136</Color3uint8>
+<Color3uint8 name="Color3uint8">4280427052</Color3uint8>
 </Properties>
 </Item>
 <Item class="Part" referent="KC13">
@@ -131,7 +131,7 @@
 <bool name="Anchored">true</bool>
 <Vector3 name="size"><X>54</X><Y>1.6</Y><Z>54</Z></Vector3>
 <CoordinateFrame name="CFrame"><X>-160</X><Y>6.2</Y><Z>0</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
-<Color3uint8 name="Color3uint8">4291741366</Color3uint8>
+<Color3uint8 name="Color3uint8">4281545535</Color3uint8>
 </Properties>
 </Item>
 <Item class="Part" referent="KC14">
@@ -140,7 +140,7 @@
 <bool name="Anchored">true</bool>
 <Vector3 name="size"><X>16</X><Y>4.5</Y><Z>0.8</Z></Vector3>
 <CoordinateFrame name="CFrame"><X>-160</X><Y>16</Y><Z>24</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
-<Color3uint8 name="Color3uint8">4294505704</Color3uint8>
+<Color3uint8 name="Color3uint8">4280427052</Color3uint8>
 </Properties>
 </Item>
 <Item class="Part" referent="KC15">
@@ -149,7 +149,7 @@
 <bool name="Anchored">true</bool>
 <Vector3 name="size"><X>48</X><Y>2</Y><Z>48</Z></Vector3>
 <CoordinateFrame name="CFrame"><X>-96</X><Y>8</Y><Z>0</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
-<Color3uint8 name="Color3uint8">4294769136</Color3uint8>
+<Color3uint8 name="Color3uint8">4280427052</Color3uint8>
 </Properties>
 </Item>
 <Item class="Part" referent="KC16">
@@ -158,7 +158,7 @@
 <bool name="Anchored">true</bool>
 <Vector3 name="size"><X>54</X><Y>1.6</Y><Z>54</Z></Vector3>
 <CoordinateFrame name="CFrame"><X>-96</X><Y>6.2</Y><Z>0</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
-<Color3uint8 name="Color3uint8">4291741366</Color3uint8>
+<Color3uint8 name="Color3uint8">4281545535</Color3uint8>
 </Properties>
 </Item>
 <Item class="Part" referent="KC17">
@@ -167,7 +167,7 @@
 <bool name="Anchored">true</bool>
 <Vector3 name="size"><X>16</X><Y>4.5</Y><Z>0.8</Z></Vector3>
 <CoordinateFrame name="CFrame"><X>-96</X><Y>16</Y><Z>24</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
-<Color3uint8 name="Color3uint8">4294505704</Color3uint8>
+<Color3uint8 name="Color3uint8">4280427052</Color3uint8>
 </Properties>
 </Item>
 <Item class="Part" referent="KC18">
@@ -176,7 +176,7 @@
 <bool name="Anchored">true</bool>
 <Vector3 name="size"><X>48</X><Y>2</Y><Z>48</Z></Vector3>
 <CoordinateFrame name="CFrame"><X>-32</X><Y>8</Y><Z>0</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
-<Color3uint8 name="Color3uint8">4294769136</Color3uint8>
+<Color3uint8 name="Color3uint8">4280427052</Color3uint8>
 </Properties>
 </Item>
 <Item class="Part" referent="KC19">
@@ -185,7 +185,7 @@
 <bool name="Anchored">true</bool>
 <Vector3 name="size"><X>54</X><Y>1.6</Y><Z>54</Z></Vector3>
 <CoordinateFrame name="CFrame"><X>-32</X><Y>6.2</Y><Z>0</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
-<Color3uint8 name="Color3uint8">4291741366</Color3uint8>
+<Color3uint8 name="Color3uint8">4281545535</Color3uint8>
 </Properties>
 </Item>
 <Item class="Part" referent="KC20">
@@ -194,7 +194,7 @@
 <bool name="Anchored">true</bool>
 <Vector3 name="size"><X>16</X><Y>4.5</Y><Z>0.8</Z></Vector3>
 <CoordinateFrame name="CFrame"><X>-32</X><Y>16</Y><Z>24</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
-<Color3uint8 name="Color3uint8">4294505704</Color3uint8>
+<Color3uint8 name="Color3uint8">4280427052</Color3uint8>
 </Properties>
 </Item>
 <Item class="Part" referent="KC21">
@@ -203,7 +203,7 @@
 <bool name="Anchored">true</bool>
 <Vector3 name="size"><X>48</X><Y>2</Y><Z>48</Z></Vector3>
 <CoordinateFrame name="CFrame"><X>32</X><Y>8</Y><Z>0</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
-<Color3uint8 name="Color3uint8">4294769136</Color3uint8>
+<Color3uint8 name="Color3uint8">4280427052</Color3uint8>
 </Properties>
 </Item>
 <Item class="Part" referent="KC22">
@@ -212,7 +212,7 @@
 <bool name="Anchored">true</bool>
 <Vector3 name="size"><X>54</X><Y>1.6</Y><Z>54</Z></Vector3>
 <CoordinateFrame name="CFrame"><X>32</X><Y>6.2</Y><Z>0</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
-<Color3uint8 name="Color3uint8">4291741366</Color3uint8>
+<Color3uint8 name="Color3uint8">4281545535</Color3uint8>
 </Properties>
 </Item>
 <Item class="Part" referent="KC23">
@@ -221,7 +221,7 @@
 <bool name="Anchored">true</bool>
 <Vector3 name="size"><X>16</X><Y>4.5</Y><Z>0.8</Z></Vector3>
 <CoordinateFrame name="CFrame"><X>32</X><Y>16</Y><Z>24</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
-<Color3uint8 name="Color3uint8">4294505704</Color3uint8>
+<Color3uint8 name="Color3uint8">4280427052</Color3uint8>
 </Properties>
 </Item>
 <Item class="Part" referent="KC24">
@@ -230,7 +230,7 @@
 <bool name="Anchored">true</bool>
 <Vector3 name="size"><X>48</X><Y>2</Y><Z>48</Z></Vector3>
 <CoordinateFrame name="CFrame"><X>96</X><Y>8</Y><Z>0</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
-<Color3uint8 name="Color3uint8">4294769136</Color3uint8>
+<Color3uint8 name="Color3uint8">4280427052</Color3uint8>
 </Properties>
 </Item>
 <Item class="Part" referent="KC25">
@@ -239,7 +239,7 @@
 <bool name="Anchored">true</bool>
 <Vector3 name="size"><X>54</X><Y>1.6</Y><Z>54</Z></Vector3>
 <CoordinateFrame name="CFrame"><X>96</X><Y>6.2</Y><Z>0</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
-<Color3uint8 name="Color3uint8">4291741366</Color3uint8>
+<Color3uint8 name="Color3uint8">4281545535</Color3uint8>
 </Properties>
 </Item>
 <Item class="Part" referent="KC26">
@@ -248,7 +248,7 @@
 <bool name="Anchored">true</bool>
 <Vector3 name="size"><X>16</X><Y>4.5</Y><Z>0.8</Z></Vector3>
 <CoordinateFrame name="CFrame"><X>96</X><Y>16</Y><Z>24</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
-<Color3uint8 name="Color3uint8">4294505704</Color3uint8>
+<Color3uint8 name="Color3uint8">4280427052</Color3uint8>
 </Properties>
 </Item>
 <Item class="Part" referent="KC27">
@@ -257,7 +257,7 @@
 <bool name="Anchored">true</bool>
 <Vector3 name="size"><X>48</X><Y>2</Y><Z>48</Z></Vector3>
 <CoordinateFrame name="CFrame"><X>160</X><Y>8</Y><Z>0</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
-<Color3uint8 name="Color3uint8">4294769136</Color3uint8>
+<Color3uint8 name="Color3uint8">4280427052</Color3uint8>
 </Properties>
 </Item>
 <Item class="Part" referent="KC28">
@@ -266,7 +266,7 @@
 <bool name="Anchored">true</bool>
 <Vector3 name="size"><X>54</X><Y>1.6</Y><Z>54</Z></Vector3>
 <CoordinateFrame name="CFrame"><X>160</X><Y>6.2</Y><Z>0</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
-<Color3uint8 name="Color3uint8">4291741366</Color3uint8>
+<Color3uint8 name="Color3uint8">4281545535</Color3uint8>
 </Properties>
 </Item>
 <Item class="Part" referent="KC29">
@@ -275,7 +275,7 @@
 <bool name="Anchored">true</bool>
 <Vector3 name="size"><X>16</X><Y>4.5</Y><Z>0.8</Z></Vector3>
 <CoordinateFrame name="CFrame"><X>160</X><Y>16</Y><Z>24</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
-<Color3uint8 name="Color3uint8">4294505704</Color3uint8>
+<Color3uint8 name="Color3uint8">4280427052</Color3uint8>
 </Properties>
 </Item>
 <Item class="Part" referent="KC30">
@@ -284,7 +284,7 @@
 <bool name="Anchored">true</bool>
 <Vector3 name="size"><X>48</X><Y>2</Y><Z>48</Z></Vector3>
 <CoordinateFrame name="CFrame"><X>224</X><Y>8</Y><Z>0</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
-<Color3uint8 name="Color3uint8">4294769136</Color3uint8>
+<Color3uint8 name="Color3uint8">4280427052</Color3uint8>
 </Properties>
 </Item>
 <Item class="Part" referent="KC31">
@@ -293,7 +293,7 @@
 <bool name="Anchored">true</bool>
 <Vector3 name="size"><X>54</X><Y>1.6</Y><Z>54</Z></Vector3>
 <CoordinateFrame name="CFrame"><X>224</X><Y>6.2</Y><Z>0</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
-<Color3uint8 name="Color3uint8">4291741366</Color3uint8>
+<Color3uint8 name="Color3uint8">4281545535</Color3uint8>
 </Properties>
 </Item>
 <Item class="Part" referent="KC32">
@@ -302,7 +302,7 @@
 <bool name="Anchored">true</bool>
 <Vector3 name="size"><X>16</X><Y>4.5</Y><Z>0.8</Z></Vector3>
 <CoordinateFrame name="CFrame"><X>224</X><Y>16</Y><Z>24</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
-<Color3uint8 name="Color3uint8">4294505704</Color3uint8>
+<Color3uint8 name="Color3uint8">4280427052</Color3uint8>
 </Properties>
 </Item>
 <Item class="Part" referent="KC33">
@@ -311,7 +311,7 @@
 <bool name="Anchored">true</bool>
 <Vector3 name="size"><X>48</X><Y>2</Y><Z>48</Z></Vector3>
 <CoordinateFrame name="CFrame"><X>288</X><Y>8</Y><Z>0</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
-<Color3uint8 name="Color3uint8">4294769136</Color3uint8>
+<Color3uint8 name="Color3uint8">4280427052</Color3uint8>
 </Properties>
 </Item>
 <Item class="Part" referent="KC34">
@@ -320,7 +320,7 @@
 <bool name="Anchored">true</bool>
 <Vector3 name="size"><X>54</X><Y>1.6</Y><Z>54</Z></Vector3>
 <CoordinateFrame name="CFrame"><X>288</X><Y>6.2</Y><Z>0</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
-<Color3uint8 name="Color3uint8">4291741366</Color3uint8>
+<Color3uint8 name="Color3uint8">4281545535</Color3uint8>
 </Properties>
 </Item>
 <Item class="Part" referent="KC35">
@@ -329,7 +329,7 @@
 <bool name="Anchored">true</bool>
 <Vector3 name="size"><X>16</X><Y>4.5</Y><Z>0.8</Z></Vector3>
 <CoordinateFrame name="CFrame"><X>288</X><Y>16</Y><Z>24</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
-<Color3uint8 name="Color3uint8">4294505704</Color3uint8>
+<Color3uint8 name="Color3uint8">4280427052</Color3uint8>
 </Properties>
 </Item>
 <Item class="Part" referent="KC36">
@@ -338,7 +338,7 @@
 <bool name="Anchored">true</bool>
 <Vector3 name="size"><X>48</X><Y>2</Y><Z>48</Z></Vector3>
 <CoordinateFrame name="CFrame"><X>352</X><Y>8</Y><Z>0</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
-<Color3uint8 name="Color3uint8">4294769136</Color3uint8>
+<Color3uint8 name="Color3uint8">4280427052</Color3uint8>
 </Properties>
 </Item>
 <Item class="Part" referent="KC37">
@@ -347,7 +347,7 @@
 <bool name="Anchored">true</bool>
 <Vector3 name="size"><X>54</X><Y>1.6</Y><Z>54</Z></Vector3>
 <CoordinateFrame name="CFrame"><X>352</X><Y>6.2</Y><Z>0</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
-<Color3uint8 name="Color3uint8">4291741366</Color3uint8>
+<Color3uint8 name="Color3uint8">4281545535</Color3uint8>
 </Properties>
 </Item>
 <Item class="Part" referent="KC38">
@@ -356,7 +356,7 @@
 <bool name="Anchored">true</bool>
 <Vector3 name="size"><X>16</X><Y>4.5</Y><Z>0.8</Z></Vector3>
 <CoordinateFrame name="CFrame"><X>352</X><Y>16</Y><Z>24</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
-<Color3uint8 name="Color3uint8">4294505704</Color3uint8>
+<Color3uint8 name="Color3uint8">4280427052</Color3uint8>
 </Properties>
 </Item>
 <Item class="Part" referent="KC41">
@@ -365,7 +365,7 @@
 <bool name="Anchored">true</bool>
 <Vector3 name="size"><X>6</X><Y>3</Y><Z>6</Z></Vector3>
 <CoordinateFrame name="CFrame"><X>334</X><Y>10.5</Y><Z>-9</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
-<Color3uint8 name="Color3uint8">4291743438</Color3uint8>
+<Color3uint8 name="Color3uint8">4293453018</Color3uint8>
 </Properties>
 <Item class="SurfaceGui" referent="KC39">
 <Properties>
@@ -388,7 +388,7 @@
 <bool name="Anchored">true</bool>
 <Vector3 name="size"><X>6</X><Y>3</Y><Z>6</Z></Vector3>
 <CoordinateFrame name="CFrame"><X>343</X><Y>10.5</Y><Z>-9</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
-<Color3uint8 name="Color3uint8">4291743438</Color3uint8>
+<Color3uint8 name="Color3uint8">4293453018</Color3uint8>
 </Properties>
 <Item class="SurfaceGui" referent="KC42">
 <Properties>
@@ -411,7 +411,7 @@
 <bool name="Anchored">true</bool>
 <Vector3 name="size"><X>6</X><Y>3.6</Y><Z>6</Z></Vector3>
 <CoordinateFrame name="CFrame"><X>352</X><Y>10.8</Y><Z>-9</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
-<Color3uint8 name="Color3uint8">4286107256</Color3uint8>
+<Color3uint8 name="Color3uint8">4286556298</Color3uint8>
 </Properties>
 <Item class="SurfaceGui" referent="KC45">
 <Properties>
@@ -434,7 +434,7 @@
 <bool name="Anchored">true</bool>
 <Vector3 name="size"><X>6</X><Y>3</Y><Z>6</Z></Vector3>
 <CoordinateFrame name="CFrame"><X>361</X><Y>10.5</Y><Z>-9</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
-<Color3uint8 name="Color3uint8">4291743438</Color3uint8>
+<Color3uint8 name="Color3uint8">4293453018</Color3uint8>
 </Properties>
 <Item class="SurfaceGui" referent="KC48">
 <Properties>
@@ -457,7 +457,7 @@
 <bool name="Anchored">true</bool>
 <Vector3 name="size"><X>6</X><Y>3</Y><Z>6</Z></Vector3>
 <CoordinateFrame name="CFrame"><X>270</X><Y>10.5</Y><Z>-9</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
-<Color3uint8 name="Color3uint8">4291743438</Color3uint8>
+<Color3uint8 name="Color3uint8">4293453018</Color3uint8>
 </Properties>
 <Item class="SurfaceGui" referent="KC51">
 <Properties>
@@ -480,7 +480,7 @@
 <bool name="Anchored">true</bool>
 <Vector3 name="size"><X>6</X><Y>3</Y><Z>6</Z></Vector3>
 <CoordinateFrame name="CFrame"><X>279</X><Y>10.5</Y><Z>-9</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
-<Color3uint8 name="Color3uint8">4291743438</Color3uint8>
+<Color3uint8 name="Color3uint8">4293453018</Color3uint8>
 </Properties>
 <Item class="SurfaceGui" referent="KC54">
 <Properties>
@@ -503,7 +503,7 @@
 <bool name="Anchored">true</bool>
 <Vector3 name="size"><X>6</X><Y>3.6</Y><Z>6</Z></Vector3>
 <CoordinateFrame name="CFrame"><X>288</X><Y>10.8</Y><Z>-9</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
-<Color3uint8 name="Color3uint8">4286107256</Color3uint8>
+<Color3uint8 name="Color3uint8">4286556298</Color3uint8>
 </Properties>
 <Item class="SurfaceGui" referent="KC57">
 <Properties>
@@ -526,7 +526,7 @@
 <bool name="Anchored">true</bool>
 <Vector3 name="size"><X>6</X><Y>3</Y><Z>6</Z></Vector3>
 <CoordinateFrame name="CFrame"><X>297</X><Y>10.5</Y><Z>-9</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
-<Color3uint8 name="Color3uint8">4291743438</Color3uint8>
+<Color3uint8 name="Color3uint8">4293453018</Color3uint8>
 </Properties>
 <Item class="SurfaceGui" referent="KC60">
 <Properties>
@@ -549,7 +549,7 @@
 <bool name="Anchored">true</bool>
 <Vector3 name="size"><X>6</X><Y>3</Y><Z>6</Z></Vector3>
 <CoordinateFrame name="CFrame"><X>206</X><Y>10.5</Y><Z>-9</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
-<Color3uint8 name="Color3uint8">4291743438</Color3uint8>
+<Color3uint8 name="Color3uint8">4293453018</Color3uint8>
 </Properties>
 <Item class="SurfaceGui" referent="KC63">
 <Properties>
@@ -572,7 +572,7 @@
 <bool name="Anchored">true</bool>
 <Vector3 name="size"><X>6</X><Y>3</Y><Z>6</Z></Vector3>
 <CoordinateFrame name="CFrame"><X>215</X><Y>10.5</Y><Z>-9</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
-<Color3uint8 name="Color3uint8">4291743438</Color3uint8>
+<Color3uint8 name="Color3uint8">4293453018</Color3uint8>
 </Properties>
 <Item class="SurfaceGui" referent="KC66">
 <Properties>
@@ -595,7 +595,7 @@
 <bool name="Anchored">true</bool>
 <Vector3 name="size"><X>6</X><Y>3.6</Y><Z>6</Z></Vector3>
 <CoordinateFrame name="CFrame"><X>224</X><Y>10.8</Y><Z>-9</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
-<Color3uint8 name="Color3uint8">4286107256</Color3uint8>
+<Color3uint8 name="Color3uint8">4286556298</Color3uint8>
 </Properties>
 <Item class="SurfaceGui" referent="KC69">
 <Properties>
@@ -618,7 +618,7 @@
 <bool name="Anchored">true</bool>
 <Vector3 name="size"><X>6</X><Y>3</Y><Z>6</Z></Vector3>
 <CoordinateFrame name="CFrame"><X>233</X><Y>10.5</Y><Z>-9</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
-<Color3uint8 name="Color3uint8">4291743438</Color3uint8>
+<Color3uint8 name="Color3uint8">4293453018</Color3uint8>
 </Properties>
 <Item class="SurfaceGui" referent="KC72">
 <Properties>
@@ -641,7 +641,7 @@
 <bool name="Anchored">true</bool>
 <Vector3 name="size"><X>24</X><Y>2</Y><Z>24</Z></Vector3>
 <CoordinateFrame name="CFrame"><X>0</X><Y>8</Y><Z>-140</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
-<Color3uint8 name="Color3uint8">4294950432</Color3uint8>
+<Color3uint8 name="Color3uint8">4282245344</Color3uint8>
 </Properties>
 </Item>
 <Item class="Part" referent="KC76">
@@ -650,7 +650,7 @@
 <bool name="Anchored">true</bool>
 <Vector3 name="size"><X>31</X><Y>1.2</Y><Z>31</Z></Vector3>
 <CoordinateFrame name="CFrame"><X>0</X><Y>6.4</Y><Z>-140</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
-<Color3uint8 name="Color3uint8">4291729440</Color3uint8>
+<Color3uint8 name="Color3uint8">4280057984</Color3uint8>
 </Properties>
 </Item>
 <Item class="Part" referent="KC77">
@@ -659,7 +659,7 @@
 <bool name="Anchored">true</bool>
 <Vector3 name="size"><X>24</X><Y>2</Y><Z>24</Z></Vector3>
 <CoordinateFrame name="CFrame"><X>0</X><Y>8</Y><Z>-300</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
-<Color3uint8 name="Color3uint8">4294950432</Color3uint8>
+<Color3uint8 name="Color3uint8">4282245344</Color3uint8>
 </Properties>
 </Item>
 <Item class="Part" referent="KC78">
@@ -668,7 +668,7 @@
 <bool name="Anchored">true</bool>
 <Vector3 name="size"><X>31</X><Y>1.2</Y><Z>31</Z></Vector3>
 <CoordinateFrame name="CFrame"><X>0</X><Y>6.4</Y><Z>-300</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
-<Color3uint8 name="Color3uint8">4291729440</Color3uint8>
+<Color3uint8 name="Color3uint8">4280057984</Color3uint8>
 </Properties>
 </Item>
 <Item class="Part" referent="KC79">
@@ -677,7 +677,7 @@
 <bool name="Anchored">true</bool>
 <Vector3 name="size"><X>24</X><Y>2</Y><Z>24</Z></Vector3>
 <CoordinateFrame name="CFrame"><X>0</X><Y>8</Y><Z>-520</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
-<Color3uint8 name="Color3uint8">4294950432</Color3uint8>
+<Color3uint8 name="Color3uint8">4282245344</Color3uint8>
 </Properties>
 </Item>
 <Item class="Part" referent="KC80">
@@ -686,7 +686,7 @@
 <bool name="Anchored">true</bool>
 <Vector3 name="size"><X>31</X><Y>1.2</Y><Z>31</Z></Vector3>
 <CoordinateFrame name="CFrame"><X>0</X><Y>6.4</Y><Z>-520</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
-<Color3uint8 name="Color3uint8">4291729440</Color3uint8>
+<Color3uint8 name="Color3uint8">4280057984</Color3uint8>
 </Properties>
 </Item>
 <Item class="Part" referent="KC81">
@@ -695,7 +695,7 @@
 <bool name="Anchored">true</bool>
 <Vector3 name="size"><X>40</X><Y>12</Y><Z>2</Z></Vector3>
 <CoordinateFrame name="CFrame"><X>0</X><Y>12</Y><Z>-60</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
-<Color3uint8 name="Color3uint8">4281902838</Color3uint8>
+<Color3uint8 name="Color3uint8">4280057984</Color3uint8>
 </Properties>
 </Item>
 <Item class="Part" referent="KC82">
@@ -704,7 +704,7 @@
 <bool name="Anchored">true</bool>
 <Vector3 name="size"><X>40</X><Y>12</Y><Z>2</Z></Vector3>
 <CoordinateFrame name="CFrame"><X>0</X><Y>12</Y><Z>-210</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
-<Color3uint8 name="Color3uint8">4281902838</Color3uint8>
+<Color3uint8 name="Color3uint8">4280057984</Color3uint8>
 </Properties>
 </Item>
 <Item class="Part" referent="KC83">
@@ -713,7 +713,7 @@
 <bool name="Anchored">true</bool>
 <Vector3 name="size"><X>40</X><Y>12</Y><Z>2</Z></Vector3>
 <CoordinateFrame name="CFrame"><X>0</X><Y>12</Y><Z>-400</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
-<Color3uint8 name="Color3uint8">4281902838</Color3uint8>
+<Color3uint8 name="Color3uint8">4280057984</Color3uint8>
 </Properties>
 </Item>
 </Item>
@@ -1355,53 +1355,108 @@ local Theme = {
 	GREEN_TEXT = Color3.fromRGB(44, 116, 54),
 	RED_TEXT = Color3.fromRGB(186, 68, 62),
 
+	-- Die Kappe. Eine echte Keycap-Farbwelt, kein Regenbogen: warmes
+	-- Off-White, Salbei, Petrol, Violett, Bernstein.
+	-- Rare und Epic sind gegenueber dem Entwurf zwei Toene dunkler - mit
+	-- den Originalwerten schaffte die Legende nur 3,91 bzw. 3,84:1.
 	RARITY_COLORS = {
-		Common = Color3.fromRGB(206, 206, 206),
-		Uncommon = Color3.fromRGB(120, 206, 120),
-		Rare = Color3.fromRGB(134, 190, 248),
-		Epic = Color3.fromRGB(206, 164, 248),
-		Legendary = Color3.fromRGB(248, 186, 70),
+		Common = Color3.fromRGB(232, 228, 218),
+		Uncommon = Color3.fromRGB(127, 168, 138),
+		Rare = Color3.fromRGB(53, 111, 147),
+		Epic = Color3.fromRGB(123, 79, 196),
+		Legendary = Color3.fromRGB(255, 159, 28),
 	},
 
 	-- ---------------------------------------------------------------
-	-- Welt. Dieselbe Sprache wie das HUD: helle Flaeche, dunklere Kante
-	-- darunter, Tiefe durch den Ueberstand - nicht durch Schatten, die
-	-- Roblox-Oberflaechen ohnehin nicht werfen wuerden.
+	-- WELT — "Du bist winzig auf einem Schreibtisch. Nachts."
+	--
+	-- Der Boden ist eine Schreibtischmatte, die Plots stehen auf einer
+	-- Tastaturplatte. Alles dunkel und kuehl; das Licht kommt vom Monitor
+	-- am Rand und von den Tasten selbst, nicht von der Sonne.
+	--
+	-- WICHTIG zur Kante: auf dem hellen HUD ist die Kante DUNKEL (INK).
+	-- Auf der dunklen Welt geht das nicht - INK hat Leuchtdichte 0,0074,
+	-- die Matte 0,0073, die Tinte waere heller als der Boden. Weltkanten
+	-- sind deshalb AUFHELLEND (SEAM). Zwei Gruende, zwei Farben.
+	--
+	-- Die Tonwerte liegen dicht beieinander (1,1-1,4:1). Das ist Absicht -
+	-- eine dunkle Szene lebt von feinen Abstufungen. Lesbarkeit tragen
+	-- Kanten und Licht, nicht Flaechenkontrast.
 	-- ---------------------------------------------------------------
-	GROUND = Color3.fromRGB(104, 190, 92), -- Boden: das Gruen, das dieses Genre unter den Fuessen hat
-	GROUND_EDGE = Color3.fromRGB(66, 146, 62),
-	PLOT_DECK = Color3.fromRGB(206, 198, 182), -- Chassis unter der Plotplatte
-	PLOT_DECK_EDGE = Color3.fromRGB(168, 160, 146),
-	SLOT_MARKER = Color3.fromRGB(214, 206, 188), -- leere Mulde
-	SIGN_BOARD = Color3.fromRGB(248, 244, 232),
-	SIGN_BOARD_EDGE = Color3.fromRGB(196, 188, 172),
-	PAD_RING = Color3.fromRGB(206, 152, 32), -- Podest unter dem Pad
+	WORLD = {
+		MAT = Color3.fromRGB(20, 20, 28), -- Schreibtischmatte, der Boden
+		MAT_MATERIAL = Enum.Material.Fabric,
+		SEAM = Color3.fromRGB(46, 46, 62), -- Naht und Kante, hellt auf
+		SEAM_MATERIAL = Enum.Material.Fabric,
+		PLATE = Color3.fromRGB(34, 34, 44), -- Tastaturplatte, traegt die Plots
+		PLATE_MATERIAL = Enum.Material.Metal,
+		CHASSIS = Color3.fromRGB(51, 51, 63), -- Rahmen um die Platte
+		CHASSIS_MATERIAL = Enum.Material.Metal,
+		SOCKET = Color3.fromRGB(14, 14, 20), -- leere Mulde, dunkler als die Platte
+		SOCKET_MATERIAL = Enum.Material.SmoothPlastic,
+		PATH = Color3.fromRGB(26, 26, 36), -- Weg und Promenade
+		PATH_MATERIAL = Enum.Material.Fabric,
+
+		-- Signalfarbe. NUR fuer Cash-Out-Pad, Schildkuppel und
+		-- Beute-Leuchtturm. Wenn Cyan leuchtet, passiert etwas - deshalb
+		-- kommt die Farbe sonst nirgends vor.
+		SIGNAL = Color3.fromRGB(61, 224, 224),
+		SIGNAL_DIM = Color3.fromRGB(28, 128, 128),
+	},
 
 	-- Dunkle Kante je Seltenheit. Ohne die ist eine Taste eine flache
 	-- Flaeche - weder der 3D-Effekt der Knoepfe noch das Kantenlicht der
 	-- Tasten in der Welt haben sonst einen Wert, aus dem sie sich rechnen.
+	-- Der Stem-Ring unter der Kappe, der sie vom Sockel absetzt. Jeweils
+	-- 55 % der Kappenhelligkeit - dieselbe Beziehung wie Knopf zu Kante.
 	RARITY_EDGE = {
-		Common = Color3.fromRGB(168, 168, 168),
-		Uncommon = Color3.fromRGB(78, 158, 78),
-		Rare = Color3.fromRGB(78, 136, 196),
-		Epic = Color3.fromRGB(144, 104, 196),
-		Legendary = Color3.fromRGB(196, 138, 30),
+		Common = Color3.fromRGB(128, 125, 120),
+		Uncommon = Color3.fromRGB(70, 92, 76),
+		Rare = Color3.fromRGB(29, 61, 81),
+		Epic = Color3.fromRGB(68, 43, 108),
+		Legendary = Color3.fromRGB(140, 87, 15),
 	},
 
 	-- Schrift AUF der jeweiligen Seltenheitsfarbe. Nachgerechnet gegen die
 	-- eigene Flaeche: Common 6,2:1 - Uncommon 5,1:1 - Rare 4,6:1 -
 	-- Epic 5,4:1 - Legendary 5,1:1. Weiss waere auf allen fuenf unlesbar.
+	-- Die Legende, also der Buchstabe auf der Kappe. Nachgerechnet gegen
+	-- die eigene Kappe: Common 11,8 - Uncommon 5,6 - Rare 4,9 - Epic 4,8 -
+	-- Legendary 8,2:1. Helle Kappen tragen dunkle Legenden und umgekehrt.
 	RARITY_INK = {
-		Common = Color3.fromRGB(74, 66, 56),
-		Uncommon = Color3.fromRGB(30, 76, 30),
-		Rare = Color3.fromRGB(30, 74, 120),
-		Epic = Color3.fromRGB(74, 46, 108),
-		Legendary = Color3.fromRGB(106, 66, 4),
+		Common = Color3.fromRGB(42, 38, 32),
+		Uncommon = Color3.fromRGB(28, 42, 32),
+		Rare = Color3.fromRGB(232, 244, 250),
+		Epic = Color3.fromRGB(244, 234, 255),
+		Legendary = Color3.fromRGB(42, 26, 0),
 	},
 
 	-- Rang 1-5. Traegt alles, was die Seltenheit OHNE Farbe zeigt:
 	-- Zahl der Punkte im Laden, Rahmenstaerke, Kantenlicht in der Welt.
 	-- Farbe allein reicht auf einem billigen Display in der Sonne nicht.
+	-- Material je Stufe. Ab Rare wird die Kappe glaenzender, Legendary
+	-- bekommt Metall - aus der Entfernung unterscheidbar, auch wenn ein
+	-- billiges Display die Farbe verwaescht.
+	RARITY_MATERIAL = {
+		Common = Enum.Material.SmoothPlastic,
+		Uncommon = Enum.Material.SmoothPlastic,
+		Rare = Enum.Material.Plastic,
+		Epic = Enum.Material.Plastic,
+		Legendary = Enum.Material.Metal,
+	},
+
+	-- Reichweite des PointLights in der Kappe. 0 = kein Licht.
+	-- Das ist keine Deko: Rare und Epic schaffen gegen die Tastaturplatte
+	-- nur 2,89 bzw. 2,82:1 - ohne eigenes Licht verschwinden sie darauf.
+	RARITY_LIGHT_RANGE = {
+		Common = 0,
+		Uncommon = 0,
+		Rare = 12,
+		Epic = 16,
+		Legendary = 24,
+	},
+	RARITY_LIGHT_BRIGHTNESS = 1.4,
+
 	RARITY_RANK = {
 		Common = 1,
 		Uncommon = 2,
@@ -1739,7 +1794,7 @@ function CarryService.show(player: Player, rarity: string, vorrat: number)
 	part.CanQuery = false
 	part.Massless = true -- darf die Physik des Diebes nicht veraendern
 	part.Material = Enum.Material.SmoothPlastic
-	part.Color = Theme.RARITY_COLORS[rarity] or Theme.PANEL
+	part.Color = Theme.RARITY_COLORS[rarity] or Theme.WORLD.PLATE
 	part.Parent = model
 
 	local billboard = Instance.new("BillboardGui")
@@ -1842,7 +1897,7 @@ local function buildGate(stageIndex: number)
 	gate.CanCollide = false
 	gate.Transparency = 0.55
 	gate.Material = Enum.Material.Neon
-	gate.Color = Theme.BLUE
+	gate.Color = Theme.WORLD.SIGNAL_DIM
 	gate.Parent = workspace
 
 	local billboard = Instance.new("BillboardGui")
@@ -1947,8 +2002,8 @@ local function buildPad(stageIndex: number)
 	pad.Position = WorldConfig.STAGE_PAD_POSITIONS[stageIndex]
 	pad.Anchored = true
 	pad.TopSurface = Enum.SurfaceType.Smooth
-	pad.Material = Enum.Material.SmoothPlastic
-	pad.Color = Theme.GOLD
+	pad.Material = Enum.Material.Neon
+	pad.Color = Theme.WORLD.SIGNAL
 	pad.Parent = workspace
 	pads[stageIndex] = pad
 
@@ -1967,8 +2022,8 @@ local function buildPad(stageIndex: number)
 	ring.Anchored = true
 	ring.TopSurface = Enum.SurfaceType.Smooth
 	ring.BottomSurface = Enum.SurfaceType.Smooth
-	ring.Material = Enum.Material.SmoothPlastic
-	ring.Color = Theme.PAD_RING
+	ring.Material = Theme.WORLD.PLATE_MATERIAL
+	ring.Color = Theme.WORLD.SIGNAL_DIM
 	ring.Parent = workspace
 
 	local factors = EconomyLogic.payoutFactors()
@@ -2018,8 +2073,8 @@ local function buildGround()
 		part.Anchored = true
 		part.TopSurface = Enum.SurfaceType.Smooth
 		part.BottomSurface = Enum.SurfaceType.Smooth
-		part.Material = Enum.Material.SmoothPlastic
-		part.Color = Theme.GROUND
+		part.Material = Theme.WORLD.PATH_MATERIAL
+		part.Color = Theme.WORLD.PATH
 		part.Parent = workspace
 	end
 
@@ -2533,8 +2588,8 @@ function PlotService.buildWorld()
 		base.Anchored = true
 		base.TopSurface = Enum.SurfaceType.Smooth
 		base.BottomSurface = Enum.SurfaceType.Smooth
-		base.Color = Theme.PANEL
-		base.Material = Enum.Material.SmoothPlastic
+		base.Color = Theme.WORLD.PLATE
+		base.Material = Theme.WORLD.PLATE_MATERIAL
 		base.Parent = model
 
 		-- Chassis: etwas groesser und dunkler, sitzt unter der Platte. Damit
@@ -2552,8 +2607,8 @@ function PlotService.buildWorld()
 		deck.Anchored = true
 		deck.TopSurface = Enum.SurfaceType.Smooth
 		deck.BottomSurface = Enum.SurfaceType.Smooth
-		deck.Color = Theme.PLOT_DECK
-		deck.Material = Enum.Material.SmoothPlastic
+		deck.Color = Theme.WORLD.CHASSIS
+		deck.Material = Theme.WORLD.CHASSIS_MATERIAL
 		deck.Parent = model
 
 		-- Leere Steckplaetze als flache Mulden. Sie werden EINMAL gebaut und
@@ -2580,8 +2635,8 @@ function PlotService.buildWorld()
 			marker.CanCollide = false
 			marker.CanQuery = false
 			marker.TopSurface = Enum.SurfaceType.Smooth
-			marker.Color = Theme.SLOT_MARKER
-			marker.Material = Enum.Material.SmoothPlastic
+			marker.Color = Theme.WORLD.SOCKET
+			marker.Material = Theme.WORLD.SOCKET_MATERIAL
 			marker.Parent = slotFolder
 		end
 		slotFolder.Parent = model
@@ -2596,13 +2651,13 @@ function PlotService.buildWorld()
 		sign.Anchored = true
 		sign.CanCollide = false
 		sign.TopSurface = Enum.SurfaceType.Smooth
-		sign.Color = Theme.SIGN_BOARD
-		sign.Material = Enum.Material.SmoothPlastic
+		sign.Color = Theme.WORLD.PLATE
+		sign.Material = Theme.WORLD.PLATE_MATERIAL
 		sign.Parent = model
 
 		local signEdge = Instance.new("SelectionBox")
 		signEdge.Adornee = sign
-		signEdge.Color3 = Theme.SIGN_BOARD_EDGE
+		signEdge.Color3 = Theme.WORLD.SEAM
 		signEdge.LineThickness = 0.06
 		signEdge.SurfaceTransparency = 1
 		signEdge.Parent = sign
@@ -2694,14 +2749,14 @@ function PlotService.renderKeys(plot: Plot, keys: { { rarity: string, vorrat: nu
 		part.Position = WorldLayout.slotPosition(plot.base.Position, index) + Vector3.new(0, extra / 2, 0)
 		part.Anchored = true
 		part.TopSurface = Enum.SurfaceType.Smooth
-		part.Material = if rank &gt;= 5 then Enum.Material.Neon else Enum.Material.SmoothPlastic
-		part.Color = Theme.RARITY_COLORS[key.rarity] or Theme.PANEL
+		part.Material = Theme.RARITY_MATERIAL[key.rarity] or Enum.Material.SmoothPlastic
+		part.Color = Theme.RARITY_COLORS[key.rarity] or Theme.WORLD.PLATE
 
 		-- Kantenlicht statt Schatten: Roblox-UI kann keinen Schatten, und
 		-- in der Welt zeichnet eine SelectionBox die Kanten sauber nach.
 		local rim = Instance.new("SelectionBox")
 		rim.Adornee = part
-		rim.Color3 = Theme.RARITY_EDGE[key.rarity] or Theme.PANEL_EDGE
+		rim.Color3 = Theme.RARITY_EDGE[key.rarity] or Theme.WORLD.SEAM
 		rim.LineThickness = Theme.KEY_RIM_BASE + Theme.KEY_RIM_STEP * rank
 		rim.SurfaceTransparency = 1
 		rim.Parent = part
