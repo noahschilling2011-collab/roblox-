@@ -9,6 +9,27 @@ local WorldConfig = {
 	PLOT_SPACING = 64, -- Mittenabstand zweier Plots
 	PLOT_ORIGIN = Vector3.new(0, 8, 0), -- Mitte des ersten Plots
 
+	-- Chassis unter der Plotplatte. Ohne das schwebt der Plot als nackte
+	-- Scheibe; mit Ueberstand liest er sich als Tastatur-Gehaeuse, in dem
+	-- die Tasten stecken.
+	PLOT_DECK_OVERHANG = 3, -- wie weit das Chassis seitlich ueber die Platte steht
+	PLOT_DECK_HEIGHT = 1.6,
+
+	-- Leerer Steckplatz: flache, dunkle Mulde. Damit sieht man aus der
+	-- Entfernung, wie voll ein Plot ist - fuer einen Dieb die wichtigste
+	-- Information, bevor er hinlaeuft.
+	SLOT_MARKER_HEIGHT = 0.2,
+	SLOT_MARKER_SCALE = 0.78, -- Anteil der Tastengrundflaeche
+
+	-- Schild an der Vorderkante. War bisher ein unsichtbarer Part mit
+	-- schwebendem Text - jetzt eine echte Tafel, an der der Text haengt.
+	SIGN_BOARD_SIZE = Vector3.new(16, 4.5, 0.8),
+
+	-- Podest unter dem Auszahlungs-Pad, damit es aus der Ferne als Ziel
+	-- erkennbar ist und nicht als Fleck im Boden.
+	PAD_RING_OVERHANG = 3.5,
+	PAD_RING_HEIGHT = 1.2,
+
 	-- Steckplaetze auf dem Plot: Raster, auf dem die Tasten stehen.
 	SLOT_COLUMNS = 5,
 	SLOT_SPACING = 9,

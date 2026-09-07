@@ -129,7 +129,25 @@ part("Path", weg.size, weg.position, Theme.PANEL_EDGE)
 for index = 1, World.PLOT_COUNT do
 	local mitte = Layout.plotPosition(index)
 	part("Plot" .. index, World.PLOT_SIZE, mitte, Theme.PANEL)
+
+	-- Chassis unter der Platte, gleiche Rechnung wie PlotService.buildWorld.
+	part("Deck" .. index,
+		Vector3.new(
+			World.PLOT_SIZE.X + World.PLOT_DECK_OVERHANG * 2,
+			World.PLOT_DECK_HEIGHT,
+			World.PLOT_SIZE.Z + World.PLOT_DECK_OVERHANG * 2
+		),
+		Vector3.new(mitte.X, mitte.Y - World.PLOT_SIZE.Y / 2 - World.PLOT_DECK_HEIGHT / 2, mitte.Z),
+		Theme.PLOT_DECK)
+
+	-- Schildtafel an der Vorderkante.
+	local schild = Layout.signPosition(mitte)
+	part("Sign" .. index, World.SIGN_BOARD_SIZE, schild, Theme.SIGN_BOARD)
 end
+
+-- Steckplatz-Mulden fehlen in der Vorschau mit Absicht: auf einem frischen
+-- Server gehoert kein Plot jemandem, und ohne Besitzer sind sie ausgeblendet.
+-- Sie erscheinen, sobald ein Spieler einen Plot bekommt.
 
 -- Auf den NPC-Plots stehen von Anfang an Tasten. Sie zeigen in der Vorschau,
 -- wie ein besetzter Plot aussieht; Spielerplots sind beim Oeffnen leer, weil
@@ -154,6 +172,14 @@ end
 
 for index, position in World.STAGE_PAD_POSITIONS do
 	part("CashOut" .. index, World.STAGE_PAD_SIZE, position, Theme.GOLD)
+	part("CashOutRing" .. index,
+		Vector3.new(
+			World.STAGE_PAD_SIZE.X + World.PAD_RING_OVERHANG * 2,
+			World.PAD_RING_HEIGHT,
+			World.STAGE_PAD_SIZE.Z + World.PAD_RING_OVERHANG * 2
+		),
+		Vector3.new(position.X, position.Y - World.STAGE_PAD_SIZE.Y / 2 - World.PAD_RING_HEIGHT / 2, position.Z),
+		Theme.PAD_RING)
 end
 for index, position in World.STAGE_GATE_POSITIONS do
 	part("Gate" .. index, World.STAGE_GATE_SIZE, position, Theme.BLUE)

@@ -23,6 +23,7 @@ export type Plot = {
 	model: Model,
 	base: BasePart,
 	keyFolder: Folder,
+	slotFolder: Folder,
 	ownerKind: OwnerKind,
 	ownerUserId: number?,
 	signLabel: TextLabel,
@@ -58,14 +59,75 @@ function PlotService.buildWorld()
 		base.Material = Enum.Material.SmoothPlastic
 		base.Parent = model
 
+		-- Chassis: etwas groesser und dunkler, sitzt unter der Platte. Damit
+		-- liest sich der Plot als Tastatur-Gehaeuse statt als schwebende
+		-- Scheibe. Dieselbe Sprache wie die Knopf-Unterkante im HUD.
+		local deck = Instance.new("Part")
+		deck.Name = "Deck"
+		deck.Size = Vector3.new(
+			WorldConfig.PLOT_SIZE.X + WorldConfig.PLOT_DECK_OVERHANG * 2,
+			WorldConfig.PLOT_DECK_HEIGHT,
+			WorldConfig.PLOT_SIZE.Z + WorldConfig.PLOT_DECK_OVERHANG * 2
+		)
+		deck.Position = base.Position
+			- Vector3.new(0, WorldConfig.PLOT_SIZE.Y / 2 + WorldConfig.PLOT_DECK_HEIGHT / 2, 0)
+		deck.Anchored = true
+		deck.TopSurface = Enum.SurfaceType.Smooth
+		deck.BottomSurface = Enum.SurfaceType.Smooth
+		deck.Color = Theme.PLOT_DECK
+		deck.Material = Enum.Material.SmoothPlastic
+		deck.Parent = model
+
+		-- Leere Steckplaetze als flache Mulden. Sie werden EINMAL gebaut und
+		-- danach nur ein- und ausgeblendet - renderKeys darf sie nicht
+		-- zerstoeren, sonst kostet jeder Kauf und jeder Klau 20 Instanzen
+		-- mehr.
+		local slotFolder = Instance.new("Folder")
+		slotFolder.Name = "Slots"
+		for slot = 1, EconomyConfig.MAX_KEY_SLOTS do
+			local marker = Instance.new("Part")
+			marker.Name = "Slot" .. slot
+			marker.Size = Vector3.new(
+				WorldConfig.KEY_SIZE.X * WorldConfig.SLOT_MARKER_SCALE,
+				WorldConfig.SLOT_MARKER_HEIGHT,
+				WorldConfig.KEY_SIZE.Z * WorldConfig.SLOT_MARKER_SCALE
+			)
+			local raster = WorldLayout.slotPosition(base.Position, slot)
+			marker.Position = Vector3.new(
+				raster.X,
+				base.Position.Y + WorldConfig.PLOT_SIZE.Y / 2 + WorldConfig.SLOT_MARKER_HEIGHT / 2,
+				raster.Z
+			)
+			marker.Anchored = true
+			marker.CanCollide = false
+			marker.CanQuery = false
+			marker.TopSurface = Enum.SurfaceType.Smooth
+			marker.Color = Theme.SLOT_MARKER
+			marker.Material = Enum.Material.SmoothPlastic
+			marker.Parent = slotFolder
+		end
+		slotFolder.Parent = model
+
+		-- Schild: echte Tafel statt unsichtbarer Part. Der Text haengt
+		-- weiterhin als BillboardGui darueber, damit er aus der Entfernung
+		-- lesbar bleibt.
 		local sign = Instance.new("Part")
 		sign.Name = "Sign"
-		sign.Size = Vector3.new(10, 1, 1)
+		sign.Size = WorldConfig.SIGN_BOARD_SIZE
 		sign.Position = WorldLayout.signPosition(base.Position)
 		sign.Anchored = true
 		sign.CanCollide = false
-		sign.Transparency = 1
+		sign.TopSurface = Enum.SurfaceType.Smooth
+		sign.Color = Theme.SIGN_BOARD
+		sign.Material = Enum.Material.SmoothPlastic
 		sign.Parent = model
+
+		local signEdge = Instance.new("SelectionBox")
+		signEdge.Adornee = sign
+		signEdge.Color3 = Theme.SIGN_BOARD_EDGE
+		signEdge.LineThickness = 0.06
+		signEdge.SurfaceTransparency = 1
+		signEdge.Parent = sign
 
 		local billboard = Instance.new("BillboardGui")
 		billboard.Name = "Label"
@@ -96,6 +158,7 @@ function PlotService.buildWorld()
 			model = model,
 			base = base,
 			keyFolder = keyFolder,
+			slotFolder = slotFolder,
 			ownerKind = "none",
 			ownerUserId = nil,
 			signLabel = label,
@@ -114,10 +177,28 @@ local function clearKeys(plot: Plot)
 	end
 end
 
+-- Belegte Steckplaetze verstecken ihre Mulde, freie zeigen sie. Die Parts
+-- werden dabei nur ein- und ausgeblendet, nicht erzeugt oder zerstoert.
+local function updateSlotMarkers(plot: Plot, belegt: number, slots: number)
+	for slot = 1, EconomyConfig.MAX_KEY_SLOTS do
+		local marker = plot.slotFolder:FindFirstChild("Slot" .. slot)
+		if marker and marker:IsA("BasePart") then
+			if slot <= belegt then
+				marker.Transparency = 1 -- unter der Taste, nicht sichtbar
+			elseif slot <= slots then
+				marker.Transparency = 0 -- frei und kaufbar
+			else
+				marker.Transparency = 1 -- Steckplatz noch nicht gekauft
+			end
+		end
+	end
+end
+
 -- Baut die Tasten-Parts eines Plots neu. `keys` ist die Liste, die dieser
 -- Plot gerade haelt - beim Spieler das Profil, beim NPC die NPC-Liste.
-function PlotService.renderKeys(plot: Plot, keys: { { rarity: string, vorrat: number } })
+function PlotService.renderKeys(plot: Plot, keys: { { rarity: string, vorrat: number } }, slots: number?)
 	clearKeys(plot)
+	updateSlotMarkers(plot, #keys, slots or #keys)
 
 	for index, key in keys do
 		-- Hoehe, Kantenlicht und Material haengen an der Seltenheit. Eine
@@ -228,7 +309,7 @@ function PlotService.rebuildKeys(userId: number)
 		clearKeys(plot)
 		return
 	end
-	PlotService.renderKeys(plot, profile.keys)
+	PlotService.renderKeys(plot, profile.keys, profile.slots)
 end
 
 -- Beschriftungen aktualisieren (eigener Takt, damit nicht jede Sekunde
@@ -298,6 +379,7 @@ function PlotService.release(userId: number)
 		return
 	end
 	clearKeys(plot)
+	updateSlotMarkers(plot, 0, 0)
 	plot.ownerKind = "none"
 	plot.ownerUserId = nil
 	plot.signLabel.Text = "Frei"

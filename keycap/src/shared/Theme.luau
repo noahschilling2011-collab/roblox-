@@ -46,6 +46,18 @@ local Theme = {
 		Legendary = Color3.fromRGB(248, 186, 70),
 	},
 
+	-- ---------------------------------------------------------------
+	-- Welt. Dieselbe Sprache wie das HUD: helle Flaeche, dunklere Kante
+	-- darunter, Tiefe durch den Ueberstand - nicht durch Schatten, die
+	-- Roblox-Oberflaechen ohnehin nicht werfen wuerden.
+	-- ---------------------------------------------------------------
+	PLOT_DECK = Color3.fromRGB(206, 198, 182), -- Chassis unter der Plotplatte
+	PLOT_DECK_EDGE = Color3.fromRGB(168, 160, 146),
+	SLOT_MARKER = Color3.fromRGB(224, 218, 204), -- leere Mulde
+	SIGN_BOARD = Color3.fromRGB(248, 244, 232),
+	SIGN_BOARD_EDGE = Color3.fromRGB(196, 188, 172),
+	PAD_RING = Color3.fromRGB(206, 152, 32), -- Podest unter dem Pad
+
 	-- Dunkle Kante je Seltenheit. Ohne die ist eine Taste eine flache
 	-- Flaeche - weder der 3D-Effekt der Knoepfe noch das Kantenlicht der
 	-- Tasten in der Welt haben sonst einen Wert, aus dem sie sich rechnen.

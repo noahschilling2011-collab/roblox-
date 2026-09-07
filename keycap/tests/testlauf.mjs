@@ -355,10 +355,12 @@ end)
 test("Die Karte bleibt im Part-Budget - auch im schlimmsten Fall", function()
 	local spielerPlots = World.PLOT_COUNT - World.NPC_PLOT_COUNT
 	local parts = 0
-	parts += World.PLOT_COUNT * 2 -- Base + Sign je Plot
+	parts += World.PLOT_COUNT * 3 -- Base + Deck + Sign je Plot
+	parts += World.PLOT_COUNT * Config.MAX_KEY_SLOTS -- Steckplatz-Mulden, immer gebaut
 	parts += spielerPlots * Config.MAX_KEY_SLOTS -- alle Steckplaetze voll
 	parts += World.NPC_PLOT_COUNT * Config.NPC_KEY_COUNT
-	parts += #World.STAGE_GATE_POSITIONS + #World.STAGE_PAD_POSITIONS
+	parts += #World.STAGE_GATE_POSITIONS + #World.STAGE_PAD_POSITIONS * 2 -- Pad + Podest
+	parts += 2 -- Promenade und Weg
 	parts += World.PLOT_COUNT -- jeder Spieler traegt gleichzeitig Beute
 	expect(parts <= World.PART_BUDGET, "Part-Budget gerissen: " .. parts .. " von " .. World.PART_BUDGET)
 end)
@@ -568,6 +570,55 @@ test("Jede Knopfkante ist dunkler als ihre Flaeche", function()
 		expect(luminance(Theme.RARITY_EDGE[name]) < luminance(Theme.RARITY_COLORS[name]),
 			"RARITY_EDGE." .. name .. " ist nicht dunkler als die Flaeche")
 	end
+end)
+
+test("Die Welt spricht dieselbe Sprache wie das HUD", function()
+	-- Ueberall dasselbe Muster: helle Flaeche auf dunklerer Kante. Wenn ein
+	-- Chassis heller waere als seine Platte, kippt die Tiefenwirkung.
+	local function channel(value)
+		if value <= 0.03928 then
+			return value / 12.92
+		end
+		return ((value + 0.055) / 1.055) ^ 2.4
+	end
+	local function luminance(color)
+		return 0.2126 * channel(color.R) + 0.7152 * channel(color.G) + 0.0722 * channel(color.B)
+	end
+	expect(luminance(Theme.PLOT_DECK) < luminance(Theme.PANEL), "Plot-Chassis ist nicht dunkler als die Platte")
+	expect(luminance(Theme.PLOT_DECK_EDGE) < luminance(Theme.PLOT_DECK), "Chassis-Kante ist nicht dunkler")
+	expect(luminance(Theme.PAD_RING) < luminance(Theme.GOLD), "Pad-Podest ist nicht dunkler als das Pad")
+	expect(luminance(Theme.SIGN_BOARD_EDGE) < luminance(Theme.SIGN_BOARD), "Schildkante ist nicht dunkler")
+	-- Die leere Mulde muss sich von der Plotplatte abheben, sonst sieht ein
+	-- Dieb aus der Entfernung nicht, wie voll ein Plot ist.
+	expect(luminance(Theme.SLOT_MARKER) < luminance(Theme.PANEL), "Steckplatz-Mulde hebt sich nicht ab")
+end)
+
+test("Chassis und Podest stehen unter ihrer Flaeche, nicht daneben", function()
+	expect(World.PLOT_DECK_OVERHANG > 0, "Chassis hat keinen Ueberstand")
+	expect(World.PLOT_DECK_HEIGHT > 0, "Chassis ist flach")
+	-- Der Ueberstand darf die Luecke zwischen zwei Plots nicht schliessen,
+	-- sonst verschmilzt die Reihe zu einer Flaeche.
+	local luecke = World.PLOT_SPACING - World.PLOT_SIZE.X
+	expect(World.PLOT_DECK_OVERHANG * 2 < luecke,
+		"Chassis-Ueberstand " .. World.PLOT_DECK_OVERHANG * 2 .. " schliesst die Luecke von " .. luecke)
+	expect(World.PAD_RING_OVERHANG > 0 and World.PAD_RING_HEIGHT > 0, "Pad-Podest fehlt")
+end)
+
+test("Steckplatz-Mulde bleibt in ihrem Raster", function()
+	expect(World.SLOT_MARKER_SCALE < 1, "Mulde ist so gross wie die Taste")
+	expect(World.SLOT_MARKER_SCALE > 0.5, "Mulde ist zu klein zum Erkennen")
+	expect(World.SLOT_MARKER_HEIGHT < World.KEY_SIZE.Y, "Mulde ist hoeher als eine Taste")
+end)
+
+test("Die Schildtafel passt vor den Plot", function()
+	expect(World.SIGN_BOARD_SIZE.X <= World.PLOT_SIZE.X, "Schild breiter als der Plot")
+	local mitte = Layout.plotPosition(1)
+	local schild = Layout.signPosition(mitte)
+	local hinterste = 0
+	for slot = 1, Config.MAX_KEY_SLOTS do
+		hinterste = math.max(hinterste, Layout.slotPosition(mitte, slot).Z + World.KEY_SIZE.Z / 2)
+	end
+	expect(schild.Z - World.SIGN_BOARD_SIZE.Z / 2 > hinterste, "Schildtafel steht in den Tasten")
 end)
 
 test("Seltenheit ist auch ohne Farbe erkennbar", function()

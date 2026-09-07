@@ -146,6 +146,25 @@ local function buildPad(stageIndex: number)
 	pad.Parent = workspace
 	pads[stageIndex] = pad
 
+	-- Podest unter dem Pad: derselbe Aufbau wie Plotplatte auf Chassis und
+	-- Knopf auf Unterkante. Aus der Entfernung wird daraus ein Ziel statt
+	-- eines Flecks im Boden.
+	local ring = Instance.new("Part")
+	ring.Name = "CashOutRing" .. stageIndex
+	ring.Size = Vector3.new(
+		WorldConfig.STAGE_PAD_SIZE.X + WorldConfig.PAD_RING_OVERHANG * 2,
+		WorldConfig.PAD_RING_HEIGHT,
+		WorldConfig.STAGE_PAD_SIZE.Z + WorldConfig.PAD_RING_OVERHANG * 2
+	)
+	ring.Position = pad.Position
+		- Vector3.new(0, WorldConfig.STAGE_PAD_SIZE.Y / 2 + WorldConfig.PAD_RING_HEIGHT / 2, 0)
+	ring.Anchored = true
+	ring.TopSurface = Enum.SurfaceType.Smooth
+	ring.BottomSurface = Enum.SurfaceType.Smooth
+	ring.Material = Enum.Material.SmoothPlastic
+	ring.Color = Theme.PAD_RING
+	ring.Parent = workspace
+
 	local factors = EconomyLogic.payoutFactors()
 
 	local billboard = Instance.new("BillboardGui")

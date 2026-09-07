@@ -1,9 +1,9 @@
 <roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4">
-<Item class="Workspace" referent="KC89">
+<Item class="Workspace" referent="KC116">
 <Properties>
 <string name="Name">Workspace</string>
 </Properties>
-<Item class="SpawnLocation" referent="KC88">
+<Item class="SpawnLocation" referent="KC115">
 <Properties>
 <string name="Name">Start</string>
 <bool name="Anchored">true</bool>
@@ -13,7 +13,7 @@
 <token name="Material">1312</token>
 </Properties>
 </Item>
-<Item class="Folder" referent="KC57">
+<Item class="Folder" referent="KC84">
 <Properties>
 <string name="Name">WeltVorschau</string>
 </Properties>
@@ -46,6 +46,24 @@
 </Item>
 <Item class="Part" referent="KC4">
 <Properties>
+<string name="Name">Deck1</string>
+<bool name="Anchored">true</bool>
+<Vector3 name="size"><X>54</X><Y>1.6</Y><Z>54</Z></Vector3>
+<CoordinateFrame name="CFrame"><X>-352</X><Y>6.2</Y><Z>0</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
+<Color3uint8 name="Color3uint8">4291741366</Color3uint8>
+</Properties>
+</Item>
+<Item class="Part" referent="KC5">
+<Properties>
+<string name="Name">Sign1</string>
+<bool name="Anchored">true</bool>
+<Vector3 name="size"><X>16</X><Y>4.5</Y><Z>0.8</Z></Vector3>
+<CoordinateFrame name="CFrame"><X>-352</X><Y>16</Y><Z>24</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
+<Color3uint8 name="Color3uint8">4294505704</Color3uint8>
+</Properties>
+</Item>
+<Item class="Part" referent="KC6">
+<Properties>
 <string name="Name">Plot2</string>
 <bool name="Anchored">true</bool>
 <Vector3 name="size"><X>48</X><Y>2</Y><Z>48</Z></Vector3>
@@ -53,7 +71,25 @@
 <Color3uint8 name="Color3uint8">4294769136</Color3uint8>
 </Properties>
 </Item>
-<Item class="Part" referent="KC5">
+<Item class="Part" referent="KC7">
+<Properties>
+<string name="Name">Deck2</string>
+<bool name="Anchored">true</bool>
+<Vector3 name="size"><X>54</X><Y>1.6</Y><Z>54</Z></Vector3>
+<CoordinateFrame name="CFrame"><X>-288</X><Y>6.2</Y><Z>0</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
+<Color3uint8 name="Color3uint8">4291741366</Color3uint8>
+</Properties>
+</Item>
+<Item class="Part" referent="KC8">
+<Properties>
+<string name="Name">Sign2</string>
+<bool name="Anchored">true</bool>
+<Vector3 name="size"><X>16</X><Y>4.5</Y><Z>0.8</Z></Vector3>
+<CoordinateFrame name="CFrame"><X>-288</X><Y>16</Y><Z>24</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
+<Color3uint8 name="Color3uint8">4294505704</Color3uint8>
+</Properties>
+</Item>
+<Item class="Part" referent="KC9">
 <Properties>
 <string name="Name">Plot3</string>
 <bool name="Anchored">true</bool>
@@ -62,7 +98,25 @@
 <Color3uint8 name="Color3uint8">4294769136</Color3uint8>
 </Properties>
 </Item>
-<Item class="Part" referent="KC6">
+<Item class="Part" referent="KC10">
+<Properties>
+<string name="Name">Deck3</string>
+<bool name="Anchored">true</bool>
+<Vector3 name="size"><X>54</X><Y>1.6</Y><Z>54</Z></Vector3>
+<CoordinateFrame name="CFrame"><X>-224</X><Y>6.2</Y><Z>0</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
+<Color3uint8 name="Color3uint8">4291741366</Color3uint8>
+</Properties>
+</Item>
+<Item class="Part" referent="KC11">
+<Properties>
+<string name="Name">Sign3</string>
+<bool name="Anchored">true</bool>
+<Vector3 name="size"><X>16</X><Y>4.5</Y><Z>0.8</Z></Vector3>
+<CoordinateFrame name="CFrame"><X>-224</X><Y>16</Y><Z>24</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
+<Color3uint8 name="Color3uint8">4294505704</Color3uint8>
+</Properties>
+</Item>
+<Item class="Part" referent="KC12">
 <Properties>
 <string name="Name">Plot4</string>
 <bool name="Anchored">true</bool>
@@ -71,7 +125,25 @@
 <Color3uint8 name="Color3uint8">4294769136</Color3uint8>
 </Properties>
 </Item>
-<Item class="Part" referent="KC7">
+<Item class="Part" referent="KC13">
+<Properties>
+<string name="Name">Deck4</string>
+<bool name="Anchored">true</bool>
+<Vector3 name="size"><X>54</X><Y>1.6</Y><Z>54</Z></Vector3>
+<CoordinateFrame name="CFrame"><X>-160</X><Y>6.2</Y><Z>0</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
+<Color3uint8 name="Color3uint8">4291741366</Color3uint8>
+</Properties>
+</Item>
+<Item class="Part" referent="KC14">
+<Properties>
+<string name="Name">Sign4</string>
+<bool name="Anchored">true</bool>
+<Vector3 name="size"><X>16</X><Y>4.5</Y><Z>0.8</Z></Vector3>
+<CoordinateFrame name="CFrame"><X>-160</X><Y>16</Y><Z>24</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
+<Color3uint8 name="Color3uint8">4294505704</Color3uint8>
+</Properties>
+</Item>
+<Item class="Part" referent="KC15">
 <Properties>
 <string name="Name">Plot5</string>
 <bool name="Anchored">true</bool>
@@ -80,7 +152,25 @@
 <Color3uint8 name="Color3uint8">4294769136</Color3uint8>
 </Properties>
 </Item>
-<Item class="Part" referent="KC8">
+<Item class="Part" referent="KC16">
+<Properties>
+<string name="Name">Deck5</string>
+<bool name="Anchored">true</bool>
+<Vector3 name="size"><X>54</X><Y>1.6</Y><Z>54</Z></Vector3>
+<CoordinateFrame name="CFrame"><X>-96</X><Y>6.2</Y><Z>0</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
+<Color3uint8 name="Color3uint8">4291741366</Color3uint8>
+</Properties>
+</Item>
+<Item class="Part" referent="KC17">
+<Properties>
+<string name="Name">Sign5</string>
+<bool name="Anchored">true</bool>
+<Vector3 name="size"><X>16</X><Y>4.5</Y><Z>0.8</Z></Vector3>
+<CoordinateFrame name="CFrame"><X>-96</X><Y>16</Y><Z>24</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
+<Color3uint8 name="Color3uint8">4294505704</Color3uint8>
+</Properties>
+</Item>
+<Item class="Part" referent="KC18">
 <Properties>
 <string name="Name">Plot6</string>
 <bool name="Anchored">true</bool>
@@ -89,7 +179,25 @@
 <Color3uint8 name="Color3uint8">4294769136</Color3uint8>
 </Properties>
 </Item>
-<Item class="Part" referent="KC9">
+<Item class="Part" referent="KC19">
+<Properties>
+<string name="Name">Deck6</string>
+<bool name="Anchored">true</bool>
+<Vector3 name="size"><X>54</X><Y>1.6</Y><Z>54</Z></Vector3>
+<CoordinateFrame name="CFrame"><X>-32</X><Y>6.2</Y><Z>0</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
+<Color3uint8 name="Color3uint8">4291741366</Color3uint8>
+</Properties>
+</Item>
+<Item class="Part" referent="KC20">
+<Properties>
+<string name="Name">Sign6</string>
+<bool name="Anchored">true</bool>
+<Vector3 name="size"><X>16</X><Y>4.5</Y><Z>0.8</Z></Vector3>
+<CoordinateFrame name="CFrame"><X>-32</X><Y>16</Y><Z>24</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
+<Color3uint8 name="Color3uint8">4294505704</Color3uint8>
+</Properties>
+</Item>
+<Item class="Part" referent="KC21">
 <Properties>
 <string name="Name">Plot7</string>
 <bool name="Anchored">true</bool>
@@ -98,7 +206,25 @@
 <Color3uint8 name="Color3uint8">4294769136</Color3uint8>
 </Properties>
 </Item>
-<Item class="Part" referent="KC10">
+<Item class="Part" referent="KC22">
+<Properties>
+<string name="Name">Deck7</string>
+<bool name="Anchored">true</bool>
+<Vector3 name="size"><X>54</X><Y>1.6</Y><Z>54</Z></Vector3>
+<CoordinateFrame name="CFrame"><X>32</X><Y>6.2</Y><Z>0</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
+<Color3uint8 name="Color3uint8">4291741366</Color3uint8>
+</Properties>
+</Item>
+<Item class="Part" referent="KC23">
+<Properties>
+<string name="Name">Sign7</string>
+<bool name="Anchored">true</bool>
+<Vector3 name="size"><X>16</X><Y>4.5</Y><Z>0.8</Z></Vector3>
+<CoordinateFrame name="CFrame"><X>32</X><Y>16</Y><Z>24</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
+<Color3uint8 name="Color3uint8">4294505704</Color3uint8>
+</Properties>
+</Item>
+<Item class="Part" referent="KC24">
 <Properties>
 <string name="Name">Plot8</string>
 <bool name="Anchored">true</bool>
@@ -107,7 +233,25 @@
 <Color3uint8 name="Color3uint8">4294769136</Color3uint8>
 </Properties>
 </Item>
-<Item class="Part" referent="KC11">
+<Item class="Part" referent="KC25">
+<Properties>
+<string name="Name">Deck8</string>
+<bool name="Anchored">true</bool>
+<Vector3 name="size"><X>54</X><Y>1.6</Y><Z>54</Z></Vector3>
+<CoordinateFrame name="CFrame"><X>96</X><Y>6.2</Y><Z>0</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
+<Color3uint8 name="Color3uint8">4291741366</Color3uint8>
+</Properties>
+</Item>
+<Item class="Part" referent="KC26">
+<Properties>
+<string name="Name">Sign8</string>
+<bool name="Anchored">true</bool>
+<Vector3 name="size"><X>16</X><Y>4.5</Y><Z>0.8</Z></Vector3>
+<CoordinateFrame name="CFrame"><X>96</X><Y>16</Y><Z>24</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
+<Color3uint8 name="Color3uint8">4294505704</Color3uint8>
+</Properties>
+</Item>
+<Item class="Part" referent="KC27">
 <Properties>
 <string name="Name">Plot9</string>
 <bool name="Anchored">true</bool>
@@ -116,7 +260,25 @@
 <Color3uint8 name="Color3uint8">4294769136</Color3uint8>
 </Properties>
 </Item>
-<Item class="Part" referent="KC12">
+<Item class="Part" referent="KC28">
+<Properties>
+<string name="Name">Deck9</string>
+<bool name="Anchored">true</bool>
+<Vector3 name="size"><X>54</X><Y>1.6</Y><Z>54</Z></Vector3>
+<CoordinateFrame name="CFrame"><X>160</X><Y>6.2</Y><Z>0</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
+<Color3uint8 name="Color3uint8">4291741366</Color3uint8>
+</Properties>
+</Item>
+<Item class="Part" referent="KC29">
+<Properties>
+<string name="Name">Sign9</string>
+<bool name="Anchored">true</bool>
+<Vector3 name="size"><X>16</X><Y>4.5</Y><Z>0.8</Z></Vector3>
+<CoordinateFrame name="CFrame"><X>160</X><Y>16</Y><Z>24</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
+<Color3uint8 name="Color3uint8">4294505704</Color3uint8>
+</Properties>
+</Item>
+<Item class="Part" referent="KC30">
 <Properties>
 <string name="Name">Plot10</string>
 <bool name="Anchored">true</bool>
@@ -125,7 +287,25 @@
 <Color3uint8 name="Color3uint8">4294769136</Color3uint8>
 </Properties>
 </Item>
-<Item class="Part" referent="KC13">
+<Item class="Part" referent="KC31">
+<Properties>
+<string name="Name">Deck10</string>
+<bool name="Anchored">true</bool>
+<Vector3 name="size"><X>54</X><Y>1.6</Y><Z>54</Z></Vector3>
+<CoordinateFrame name="CFrame"><X>224</X><Y>6.2</Y><Z>0</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
+<Color3uint8 name="Color3uint8">4291741366</Color3uint8>
+</Properties>
+</Item>
+<Item class="Part" referent="KC32">
+<Properties>
+<string name="Name">Sign10</string>
+<bool name="Anchored">true</bool>
+<Vector3 name="size"><X>16</X><Y>4.5</Y><Z>0.8</Z></Vector3>
+<CoordinateFrame name="CFrame"><X>224</X><Y>16</Y><Z>24</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
+<Color3uint8 name="Color3uint8">4294505704</Color3uint8>
+</Properties>
+</Item>
+<Item class="Part" referent="KC33">
 <Properties>
 <string name="Name">Plot11</string>
 <bool name="Anchored">true</bool>
@@ -134,7 +314,25 @@
 <Color3uint8 name="Color3uint8">4294769136</Color3uint8>
 </Properties>
 </Item>
-<Item class="Part" referent="KC14">
+<Item class="Part" referent="KC34">
+<Properties>
+<string name="Name">Deck11</string>
+<bool name="Anchored">true</bool>
+<Vector3 name="size"><X>54</X><Y>1.6</Y><Z>54</Z></Vector3>
+<CoordinateFrame name="CFrame"><X>288</X><Y>6.2</Y><Z>0</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
+<Color3uint8 name="Color3uint8">4291741366</Color3uint8>
+</Properties>
+</Item>
+<Item class="Part" referent="KC35">
+<Properties>
+<string name="Name">Sign11</string>
+<bool name="Anchored">true</bool>
+<Vector3 name="size"><X>16</X><Y>4.5</Y><Z>0.8</Z></Vector3>
+<CoordinateFrame name="CFrame"><X>288</X><Y>16</Y><Z>24</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
+<Color3uint8 name="Color3uint8">4294505704</Color3uint8>
+</Properties>
+</Item>
+<Item class="Part" referent="KC36">
 <Properties>
 <string name="Name">Plot12</string>
 <bool name="Anchored">true</bool>
@@ -143,196 +341,30 @@
 <Color3uint8 name="Color3uint8">4294769136</Color3uint8>
 </Properties>
 </Item>
-<Item class="Part" referent="KC17">
+<Item class="Part" referent="KC37">
 <Properties>
-<string name="Name">Key1</string>
+<string name="Name">Deck12</string>
 <bool name="Anchored">true</bool>
-<Vector3 name="size"><X>6</X><Y>3</Y><Z>6</Z></Vector3>
-<CoordinateFrame name="CFrame"><X>334</X><Y>10.5</Y><Z>-9</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
-<Color3uint8 name="Color3uint8">4291743438</Color3uint8>
+<Vector3 name="size"><X>54</X><Y>1.6</Y><Z>54</Z></Vector3>
+<CoordinateFrame name="CFrame"><X>352</X><Y>6.2</Y><Z>0</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
+<Color3uint8 name="Color3uint8">4291741366</Color3uint8>
 </Properties>
-<Item class="SurfaceGui" referent="KC15">
-<Properties>
-<string name="Name">Legend</string>
-<token name="Face">1</token>
-</Properties>
-<Item class="TextLabel" referent="KC16">
-<Properties>
-<string name="Name">Letter</string>
-<string name="Text">A</string>
-<bool name="TextScaled">true</bool>
-<float name="BackgroundTransparency">1</float>
-</Properties>
-</Item>
-</Item>
-</Item>
-<Item class="Part" referent="KC20">
-<Properties>
-<string name="Name">Key2</string>
-<bool name="Anchored">true</bool>
-<Vector3 name="size"><X>6</X><Y>3</Y><Z>6</Z></Vector3>
-<CoordinateFrame name="CFrame"><X>343</X><Y>10.5</Y><Z>-9</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
-<Color3uint8 name="Color3uint8">4291743438</Color3uint8>
-</Properties>
-<Item class="SurfaceGui" referent="KC18">
-<Properties>
-<string name="Name">Legend</string>
-<token name="Face">1</token>
-</Properties>
-<Item class="TextLabel" referent="KC19">
-<Properties>
-<string name="Name">Letter</string>
-<string name="Text">S</string>
-<bool name="TextScaled">true</bool>
-<float name="BackgroundTransparency">1</float>
-</Properties>
-</Item>
-</Item>
-</Item>
-<Item class="Part" referent="KC23">
-<Properties>
-<string name="Name">Key3</string>
-<bool name="Anchored">true</bool>
-<Vector3 name="size"><X>6</X><Y>3.6</Y><Z>6</Z></Vector3>
-<CoordinateFrame name="CFrame"><X>352</X><Y>10.8</Y><Z>-9</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
-<Color3uint8 name="Color3uint8">4286107256</Color3uint8>
-</Properties>
-<Item class="SurfaceGui" referent="KC21">
-<Properties>
-<string name="Name">Legend</string>
-<token name="Face">1</token>
-</Properties>
-<Item class="TextLabel" referent="KC22">
-<Properties>
-<string name="Name">Letter</string>
-<string name="Text">D</string>
-<bool name="TextScaled">true</bool>
-<float name="BackgroundTransparency">1</float>
-</Properties>
-</Item>
-</Item>
-</Item>
-<Item class="Part" referent="KC26">
-<Properties>
-<string name="Name">Key4</string>
-<bool name="Anchored">true</bool>
-<Vector3 name="size"><X>6</X><Y>3</Y><Z>6</Z></Vector3>
-<CoordinateFrame name="CFrame"><X>361</X><Y>10.5</Y><Z>-9</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
-<Color3uint8 name="Color3uint8">4291743438</Color3uint8>
-</Properties>
-<Item class="SurfaceGui" referent="KC24">
-<Properties>
-<string name="Name">Legend</string>
-<token name="Face">1</token>
-</Properties>
-<Item class="TextLabel" referent="KC25">
-<Properties>
-<string name="Name">Letter</string>
-<string name="Text">F</string>
-<bool name="TextScaled">true</bool>
-<float name="BackgroundTransparency">1</float>
-</Properties>
-</Item>
-</Item>
-</Item>
-<Item class="Part" referent="KC29">
-<Properties>
-<string name="Name">Key1</string>
-<bool name="Anchored">true</bool>
-<Vector3 name="size"><X>6</X><Y>3</Y><Z>6</Z></Vector3>
-<CoordinateFrame name="CFrame"><X>270</X><Y>10.5</Y><Z>-9</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
-<Color3uint8 name="Color3uint8">4291743438</Color3uint8>
-</Properties>
-<Item class="SurfaceGui" referent="KC27">
-<Properties>
-<string name="Name">Legend</string>
-<token name="Face">1</token>
-</Properties>
-<Item class="TextLabel" referent="KC28">
-<Properties>
-<string name="Name">Letter</string>
-<string name="Text">A</string>
-<bool name="TextScaled">true</bool>
-<float name="BackgroundTransparency">1</float>
-</Properties>
-</Item>
-</Item>
-</Item>
-<Item class="Part" referent="KC32">
-<Properties>
-<string name="Name">Key2</string>
-<bool name="Anchored">true</bool>
-<Vector3 name="size"><X>6</X><Y>3</Y><Z>6</Z></Vector3>
-<CoordinateFrame name="CFrame"><X>279</X><Y>10.5</Y><Z>-9</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
-<Color3uint8 name="Color3uint8">4291743438</Color3uint8>
-</Properties>
-<Item class="SurfaceGui" referent="KC30">
-<Properties>
-<string name="Name">Legend</string>
-<token name="Face">1</token>
-</Properties>
-<Item class="TextLabel" referent="KC31">
-<Properties>
-<string name="Name">Letter</string>
-<string name="Text">S</string>
-<bool name="TextScaled">true</bool>
-<float name="BackgroundTransparency">1</float>
-</Properties>
-</Item>
-</Item>
-</Item>
-<Item class="Part" referent="KC35">
-<Properties>
-<string name="Name">Key3</string>
-<bool name="Anchored">true</bool>
-<Vector3 name="size"><X>6</X><Y>3.6</Y><Z>6</Z></Vector3>
-<CoordinateFrame name="CFrame"><X>288</X><Y>10.8</Y><Z>-9</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
-<Color3uint8 name="Color3uint8">4286107256</Color3uint8>
-</Properties>
-<Item class="SurfaceGui" referent="KC33">
-<Properties>
-<string name="Name">Legend</string>
-<token name="Face">1</token>
-</Properties>
-<Item class="TextLabel" referent="KC34">
-<Properties>
-<string name="Name">Letter</string>
-<string name="Text">D</string>
-<bool name="TextScaled">true</bool>
-<float name="BackgroundTransparency">1</float>
-</Properties>
-</Item>
-</Item>
 </Item>
 <Item class="Part" referent="KC38">
 <Properties>
-<string name="Name">Key4</string>
+<string name="Name">Sign12</string>
 <bool name="Anchored">true</bool>
-<Vector3 name="size"><X>6</X><Y>3</Y><Z>6</Z></Vector3>
-<CoordinateFrame name="CFrame"><X>297</X><Y>10.5</Y><Z>-9</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
-<Color3uint8 name="Color3uint8">4291743438</Color3uint8>
+<Vector3 name="size"><X>16</X><Y>4.5</Y><Z>0.8</Z></Vector3>
+<CoordinateFrame name="CFrame"><X>352</X><Y>16</Y><Z>24</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
+<Color3uint8 name="Color3uint8">4294505704</Color3uint8>
 </Properties>
-<Item class="SurfaceGui" referent="KC36">
-<Properties>
-<string name="Name">Legend</string>
-<token name="Face">1</token>
-</Properties>
-<Item class="TextLabel" referent="KC37">
-<Properties>
-<string name="Name">Letter</string>
-<string name="Text">F</string>
-<bool name="TextScaled">true</bool>
-<float name="BackgroundTransparency">1</float>
-</Properties>
-</Item>
-</Item>
 </Item>
 <Item class="Part" referent="KC41">
 <Properties>
 <string name="Name">Key1</string>
 <bool name="Anchored">true</bool>
 <Vector3 name="size"><X>6</X><Y>3</Y><Z>6</Z></Vector3>
-<CoordinateFrame name="CFrame"><X>206</X><Y>10.5</Y><Z>-9</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
+<CoordinateFrame name="CFrame"><X>334</X><Y>10.5</Y><Z>-9</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
 <Color3uint8 name="Color3uint8">4291743438</Color3uint8>
 </Properties>
 <Item class="SurfaceGui" referent="KC39">
@@ -355,7 +387,7 @@
 <string name="Name">Key2</string>
 <bool name="Anchored">true</bool>
 <Vector3 name="size"><X>6</X><Y>3</Y><Z>6</Z></Vector3>
-<CoordinateFrame name="CFrame"><X>215</X><Y>10.5</Y><Z>-9</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
+<CoordinateFrame name="CFrame"><X>343</X><Y>10.5</Y><Z>-9</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
 <Color3uint8 name="Color3uint8">4291743438</Color3uint8>
 </Properties>
 <Item class="SurfaceGui" referent="KC42">
@@ -378,7 +410,7 @@
 <string name="Name">Key3</string>
 <bool name="Anchored">true</bool>
 <Vector3 name="size"><X>6</X><Y>3.6</Y><Z>6</Z></Vector3>
-<CoordinateFrame name="CFrame"><X>224</X><Y>10.8</Y><Z>-9</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
+<CoordinateFrame name="CFrame"><X>352</X><Y>10.8</Y><Z>-9</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
 <Color3uint8 name="Color3uint8">4286107256</Color3uint8>
 </Properties>
 <Item class="SurfaceGui" referent="KC45">
@@ -401,7 +433,7 @@
 <string name="Name">Key4</string>
 <bool name="Anchored">true</bool>
 <Vector3 name="size"><X>6</X><Y>3</Y><Z>6</Z></Vector3>
-<CoordinateFrame name="CFrame"><X>233</X><Y>10.5</Y><Z>-9</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
+<CoordinateFrame name="CFrame"><X>361</X><Y>10.5</Y><Z>-9</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
 <Color3uint8 name="Color3uint8">4291743438</Color3uint8>
 </Properties>
 <Item class="SurfaceGui" referent="KC48">
@@ -419,7 +451,191 @@
 </Item>
 </Item>
 </Item>
-<Item class="Part" referent="KC51">
+<Item class="Part" referent="KC53">
+<Properties>
+<string name="Name">Key1</string>
+<bool name="Anchored">true</bool>
+<Vector3 name="size"><X>6</X><Y>3</Y><Z>6</Z></Vector3>
+<CoordinateFrame name="CFrame"><X>270</X><Y>10.5</Y><Z>-9</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
+<Color3uint8 name="Color3uint8">4291743438</Color3uint8>
+</Properties>
+<Item class="SurfaceGui" referent="KC51">
+<Properties>
+<string name="Name">Legend</string>
+<token name="Face">1</token>
+</Properties>
+<Item class="TextLabel" referent="KC52">
+<Properties>
+<string name="Name">Letter</string>
+<string name="Text">A</string>
+<bool name="TextScaled">true</bool>
+<float name="BackgroundTransparency">1</float>
+</Properties>
+</Item>
+</Item>
+</Item>
+<Item class="Part" referent="KC56">
+<Properties>
+<string name="Name">Key2</string>
+<bool name="Anchored">true</bool>
+<Vector3 name="size"><X>6</X><Y>3</Y><Z>6</Z></Vector3>
+<CoordinateFrame name="CFrame"><X>279</X><Y>10.5</Y><Z>-9</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
+<Color3uint8 name="Color3uint8">4291743438</Color3uint8>
+</Properties>
+<Item class="SurfaceGui" referent="KC54">
+<Properties>
+<string name="Name">Legend</string>
+<token name="Face">1</token>
+</Properties>
+<Item class="TextLabel" referent="KC55">
+<Properties>
+<string name="Name">Letter</string>
+<string name="Text">S</string>
+<bool name="TextScaled">true</bool>
+<float name="BackgroundTransparency">1</float>
+</Properties>
+</Item>
+</Item>
+</Item>
+<Item class="Part" referent="KC59">
+<Properties>
+<string name="Name">Key3</string>
+<bool name="Anchored">true</bool>
+<Vector3 name="size"><X>6</X><Y>3.6</Y><Z>6</Z></Vector3>
+<CoordinateFrame name="CFrame"><X>288</X><Y>10.8</Y><Z>-9</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
+<Color3uint8 name="Color3uint8">4286107256</Color3uint8>
+</Properties>
+<Item class="SurfaceGui" referent="KC57">
+<Properties>
+<string name="Name">Legend</string>
+<token name="Face">1</token>
+</Properties>
+<Item class="TextLabel" referent="KC58">
+<Properties>
+<string name="Name">Letter</string>
+<string name="Text">D</string>
+<bool name="TextScaled">true</bool>
+<float name="BackgroundTransparency">1</float>
+</Properties>
+</Item>
+</Item>
+</Item>
+<Item class="Part" referent="KC62">
+<Properties>
+<string name="Name">Key4</string>
+<bool name="Anchored">true</bool>
+<Vector3 name="size"><X>6</X><Y>3</Y><Z>6</Z></Vector3>
+<CoordinateFrame name="CFrame"><X>297</X><Y>10.5</Y><Z>-9</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
+<Color3uint8 name="Color3uint8">4291743438</Color3uint8>
+</Properties>
+<Item class="SurfaceGui" referent="KC60">
+<Properties>
+<string name="Name">Legend</string>
+<token name="Face">1</token>
+</Properties>
+<Item class="TextLabel" referent="KC61">
+<Properties>
+<string name="Name">Letter</string>
+<string name="Text">F</string>
+<bool name="TextScaled">true</bool>
+<float name="BackgroundTransparency">1</float>
+</Properties>
+</Item>
+</Item>
+</Item>
+<Item class="Part" referent="KC65">
+<Properties>
+<string name="Name">Key1</string>
+<bool name="Anchored">true</bool>
+<Vector3 name="size"><X>6</X><Y>3</Y><Z>6</Z></Vector3>
+<CoordinateFrame name="CFrame"><X>206</X><Y>10.5</Y><Z>-9</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
+<Color3uint8 name="Color3uint8">4291743438</Color3uint8>
+</Properties>
+<Item class="SurfaceGui" referent="KC63">
+<Properties>
+<string name="Name">Legend</string>
+<token name="Face">1</token>
+</Properties>
+<Item class="TextLabel" referent="KC64">
+<Properties>
+<string name="Name">Letter</string>
+<string name="Text">A</string>
+<bool name="TextScaled">true</bool>
+<float name="BackgroundTransparency">1</float>
+</Properties>
+</Item>
+</Item>
+</Item>
+<Item class="Part" referent="KC68">
+<Properties>
+<string name="Name">Key2</string>
+<bool name="Anchored">true</bool>
+<Vector3 name="size"><X>6</X><Y>3</Y><Z>6</Z></Vector3>
+<CoordinateFrame name="CFrame"><X>215</X><Y>10.5</Y><Z>-9</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
+<Color3uint8 name="Color3uint8">4291743438</Color3uint8>
+</Properties>
+<Item class="SurfaceGui" referent="KC66">
+<Properties>
+<string name="Name">Legend</string>
+<token name="Face">1</token>
+</Properties>
+<Item class="TextLabel" referent="KC67">
+<Properties>
+<string name="Name">Letter</string>
+<string name="Text">S</string>
+<bool name="TextScaled">true</bool>
+<float name="BackgroundTransparency">1</float>
+</Properties>
+</Item>
+</Item>
+</Item>
+<Item class="Part" referent="KC71">
+<Properties>
+<string name="Name">Key3</string>
+<bool name="Anchored">true</bool>
+<Vector3 name="size"><X>6</X><Y>3.6</Y><Z>6</Z></Vector3>
+<CoordinateFrame name="CFrame"><X>224</X><Y>10.8</Y><Z>-9</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
+<Color3uint8 name="Color3uint8">4286107256</Color3uint8>
+</Properties>
+<Item class="SurfaceGui" referent="KC69">
+<Properties>
+<string name="Name">Legend</string>
+<token name="Face">1</token>
+</Properties>
+<Item class="TextLabel" referent="KC70">
+<Properties>
+<string name="Name">Letter</string>
+<string name="Text">D</string>
+<bool name="TextScaled">true</bool>
+<float name="BackgroundTransparency">1</float>
+</Properties>
+</Item>
+</Item>
+</Item>
+<Item class="Part" referent="KC74">
+<Properties>
+<string name="Name">Key4</string>
+<bool name="Anchored">true</bool>
+<Vector3 name="size"><X>6</X><Y>3</Y><Z>6</Z></Vector3>
+<CoordinateFrame name="CFrame"><X>233</X><Y>10.5</Y><Z>-9</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
+<Color3uint8 name="Color3uint8">4291743438</Color3uint8>
+</Properties>
+<Item class="SurfaceGui" referent="KC72">
+<Properties>
+<string name="Name">Legend</string>
+<token name="Face">1</token>
+</Properties>
+<Item class="TextLabel" referent="KC73">
+<Properties>
+<string name="Name">Letter</string>
+<string name="Text">F</string>
+<bool name="TextScaled">true</bool>
+<float name="BackgroundTransparency">1</float>
+</Properties>
+</Item>
+</Item>
+</Item>
+<Item class="Part" referent="KC75">
 <Properties>
 <string name="Name">CashOut1</string>
 <bool name="Anchored">true</bool>
@@ -428,7 +644,16 @@
 <Color3uint8 name="Color3uint8">4294493246</Color3uint8>
 </Properties>
 </Item>
-<Item class="Part" referent="KC52">
+<Item class="Part" referent="KC76">
+<Properties>
+<string name="Name">CashOutRing1</string>
+<bool name="Anchored">true</bool>
+<Vector3 name="size"><X>31</X><Y>1.2</Y><Z>31</Z></Vector3>
+<CoordinateFrame name="CFrame"><X>0</X><Y>6.4</Y><Z>-140</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
+<Color3uint8 name="Color3uint8">4291729440</Color3uint8>
+</Properties>
+</Item>
+<Item class="Part" referent="KC77">
 <Properties>
 <string name="Name">CashOut2</string>
 <bool name="Anchored">true</bool>
@@ -437,7 +662,16 @@
 <Color3uint8 name="Color3uint8">4294493246</Color3uint8>
 </Properties>
 </Item>
-<Item class="Part" referent="KC53">
+<Item class="Part" referent="KC78">
+<Properties>
+<string name="Name">CashOutRing2</string>
+<bool name="Anchored">true</bool>
+<Vector3 name="size"><X>31</X><Y>1.2</Y><Z>31</Z></Vector3>
+<CoordinateFrame name="CFrame"><X>0</X><Y>6.4</Y><Z>-300</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
+<Color3uint8 name="Color3uint8">4291729440</Color3uint8>
+</Properties>
+</Item>
+<Item class="Part" referent="KC79">
 <Properties>
 <string name="Name">CashOut3</string>
 <bool name="Anchored">true</bool>
@@ -446,7 +680,16 @@
 <Color3uint8 name="Color3uint8">4294493246</Color3uint8>
 </Properties>
 </Item>
-<Item class="Part" referent="KC54">
+<Item class="Part" referent="KC80">
+<Properties>
+<string name="Name">CashOutRing3</string>
+<bool name="Anchored">true</bool>
+<Vector3 name="size"><X>31</X><Y>1.2</Y><Z>31</Z></Vector3>
+<CoordinateFrame name="CFrame"><X>0</X><Y>6.4</Y><Z>-520</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
+<Color3uint8 name="Color3uint8">4291729440</Color3uint8>
+</Properties>
+</Item>
+<Item class="Part" referent="KC81">
 <Properties>
 <string name="Name">Gate1</string>
 <bool name="Anchored">true</bool>
@@ -455,7 +698,7 @@
 <Color3uint8 name="Color3uint8">4285315824</Color3uint8>
 </Properties>
 </Item>
-<Item class="Part" referent="KC55">
+<Item class="Part" referent="KC82">
 <Properties>
 <string name="Name">Gate2</string>
 <bool name="Anchored">true</bool>
@@ -464,7 +707,7 @@
 <Color3uint8 name="Color3uint8">4285315824</Color3uint8>
 </Properties>
 </Item>
-<Item class="Part" referent="KC56">
+<Item class="Part" referent="KC83">
 <Properties>
 <string name="Name">Gate3</string>
 <bool name="Anchored">true</bool>
@@ -475,19 +718,19 @@
 </Item>
 </Item>
 </Item>
-<Item class="ReplicatedStorage" referent="KC90">
+<Item class="ReplicatedStorage" referent="KC117">
 <Properties>
 <string name="Name">ReplicatedStorage</string>
 </Properties>
-<Item class="Folder" referent="KC67">
+<Item class="Folder" referent="KC94">
 <Properties>
 <string name="Name">Shared</string>
 </Properties>
-<Item class="Folder" referent="KC61">
+<Item class="Folder" referent="KC88">
 <Properties>
 <string name="Name">Config</string>
 </Properties>
-<Item class="ModuleScript" referent="KC58">
+<Item class="ModuleScript" referent="KC85">
 <Properties>
 <string name="Name">EconomyConfig</string>
 <ProtectedString name="Source">--!strict
@@ -612,7 +855,7 @@ return EconomyConfig
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="KC59">
+<Item class="ModuleScript" referent="KC86">
 <Properties>
 <string name="Name">TutorialConfig</string>
 <ProtectedString name="Source">--!strict
@@ -660,7 +903,7 @@ return TutorialConfig
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="KC60">
+<Item class="ModuleScript" referent="KC87">
 <Properties>
 <string name="Name">WorldConfig</string>
 <ProtectedString name="Source">--!strict
@@ -673,6 +916,27 @@ local WorldConfig = {
 	PLOT_SIZE = Vector3.new(48, 2, 48),
 	PLOT_SPACING = 64, -- Mittenabstand zweier Plots
 	PLOT_ORIGIN = Vector3.new(0, 8, 0), -- Mitte des ersten Plots
+
+	-- Chassis unter der Plotplatte. Ohne das schwebt der Plot als nackte
+	-- Scheibe; mit Ueberstand liest er sich als Tastatur-Gehaeuse, in dem
+	-- die Tasten stecken.
+	PLOT_DECK_OVERHANG = 3, -- wie weit das Chassis seitlich ueber die Platte steht
+	PLOT_DECK_HEIGHT = 1.6,
+
+	-- Leerer Steckplatz: flache, dunkle Mulde. Damit sieht man aus der
+	-- Entfernung, wie voll ein Plot ist - fuer einen Dieb die wichtigste
+	-- Information, bevor er hinlaeuft.
+	SLOT_MARKER_HEIGHT = 0.2,
+	SLOT_MARKER_SCALE = 0.78, -- Anteil der Tastengrundflaeche
+
+	-- Schild an der Vorderkante. War bisher ein unsichtbarer Part mit
+	-- schwebendem Text - jetzt eine echte Tafel, an der der Text haengt.
+	SIGN_BOARD_SIZE = Vector3.new(16, 4.5, 0.8),
+
+	-- Podest unter dem Auszahlungs-Pad, damit es aus der Ferne als Ziel
+	-- erkennbar ist und nicht als Fleck im Boden.
+	PAD_RING_OVERHANG = 3.5,
+	PAD_RING_HEIGHT = 1.2,
 
 	-- Steckplaetze auf dem Plot: Raster, auf dem die Tasten stehen.
 	SLOT_COLUMNS = 5,
@@ -758,7 +1022,7 @@ return WorldConfig
 </Properties>
 </Item>
 </Item>
-<Item class="ModuleScript" referent="KC62">
+<Item class="ModuleScript" referent="KC89">
 <Properties>
 <string name="Name">EconomyLogic</string>
 <ProtectedString name="Source">--!strict
@@ -934,7 +1198,7 @@ return EconomyLogic
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="KC63">
+<Item class="ModuleScript" referent="KC90">
 <Properties>
 <string name="Name">RateLimit</string>
 <ProtectedString name="Source">--!strict
@@ -976,7 +1240,7 @@ return RateLimit
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="KC64">
+<Item class="ModuleScript" referent="KC91">
 <Properties>
 <string name="Name">Remotes</string>
 <ProtectedString name="Source">--!strict
@@ -1038,7 +1302,7 @@ return Remotes
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="KC65">
+<Item class="ModuleScript" referent="KC92">
 <Properties>
 <string name="Name">Theme</string>
 <ProtectedString name="Source">--!strict
@@ -1088,6 +1352,18 @@ local Theme = {
 		Epic = Color3.fromRGB(206, 164, 248),
 		Legendary = Color3.fromRGB(248, 186, 70),
 	},
+
+	-- ---------------------------------------------------------------
+	-- Welt. Dieselbe Sprache wie das HUD: helle Flaeche, dunklere Kante
+	-- darunter, Tiefe durch den Ueberstand - nicht durch Schatten, die
+	-- Roblox-Oberflaechen ohnehin nicht werfen wuerden.
+	-- ---------------------------------------------------------------
+	PLOT_DECK = Color3.fromRGB(206, 198, 182), -- Chassis unter der Plotplatte
+	PLOT_DECK_EDGE = Color3.fromRGB(168, 160, 146),
+	SLOT_MARKER = Color3.fromRGB(224, 218, 204), -- leere Mulde
+	SIGN_BOARD = Color3.fromRGB(248, 244, 232),
+	SIGN_BOARD_EDGE = Color3.fromRGB(196, 188, 172),
+	PAD_RING = Color3.fromRGB(206, 152, 32), -- Podest unter dem Pad
 
 	-- Dunkle Kante je Seltenheit. Ohne die ist eine Taste eine flache
 	-- Flaeche - weder der 3D-Effekt der Knoepfe noch das Kantenlicht der
@@ -1242,7 +1518,7 @@ return Theme
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="KC66">
+<Item class="ModuleScript" referent="KC93">
 <Properties>
 <string name="Name">WorldLayout</string>
 <ProtectedString name="Source">--!strict
@@ -1318,11 +1594,11 @@ return WorldLayout
 </Item>
 </Item>
 </Item>
-<Item class="ServerScriptService" referent="KC91">
+<Item class="ServerScriptService" referent="KC118">
 <Properties>
 <string name="Name">ServerScriptService</string>
 </Properties>
-<Item class="Script" referent="KC82">
+<Item class="Script" referent="KC109">
 <Properties>
 <string name="Name">KeycapRush</string>
 <ProtectedString name="Source">--!strict
@@ -1394,11 +1670,11 @@ end
 print("[KEYCAP] Server bereit.")
 </ProtectedString>
 </Properties>
-<Item class="Folder" referent="KC81">
+<Item class="Folder" referent="KC108">
 <Properties>
 <string name="Name">Services</string>
 </Properties>
-<Item class="ModuleScript" referent="KC68">
+<Item class="ModuleScript" referent="KC95">
 <Properties>
 <string name="Name">CarryService</string>
 <ProtectedString name="Source">--!strict
@@ -1513,7 +1789,7 @@ return CarryService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="KC69">
+<Item class="ModuleScript" referent="KC96">
 <Properties>
 <string name="Name">CourseService</string>
 <ProtectedString name="Source">--!strict
@@ -1664,6 +1940,25 @@ local function buildPad(stageIndex: number)
 	pad.Parent = workspace
 	pads[stageIndex] = pad
 
+	-- Podest unter dem Pad: derselbe Aufbau wie Plotplatte auf Chassis und
+	-- Knopf auf Unterkante. Aus der Entfernung wird daraus ein Ziel statt
+	-- eines Flecks im Boden.
+	local ring = Instance.new("Part")
+	ring.Name = "CashOutRing" .. stageIndex
+	ring.Size = Vector3.new(
+		WorldConfig.STAGE_PAD_SIZE.X + WorldConfig.PAD_RING_OVERHANG * 2,
+		WorldConfig.PAD_RING_HEIGHT,
+		WorldConfig.STAGE_PAD_SIZE.Z + WorldConfig.PAD_RING_OVERHANG * 2
+	)
+	ring.Position = pad.Position
+		- Vector3.new(0, WorldConfig.STAGE_PAD_SIZE.Y / 2 + WorldConfig.PAD_RING_HEIGHT / 2, 0)
+	ring.Anchored = true
+	ring.TopSurface = Enum.SurfaceType.Smooth
+	ring.BottomSurface = Enum.SurfaceType.Smooth
+	ring.Material = Enum.Material.SmoothPlastic
+	ring.Color = Theme.PAD_RING
+	ring.Parent = workspace
+
 	local factors = EconomyLogic.payoutFactors()
 
 	local billboard = Instance.new("BillboardGui")
@@ -1734,7 +2029,7 @@ return CourseService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="KC70">
+<Item class="ModuleScript" referent="KC97">
 <Properties>
 <string name="Name">DataService</string>
 <ProtectedString name="Source">--!strict
@@ -1994,7 +2289,7 @@ return DataService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="KC71">
+<Item class="ModuleScript" referent="KC98">
 <Properties>
 <string name="Name">LightingService</string>
 <ProtectedString name="Source">--!strict
@@ -2055,7 +2350,7 @@ return LightingService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="KC72">
+<Item class="ModuleScript" referent="KC99">
 <Properties>
 <string name="Name">NpcPlotService</string>
 <ProtectedString name="Source">--!strict
@@ -2166,7 +2461,7 @@ return NpcPlotService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="KC73">
+<Item class="ModuleScript" referent="KC100">
 <Properties>
 <string name="Name">PlotService</string>
 <ProtectedString name="Source">--!strict
@@ -2194,6 +2489,7 @@ export type Plot = {
 	model: Model,
 	base: BasePart,
 	keyFolder: Folder,
+	slotFolder: Folder,
 	ownerKind: OwnerKind,
 	ownerUserId: number?,
 	signLabel: TextLabel,
@@ -2229,14 +2525,75 @@ function PlotService.buildWorld()
 		base.Material = Enum.Material.SmoothPlastic
 		base.Parent = model
 
+		-- Chassis: etwas groesser und dunkler, sitzt unter der Platte. Damit
+		-- liest sich der Plot als Tastatur-Gehaeuse statt als schwebende
+		-- Scheibe. Dieselbe Sprache wie die Knopf-Unterkante im HUD.
+		local deck = Instance.new("Part")
+		deck.Name = "Deck"
+		deck.Size = Vector3.new(
+			WorldConfig.PLOT_SIZE.X + WorldConfig.PLOT_DECK_OVERHANG * 2,
+			WorldConfig.PLOT_DECK_HEIGHT,
+			WorldConfig.PLOT_SIZE.Z + WorldConfig.PLOT_DECK_OVERHANG * 2
+		)
+		deck.Position = base.Position
+			- Vector3.new(0, WorldConfig.PLOT_SIZE.Y / 2 + WorldConfig.PLOT_DECK_HEIGHT / 2, 0)
+		deck.Anchored = true
+		deck.TopSurface = Enum.SurfaceType.Smooth
+		deck.BottomSurface = Enum.SurfaceType.Smooth
+		deck.Color = Theme.PLOT_DECK
+		deck.Material = Enum.Material.SmoothPlastic
+		deck.Parent = model
+
+		-- Leere Steckplaetze als flache Mulden. Sie werden EINMAL gebaut und
+		-- danach nur ein- und ausgeblendet - renderKeys darf sie nicht
+		-- zerstoeren, sonst kostet jeder Kauf und jeder Klau 20 Instanzen
+		-- mehr.
+		local slotFolder = Instance.new("Folder")
+		slotFolder.Name = "Slots"
+		for slot = 1, EconomyConfig.MAX_KEY_SLOTS do
+			local marker = Instance.new("Part")
+			marker.Name = "Slot" .. slot
+			marker.Size = Vector3.new(
+				WorldConfig.KEY_SIZE.X * WorldConfig.SLOT_MARKER_SCALE,
+				WorldConfig.SLOT_MARKER_HEIGHT,
+				WorldConfig.KEY_SIZE.Z * WorldConfig.SLOT_MARKER_SCALE
+			)
+			local raster = WorldLayout.slotPosition(base.Position, slot)
+			marker.Position = Vector3.new(
+				raster.X,
+				base.Position.Y + WorldConfig.PLOT_SIZE.Y / 2 + WorldConfig.SLOT_MARKER_HEIGHT / 2,
+				raster.Z
+			)
+			marker.Anchored = true
+			marker.CanCollide = false
+			marker.CanQuery = false
+			marker.TopSurface = Enum.SurfaceType.Smooth
+			marker.Color = Theme.SLOT_MARKER
+			marker.Material = Enum.Material.SmoothPlastic
+			marker.Parent = slotFolder
+		end
+		slotFolder.Parent = model
+
+		-- Schild: echte Tafel statt unsichtbarer Part. Der Text haengt
+		-- weiterhin als BillboardGui darueber, damit er aus der Entfernung
+		-- lesbar bleibt.
 		local sign = Instance.new("Part")
 		sign.Name = "Sign"
-		sign.Size = Vector3.new(10, 1, 1)
+		sign.Size = WorldConfig.SIGN_BOARD_SIZE
 		sign.Position = WorldLayout.signPosition(base.Position)
 		sign.Anchored = true
 		sign.CanCollide = false
-		sign.Transparency = 1
+		sign.TopSurface = Enum.SurfaceType.Smooth
+		sign.Color = Theme.SIGN_BOARD
+		sign.Material = Enum.Material.SmoothPlastic
 		sign.Parent = model
+
+		local signEdge = Instance.new("SelectionBox")
+		signEdge.Adornee = sign
+		signEdge.Color3 = Theme.SIGN_BOARD_EDGE
+		signEdge.LineThickness = 0.06
+		signEdge.SurfaceTransparency = 1
+		signEdge.Parent = sign
 
 		local billboard = Instance.new("BillboardGui")
 		billboard.Name = "Label"
@@ -2267,6 +2624,7 @@ function PlotService.buildWorld()
 			model = model,
 			base = base,
 			keyFolder = keyFolder,
+			slotFolder = slotFolder,
 			ownerKind = "none",
 			ownerUserId = nil,
 			signLabel = label,
@@ -2285,10 +2643,28 @@ local function clearKeys(plot: Plot)
 	end
 end
 
+-- Belegte Steckplaetze verstecken ihre Mulde, freie zeigen sie. Die Parts
+-- werden dabei nur ein- und ausgeblendet, nicht erzeugt oder zerstoert.
+local function updateSlotMarkers(plot: Plot, belegt: number, slots: number)
+	for slot = 1, EconomyConfig.MAX_KEY_SLOTS do
+		local marker = plot.slotFolder:FindFirstChild("Slot" .. slot)
+		if marker and marker:IsA("BasePart") then
+			if slot &lt;= belegt then
+				marker.Transparency = 1 -- unter der Taste, nicht sichtbar
+			elseif slot &lt;= slots then
+				marker.Transparency = 0 -- frei und kaufbar
+			else
+				marker.Transparency = 1 -- Steckplatz noch nicht gekauft
+			end
+		end
+	end
+end
+
 -- Baut die Tasten-Parts eines Plots neu. `keys` ist die Liste, die dieser
 -- Plot gerade haelt - beim Spieler das Profil, beim NPC die NPC-Liste.
-function PlotService.renderKeys(plot: Plot, keys: { { rarity: string, vorrat: number } })
+function PlotService.renderKeys(plot: Plot, keys: { { rarity: string, vorrat: number } }, slots: number?)
 	clearKeys(plot)
+	updateSlotMarkers(plot, #keys, slots or #keys)
 
 	for index, key in keys do
 		-- Hoehe, Kantenlicht und Material haengen an der Seltenheit. Eine
@@ -2399,7 +2775,7 @@ function PlotService.rebuildKeys(userId: number)
 		clearKeys(plot)
 		return
 	end
-	PlotService.renderKeys(plot, profile.keys)
+	PlotService.renderKeys(plot, profile.keys, profile.slots)
 end
 
 -- Beschriftungen aktualisieren (eigener Takt, damit nicht jede Sekunde
@@ -2469,6 +2845,7 @@ function PlotService.release(userId: number)
 		return
 	end
 	clearKeys(plot)
+	updateSlotMarkers(plot, 0, 0)
 	plot.ownerKind = "none"
 	plot.ownerUserId = nil
 	plot.signLabel.Text = "Frei"
@@ -2570,7 +2947,7 @@ return PlotService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="KC74">
+<Item class="ModuleScript" referent="KC101">
 <Properties>
 <string name="Name">ProductionService</string>
 <ProtectedString name="Source">--!strict
@@ -2644,7 +3021,7 @@ return ProductionService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="KC75">
+<Item class="ModuleScript" referent="KC102">
 <Properties>
 <string name="Name">RunTimerService</string>
 <ProtectedString name="Source">--!strict
@@ -2776,7 +3153,7 @@ return RunTimerService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="KC76">
+<Item class="ModuleScript" referent="KC103">
 <Properties>
 <string name="Name">ShopService</string>
 <ProtectedString name="Source">--!strict
@@ -2873,7 +3250,7 @@ return ShopService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="KC77">
+<Item class="ModuleScript" referent="KC104">
 <Properties>
 <string name="Name">SpeedService</string>
 <ProtectedString name="Source">--!strict
@@ -2946,7 +3323,7 @@ return SpeedService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="KC78">
+<Item class="ModuleScript" referent="KC105">
 <Properties>
 <string name="Name">StateService</string>
 <ProtectedString name="Source">--!strict
@@ -3016,7 +3393,7 @@ return StateService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="KC79">
+<Item class="ModuleScript" referent="KC106">
 <Properties>
 <string name="Name">StealService</string>
 <ProtectedString name="Source">--!strict
@@ -3289,7 +3666,7 @@ return StealService
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="KC80">
+<Item class="ModuleScript" referent="KC107">
 <Properties>
 <string name="Name">TutorialService</string>
 <ProtectedString name="Source">--!strict
@@ -3383,21 +3760,21 @@ return TutorialService
 </Item>
 </Item>
 </Item>
-<Item class="Lighting" referent="KC92">
+<Item class="Lighting" referent="KC119">
 <Properties>
 <string name="Name">Lighting</string>
 <token name="Technology">4</token>
 </Properties>
 </Item>
-<Item class="StarterPlayer" referent="KC93">
+<Item class="StarterPlayer" referent="KC120">
 <Properties>
 <string name="Name">StarterPlayer</string>
 </Properties>
-<Item class="StarterPlayerScripts" referent="KC94">
+<Item class="StarterPlayerScripts" referent="KC121">
 <Properties>
 <string name="Name">StarterPlayerScripts</string>
 </Properties>
-<Item class="LocalScript" referent="KC87">
+<Item class="LocalScript" referent="KC114">
 <Properties>
 <string name="Name">KeycapRush</string>
 <ProtectedString name="Source">--!strict
@@ -3414,11 +3791,11 @@ ShopController.start()
 print("[KEYCAP] Client bereit.")
 </ProtectedString>
 </Properties>
-<Item class="Folder" referent="KC85">
+<Item class="Folder" referent="KC112">
 <Properties>
 <string name="Name">Controllers</string>
 </Properties>
-<Item class="ModuleScript" referent="KC83">
+<Item class="ModuleScript" referent="KC110">
 <Properties>
 <string name="Name">HudController</string>
 <ProtectedString name="Source">--!strict
@@ -3757,7 +4134,7 @@ return HudController
 </ProtectedString>
 </Properties>
 </Item>
-<Item class="ModuleScript" referent="KC84">
+<Item class="ModuleScript" referent="KC111">
 <Properties>
 <string name="Name">ShopController</string>
 <ProtectedString name="Source">--!strict
@@ -3908,7 +4285,7 @@ return ShopController
 </Properties>
 </Item>
 </Item>
-<Item class="ModuleScript" referent="KC86">
+<Item class="ModuleScript" referent="KC113">
 <Properties>
 <string name="Name">UiKit</string>
 <ProtectedString name="Source">--!strict

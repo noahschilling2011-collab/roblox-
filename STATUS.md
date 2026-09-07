@@ -76,7 +76,7 @@ lassen (Scope offiziell erweitern) oder für den ersten Launch deaktivieren.
   Studio öffenbar, kein Rojo nötig) — inklusive gebackener Weltvorschau, damit beim
   Öffnen nicht nur ein Spawn-Pad dasteht. `WorldLayout.luau` ist die gemeinsame Quelle
   für Server und Build-Script.
-  `cd keycap/tests && npm install && npm test` → 66 Tests + Syntaxprüfung aller Dateien.
+  `cd keycap/tests && npm install && npm test` → 70 Tests + Syntaxprüfung aller Dateien.
   **Nie in Roblox gelaufen** — nur Syntax und reine Logik geprüft.
   Nicht drin: Monetarisierung, Sounds/Effekte.
   Offene Zahl: `STAGE_RUN_SECONDS` ist geschätzt — `RunTimerService` misst sie im Spiel
